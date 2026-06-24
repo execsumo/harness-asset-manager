@@ -23,6 +23,7 @@ import "./features/marketplace/styles/mcp-detail.css";
 import "./features/mcp/styles/pages.css";
 import "./features/mcp/styles/detail-sheet.css";
 import "./features/mcp/styles/edit-dialogs.css";
+import "./features/permissions/styles/permissions.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import {
   MatrixHarnessCellTarget,
@@ -16,6 +16,7 @@ import {
   type PermissionsMatrixCellModel,
 } from "../model/selectors";
 import { PermissionsHarnessLogoStack } from "./PermissionsHarnessLogoStack";
+import { PermissionsStatusChip } from "./PermissionsStatusChip";
 
 interface PermissionsMatrixViewProps {
   entries: PermissionInventoryEntryDto[];
@@ -25,6 +26,7 @@ interface PermissionsMatrixViewProps {
   onOpenDetail: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
+  onAdopt: (id: string) => void;
 }
 
 export function PermissionsMatrixView({
@@ -35,6 +37,7 @@ export function PermissionsMatrixView({
   onOpenDetail,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
 }: PermissionsMatrixViewProps) {
   const copy = usePermissionsCopy();
   const displayColumns = matrixColumns({ columns });
@@ -45,7 +48,7 @@ export function PermissionsMatrixView({
       harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="72px"
+      coverageColumnWidth="104px"
       hasCheckboxColumn={false}
     >
       <thead className="matrix-table__head">
@@ -62,7 +65,7 @@ export function PermissionsMatrixView({
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Applied</th>
+          <th className="matrix-table__th matrix-table__th--end">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -76,6 +79,7 @@ export function PermissionsMatrixView({
             onOpenDetail={onOpenDetail}
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
+            onAdopt={onAdopt}
             copy={copy}
           />
         ))}
@@ -92,6 +96,7 @@ function PermissionsMatrixRow({
   onOpenDetail,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
   copy,
 }: {
   entry: PermissionInventoryEntryDto;
@@ -101,12 +106,15 @@ function PermissionsMatrixRow({
   onOpenDetail: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
+  onAdopt: (id: string) => void;
   copy: PermissionsCopy;
 }) {
   const coverage = matrixCoverage(entry, columns);
+  const isUntracked = entry.kind === "unmanaged";
+  const ruleName = entry.spec?.pattern ?? entry.displayName;
 
   return (
-    <tr className="matrix-table__row">
+    <tr className="matrix-table__row" data-kind={entry.kind}>
       <td className="matrix-table__cell matrix-table__cell--identity">
         <button
           type="button"
@@ -115,11 +123,14 @@ function PermissionsMatrixRow({
           onClick={() => onOpenDetail(entry.id)}
         >
           <span className="matrix-table__name-row">
-            <span className="matrix-table__name-text">{entry.displayName}</span>
+            <code className="matrix-table__name-text">{ruleName}</code>
+            {entry.spec ? (
+              <PermissionsStatusChip decision={entry.spec.decision} scope={entry.spec.scope} />
+            ) : null}
           </span>
-          <span className="matrix-table__description">
-            <code>{entry.spec?.pattern ?? "—"}</code> · {entry.spec?.decision ?? "—"}: {entry.spec?.scope ?? "—"}
-          </span>
+          {entry.spec?.description ? (
+            <span className="matrix-table__description">{entry.spec.description}</span>
+          ) : null}
         </button>
       </td>
       {columns.map((column) => {
@@ -142,16 +153,30 @@ function PermissionsMatrixRow({
         <PermissionsHarnessLogoStack bindings={entry.sightings} columns={columns} />
       </td>
       <td className="matrix-table__cell matrix-table__cell--coverage">
-        <span
-          className="matrix-table__coverage"
-          aria-label={`Applied on ${coverage.enabled} of ${coverage.writable} harnesses`}
-        >
-          <span className="matrix-table__coverage-count">{coverage.enabled}</span>
-          <span className="matrix-table__coverage-total" aria-hidden="true">
-            {" / "}
-            {coverage.writable}
+        {isUntracked ? (
+          <button
+            type="button"
+            className="action-pill action-pill--accent permission-adopt-btn"
+            disabled={pendingPermission}
+            onClick={() => onAdopt(entry.id)}
+          >
+            {pendingPermission ? (
+              <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
+            ) : null}
+            Adopt
+          </button>
+        ) : (
+          <span
+            className="matrix-table__coverage"
+            aria-label={`Applied on ${coverage.enabled} of ${coverage.writable} harnesses`}
+          >
+            <span className="matrix-table__coverage-count">{coverage.enabled}</span>
+            <span className="matrix-table__coverage-total" aria-hidden="true">
+              {" / "}
+              {coverage.writable}
+            </span>
           </span>
-        </span>
+        )}
       </td>
     </tr>
   );

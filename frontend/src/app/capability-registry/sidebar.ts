@@ -130,10 +130,10 @@ export function useSidebarModel(): SidebarModel {
           iconKey: "permissions",
           count: permissionsCounts.total,
           links: [
-            { key: "permissions-use", to: permissionsRoutes.inUse, label: common.productLanguage.inUse, count: permissionsCounts.inUse },
+            { key: "permissions-all", to: permissionsRoutes.index, label: "All", count: permissionsCounts.total },
             {
               key: "permissions-review",
-              to: permissionsRoutes.needsReview,
+              to: `${permissionsRoutes.index}?status=untracked`,
               label: common.productLanguage.needsReview,
               count: permissionsCounts.needsReview,
             },

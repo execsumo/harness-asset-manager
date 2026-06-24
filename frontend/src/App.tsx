@@ -25,8 +25,7 @@ const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsRev
 const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
 const HooksInUsePage = lazy(() => import("./features/hooks/screens/HooksInUsePage"));
 const HooksNeedsReviewPage = lazy(() => import("./features/hooks/screens/HooksNeedsReviewPage"));
-const PermissionsInUsePage = lazy(() => import("./features/permissions/screens/PermissionsInUsePage"));
-const PermissionsNeedsReviewPage = lazy(() => import("./features/permissions/screens/PermissionsNeedsReviewPage"));
+const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
 
 export function App() {
   const [queryClient] = useState(
@@ -131,23 +130,17 @@ function AppContent() {
             }
           />
 
-          <Route path="permissions" element={<Navigate to="/permissions/use" replace />} />
           <Route
-            path="permissions/use"
+            path="permissions"
             element={
               <Suspense fallback={<RouteLoadingPanel label="Loading permissions..." />}>
-                <PermissionsInUsePage />
+                <PermissionsPage />
               </Suspense>
             }
           />
-          <Route
-            path="permissions/review"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label="Loading permissions..." />}>
-                <PermissionsNeedsReviewPage />
-              </Suspense>
-            }
-          />
+          {/* Legacy split routes now resolve to the unified inventory. */}
+          <Route path="permissions/use" element={<Navigate to="/permissions" replace />} />
+          <Route path="permissions/review" element={<Navigate to="/permissions" replace />} />
 
           <Route
             path="marketplace"
