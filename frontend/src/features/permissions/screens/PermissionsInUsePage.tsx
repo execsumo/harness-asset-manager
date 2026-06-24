@@ -180,9 +180,7 @@ export default function PermissionsInUsePage() {
               columns={inventory.columns}
               pendingPermissionKeys={pendingPermissionKeys}
               pendingPerHarnessKeys={pendingPerHarnessKeys}
-              checkedIds={new Set()}
               onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
               onEnableHarness={(id, harness) => {
                 void handleToggleHarness(id, harness, false);
               }}
@@ -195,9 +193,7 @@ export default function PermissionsInUsePage() {
               entries={entries}
               columns={inventory.columns}
               pendingPermissionKeys={pendingPermissionKeys}
-              checkedIds={new Set()}
               onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
               onSetHarnesses={(id, target) => {
                 void handleSetPermissionHarnesses(id, target);
               }}

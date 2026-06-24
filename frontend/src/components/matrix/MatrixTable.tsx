@@ -8,6 +8,7 @@ interface MatrixTableProps {
   compactColumnWidth?: string;
   coverageColumnWidth?: string;
   minWidth?: string;
+  hasCheckboxColumn?: boolean;
 }
 
 export function MatrixTable({
@@ -18,6 +19,7 @@ export function MatrixTable({
   compactColumnWidth = "140px",
   coverageColumnWidth = "64px",
   minWidth,
+  hasCheckboxColumn = true,
 }: MatrixTableProps) {
   const style = {
     "--matrix-harness-column-width": harnessColumnWidth,
@@ -30,7 +32,7 @@ export function MatrixTable({
     <div className="matrix-table-wrapper" style={style}>
       <table className="matrix-table" aria-label={ariaLabel}>
         <colgroup>
-          <col className="matrix-table__col-checkbox" />
+          {hasCheckboxColumn ? <col className="matrix-table__col-checkbox" /> : null}
           <col className="matrix-table__col-identity" />
           {Array.from({ length: harnessColumnCount }, (_, index) => (
             <col key={index} className="matrix-table__col-harness" />

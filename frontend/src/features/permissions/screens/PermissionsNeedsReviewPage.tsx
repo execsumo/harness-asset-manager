@@ -55,7 +55,7 @@ export default function PermissionsNeedsReviewPage() {
       <div className="page-chrome">
         <PageHeader
           title="Permissions to review"
-          subtitle="Permission rules found in your harness configs that skill-manager does not yet track. Promote the ones you want to manage globally."
+          subtitle="Permission rules found in your harness configs that skill-manager does not yet track. Adopt the ones you want to manage centrally."
         />
         {totalReview > 0 ? (
           <FilterBar
@@ -149,7 +149,7 @@ export default function PermissionsNeedsReviewPage() {
                     {pending ? (
                       <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
                     ) : null}
-                    Promote to global
+                    Adopt
                   </button>
                 </div>
               </article>

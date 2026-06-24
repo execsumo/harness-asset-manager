@@ -5,9 +5,7 @@ interface PermissionCardListProps {
   entries: PermissionInventoryEntryDto[];
   columns: PermissionInventoryColumnDto[];
   pendingPermissionKeys: ReadonlySet<string>;
-  checkedIds: ReadonlySet<string>;
   onOpenDetail: (id: string) => void;
-  onToggleChecked: (id: string) => void;
   onSetHarnesses: (id: string, target: "enabled" | "disabled") => void;
   onRequestUninstall: (id: string) => void;
   ariaLabel?: string;
@@ -17,9 +15,7 @@ export function PermissionCardList({
   entries,
   columns,
   pendingPermissionKeys,
-  checkedIds,
   onOpenDetail,
-  onToggleChecked,
   onSetHarnesses,
   onRequestUninstall,
   ariaLabel,
@@ -32,9 +28,7 @@ export function PermissionCardList({
           entry={entry}
           columns={columns}
           pending={pendingPermissionKeys.has(entry.id)}
-          checked={checkedIds.has(entry.id)}
           onOpenDetail={onOpenDetail}
-          onToggleChecked={onToggleChecked}
           onSetHarnesses={onSetHarnesses}
           onRequestUninstall={onRequestUninstall}
         />

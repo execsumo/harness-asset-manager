@@ -1,6 +1,5 @@
 import { AlertTriangle } from "lucide-react";
 
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessHeader,
@@ -23,9 +22,7 @@ interface PermissionsMatrixViewProps {
   columns: PermissionInventoryColumnDto[];
   pendingPermissionKeys: ReadonlySet<string>;
   pendingPerHarnessKeys: ReadonlySet<string>;
-  checkedIds: ReadonlySet<string>;
   onOpenDetail: (id: string) => void;
-  onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
 }
@@ -35,9 +32,7 @@ export function PermissionsMatrixView({
   columns,
   pendingPermissionKeys,
   pendingPerHarnessKeys,
-  checkedIds,
   onOpenDetail,
-  onToggleChecked,
   onEnableHarness,
   onDisableHarness,
 }: PermissionsMatrixViewProps) {
@@ -51,11 +46,11 @@ export function PermissionsMatrixView({
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="72px"
+      hasCheckboxColumn={false}
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
-          <th className="matrix-table__th matrix-table__th--identity">Permission ID</th>
+          <th className="matrix-table__th matrix-table__th--identity">Rule</th>
           {displayColumns.map((column) => (
             <MatrixHarnessHeader
               key={column.harness}
@@ -67,7 +62,7 @@ export function PermissionsMatrixView({
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Enabled</th>
+          <th className="matrix-table__th matrix-table__th--end">Applied</th>
         </tr>
       </thead>
       <tbody>
@@ -78,9 +73,7 @@ export function PermissionsMatrixView({
             columns={displayColumns}
             pendingPermission={pendingPermissionKeys.has(entry.id)}
             pendingPerHarnessKeys={pendingPerHarnessKeys}
-            checked={checkedIds.has(entry.id)}
             onOpenDetail={onOpenDetail}
-            onToggleChecked={onToggleChecked}
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
             copy={copy}
@@ -96,9 +89,7 @@ function PermissionsMatrixRow({
   columns,
   pendingPermission,
   pendingPerHarnessKeys,
-  checked,
   onOpenDetail,
-  onToggleChecked,
   onEnableHarness,
   onDisableHarness,
   copy,
@@ -107,9 +98,7 @@ function PermissionsMatrixRow({
   columns: PermissionInventoryColumnDto[];
   pendingPermission: boolean;
   pendingPerHarnessKeys: ReadonlySet<string>;
-  checked: boolean;
   onOpenDetail: (id: string) => void;
-  onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
   copy: PermissionsCopy;
@@ -117,15 +106,7 @@ function PermissionsMatrixRow({
   const coverage = matrixCoverage(entry, columns);
 
   return (
-    <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
-      <td className="matrix-table__cell matrix-table__cell--checkbox">
-        <CardSelectCheckbox
-          checked={checked}
-          label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
-          onToggle={() => onToggleChecked(entry.id)}
-          disabled={pendingPermission}
-        />
-      </td>
+    <tr className="matrix-table__row">
       <td className="matrix-table__cell matrix-table__cell--identity">
         <button
           type="button"
@@ -163,7 +144,7 @@ function PermissionsMatrixRow({
       <td className="matrix-table__cell matrix-table__cell--coverage">
         <span
           className="matrix-table__coverage"
-          aria-label={`Coverage: ${coverage.enabled} / ${coverage.writable}`}
+          aria-label={`Applied on ${coverage.enabled} of ${coverage.writable} harnesses`}
         >
           <span className="matrix-table__coverage-count">{coverage.enabled}</span>
           <span className="matrix-table__coverage-total" aria-hidden="true">

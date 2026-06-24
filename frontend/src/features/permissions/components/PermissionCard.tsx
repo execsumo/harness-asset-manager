@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Loader2, Power, Trash2 } from "lucide-react";
 
 import { CardMenu, type CardMenuItem } from "../../../components/cards/CardMenu";
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../../permissions/api/management-types";
 import { usePermissionsCopy } from "../../permissions/i18n";
@@ -14,9 +13,7 @@ interface PermissionCardProps {
   entry: PermissionInventoryEntryDto;
   columns: PermissionInventoryColumnDto[];
   pending: boolean;
-  checked: boolean;
   onOpenDetail: (id: string) => void;
-  onToggleChecked: (id: string) => void;
   onSetHarnesses: (id: string, target: "enabled" | "disabled") => void;
   onRequestUninstall: (id: string) => void;
 }
@@ -43,9 +40,7 @@ export function PermissionCard({
   entry,
   columns,
   pending,
-  checked,
   onOpenDetail,
-  onToggleChecked,
   onSetHarnesses,
   onRequestUninstall,
 }: PermissionCardProps) {
@@ -77,7 +72,6 @@ export function PermissionCard({
     <article
       className="skill-card permission-card"
       data-pending={pending || undefined}
-      data-selected={checked || undefined}
       role="button"
       tabIndex={0}
       onClick={() => onOpenDetail(entry.id)}
@@ -98,12 +92,6 @@ export function PermissionCard({
           <CardMenu
             label={copy.detail.moreActions(entry.displayName)}
             items={menuItems}
-            disabled={pending}
-          />
-          <CardSelectCheckbox
-            checked={checked}
-            onToggle={() => onToggleChecked(entry.id)}
-            label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
             disabled={pending}
           />
         </div>
@@ -139,7 +127,7 @@ export function PermissionCard({
           ) : (
             <Power size={12} aria-hidden="true" />
           )}
-          {differentConfig ? copy.detail.resolveConfig : target === "enabled" ? "Enable all" : "Disable everywhere"}
+          {differentConfig ? copy.detail.resolveConfig : target === "enabled" ? "Apply to all" : "Remove from all"}
         </button>
       </div>
     </article>
