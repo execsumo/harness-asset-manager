@@ -102,7 +102,7 @@ export default function HooksNeedsReviewPage() {
           harnessColumnCount={columns.length}
           harnessColumnWidth="52px"
           compactColumnWidth="140px"
-          coverageColumnWidth="120px"
+          coverageColumnWidth="96px"
         >
           <thead className="matrix-table__head">
             <tr>
@@ -115,7 +115,7 @@ export default function HooksNeedsReviewPage() {
                   harness={column.harness}
                 />
               ))}
-              <th className="matrix-table__th matrix-table__th--end">Action</th>
+              <th className="matrix-table__th matrix-table__th--action">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -170,7 +170,7 @@ export default function HooksNeedsReviewPage() {
                       </td>
                     );
                   })}
-                  <td className="matrix-table__cell matrix-table__cell--end">
+                  <td className="matrix-table__cell matrix-table__cell--action">
                     <button
                       type="button"
                       className="action-pill action-pill--accent"
