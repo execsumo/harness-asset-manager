@@ -5,8 +5,8 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from skill_manager.application import build_backend_container
-from skill_manager.application.container import _migrate_legacy_layouts, _rewrite_agent_local_prefix
-from skill_manager.application.agents.parser import split_frontmatter
+from skill_manager.application.container import _migrate_legacy_layouts
+from skill_manager.application.agents.parser import parse_agent_file
 from skill_manager.application.skills.manifest import SkillStoreEntry
 from skill_manager.application.skills.package import fingerprint_package
 from skill_manager.sources import ResolvedGitHubSkill
@@ -383,8 +383,14 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
             self.assertTrue(target_manifest.is_file())
             self.assertIn('"version"', target_manifest.read_text(encoding="utf-8"))
 
-    def test_agent_migration_rewrites_local_prefix(self) -> None:
-        """Agent .md files with local/<name> in skills/mcps get rewritten."""
+    def test_agent_migration_moves_files_verbatim(self) -> None:
+        """Legacy agent files move to the flat store with their bytes untouched.
+
+        The migration used to rewrite `capabilities.skills` / `.mcps` to strip a
+        `local/` prefix. Those keys are no longer part of the agent model, and the
+        parser ignores them, so the migration is now a plain move — rewriting
+        someone's file on upgrade would be gratuitous.
+        """
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
             data_dir = spec.xdg_data_home / "skill-manager"
@@ -397,7 +403,6 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
                 "capabilities:\n"
                 "  skills:\n"
                 "    - local/project-context\n"
-                "    - other-skill\n"
                 "  mcps:\n"
                 "    - local/github-mcp\n"
                 "---\n\n"
@@ -409,46 +414,13 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
 
             migrated = spec.agents_root / "chief-of-staff.md"
             self.assertTrue(migrated.is_file())
-            content = migrated.read_text(encoding="utf-8")
-            self.assertNotIn("local/project-context", content)
-            self.assertIn("- project-context", content)
-            self.assertNotIn("local/github-mcp", content)
-            self.assertIn("- github-mcp", content)
-            self.assertIn("- other-skill", content)
+            self.assertEqual(migrated.read_text(encoding="utf-8"), agent_doc)
 
-            # Verify the agent still parses correctly
-            metadata, body = split_frontmatter(content)
-            self.assertEqual(metadata["name"], "Chief of Staff")
-            self.assertEqual(
-                metadata["capabilities"]["skills"],
-                ["project-context", "other-skill"],
-            )
-            self.assertEqual(metadata["capabilities"]["mcps"], ["github-mcp"])
-
-    def test_agent_migration_preserves_non_local_entries(self) -> None:
-        """Agent .md files without local/ prefix are untouched."""
-        with TemporaryDirectory() as temp_dir:
-            spec = create_fake_home_spec(Path(temp_dir))
-            data_dir = spec.xdg_data_home / "skill-manager"
-            legacy_agents = data_dir / "packages" / "local" / "agents"
-            legacy_agents.mkdir(parents=True)
-            agent_doc = (
-                "---\n"
-                "name: Helper\n"
-                "capabilities:\n"
-                "  skills:\n"
-                "    - bare-skill\n"
-                "---\n\nBody.\n"
-            )
-            (legacy_agents / "helper.md").write_text(agent_doc, encoding="utf-8")
-
-            _migrate_legacy_layouts(data_dir, spec.skills_store_root, spec.agents_root)
-
-            migrated = spec.agents_root / "helper.md"
-            self.assertTrue(migrated.is_file())
-            content = migrated.read_text(encoding="utf-8")
-            self.assertIn("bare-skill", content)
-            self.assertNotIn("local/", content)
+            # And it still parses under the current model, legacy keys and all.
+            agent = parse_agent_file(migrated)
+            self.assertEqual(agent.name, "Chief of Staff")
+            self.assertEqual(agent.description, "Orchestrates tasks.")
+            self.assertEqual(agent.prompt, "You are a chief of staff.")
 
 
 if __name__ == "__main__":
