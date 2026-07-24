@@ -52,7 +52,7 @@ export function MatrixView({
       harnessColumnCount={harnessColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="72px"
+      coverageColumnWidth="96px"
     >
       <thead className="matrix-table__head">
         <tr>

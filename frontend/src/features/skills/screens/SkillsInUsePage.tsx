@@ -86,6 +86,7 @@ export default function SkillsInUsePage() {
       <div className="page-chrome">
         <PageHeader
           title={copy.inUse.title}
+          subtitle={hasInUseInventory ? copy.inUse.subtitle(data?.summary.managed ?? 0) : undefined}
           actions={
             <button
               type="button"

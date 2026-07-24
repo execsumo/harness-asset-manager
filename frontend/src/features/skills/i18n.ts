@@ -3,6 +3,10 @@ import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "../../i18n
 const englishSkillsCopy = {
   inUse: {
     title: "Skills in use",
+    subtitle: (count: number) =>
+      count > 0
+        ? `${count} skill${count === 1 ? "" : "s"} being managed across harnesses.`
+        : "No skills are being managed across harnesses.",
     importFolder: "Import folder",
     importFolderComingSoon: "Import folder — coming soon",
     searchPlaceholder: "Search by name, tag, description...",
@@ -106,6 +110,8 @@ export const skillsCopy = {
   "zh-CN": {
     inUse: {
       title: "使用中的 Skill",
+      subtitle: (count: number) =>
+        count > 0 ? `有 ${count} 个 Skill 正在被管理。` : "目前没有正在管理的 Skill。",
       importFolder: "导入文件夹",
       importFolderComingSoon: "导入文件夹即将推出",
       searchPlaceholder: "按名称、标签或描述搜索...",

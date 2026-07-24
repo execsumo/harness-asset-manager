@@ -50,7 +50,7 @@ export function PermissionsMatrixView({
       harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="72px"
+      coverageColumnWidth="120px"
     >
       <thead className="matrix-table__head">
         <tr>
