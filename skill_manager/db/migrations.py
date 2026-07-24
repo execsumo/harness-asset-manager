@@ -5,7 +5,7 @@ import sqlite3
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def initialize_schema(conn: sqlite3.Connection) -> None:
@@ -14,31 +14,6 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
 
 
 def create_tables(conn: sqlite3.Connection) -> None:
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS llm_scan_configs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            base_url TEXT NOT NULL DEFAULT '',
-            api_key TEXT NOT NULL DEFAULT '',
-            model TEXT NOT NULL DEFAULT '',
-            provider TEXT NOT NULL DEFAULT '',
-            api_version TEXT NOT NULL DEFAULT '',
-            aws_region TEXT NOT NULL DEFAULT '',
-            aws_profile TEXT NOT NULL DEFAULT '',
-            aws_session_token TEXT NOT NULL DEFAULT '',
-            max_tokens INTEGER NOT NULL DEFAULT 8192,
-            consensus_runs INTEGER NOT NULL DEFAULT 1,
-            is_active INTEGER NOT NULL DEFAULT 0,
-            last_validated_at TEXT,
-            last_validation_error TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_llm_config_active
-            ON llm_scan_configs(is_active) WHERE is_active = 1
-    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -56,6 +31,8 @@ def apply_migrations(conn: sqlite3.Connection) -> None:
         _migrate_v1_to_v2(conn)
     if version < 3:
         _migrate_v2_to_v3(conn)
+    if version < 4:
+        _migrate_v3_to_v4(conn)
     current = conn.execute("PRAGMA user_version").fetchone()[0]
     if current < SCHEMA_VERSION:
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
@@ -75,21 +52,16 @@ def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
 
 
 def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
-    logger.info("Schema migration: v2 -> v3 (LLM config validation metadata)")
-    existing_columns = {
-        row["name"]
-        for row in conn.execute("PRAGMA table_info(llm_scan_configs)").fetchall()
-    }
-    migrations = [
-        ("api_version", "ALTER TABLE llm_scan_configs ADD COLUMN api_version TEXT NOT NULL DEFAULT ''"),
-        ("aws_region", "ALTER TABLE llm_scan_configs ADD COLUMN aws_region TEXT NOT NULL DEFAULT ''"),
-        ("aws_profile", "ALTER TABLE llm_scan_configs ADD COLUMN aws_profile TEXT NOT NULL DEFAULT ''"),
-        ("aws_session_token", "ALTER TABLE llm_scan_configs ADD COLUMN aws_session_token TEXT NOT NULL DEFAULT ''"),
-        ("last_validated_at", "ALTER TABLE llm_scan_configs ADD COLUMN last_validated_at TEXT"),
-        ("last_validation_error", "ALTER TABLE llm_scan_configs ADD COLUMN last_validation_error TEXT NOT NULL DEFAULT ''"),
-    ]
-    for column, sql in migrations:
-        if column not in existing_columns:
-            conn.execute(sql)
+    # Historically added LLM-scan-config validation columns. The LLM scan feature
+    # has since been removed and its table is dropped in v3 -> v4, so this is a
+    # no-op version bump kept only to preserve the migration sequence.
+    logger.info("Schema migration: v2 -> v3 (no-op; LLM scan config removed)")
     conn.execute("PRAGMA user_version = 3")
+    conn.commit()
+
+
+def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
+    logger.info("Schema migration: v3 -> v4 (drop removed LLM scan config table)")
+    conn.execute("DROP TABLE IF EXISTS llm_scan_configs")
+    conn.execute("PRAGMA user_version = 4")
     conn.commit()
