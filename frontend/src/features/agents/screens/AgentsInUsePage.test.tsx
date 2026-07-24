@@ -47,7 +47,7 @@ describe("AgentsInUsePage", () => {
   it("renders MatrixTable with agent rows", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/api/v1/agents")) return okJson(agentsInUseFixture());
+      if (url.includes("/api/agents")) return okJson(agentsInUseFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -59,11 +59,11 @@ describe("AgentsInUsePage", () => {
   it("toggles a harness cell", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/bindings/cursor")) {
+      if (url.includes("/enable")) {
         expect(init?.method).toBe("POST");
         return okJson({});
       }
-      if (url.includes("/api/v1/agents")) return okJson(agentsInUseFixture());
+      if (url.includes("/api/agents")) return okJson(agentsInUseFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -73,7 +73,7 @@ describe("AgentsInUsePage", () => {
     fireEvent.click(enableButton);
     await waitFor(() =>
       expect(
-        fetchMock.mock.calls.some((call) => String(call[0]).includes("/bindings/cursor")),
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/enable")),
       ).toBe(true),
     );
   });

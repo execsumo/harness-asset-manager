@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAgentsInventory, scaffoldAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
+import { fetchAgentsInventory, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
 import { agentsKeys } from "./keys";
 import type { AgentAdoptConflict, AdoptAllResponse } from "./types";
 
@@ -75,7 +75,7 @@ export function useUpdateAgentMutation() {
 export function useCreateAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: Parameters<typeof scaffoldAgent>[0]) => scaffoldAgent(request),
+    mutationFn: (request: Parameters<typeof createAgent>[0]) => createAgent(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
     },

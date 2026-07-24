@@ -31,20 +31,16 @@ export interface AdoptAllResponse {
   skipped: Array<{ ref: string; reason: string }>;
 }
 
-export interface AgentScaffoldRequest {
+export interface AgentCreateRequest {
   name: string;
   description: string;
   prompt: string;
   tools?: string[];
 }
 
-export interface AgentScaffoldResponse {
-  file_path: string;
-}
-
 export interface AgentUpdateRequest {
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   prompt?: string;
   tools?: string[];
 }

@@ -91,7 +91,7 @@ export function CreateAgentDialog({
                 <span className="form-field__label">Description</span>
                 <textarea
                   className="form-field__textarea"
-                  placeholder="Describe the agent's purpose and capabilities..."
+                  placeholder="Describe the agent's purpose and functionality..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isPending}

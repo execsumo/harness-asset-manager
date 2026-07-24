@@ -16,7 +16,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
     issues: [],
     entries: [
       {
-        ref: "conflict-agent",
+        ref: "claude/conflict-agent",
         name: "Conflict Agent",
         description: "Will 409",
         kind: "unmanaged",
@@ -27,7 +27,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
         actions: { canAdopt: true, canDelete: false },
       },
       {
-        ref: "ok-agent",
+        ref: "cursor/ok-agent",
         name: "OK Agent",
         description: "Will 200",
         kind: "unmanaged",
@@ -58,7 +58,7 @@ describe("AgentsNeedsReviewPage", () => {
   it("renders MatrixTable with unmanaged agents", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/api/v1/agents")) return okJson(unmanagedAgentsFixture());
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -70,11 +70,11 @@ describe("AgentsNeedsReviewPage", () => {
   it("handles 409 conflict and resolves with keep_store", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url.includes("/adopt?on_conflict=keep_store")) {
-        expect(init?.method).toBe("POST");
-        return okJson({});
-      }
       if (url.includes("/adopt")) {
+        if (init?.body && String(init.body).includes("keep_store")) {
+          expect(init?.method).toBe("POST");
+          return okJson({});
+        }
         return new Response(
           JSON.stringify({
             conflict: "store-name-exists",
@@ -85,7 +85,7 @@ describe("AgentsNeedsReviewPage", () => {
           { status: 409, headers: { "Content-Type": "application/json" } }
         );
       }
-      if (url.includes("/api/v1/agents")) return okJson(unmanagedAgentsFixture());
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -106,7 +106,7 @@ describe("AgentsNeedsReviewPage", () => {
 
     await waitFor(() =>
       expect(
-        fetchMock.mock.calls.some((call) => String(call[0]).includes("on_conflict=keep_store")),
+        fetchMock.mock.calls.some((call) => String(call[1]?.body).includes('"onConflict":"keep_store"')),
       ).toBe(true),
     );
   });
@@ -118,11 +118,11 @@ describe("AgentsNeedsReviewPage", () => {
         expect(init?.method).toBe("POST");
         return okJson({
           ok: true,
-          adopted: ["ok-agent"],
-          skipped: [{ ref: "conflict-agent", reason: "conflict" }]
+          adopted: ["cursor/ok-agent"],
+          skipped: [{ ref: "claude/conflict-agent", reason: "conflict" }]
         });
       }
-      if (url.includes("/api/v1/agents")) return okJson(unmanagedAgentsFixture());
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
