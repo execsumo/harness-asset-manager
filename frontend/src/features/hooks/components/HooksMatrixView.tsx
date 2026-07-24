@@ -67,7 +67,7 @@ export function HooksMatrixView({
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Enabled</th>
+          <th className="matrix-table__th matrix-table__th--end">Active</th>
         </tr>
       </thead>
       <tbody>

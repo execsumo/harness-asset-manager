@@ -163,6 +163,7 @@
 
 .matrix-table__th--end .matrix-table__sort-btn {
   justify-content: center;
+  width: 100%;
 }
 
 .matrix-table__sort-label {

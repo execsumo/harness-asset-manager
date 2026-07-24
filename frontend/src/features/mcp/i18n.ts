@@ -182,7 +182,7 @@ const englishMcpCopy = {
       selectColumn: "Select",
       serverColumn: "Server",
       harnessesColumn: "Harnesses",
-      enabledColumn: "Enabled",
+      enabledColumn: "Active",
       coverage: (enabled: number, writable: number) =>
         `Enabled on ${enabled} of ${writable} writable harnesses`,
       baseLabel: (serverName: string, harnessLabel: string) => `${serverName} on ${harnessLabel}`,
@@ -377,7 +377,7 @@ export const mcpCopy = {
         selectColumn: "选择",
         serverColumn: "服务器",
         harnessesColumn: "Harness",
-        enabledColumn: "已启用",
+        enabledColumn: "启用",
         coverage: (enabled: number, writable: number) => `已在 ${enabled} / ${writable} 个可写 harness 中启用`,
         baseLabel: (serverName: string, harnessLabel: string) => `${serverName} 在 ${harnessLabel}`,
         enabledTooltip: (harnessLabel: string) => `${harnessLabel} - 已启用`,
