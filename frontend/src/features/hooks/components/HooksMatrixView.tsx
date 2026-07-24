@@ -52,6 +52,7 @@ export function HooksMatrixView({
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"
+      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>

@@ -7,6 +7,7 @@ import {
   MatrixTable,
 } from "../../../components/matrix";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
+import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
 import type { McpIdentityGroupDto, McpNeedsReviewHarnessDto } from "../api/management-types";
@@ -25,6 +26,8 @@ interface McpNeedsReviewMatrixViewProps {
   onOpenDetail: (name: string) => void;
   onAdoptIdentical: (name: string) => void;
   onChooseConfigToAdopt: (name: string) => void;
+  selectedNames: ReadonlySet<string>;
+  onToggleSelected: (name: string) => void;
 }
 
 export function McpNeedsReviewMatrixView({
@@ -34,6 +37,8 @@ export function McpNeedsReviewMatrixView({
   onOpenDetail,
   onAdoptIdentical,
   onChooseConfigToAdopt,
+  selectedNames,
+  onToggleSelected,
 }: McpNeedsReviewMatrixViewProps) {
   const copy = useMcpCopy();
 
@@ -89,9 +94,18 @@ export function McpNeedsReviewMatrixView({
       <tbody>
         {groups.map((group) => {
           const pending = isAdoptPending(group.name);
+          const isSelected = selectedNames.has(group.name);
+          const selectable = group.identical;
           return (
-            <tr key={group.name} className="matrix-table__row">
-              <td className="matrix-table__cell matrix-table__cell--checkbox" />
+            <tr key={group.name} className="matrix-table__row" data-checked={isSelected ? "true" : undefined}>
+              <td className="matrix-table__cell matrix-table__cell--checkbox">
+                <CardSelectCheckbox
+                  checked={isSelected}
+                  disabled={!selectable || pending}
+                  label={isSelected ? `Deselect ${group.name}` : `Select ${group.name}`}
+                  onToggle={() => onToggleSelected(group.name)}
+                />
+              </td>
               <td className="matrix-table__cell matrix-table__cell--identity">
                 <button
                   type="button"

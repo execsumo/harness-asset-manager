@@ -7,6 +7,7 @@ import {
   MatrixHarnessIcon,
   MatrixTable,
 } from "../../../components/matrix";
+import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../api/management-types";
 import { usePermissionsCopy, type PermissionsCopy } from "../i18n";
@@ -50,7 +51,8 @@ export function PermissionsMatrixView({
       harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="120px"
+      coverageColumnWidth="96px"
+      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>
@@ -126,20 +128,18 @@ function PermissionsMatrixRow({
           disabled={pendingPermission}
         />
       </td>
-      <td className="matrix-table__cell matrix-table__cell--identity">
-        <button
-          type="button"
-          className="mcp-matrix__server-button"
-          aria-label={copy.detail.openDetail(entry.displayName)}
-          onClick={() => onOpenDetail(entry.id)}
-        >
-          <span className="matrix-table__name-row">
-            <span className="matrix-table__name-text">{entry.displayName}</span>
-          </span>
-          <span className="matrix-table__description">
-            <code>{entry.spec?.pattern ?? "—"}</code> · {entry.spec?.decision ?? "—"}: {entry.spec?.scope ?? "—"}
-          </span>
-        </button>
+      <td
+        className="matrix-table__cell matrix-table__cell--identity"
+        onClick={() => onOpenDetail(entry.id)}
+      >
+        <div className="matrix-table__name-row">
+          <OverflowTooltipText as="span" className="matrix-table__name-text">
+            {entry.displayName}
+          </OverflowTooltipText>
+        </div>
+        <OverflowTooltipText as="p" className="matrix-table__description">
+          <code>{entry.spec?.pattern ?? "—"}</code> · {entry.spec?.decision ?? "—"}: {entry.spec?.scope ?? "—"}
+        </OverflowTooltipText>
       </td>
       {columns.map((column) => {
         const cell = matrixCellFor(entry, column, copy);

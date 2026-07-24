@@ -7,6 +7,7 @@ import {
   MatrixTable,
 } from "../../../components/matrix";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
+import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
 import type { SlashCommandReviewDto, SlashReviewAction, SlashTargetDto } from "../api/types";
@@ -20,6 +21,8 @@ interface SlashCommandReviewMatrixViewProps {
   pendingKey: string | null;
   onAction: (row: SlashCommandReviewDto, action?: SlashReviewAction | null) => Promise<boolean>;
   onOpen: (row: SlashCommandReviewDto) => void;
+  selectedRefs: ReadonlySet<string>;
+  onToggleSelected: (ref: string) => void;
 }
 
 export function SlashCommandReviewMatrixView({
@@ -28,6 +31,8 @@ export function SlashCommandReviewMatrixView({
   pendingKey,
   onAction,
   onOpen,
+  selectedRefs,
+  onToggleSelected,
 }: SlashCommandReviewMatrixViewProps) {
   const copy = useSlashCommandsCopy();
 
@@ -66,6 +71,7 @@ export function SlashCommandReviewMatrixView({
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="140px"
+      hasCheckbox={true}
     >
       <thead className="matrix-table__head">
         <tr>
@@ -88,6 +94,7 @@ export function SlashCommandReviewMatrixView({
       <tbody>
         {rows.map((row) => {
           const primaryAction = primaryReviewAction(row);
+          const isSelected = selectedRefs.has(row.reviewRef);
           const isPending = primaryAction
             ? pendingKey === reviewKey(row.target, row.name, primaryAction)
             : false;
@@ -97,8 +104,15 @@ export function SlashCommandReviewMatrixView({
             : row.error ?? copy.review.cannotUpdate;
 
           return (
-            <tr key={row.reviewRef} className="matrix-table__row">
-              <td className="matrix-table__cell matrix-table__cell--checkbox" />
+            <tr key={row.reviewRef} className="matrix-table__row" data-checked={isSelected ? "true" : undefined}>
+              <td className="matrix-table__cell matrix-table__cell--checkbox">
+                <CardSelectCheckbox
+                  checked={isSelected}
+                  disabled={!primaryAction || isPending}
+                  label={isSelected ? `Deselect ${row.name}` : `Select ${row.name}`}
+                  onToggle={() => onToggleSelected(row.reviewRef)}
+                />
+              </td>
               <td className="matrix-table__cell matrix-table__cell--identity">
                 <button
                   type="button"
