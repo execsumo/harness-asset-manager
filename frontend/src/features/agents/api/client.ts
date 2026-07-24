@@ -10,13 +10,13 @@ import type {
 } from "./types";
 
 export async function fetchAgentsInventory(): Promise<AgentInventoryDto> {
-  return fetchJson<AgentInventoryDto>("/api/agents");
+  return fetchJson<AgentInventoryDto>("/agents");
 }
 
 export async function createAgent(
   request: AgentCreateRequest,
 ): Promise<AgentSummaryResponse> {
-  return postJson<AgentSummaryResponse>("/api/agents", request);
+  return postJson<AgentSummaryResponse>("/agents", request);
 }
 
 export async function updateAgent({
@@ -26,7 +26,7 @@ export async function updateAgent({
   ref: string;
   request: AgentUpdateRequest;
 }): Promise<AgentSummaryResponse> {
-  return putJson<AgentSummaryResponse>(`/api/agents/${ref}`, request);
+  return putJson<AgentSummaryResponse>(`/agents/${ref}`, request);
 }
 
 export async function adoptAgent(
@@ -34,7 +34,7 @@ export async function adoptAgent(
   onConflict?: "keep_store" | "replace_store",
 ): Promise<void | AgentAdoptConflict> {
   const body = onConflict ? { onConflict } : undefined;
-  const response = await fetch(apiPath(`/api/agents/${ref}/adopt`), {
+  const response = await fetch(apiPath(`/agents/${ref}/adopt`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
@@ -49,21 +49,21 @@ export async function adoptAgent(
 }
 
 export async function adoptAllAgents(): Promise<AdoptAllResponse> {
-  return postJson<AdoptAllResponse>("/api/agents/adopt-all");
+  return postJson<AdoptAllResponse>("/agents/adopt-all");
 }
 
 export async function deleteAgent(ref: string): Promise<void> {
-  await deleteJson<void>(`/api/agents/${ref}`);
+  await deleteJson<void>(`/agents/${ref}`);
 }
 
 export async function enableAgent(ref: string, harness: string): Promise<void> {
-  await postJson<void>(`/api/agents/${ref}/enable`, { harness });
+  await postJson<void>(`/agents/${ref}/enable`, { harness });
 }
 
 export async function disableAgent(ref: string, harness: string): Promise<void> {
-  await postJson<void>(`/api/agents/${ref}/disable`, { harness });
+  await postJson<void>(`/agents/${ref}/disable`, { harness });
 }
 
 export async function setAgentHarnesses(ref: string, harnesses: string[]): Promise<void> {
-  await postJson<void>(`/api/agents/${ref}/set-harnesses`, { harnesses });
+  await postJson<void>(`/agents/${ref}/set-harnesses`, { harnesses });
 }
