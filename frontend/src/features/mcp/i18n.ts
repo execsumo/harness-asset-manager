@@ -40,6 +40,8 @@ const englishMcpCopy = {
         ? `${count} unique server${count === 1 ? "" : "s"} across your harness configs.`
         : "No local MCP config entries need review across your harnesses.",
     adoptIdentical: (count: number) => `Adopt identical servers (${count})`,
+    adoptSelected: "Adopt",
+    adoptingSelected: "Adopting selected servers",
     searchPlaceholder: "Search by server name...",
     searchLabel: "Search MCP configs to review",
     loading: "Loading MCP configs to review",
@@ -239,6 +241,8 @@ export const mcpCopy = {
       subtitle: (count: number) =>
         count > 0 ? `${count} 个唯一服务器出现在你的 harness 配置中。` : "没有本地 MCP 配置条目需要确认。",
       adoptIdentical: (count: number) => `采用相同服务器（${count}）`,
+      adoptSelected: "采用",
+      adoptingSelected: "正在采用所选服务器",
       searchPlaceholder: "按服务器名称搜索...",
       searchLabel: "搜索待确认的 MCP 配置",
       loading: "正在加载待确认的 MCP 配置",
