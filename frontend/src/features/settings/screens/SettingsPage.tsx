@@ -6,7 +6,6 @@ import { PageHeader } from "../../../components/PageHeader";
 import { useFormatPath } from "../../../lib/paths";
 import { SettingsHarnessCard } from "../components/SettingsHarnessCard";
 import { useSettingsCopy } from "../i18n";
-import ScanConfigSection from "./ScanConfigSection";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
 
 export default function SettingsPage() {
@@ -78,7 +77,6 @@ export default function SettingsPage() {
         </>
       )}
 
-      <ScanConfigSection />
     </>
   );
 }

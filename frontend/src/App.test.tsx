@@ -19,7 +19,6 @@ function stubEmptyApi() {
     createRouteFetchMock(
       [
         { match: "/api/skills", response: skillsPayload() },
-        { match: "/api/scan/configs", response: { configs: [], activeId: null } },
         { match: "/api/mcp/servers", response: mcpInventoryPayload() },
         { match: "/api/settings", response: settingsPayload() },
         { match: "/api/slash-commands", response: slashCommandsPayload() },
@@ -125,7 +124,6 @@ describe("App shell", () => {
     ["/overview", "Overview"],
     ["/skills/use", "Skills in use"],
     ["/skills/review", "Skills to review"],
-    ["/scan-config", "Settings"],
     ["/slash-commands", "Slash Commands"],
     ["/slash-commands/use", "Slash Commands"],
     ["/slash-commands/review", "Slash commands to review"],

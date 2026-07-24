@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 
 from skill_manager.db import Database
-from skill_manager.db.repositories import ScanConfigRepository
 from skill_manager.harness import HarnessKernelService, HarnessSupportStore
 from skill_manager.harness.resolution import resolve_context
 from skill_manager.paths import AppPaths, resolve_app_paths
@@ -63,8 +62,6 @@ from .skills.read_models import SkillsReadModelService
 from .skills.source_fetch import SourceFetchService
 from .skills.store import SkillStore
 from .marketplace_cache import MarketplaceCache
-from .scan import ScanConfigService, ScanService
-from .scan.target_resolver import ScanTargetResolver
 
 
 @dataclass(frozen=True)
@@ -104,8 +101,6 @@ class BackendContainer:
     permissions_queries: PermissionsQueryService
     permissions_mutations: PermissionsMutationService
     db: Database
-    scan_config_service: ScanConfigService
-    scan_service: ScanService
     scaffold_service: ScaffoldService
     agents_service: AgentsService
     app_home: Path
@@ -340,11 +335,6 @@ def build_backend_container(
     )
 
     db = Database(paths.db_path)
-    scan_config_service = ScanConfigService(ScanConfigRepository(db))
-    scan_service = ScanService(
-        scan_config_service,
-        target_resolver=ScanTargetResolver(skills_queries),
-    )
     scaffold_service = ScaffoldService(paths)
     agents_service = AgentsService(
         paths.agents_root,
@@ -388,8 +378,6 @@ def build_backend_container(
         permissions_queries=permissions_queries,
         permissions_mutations=permissions_mutations,
         db=db,
-        scan_config_service=scan_config_service,
-        scan_service=scan_service,
         scaffold_service=scaffold_service,
         agents_service=agents_service,
         app_home=app_home,
