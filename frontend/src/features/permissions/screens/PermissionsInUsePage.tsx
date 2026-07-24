@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Grid2X2, Rows3, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
@@ -7,10 +7,8 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { ViewModeToggle, type ViewModeOption } from "../../../components/ViewModeToggle";
 import { useCommonCopy } from "../../../i18n";
 import { usePermissionsCopy } from "../i18n";
-import { PermissionCardList } from "../components/PermissionCardList";
 import { PermissionsMatrixView } from "../components/PermissionsMatrixView";
 import { PermissionDetailSheet } from "../components/detail/PermissionDetailSheet";
 import { PermissionFormDialog } from "../components/edit/PermissionFormDialog";
@@ -21,7 +19,6 @@ import {
   type InUsePillValue,
 } from "../model/selectors";
 import { usePermissionsManagementController } from "../model/use-permissions-management-controller";
-import { usePermissionsInUseViewMode, type PermissionsInUseViewMode } from "../model/usePermissionsInUseViewMode";
 
 const DETAIL_PARAM = "permission";
 
@@ -37,7 +34,6 @@ export default function PermissionsInUsePage() {
     queryErrorMessage,
     actionErrorMessage,
     clearActionError,
-    handleSetPermissionHarnesses,
     handleUninstallPermission,
     handleToggleHarness,
     handleReconcilePermission,
@@ -52,17 +48,8 @@ export default function PermissionsInUsePage() {
 
   const [search, setSearch] = useState("");
   const [pill, setPill] = useState<InUsePillValue>("all");
-  const [viewMode, setViewMode] = usePermissionsInUseViewMode();
   const copy = usePermissionsCopy();
   const common = useCommonCopy();
-
-  const viewModeOptions: readonly ViewModeOption<PermissionsInUseViewMode>[] = useMemo(
-    () => [
-      { value: "cards", label: copy.inUse.viewModes.cards, icon: Grid2X2 },
-      { value: "matrix", label: copy.inUse.viewModes.matrix, icon: Rows3 },
-    ],
-    [copy],
-  );
 
   const entries = useMemo(
     () => filterPermissionsInUse(inventory, { search, pill }),
@@ -133,22 +120,14 @@ export default function PermissionsInUsePage() {
           title={copy.inUse.title}
           subtitle={copy.inUse.subtitle}
           actions={
-            <>
-              <ViewModeToggle
-                mode={viewMode}
-                options={viewModeOptions}
-                ariaLabel={copy.inUse.viewModeAria}
-                onChange={setViewMode}
-              />
-              <button
-                type="button"
-                className="action-pill action-pill--md action-pill--accent"
-                onClick={() => setAddDialogOpen(true)}
-              >
-                <Plus size={16} style={{ marginRight: "4px" }} />
-                Add Permission
-              </button>
-            </>
+            <button
+              type="button"
+              className="action-pill action-pill--md action-pill--accent"
+              onClick={() => setAddDialogOpen(true)}
+            >
+              <Plus size={16} style={{ marginRight: "4px" }} />
+              Add Permission
+            </button>
           }
         />
         {totalInUse > 0 ? (
@@ -174,36 +153,21 @@ export default function PermissionsInUsePage() {
         <div className="panel-state">{queryErrorMessage || copy.inUse.unableToLoad}</div>
       ) : isReady && inventory ? (
         entries.length > 0 ? (
-          viewMode === "matrix" ? (
-            <PermissionsMatrixView
-              entries={entries}
-              columns={inventory.columns}
-              pendingPermissionKeys={pendingPermissionKeys}
-              pendingPerHarnessKeys={pendingPerHarnessKeys}
-              checkedIds={new Set()}
-              onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
-              onEnableHarness={(id, harness) => {
-                void handleToggleHarness(id, harness, false);
-              }}
-              onDisableHarness={(id, harness) => {
-                void handleToggleHarness(id, harness, true);
-              }}
-            />
-          ) : (
-            <PermissionCardList
-              entries={entries}
-              columns={inventory.columns}
-              pendingPermissionKeys={pendingPermissionKeys}
-              checkedIds={new Set()}
-              onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
-              onSetHarnesses={(id, target) => {
-                void handleSetPermissionHarnesses(id, target);
-              }}
-              onRequestUninstall={setConfirmUninstallId}
-            />
-          )
+          <PermissionsMatrixView
+            entries={entries}
+            columns={inventory.columns}
+            pendingPermissionKeys={pendingPermissionKeys}
+            pendingPerHarnessKeys={pendingPerHarnessKeys}
+            checkedIds={new Set()}
+            onOpenDetail={setDetailId}
+            onToggleChecked={() => {}}
+            onEnableHarness={(id, harness) => {
+              void handleToggleHarness(id, harness, false);
+            }}
+            onDisableHarness={(id, harness) => {
+              void handleToggleHarness(id, harness, true);
+            }}
+          />
         ) : totalInUse > 0 ? (
           <div className="empty-panel">
             <h3 className="empty-panel__title">{common.status.noMatches}</h3>
