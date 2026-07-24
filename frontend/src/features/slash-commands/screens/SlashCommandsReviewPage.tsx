@@ -2,20 +2,11 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { NeedsReviewRow } from "../../../components/cards/NeedsReviewRow";
-import { UiTooltip } from "../../../components/ui/UiTooltip";
-import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
-import { useFormatPath } from "../../../lib/paths";
+import { MatrixTable } from "../../../components/matrix";
 import { SlashCommandReviewDetailSheet } from "../components/detail/SlashCommandReviewDetailSheet";
-import { useSlashCommandsCopy, type SlashCommandsCopy } from "../i18n";
-import {
-  primaryReviewAction,
-} from "../model/selectors";
-import {
-  reviewKey,
-  useSlashCommandsReviewController,
-} from "../model/useSlashCommandsReviewController";
-import type { SlashCommandReviewDto, SlashReviewAction } from "../api/types";
+import { SlashCommandReviewMatrixView } from "../components/SlashCommandReviewMatrixView";
+import { useSlashCommandsCopy } from "../i18n";
+import { useSlashCommandsReviewController } from "../model/useSlashCommandsReviewController";
 
 export default function SlashCommandsReviewPage() {
   const controller = useSlashCommandsReviewController();
@@ -80,18 +71,13 @@ export default function SlashCommandsReviewPage() {
           <LoadingSpinner label={copy.review.loading} />
         </div>
       ) : rows.length > 0 ? (
-        <section className="needs-review-rows" aria-label={copy.review.listAria}>
-          {rows.map((row) => (
-            <SlashCommandReviewRow
-              key={row.reviewRef}
-              row={row}
-              copy={copy}
-              pendingKey={pendingKey}
-              onAction={handleAction}
-              onOpen={openReviewDetail}
-            />
-          ))}
-        </section>
+        <SlashCommandReviewMatrixView
+          rows={rows}
+          targets={query.data?.targets ?? []}
+          pendingKey={pendingKey}
+          onAction={handleAction}
+          onOpen={openReviewDetail}
+        />
       ) : (
         <div className="empty-panel">
           <h3 className="empty-panel__title">{copy.review.emptyTitle}</h3>
@@ -111,71 +97,5 @@ export default function SlashCommandsReviewPage() {
         onAction={handleAction}
       />
     </>
-  );
-}
-
-function SlashCommandReviewRow({
-  row,
-  copy,
-  pendingKey,
-  onAction,
-  onOpen,
-}: {
-  row: SlashCommandReviewDto;
-  copy: SlashCommandsCopy;
-  pendingKey: string | null;
-  onAction: (row: SlashCommandReviewDto, action?: SlashReviewAction | null) => Promise<boolean>;
-  onOpen: (row: SlashCommandReviewDto) => void;
-}) {
-  const primaryAction = primaryReviewAction(row);
-  const secondaryActions = row.actions.filter((action) => action !== primaryAction);
-  const formatPath = useFormatPath();
-  const presentation = getHarnessPresentation(row.target === "claude" ? "claude" : row.target);
-  const logo = (
-    <UiTooltip content={row.targetLabel}>
-      <span className="harness-stack__item">
-        {presentation ? (
-          <img src={presentation.logoSrc} alt="" aria-hidden="true" />
-        ) : (
-          <span className="harness-stack__fallback">{row.targetLabel.slice(0, 1)}</span>
-        )}
-      </span>
-    </UiTooltip>
-  );
-
-  return (
-    <NeedsReviewRow
-      name={row.name}
-      logos={<span className="harness-stack">{logo}</span>}
-      metaText={copy.review.metaText(row)}
-      statusChip={
-        secondaryActions.length > 0 ? (
-          <span className="slash-review-actions">
-            {secondaryActions.map((action) => (
-              <button
-                key={action}
-                type="button"
-                className="action-pill"
-                title={copy.review.actionTitle(action)}
-                disabled={pendingKey === reviewKey(row.target, row.name, action)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void onAction(row, action);
-                }}
-              >
-                {copy.review.actionLabel(action)}
-              </button>
-            ))}
-          </span>
-        ) : undefined
-      }
-      description={row.description || formatPath(row.path)}
-      actionLabel={copy.review.actionLabel(primaryAction)}
-      actionTitle={primaryAction ? copy.review.actionTitle(primaryAction) : row.error ?? copy.review.cannotUpdate}
-      pending={primaryAction ? pendingKey === reviewKey(row.target, row.name, primaryAction) : false}
-      actionDisabled={!primaryAction}
-      onOpen={() => onOpen(row)}
-      onAction={() => void onAction(row, primaryAction)}
-    />
   );
 }

@@ -10,7 +10,8 @@ import {
   McpConfigChoiceDialog,
   type McpConfigChoiceOption,
 } from "../components/edit/McpConfigChoiceDialog";
-import { McpNeedsReviewServerList } from "../components/McpNeedsReviewServerList";
+import { MatrixTable } from "../../../components/matrix";
+import { McpNeedsReviewMatrixView } from "../components/McpNeedsReviewMatrixView";
 import { useCommonCopy } from "../../../i18n";
 import type { McpIdentityGroupDto } from "../api/management-types";
 import { useMcpCopy } from "../i18n";
@@ -116,8 +117,9 @@ export default function McpNeedsReviewPage() {
         </div>
       ) : isReady ? (
         filtered.length > 0 ? (
-          <McpNeedsReviewServerList
+          <McpNeedsReviewMatrixView
             groups={filtered}
+            harnesses={needsReviewByServer?.harnesses ?? []}
             pendingNames={pendingAdoptKeys}
             onOpenDetail={setDetailName}
             onAdoptIdentical={(name) => void handleAdoptConfig(name)}
