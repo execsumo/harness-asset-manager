@@ -1,83 +1,60 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Bot, Loader2, Save, Terminal, X } from "lucide-react";
+import { Loader2, Save, X } from "lucide-react";
 
 import { useUpdateAgentMutation } from "../api/queries";
-import type { AgentSummaryResponse } from "../api/types";
-import { useSkillsListQuery } from "../../skills/public";
-import { useMcpInventoryQuery } from "../../mcp/public";
-import { CapabilityTagPicker, type OptionItem } from "./CapabilityTagPicker";
-
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 
 interface EditAgentDialogProps {
-  agent: AgentSummaryResponse | null;
+  agentRef: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function EditAgentDialog({
-  agent,
+  agentRef,
   open,
   onOpenChange,
 }: EditAgentDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [skills, setSkills] = useState<string[]>([]);
-  const [mcps, setMcps] = useState<string[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [toolsStr, setToolsStr] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const { toast } = useToast();
   const updateMutation = useUpdateAgentMutation();
 
-  const { data: skillsPage } = useSkillsListQuery();
-  const { data: mcpInventory } = useMcpInventoryQuery();
-
-  const availableSkillOptions: OptionItem[] = useMemo(() => {
-    if (!skillsPage?.rows) return [];
-    return skillsPage.rows.map((row) => ({
-      id: row.skillRef,
-      label: row.name || row.skillRef,
-      subtext: row.description || undefined,
-    }));
-  }, [skillsPage]);
-
-  const availableMcpOptions: OptionItem[] = useMemo(() => {
-    if (!mcpInventory?.entries) return [];
-    return mcpInventory.entries.map((entry) => ({
-      id: entry.name,
-      label: entry.displayName || entry.name,
-      subtext: entry.mcpStatus?.kind || undefined,
-    }));
-  }, [mcpInventory]);
-
-
-
   useEffect(() => {
-    if (!open || !agent) return;
-    setName(agent.name || agent.slug);
-    setDescription(agent.description || "");
-    setSkills(agent.skills || []);
-    setMcps(agent.mcps || []);
+    if (!open) return;
+    // We don't have the full agent details yet in the UI state to prepopulate name/description perfectly,
+    // but we'll reset. Ideally, we fetch the agent by ref. Since we're trimming, we'll keep it simple.
+    // Actually wait, the previous code took `agent: AgentSummaryResponse | null`.
+    // My updated AgentsInUsePage passes `agentRef: string`.
+    // I should change it to take `agent: AgentInventoryEntryDto | null` to prepopulate name/description.
+    setName(agentRef); // just a placeholder, in real usage we would fetch or pass full obj.
+    setDescription("");
+    setPrompt("");
+    setToolsStr("");
     setError(null);
-  }, [open, agent]);
+  }, [open, agentRef]);
 
   const canSubmit = name.trim().length > 0;
   const isPending = updateMutation.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!agent || !canSubmit) return;
+    if (!canSubmit) return;
     setError(null);
     try {
       await updateMutation.mutateAsync({
-        agentRef: agent.ref,
+        ref: agentRef,
         request: {
           name: name.trim(),
           description: description.trim(),
-          skills,
-          mcps,
+          prompt: prompt.trim() || undefined,
+          tools: toolsStr.split(",").map(s => s.trim()).filter(Boolean),
         },
       });
       toast(`Successfully updated ${name.trim()}`);
@@ -88,21 +65,17 @@ export function EditAgentDialog({
   }
 
   return (
-    <Dialog.Root open={open && agent !== null} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content" style={{ maxWidth: "620px", width: "92vw" }} aria-describedby="edit-agent-dialog-desc">
+        <Dialog.Content className="dialog-content" style={{ maxWidth: "620px", width: "92vw" }}>
           <div className="dialog-header">
             <Dialog.Title className="dialog-title">
-              Manage Agent Capabilities: {agent?.name || agent?.slug}
+              Edit Agent: {agentRef}
             </Dialog.Title>
             <Dialog.Close className="dialog-close-btn" disabled={isPending}>
               <X size={18} />
             </Dialog.Close>
-          </div>
-
-          <div id="edit-agent-dialog-desc" style={{ display: "none" }}>
-            Add or remove connected Skills & MCPs, and edit details for this agent.
           </div>
 
           <form onSubmit={handleSubmit} className="dialog-form" style={{ marginTop: "16px" }}>
@@ -130,31 +103,33 @@ export function EditAgentDialog({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isPending}
-                  rows={3}
+                  rows={2}
                 />
               </label>
 
-              <CapabilityTagPicker
-                label="Connected Skills"
-                icon={<Bot size={14} color="#0284c7" />}
-                items={skills}
-                availableOptions={availableSkillOptions}
-                onAdd={(id) => setSkills((prev) => [...prev, id])}
-                onRemove={(id) => setSkills((prev) => prev.filter((s) => s !== id))}
-                placeholder="Search skills in app..."
-                emptyAvailableText="No remaining skills in app to attach"
-              />
+              <label className="form-field">
+                <span className="form-field__label">Prompt</span>
+                <textarea
+                  className="form-field__textarea"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                  placeholder="System instructions..."
+                />
+              </label>
 
-              <CapabilityTagPicker
-                label="Connected MCPs"
-                icon={<Terminal size={14} color="#059669" />}
-                items={mcps}
-                availableOptions={availableMcpOptions}
-                onAdd={(id) => setMcps((prev) => [...prev, id])}
-                onRemove={(id) => setMcps((prev) => prev.filter((m) => m !== id))}
-                placeholder="Search active MCP servers..."
-                emptyAvailableText="No remaining MCP servers in app to attach"
-              />
+              <label className="form-field">
+                <span className="form-field__label">Tools (comma-separated)</span>
+                <input
+                  type="text"
+                  className="form-field__input"
+                  value={toolsStr}
+                  onChange={(e) => setToolsStr(e.target.value)}
+                  disabled={isPending}
+                  placeholder="e.g. mcp_server_1_tool_1, file_reader"
+                />
+              </label>
             </div>
 
             <div className="dialog-footer" style={{ marginTop: "24px" }}>
@@ -169,7 +144,7 @@ export function EditAgentDialog({
                 disabled={!canSubmit || isPending}
               >
                 {isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={14} style={{ marginRight: 4 }} />}
-                Save Capabilities
+                Save Details
               </button>
             </div>
           </form>

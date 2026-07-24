@@ -1,11 +1,55 @@
-import type { components } from "../../../api/generated";
+export interface AgentInventoryDto {
+  columns: Array<{ harness: string; label: string; logoKey: string | null; installed: boolean }>;
+  entries: AgentInventoryEntryDto[];
+  issues: Array<{ name: string; reason: string }>;
+}
 
-export type AgentSummaryResponse = components["schemas"]["AgentSummaryResponse"];
-export type AgentsPageResponse = components["schemas"]["AgentsPageResponse"];
-export type CompileAgentRequest = components["schemas"]["CompileAgentRequest"];
-export type CompileAgentResponse = components["schemas"]["CompileAgentResponse"];
-export type ScaffoldRequest = components["schemas"]["ScaffoldRequest"];
-export type ScaffoldResponse = components["schemas"]["ScaffoldResponse"];
-export type UpdateAgentRequest = components["schemas"]["UpdateAgentRequest"];
+export interface AgentInventoryEntryDto {
+  ref: string;
+  name: string;
+  description: string;
+  kind: "managed" | "unmanaged";
+  harnessPath: string | null;
+  bindings: Array<{
+    harness: string;
+    state: "enabled" | "disabled" | "unsupported";
+    detail: string | null;
+  }>;
+  actions: { canAdopt: boolean; canDelete: boolean };
+}
 
+export interface AgentAdoptConflict {
+  conflict: "store-name-exists";
+  slug: string;
+  storePath: string;
+  harnessPath: string;
+}
 
+export interface AdoptAllResponse {
+  ok: boolean;
+  adopted: string[];
+  skipped: Array<{ ref: string; reason: string }>;
+}
+
+export interface AgentCreateRequest {
+  name: string;
+  description: string;
+  prompt: string;
+  tools?: string[];
+}
+
+export interface AgentUpdateRequest {
+  name?: string;
+  description?: string;
+  prompt?: string;
+  tools?: string[];
+}
+
+export interface AgentSummaryResponse {
+  ref: string;
+  name: string;
+  description: string;
+  slug: string;
+  prompt?: string;
+  tools?: string[];
+}

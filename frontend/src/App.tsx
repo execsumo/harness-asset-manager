@@ -23,7 +23,8 @@ const SlashCommandsPage = lazy(() => import("./features/slash-commands/screens/S
 const SlashCommandsReviewPage = lazy(() => import("./features/slash-commands/screens/SlashCommandsReviewPage"));
 const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsReviewPage"));
 const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
-const AgentsPage = lazy(() => import("./features/agents/screens/AgentsPage"));
+const AgentsInUsePage = lazy(() => import("./features/agents/screens/AgentsInUsePage"));
+const AgentsNeedsReviewPage = lazy(() => import("./features/agents/screens/AgentsNeedsReviewPage"));
 const HooksInUsePage = lazy(() => import("./features/hooks/screens/HooksInUsePage"));
 const HooksNeedsReviewPage = lazy(() => import("./features/hooks/screens/HooksNeedsReviewPage"));
 const PermissionsInUsePage = lazy(() => import("./features/permissions/screens/PermissionsInUsePage"));
@@ -86,11 +87,20 @@ function AppContent() {
               </Suspense>
             }
           />
+          <Route path="agents" element={<Navigate to="/agents/use" replace />} />
           <Route
-            path="agents"
+            path="agents/use"
             element={
-              <Suspense fallback={<RouteLoadingPanel label="Agents" />}>
-                <AgentsPage />
+              <Suspense fallback={<RouteLoadingPanel label="Loading agents..." />}>
+                <AgentsInUsePage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="agents/review"
+            element={
+              <Suspense fallback={<RouteLoadingPanel label="Loading agents..." />}>
+                <AgentsNeedsReviewPage />
               </Suspense>
             }
           />
