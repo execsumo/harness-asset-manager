@@ -1,42 +1,83 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { queryPolicy } from "../../../lib/query";
-import { fetchAgents, compileAgent, scaffoldAgent, updateAgent } from "./client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchAgentsInventory, scaffoldAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
 import { agentsKeys } from "./keys";
-import { invalidateAgentsQueries } from "./invalidation";
-import type { CompileAgentRequest, ScaffoldRequest, UpdateAgentRequest } from "./types";
+import type { AgentAdoptConflict, AdoptAllResponse } from "./types";
 
-export function useAgentsQuery() {
+export function useAgentsInventoryQuery() {
   return useQuery({
     queryKey: agentsKeys.list(),
-    queryFn: fetchAgents,
-    ...queryPolicy(5000, 300000), // Standard 5s stale, 5m gc
+    queryFn: fetchAgentsInventory,
   });
 }
 
-export function useCompileAgentMutation() {
+export function useEnableAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ agentRef, request }: { agentRef: string; request: CompileAgentRequest }) =>
-      compileAgent(agentRef, request),
-    onSettled: () => invalidateAgentsQueries(queryClient),
+    mutationFn: ({ ref, harness }: { ref: string; harness: string }) => enableAgent(ref, harness),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
   });
 }
 
-export function useScaffoldAgentMutation() {
+export function useDisableAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: ScaffoldRequest) => scaffoldAgent(request),
-    onSettled: () => invalidateAgentsQueries(queryClient),
+    mutationFn: ({ ref, harness }: { ref: string; harness: string }) => disableAgent(ref, harness),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
+  });
+}
+
+export function useAdoptAgentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ref, onConflict }: { ref: string; onConflict?: "keep_store" | "replace_store" }) => adoptAgent(ref, onConflict),
+    onSuccess: (data) => {
+      if (!data || !("conflict" in data)) {
+        queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      }
+    },
+  });
+}
+
+export function useAdoptAllAgentsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adoptAllAgents(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
+  });
+}
+
+export function useDeleteAgentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteAgent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
   });
 }
 
 export function useUpdateAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ agentRef, request }: { agentRef: string; request: UpdateAgentRequest }) =>
-      updateAgent(agentRef, request),
-    onSettled: () => invalidateAgentsQueries(queryClient),
+    mutationFn: ({ ref, request }: Parameters<typeof updateAgent>[0] & { ref: string }) => updateAgent({ ref, request }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
   });
 }
 
-
+export function useCreateAgentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: Parameters<typeof scaffoldAgent>[0]) => scaffoldAgent(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+    },
+  });
+}

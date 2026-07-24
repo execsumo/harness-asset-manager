@@ -75,9 +75,10 @@ describe("capability overview model", () => {
       },
       null,
       null,
+      null,
     );
 
-    expect(model.extensions.map((entry) => entry.key)).toEqual(["skills", "slash-commands", "mcp", "hooks", "permissions"]);
+    expect(model.extensions.map((entry) => entry.key)).toEqual(["skills", "slash-commands", "mcp", "hooks", "permissions", "agents"]);
     expect(model.marketplaceEntries.map((entry) => entry.key)).toEqual(["skills", "mcp", "clis"]);
     expect(model.marketplaceEntries.find((entry) => entry.key === "clis")).toMatchObject({
       badge: "Preview only",
