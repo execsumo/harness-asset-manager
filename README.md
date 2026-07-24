@@ -90,7 +90,13 @@ Typical flow:
 
 ### Agents
 
-Agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
+Subagents you keep in one place instead of copy-pasting between harnesses.
+
+Typical flow:
+
+1. Write an agent — a name, a description, and a system prompt — or adopt one Skill Manager found in a harness.
+2. Turn it on for the harnesses that should have it.
+3. Review agents discovered in harness directories and adopt the ones worth keeping.
 
 ### Marketplace
 
@@ -259,7 +265,11 @@ Skill Manager owns only the specific hook entries it writes. It merges into each
 
 ### Agents
 
-Agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
+Agents are Markdown files with YAML frontmatter — `name`, `description`, an optional `tools` list, and the system prompt as the body. They live in Skill Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
+
+Supported today: Claude Code (`~/.claude/agents/`) and OpenCode (`$XDG_CONFIG_HOME/opencode/agents/`). Cursor and Codex have no subagent-definition file format, so they are not offered as targets rather than being approximated with rules or prompt files.
+
+Skill Manager only ever removes symlinks it owns — a real file sitting in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store and leaves a symlink behind. If the name is already taken in the store, Skill Manager refuses to guess and asks which version to keep.
 
 ### CLIs
 
