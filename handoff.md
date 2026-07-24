@@ -9,9 +9,7 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 The "Agents & Packages" RFC was reviewed and revised; **`plan-agents-packages.md` is the
 design of record** — read it first when resuming. Key amendments over the raw RFC:
 packages *migrate* the legacy store (no parallel resolution paths), stable `SkillRef`
-ids stay primary with `pkg/slug` as compile-time-pinned aliases, compiled artifacts get
-provenance headers + drift detection, per-harness capability-degradation reports, no
-hardcoded model ids, and cross-harness delegation runtime is cut from v1.
+ids stay primary, no hardcoded model ids, and cross-harness delegation runtime is cut from v1.
 
 ### Status
 
@@ -27,20 +25,15 @@ hardcoded model ids, and cross-harness delegation runtime is cut from v1.
 - **Also on `main`:** upstream mode-io merge `0b54469` (came in mid-session from
   another agent) + `9224d79` fixing its artifacts (duplicate hermes mapper key,
   duplicate README Hermes cell, upstream png). Fork features verified intact.
-- **Stage 2 (agents family + Claude compile) — DONE, merged as `5f8f808`.** Agents
-  live in `packages/<slug>/agents/*.md`; `AgentsService` (scan/resolve/compile) in
-  `skill_manager/application/agents/`; `GET /api/agents` +
-  `POST /api/agents/{ref}/compile` (`dryRun`, `projectDir`); provenance marker +
-  refuse-to-overwrite-foreign-files; OpenAPI regenerated. 11 new unit tests.
-- **Stage 3 (cursor/codex targets + degradation reports) — DONE, merged as `dec09ae`.**
-  Cursor → `<project>/.cursor/rules/skill-manager.<slug>.mdc` (projectDir required);
-  Codex → `~/.codex/prompts/<slug>.md` (custom prompt; reported as degradation).
+- **Stage 2 (agents family) — DONE, merged as `5f8f808`.** Agents
+  live in `packages/<slug>/agents/*.md`; `AgentsService` in
+  `skill_manager/application/agents/`; `GET /api/agents`; OpenAPI regenerated. 11 new unit tests.
+- **Stage 3 (cursor/codex targets) — DONE, merged as `dec09ae`.**
   Suite at merge: backend 330+133, frontend 269, typecheck, build — all green,
   independently run.
 - **Stage 4 (agents UI) — DONE, merged as `076641a`** (agy delegate, independently
   verified: typecheck, frontend 272, backend 330+133, build). `/agents` route,
-  sidebar entry, agent cards, Hire dialog with dry-run preview + degradation
-  warnings + cursor projectDir gating. Note: agy's original commit regressed
+  sidebar entry, agent cards. Note: agy's original commit regressed
   `handoff.md` from stale worktree state — stripped via amend before merge.
 - **All four stages complete.** `frontend/dist` rebuilt on `main`. **Restart the
   running instance** — backend gained the agents router, and the packages migration
@@ -50,9 +43,8 @@ hardcoded model ids, and cross-harness delegation runtime is cut from v1.
   `../skill-manager-worktrees/{agy-package-store,agents-family}`, merged branches
   `delegate/agy-package-store`, `delegate/agy-agents-ui`, `feat/agents-family`.
 - **Deferred (v1 cuts + follow-ups):** cross-harness delegation runtime; package
-  deps; packages inventory UI view; agent-scoped MCP compilation; non-local vs
-  non-local duplicate-ref policy (both retained today, issue emitted); drift
-  detection surfacing for compiled artifacts (marker exists, no UI/API check yet).
+  deps; packages inventory UI view; non-local vs
+  non-local duplicate-ref policy (both retained today, issue emitted).
 
 ### To resume mid-flight
 
