@@ -27,7 +27,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
         actions: { canAdopt: true, canDelete: false },
       },
       {
-        ref: "cursor/ok-agent",
+        ref: "opencode/ok-agent",
         name: "OK Agent",
         description: "Will 200",
         kind: "unmanaged",
@@ -118,7 +118,7 @@ describe("AgentsNeedsReviewPage", () => {
         expect(init?.method).toBe("POST");
         return okJson({
           ok: true,
-          adopted: ["cursor/ok-agent"],
+          adopted: ["opencode/ok-agent"],
           skipped: [{ ref: "claude/conflict-agent", reason: "conflict" }]
         });
       }
