@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Columns3, Grid2X2, Rows3, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
@@ -7,11 +7,8 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { ViewModeToggle, type ViewModeOption } from "../../../components/ViewModeToggle";
 import { useCommonCopy } from "../../../i18n";
 import { useHooksCopy } from "../i18n";
-import { HookCardList } from "../components/HookCardList";
-import { HooksBoard } from "../components/board/HooksBoard";
 import { HooksMatrixView } from "../components/HooksMatrixView";
 import { HookDetailSheet } from "../components/detail/HookDetailSheet";
 import { HookFormDialog } from "../components/edit/HookFormDialog";
@@ -22,7 +19,6 @@ import {
   type InUsePillValue,
 } from "../model/selectors";
 import { useHooksManagementController } from "../model/use-hooks-management-controller";
-import { useHooksInUseViewMode, type HooksInUseViewMode } from "../model/useHooksInUseViewMode";
 
 const DETAIL_PARAM = "hook";
 
@@ -38,7 +34,6 @@ export default function HooksInUsePage() {
     queryErrorMessage,
     actionErrorMessage,
     clearActionError,
-    handleSetHookHarnesses,
     handleUninstallHook,
     handleToggleHarness,
     handleReconcileHook,
@@ -53,18 +48,8 @@ export default function HooksInUsePage() {
 
   const [search, setSearch] = useState("");
   const [pill, setPill] = useState<InUsePillValue>("all");
-  const [viewMode, setViewMode] = useHooksInUseViewMode();
   const copy = useHooksCopy();
   const common = useCommonCopy();
-
-  const viewModeOptions: readonly ViewModeOption<HooksInUseViewMode>[] = useMemo(
-    () => [
-      { value: "cards", label: copy.inUse.viewModes.cards, icon: Grid2X2 },
-      { value: "board", label: copy.inUse.viewModes.board, icon: Columns3 },
-      { value: "matrix", label: copy.inUse.viewModes.matrix, icon: Rows3 },
-    ],
-    [copy],
-  );
 
   const entries = useMemo(
     () => filterHooksInUse(inventory, { search, pill }),
@@ -136,22 +121,14 @@ export default function HooksInUsePage() {
           title={copy.inUse.title}
           subtitle={copy.inUse.subtitle}
           actions={
-            <>
-              <ViewModeToggle
-                mode={viewMode}
-                options={viewModeOptions}
-                ariaLabel={copy.inUse.viewModeAria}
-                onChange={setViewMode}
-              />
-              <button
-                type="button"
-                className="action-pill action-pill--md action-pill--accent"
-                onClick={() => setAddDialogOpen(true)}
-              >
-                <Plus size={16} style={{ marginRight: "4px" }} />
-                Add Hook
-              </button>
-            </>
+            <button
+              type="button"
+              className="action-pill action-pill--md action-pill--accent"
+              onClick={() => setAddDialogOpen(true)}
+            >
+              <Plus size={16} style={{ marginRight: "4px" }} />
+              Add Hook
+            </button>
           }
         />
         {totalInUse > 0 ? (
@@ -177,48 +154,21 @@ export default function HooksInUsePage() {
         <div className="panel-state">{queryErrorMessage || copy.inUse.unableToLoad}</div>
       ) : isReady && inventory ? (
         entries.length > 0 ? (
-          viewMode === "board" ? (
-            <HooksBoard
-              entries={entries}
-              columns={inventory.columns}
-              pendingHookKeys={pendingHookKeys}
-              checkedIds={new Set()}
-              onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
-              onSetHarnesses={(id, target) => {
-                void handleSetHookHarnesses(id, target);
-              }}
-            />
-          ) : viewMode === "matrix" ? (
-            <HooksMatrixView
-              entries={entries}
-              columns={inventory.columns}
-              pendingHookKeys={pendingHookKeys}
-              pendingPerHarnessKeys={pendingPerHarnessKeys}
-              checkedIds={new Set()}
-              onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
-              onEnableHarness={(id, harness) => {
-                void handleToggleHarness(id, harness, false);
-              }}
-              onDisableHarness={(id, harness) => {
-                void handleToggleHarness(id, harness, true);
-              }}
-            />
-          ) : (
-            <HookCardList
-              entries={entries}
-              columns={inventory.columns}
-              pendingHookKeys={pendingHookKeys}
-              checkedIds={new Set()}
-              onOpenDetail={setDetailId}
-              onToggleChecked={() => {}}
-              onSetHarnesses={(id, target) => {
-                void handleSetHookHarnesses(id, target);
-              }}
-              onRequestUninstall={setConfirmUninstallId}
-            />
-          )
+          <HooksMatrixView
+            entries={entries}
+            columns={inventory.columns}
+            pendingHookKeys={pendingHookKeys}
+            pendingPerHarnessKeys={pendingPerHarnessKeys}
+            checkedIds={new Set()}
+            onOpenDetail={setDetailId}
+            onToggleChecked={() => {}}
+            onEnableHarness={(id, harness) => {
+              void handleToggleHarness(id, harness, false);
+            }}
+            onDisableHarness={(id, harness) => {
+              void handleToggleHarness(id, harness, true);
+            }}
+          />
         ) : totalInUse > 0 ? (
           <div className="empty-panel">
             <h3 className="empty-panel__title">{common.status.noMatches}</h3>

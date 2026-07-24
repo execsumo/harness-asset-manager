@@ -4,7 +4,6 @@ const englishPermissionsCopy = {
   inUse: {
     title: "Permissions in use",
     subtitle: "Browse, enable, and remove permissions across your harnesses.",
-    viewModeAria: "Permissions in use view mode",
     searchPlaceholder: "Search by ID, decision, scope or pattern...",
     searchLabel: "Search permissions",
     loading: "Loading permissions",
@@ -12,10 +11,6 @@ const englishPermissionsCopy = {
     noMatchesBody: "Adjust the search or filter to see other permissions.",
     emptyTitle: "No permissions in use yet",
     emptyBody: "Add a permission or enable one to see it here.",
-    viewModes: {
-      cards: "Cards",
-      matrix: "Matrix",
-    },
     filters: {
       all: "All",
       enabled: "Enabled",

@@ -4,7 +4,6 @@ const englishHooksCopy = {
   inUse: {
     title: "Hooks in use",
     subtitle: "Browse, enable, and remove hooks across your harnesses.",
-    viewModeAria: "Hooks in use view mode",
     searchPlaceholder: "Search by ID, event or command...",
     searchLabel: "Search hooks",
     loading: "Loading hooks",
@@ -12,11 +11,6 @@ const englishHooksCopy = {
     noMatchesBody: "Adjust the search or filter to see other hooks.",
     emptyTitle: "No hooks in use yet",
     emptyBody: "Add a hook or enable one to see it here.",
-    viewModes: {
-      cards: "Cards",
-      board: "Board",
-      matrix: "Matrix",
-    },
     filters: {
       all: "All",
       enabled: "Enabled",
