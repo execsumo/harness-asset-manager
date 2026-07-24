@@ -1,12 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Bot, Loader2, Terminal, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
-import { useScaffoldAgentMutation } from "../api/queries";
-import { useSkillsListQuery } from "../../skills/public";
-import { useMcpInventoryQuery } from "../../mcp/public";
-import { CapabilityTagPicker, type OptionItem } from "./CapabilityTagPicker";
-
+import { useCreateAgentMutation } from "../api/queries";
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 
@@ -21,72 +17,48 @@ export function CreateAgentDialog({
 }: CreateAgentDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [selectedMcps, setSelectedMcps] = useState<string[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [toolsStr, setToolsStr] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const scaffoldMutation = useScaffoldAgentMutation();
-  const { data: skillsPage } = useSkillsListQuery();
-  const { data: mcpInventory } = useMcpInventoryQuery();
-
-  const availableSkillOptions: OptionItem[] = useMemo(() => {
-    if (!skillsPage?.rows) return [];
-    return skillsPage.rows.map((row) => ({
-      id: row.skillRef,
-      label: row.name || row.skillRef,
-      subtext: row.description || undefined,
-    }));
-  }, [skillsPage]);
-
-  const availableMcpOptions: OptionItem[] = useMemo(() => {
-    if (!mcpInventory?.entries) return [];
-    return mcpInventory.entries.map((entry) => ({
-      id: entry.name,
-      label: entry.displayName || entry.name,
-      subtext: entry.mcpStatus?.kind || undefined,
-    }));
-  }, [mcpInventory]);
-
-
+  const createMutation = useCreateAgentMutation();
 
   useEffect(() => {
     if (!open) return;
     setName("");
     setDescription("");
-    setSelectedSkills([]);
-    setSelectedMcps([]);
+    setPrompt("");
+    setToolsStr("");
     setError(null);
   }, [open]);
 
-  const canSubmit = name.trim().length > 0;
+  const canSubmit = name.trim().length > 0 && prompt.trim().length > 0;
+  const isPending = createMutation.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setError(null);
     try {
-      const result = await scaffoldMutation.mutateAsync({
-        asset_type: "agent",
+      await createMutation.mutateAsync({
         name: name.trim(),
         description: description.trim(),
-        skills: selectedSkills,
-        mcps: selectedMcps,
+        prompt: prompt.trim(),
+        tools: toolsStr.split(",").map(s => s.trim()).filter(Boolean),
       });
-      toast(`Successfully created agent ${name.trim()} at ${result.file_path}`);
+      toast(`Successfully created agent ${name.trim()}`);
       onOpenChange(false);
     } catch (err: any) {
       setError(err.detail ?? err.message ?? "An error occurred while creating the agent.");
     }
   }
 
-  const isPending = scaffoldMutation.isPending;
-
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content" style={{ maxWidth: "620px", width: "92vw" }} aria-describedby="create-agent-dialog-desc">
+        <Dialog.Content className="dialog-content" style={{ maxWidth: "620px", width: "92vw" }}>
           <div className="dialog-header">
             <Dialog.Title className="dialog-title">
               Create New Agent Persona
@@ -94,10 +66,6 @@ export function CreateAgentDialog({
             <Dialog.Close className="dialog-close-btn" disabled={isPending}>
               <X size={18} />
             </Dialog.Close>
-          </div>
-
-          <div id="create-agent-dialog-desc" style={{ display: "none" }}>
-            Scaffold a new agent persona in agents/.
           </div>
 
           <form onSubmit={handleSubmit} className="dialog-form" style={{ marginTop: "16px" }}>
@@ -123,35 +91,38 @@ export function CreateAgentDialog({
                 <span className="form-field__label">Description</span>
                 <textarea
                   className="form-field__textarea"
-                  placeholder="Describe the agent's purpose and capabilities..."
+                  placeholder="Describe the agent's purpose and functionality..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={isPending}
-                  rows={3}
+                  rows={2}
                 />
               </label>
 
-              <CapabilityTagPicker
-                label="Connected Skills"
-                icon={<Bot size={14} color="#0284c7" />}
-                items={selectedSkills}
-                availableOptions={availableSkillOptions}
-                onAdd={(id) => setSelectedSkills((prev) => [...prev, id])}
-                onRemove={(id) => setSelectedSkills((prev) => prev.filter((s) => s !== id))}
-                placeholder="Search adopted skills..."
-                emptyAvailableText="No remaining skills in app to attach"
-              />
+              <label className="form-field">
+                <span className="form-field__label">Prompt *</span>
+                <textarea
+                  className="form-field__textarea"
+                  placeholder="System instructions..."
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  disabled={isPending}
+                  rows={4}
+                  required
+                />
+              </label>
 
-              <CapabilityTagPicker
-                label="Connected MCPs"
-                icon={<Terminal size={14} color="#059669" />}
-                items={selectedMcps}
-                availableOptions={availableMcpOptions}
-                onAdd={(id) => setSelectedMcps((prev) => [...prev, id])}
-                onRemove={(id) => setSelectedMcps((prev) => prev.filter((m) => m !== id))}
-                placeholder="Search active MCP servers..."
-                emptyAvailableText="No remaining MCP servers in app to attach"
-              />
+              <label className="form-field">
+                <span className="form-field__label">Tools (comma-separated)</span>
+                <input
+                  type="text"
+                  className="form-field__input"
+                  placeholder="e.g. file_search, bash"
+                  value={toolsStr}
+                  onChange={(e) => setToolsStr(e.target.value)}
+                  disabled={isPending}
+                />
+              </label>
             </div>
 
             <div className="dialog-footer" style={{ marginTop: "24px" }}>

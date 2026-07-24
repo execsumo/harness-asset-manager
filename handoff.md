@@ -4,6 +4,55 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ---
 
+## 2026-07-24 — Agents rebuilt as a normal resource family
+
+The compile/"hire" model shipped on 2026-07-13 (below) is being **retired**.
+**`plan-agents-simplify.md` is the design of record** — read it first when resuming; it
+supersedes `plan-agents-packages.md` decisions 2, 4, 6 and its Stages 2–4. The entries
+below this one are left as the historical record of what actually shipped that day.
+
+Why: agents had grown a bespoke capability-mapping + compiler model unlike every other
+family. They are now a plain inventory with **In Use / Needs Review** views.
+
+### Status — branch `feat/agents-simplify` (off `main`)
+
+- **Pre-existing break fixed first (`b44b54a`).** `e1c9c41` had left `main` red:
+  `McpNeedsReviewPage` referenced `copy.review.adoptSelected` / `.adoptingSelected`,
+  which were never added to MCP i18n, and `McpServerMatrixView.test.tsx` still expected
+  the old "Enabled" column label after the rename to "Active". Both fixed.
+- **Backend rebuild — DONE (`8febf40`).** `"agents"` is a `FamilyKey` with a new
+  `AgentFileBindingProfile`, bound for **claude** (`~/.claude/agents`) and **opencode**
+  (`$XDG_CONFIG_HOME/opencode/agents`) only — Cursor and Codex have no subagent-file
+  format, so they get no column. Store/adapters/inventory/mutations replace
+  `AgentsService`; `service.py` deleted along with all compile machinery.
+- **Ownership is a symlink**, mirroring skills. **Verified empirically**: a symlinked
+  `~/.claude/agents/*.md` was picked up by a live headless `claude` session. No content
+  hashes, no sync-state, no provenance marker, and no third "drifted" cell state.
+- **Adopt conflicts are resolved by the user, never guessed.** A bare adopt on a
+  store-name collision raises `AgentAdoptConflict` → **HTTP 409** carrying both paths;
+  the client re-issues with `onConflict: keep_store | replace_store`. Bulk adopt skips
+  conflicts and returns them in `skipped[]`.
+- **Orphaned links surface as issues.** If a store file is deleted out from under a
+  link, the agent has no inventory row left to hang a binding off, so the dead link is
+  reported as an issue rather than silently disappearing.
+- **Template/scaffold/docs — DONE** (agy delegate `agy-agents-scaffold`, independently
+  verified). Agent frontmatter is now just `name` / `description` / optional `tools`;
+  the parser ignores legacy `capabilities:` / `harnesses:` keys on read and drops them
+  on write, so **no migration script is needed** and existing files keep working.
+  `_rewrite_agent_local_prefix` deleted from `container.py` (the file move stays).
+- **Frontend rebuild — IN FLIGHT** (agy delegate `agy-agents-fe`, worktree
+  `../skill-manager-worktrees/agy-agents-fe`): flat `/agents/use` + `/agents/review`
+  routes, sidebar NavGroup, overview card, `features/agents/public.ts`, and the
+  `AdoptConflictDialog`. Structure copies Hooks; look and language copy Skills.
+
+### Behavior change worth flagging
+
+Compiled agents used to **inline full `SKILL.md` bodies** into the rendered artifact.
+Deployed agents no longer carry skill text — both target harnesses resolve skills
+natively.
+
+---
+
 ## 2026-07-13 (evening) — Packages & Agents: plan locked, Stage 1 delegated
 
 The "Agents & Packages" RFC was reviewed and revised; **`plan-agents-packages.md` is the

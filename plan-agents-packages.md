@@ -4,6 +4,8 @@
 > Stage 1 `343fb9d`, Stage 2 `5f8f808`, Stage 3 `dec09ae`, Stage 4 `076641a`.
 > Deferred follow-ups are tracked in `handoff.md`. This file remains the design of
 > record for the decisions below.
+> 
+> **Note: Decisions 2, 4, and 6 and Stages 2-4 are superseded by `plan-agents-simplify.md` (2026-07-24)**.
 
 Revised execution plan for the "Agents & Packages" RFC, incorporating the architectural
 review of 2026-07-13. Goal: finish and test all stages today, credits permitting.

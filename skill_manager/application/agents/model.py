@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Literal
+
+from skill_manager.errors import MutationError
 
 
 class AgentParseError(ValueError):
@@ -11,53 +13,100 @@ class AgentParseError(ValueError):
 
 @dataclass(frozen=True)
 class AgentDefinition:
+    """A subagent: a markdown file with `name`, `description`, and a prompt body."""
+
     slug: str
     name: str
     description: str
     prompt: str
-    skills: tuple[str, ...]
-    mcps: tuple[str, ...]
-    tools_allowed: tuple[str, ...]
-    tools_denied: tuple[str, ...]
-    harness_overrides: Mapping[str, Mapping[str, str]]
+    tools: tuple[str, ...]
     path: Path
-    fingerprint: str
 
     @property
     def ref(self) -> str:
         return self.slug
 
-    @property
-    def harnesses(self) -> tuple[str, ...]:
-        return tuple(sorted(self.harness_overrides))
+
+@dataclass(frozen=True)
+class AgentTarget:
+    """A harness that stores subagents as flat ``<slug>.md`` files."""
+
+    id: str
+    label: str
+    logo_key: str | None
+    root_path: Path
+    output_dir: Path
+    file_glob: str
+    docs_url: str
+    installed: bool
+    enabled: bool
+
+
+BindingState = Literal["enabled", "disabled", "unsupported"]
 
 
 @dataclass(frozen=True)
-class ResolvedSkill:
-    alias: str
-    declared_name: str
-    revision: str
-    document: str
-
-
-@dataclass(frozen=True)
-class CompiledAgentArtifact:
-    agent_ref: str
+class AgentBinding:
     harness: str
-    target_path: Path
-    content: str
-    resolved_skills: tuple[ResolvedSkill, ...]
-    degradations: tuple[str, ...] = field(default_factory=tuple)
+    state: BindingState
+    detail: str | None = None
 
 
-class AgentCompileError(ValueError):
-    """Raised when an agent cannot be compiled for a harness."""
+@dataclass(frozen=True)
+class AgentEntry:
+    """One row of the agents inventory.
+
+    ``managed`` entries live in the Skill Manager store; ``unmanaged`` entries are real
+    files found in a harness directory that we do not own.
+    """
+
+    ref: str
+    name: str
+    description: str
+    kind: Literal["managed", "unmanaged"]
+    harness_path: Path | None
+    bindings: tuple[AgentBinding, ...]
+    can_adopt: bool
+    can_delete: bool
+
+
+@dataclass(frozen=True)
+class AgentIssue:
+    name: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class AgentInventory:
+    columns: tuple[AgentTarget, ...]
+    entries: tuple[AgentEntry, ...]
+    issues: tuple[AgentIssue, ...]
+
+
+class AgentAdoptConflict(MutationError):
+    """An unmanaged agent's slug already names an entry in the store.
+
+    Carries both sides so the caller can present the choice; the server never picks.
+    The agents router catches this to return a structured 409 body; inheriting from
+    ``MutationError`` means any other path still degrades to a normal 409 with a
+    message rather than a bare 500.
+    """
+
+    def __init__(self, slug: str, store_path: Path, harness_path: Path) -> None:
+        super().__init__(f"an agent named {slug} already exists in the store", status=409)
+        self.slug = slug
+        self.store_path = store_path
+        self.harness_path = harness_path
 
 
 __all__ = [
-    "AgentCompileError",
+    "AgentAdoptConflict",
+    "AgentBinding",
     "AgentDefinition",
+    "AgentEntry",
+    "AgentInventory",
+    "AgentIssue",
     "AgentParseError",
-    "CompiledAgentArtifact",
-    "ResolvedSkill",
+    "AgentTarget",
+    "BindingState",
 ]

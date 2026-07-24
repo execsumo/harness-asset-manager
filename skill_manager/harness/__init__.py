@@ -1,5 +1,6 @@
 from .catalog import harness_definitions_for_family, supported_harness_definitions, supported_harness_ids
 from .contracts import (
+    AgentFileBindingProfile,
     BindingProfile,
     CommandFileBindingProfile,
     CommandFileRenderFormat,
@@ -21,6 +22,7 @@ from .resolution import ResolutionContext, resolve_context
 from .support_store import HarnessSupportPreferences, HarnessSupportStore
 
 __all__ = [
+    "AgentFileBindingProfile",
     "BindingProfile",
     "CommandFileBindingProfile",
     "CommandFileRenderFormat",

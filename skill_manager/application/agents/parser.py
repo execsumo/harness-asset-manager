@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -16,40 +15,39 @@ def parse_agent_file(path: Path) -> AgentDefinition:
         document = path.read_text(encoding="utf-8")
     except OSError as error:
         raise AgentParseError(f"unable to read agent file {path}: {error}") from error
-    return parse_agent_document(
-        document,
-        slug=path.stem,
-        path=path,
-    )
+    return parse_agent_document(document, slug=path.stem, path=path)
 
 
 def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefinition:
-    metadata, prompt = _split_frontmatter(document)
-    name = _required_str(metadata, "name", slug)
-    description = str(metadata.get("description", "") or "").strip()
-    capabilities = _mapping(metadata.get("capabilities"), "capabilities")
-    tools = _mapping(capabilities.get("tools"), "capabilities.tools")
-    harnesses_raw = _mapping(metadata.get("harnesses"), "harnesses")
-    harness_overrides: dict[str, dict[str, str]] = {}
-    for harness, overrides in harnesses_raw.items():
-        entry = _mapping(overrides, f"harnesses.{harness}")
-        harness_overrides[str(harness)] = {str(k): str(v) for k, v in entry.items()}
+    """Parse an agent definition.
+
+    Only ``name``, ``description``, and ``tools`` are meaningful. Legacy keys from the
+    retired compile model (``capabilities``, ``harnesses``) are ignored on read and
+    dropped on the next write, so existing files keep working without a migration.
+    """
+    metadata, prompt = split_frontmatter(document)
     return AgentDefinition(
         slug=slug,
-        name=name,
-        description=description,
+        name=_required_str(metadata, "name", slug),
+        description=str(metadata.get("description", "") or "").strip(),
         prompt=prompt.strip(),
-        skills=_str_tuple(capabilities.get("skills"), "capabilities.skills"),
-        mcps=_str_tuple(capabilities.get("mcps"), "capabilities.mcps"),
-        tools_allowed=_str_tuple(tools.get("allowed"), "capabilities.tools.allowed"),
-        tools_denied=_str_tuple(tools.get("denied"), "capabilities.tools.denied"),
-        harness_overrides=harness_overrides,
+        tools=_str_tuple(metadata.get("tools"), "tools"),
         path=path,
-        fingerprint=hashlib.sha256(document.encode("utf-8")).hexdigest(),
     )
 
 
-def _split_frontmatter(document: str) -> tuple[dict, str]:
+def render_agent_document(
+    *, name: str, description: str, prompt: str, tools: tuple[str, ...] = ()
+) -> str:
+    """Render an agent file. Emits only the keys the current model understands."""
+    lines = ["---", f"name: {name}", f"description: {description}"]
+    if tools:
+        lines.append("tools: " + ", ".join(tools))
+    lines.append("---")
+    return "\n".join(lines) + "\n\n" + prompt.strip() + "\n"
+
+
+def split_frontmatter(document: str) -> tuple[dict, str]:
     lines = document.splitlines(keepends=True)
     if not lines or lines[0].strip() != "---":
         raise AgentParseError("agent definition is missing YAML frontmatter")
@@ -72,25 +70,20 @@ def _required_str(metadata: dict, key: str, fallback: str) -> str:
     return value or fallback
 
 
-def _mapping(value: object, label: str) -> dict:
-    if value is None:
-        return {}
-    if not isinstance(value, dict):
-        raise AgentParseError(f"{label} must be a mapping")
-    return value
-
-
 def _str_tuple(value: object, label: str) -> tuple[str, ...]:
+    """Accept both the list form and Claude Code's comma-separated string form."""
     if value is None:
         return ()
+    if isinstance(value, str):
+        return tuple(item.strip() for item in value.split(",") if item.strip())
     if not isinstance(value, list):
-        raise AgentParseError(f"{label} must be a list")
+        raise AgentParseError(f"{label} must be a list or comma-separated string")
     return tuple(str(item).strip() for item in value if str(item).strip())
 
 
-def split_frontmatter(document: str) -> tuple[dict, str]:
-    return _split_frontmatter(document)
-
-
-__all__ = ["parse_agent_document", "parse_agent_file", "split_frontmatter"]
-
+__all__ = [
+    "parse_agent_document",
+    "parse_agent_file",
+    "render_agent_document",
+    "split_frontmatter",
+]

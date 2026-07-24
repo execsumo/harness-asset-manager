@@ -1,110 +1,208 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 
 from skill_manager.api.deps import get_container
 from skill_manager.api.schemas.agents import (
-    AgentsPageResponse,
-    AgentSummaryResponse,
-    CompileAgentRequest,
-    CompileAgentResponse,
-    ResolvedSkillResponse,
+    AdoptAgentConflictResponse,
+    AdoptAgentRequest,
+    AdoptAgentResponse,
+    AdoptAllAgentsResponse,
+    AdoptAllSkippedResponse,
+    AgentActionsResponse,
+    AgentBindingResponse,
+    AgentColumnResponse,
+    AgentDetailResponse,
+    AgentEntryResponse,
+    AgentHarnessRequest,
+    AgentInventoryResponse,
+    AgentIssueResponse,
+    AgentMutationFailureResponse,
+    CreateAgentRequest,
+    SetAgentHarnessesRequest,
+    SetAgentHarnessesResultResponse,
     UpdateAgentRequest,
 )
+from skill_manager.api.schemas.common import OkResponse
 from skill_manager.application import BackendContainer
-from skill_manager.application.agents import COMPILE_TARGETS, AgentCompileError
+from skill_manager.application.agents import AgentAdoptConflict, AgentDefinition
+from skill_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
 
 
-@router.get("", response_model=AgentsPageResponse)
-def list_agents(container: BackendContainer = Depends(get_container)) -> AgentsPageResponse:
-    agents, issues = container.agents_service.scan()
-    return AgentsPageResponse(
-        agents=[
-            AgentSummaryResponse(
-                ref=agent.ref,
-                slug=agent.slug,
-                name=agent.name,
-                description=agent.description,
-                skills=list(agent.skills),
-                mcps=list(agent.mcps),
-                toolsAllowed=list(agent.tools_allowed),
-                toolsDenied=list(agent.tools_denied),
-                compileTargets=[t for t in COMPILE_TARGETS],
+@router.get("", response_model=AgentInventoryResponse)
+def list_agents(container: BackendContainer = Depends(get_container)) -> AgentInventoryResponse:
+    inventory = container.agents_inventory.build()
+    return AgentInventoryResponse(
+        columns=[
+            AgentColumnResponse(
+                harness=column.id,
+                label=column.label,
+                logoKey=column.logo_key,
+                installed=column.installed,
             )
-            for agent in agents
+            for column in inventory.columns
         ],
-        issues=list(issues),
+        entries=[
+            AgentEntryResponse(
+                ref=entry.ref,
+                name=entry.name,
+                description=entry.description,
+                kind=entry.kind,
+                harnessPath=str(entry.harness_path) if entry.harness_path else None,
+                bindings=[
+                    AgentBindingResponse(
+                        harness=binding.harness, state=binding.state, detail=binding.detail
+                    )
+                    for binding in entry.bindings
+                ],
+                actions=AgentActionsResponse(
+                    canAdopt=entry.can_adopt, canDelete=entry.can_delete
+                ),
+            )
+            for entry in inventory.entries
+        ],
+        issues=[
+            AgentIssueResponse(name=issue.name, reason=issue.reason) for issue in inventory.issues
+        ],
     )
 
 
-@router.put("/{agent_ref:path}", response_model=AgentSummaryResponse)
+@router.post("", response_model=AgentDetailResponse)
+def create_agent(
+    body: CreateAgentRequest,
+    container: BackendContainer = Depends(get_container),
+) -> AgentDetailResponse:
+    agent = container.agents_store.create(
+        name=body.name,
+        description=body.description,
+        prompt=body.prompt,
+        tools=tuple(body.tools),
+    )
+    container.invalidation.invalidate_all()
+    return _detail(agent)
+
+
+@router.post("/adopt-all", response_model=AdoptAllAgentsResponse)
+def adopt_all_agents(
+    container: BackendContainer = Depends(get_container),
+) -> AdoptAllAgentsResponse:
+    result = container.agents_mutations.adopt_all()
+    container.invalidation.invalidate_all()
+    return AdoptAllAgentsResponse(
+        ok=True,
+        adopted=list(result.adopted),
+        skipped=[AdoptAllSkippedResponse(ref=ref, reason=reason) for ref, reason in result.skipped],
+    )
+
+
+@router.get("/{agent_ref:path}", response_model=AgentDetailResponse)
+def get_agent(
+    agent_ref: str,
+    container: BackendContainer = Depends(get_container),
+) -> AgentDetailResponse:
+    agent = container.agents_store.get(agent_ref)
+    if agent is None:
+        raise MutationError(f"agent not found: {agent_ref}", status=404)
+    return _detail(agent)
+
+
+@router.put("/{agent_ref:path}", response_model=AgentDetailResponse)
 def update_agent(
     agent_ref: str,
     body: UpdateAgentRequest,
     container: BackendContainer = Depends(get_container),
-) -> AgentSummaryResponse:
-    try:
-        updated = container.agents_service.save_agent(
-            agent_ref,
-            name=body.name,
-            description=body.description,
-            skills=body.skills,
-            mcps=body.mcps,
-        )
-        container.invalidation.invalidate_all()
-        return AgentSummaryResponse(
-            ref=updated.ref,
-            slug=updated.slug,
-            name=updated.name,
-            description=updated.description,
-            skills=list(updated.skills),
-            mcps=list(updated.mcps),
-            toolsAllowed=list(updated.tools_allowed),
-            toolsDenied=list(updated.tools_denied),
-            compileTargets=[t for t in COMPILE_TARGETS],
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=404, detail=str(error))
-    except Exception as error:
-        raise HTTPException(status_code=400, detail=str(error))
+) -> AgentDetailResponse:
+    agent = container.agents_store.update(
+        agent_ref,
+        name=body.name,
+        description=body.description,
+        prompt=body.prompt,
+        tools=tuple(body.tools) if body.tools is not None else None,
+    )
+    container.invalidation.invalidate_all()
+    return _detail(agent)
 
 
-@router.post("/{agent_ref:path}/compile", response_model=CompileAgentResponse)
-def compile_agent(
+@router.delete("/{agent_ref:path}", response_model=OkResponse)
+def delete_agent(
     agent_ref: str,
-    body: CompileAgentRequest,
     container: BackendContainer = Depends(get_container),
-) -> CompileAgentResponse:
-    agent = container.agents_service.get(agent_ref)
-    if agent is None:
-        raise HTTPException(status_code=404, detail=f"unknown agent ref: {agent_ref}")
-    try:
-        artifact = container.agents_service.compile(
-            agent,
-            body.harness,
-            project_dir=Path(body.project_dir) if body.project_dir else None,
-        )
-        written = False
-        if not body.dry_run:
-            container.agents_service.write_artifact(artifact)
-            written = True
-    except AgentCompileError as error:
-        raise HTTPException(status_code=400, detail=str(error))
-    return CompileAgentResponse(
-        ok=True,
-        agentRef=artifact.agent_ref,
-        harness=artifact.harness,
-        targetPath=str(artifact.target_path),
-        written=written,
-        content=artifact.content if body.dry_run else None,
-        degradations=list(artifact.degradations),
-        resolvedSkills=[
-            ResolvedSkillResponse(alias=s.alias, name=s.declared_name, revision=s.revision)
-            for s in artifact.resolved_skills
+) -> OkResponse:
+    container.agents_mutations.delete(agent_ref)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
+@router.post("/{agent_ref:path}/enable", response_model=OkResponse)
+def enable_agent(
+    agent_ref: str,
+    body: AgentHarnessRequest,
+    container: BackendContainer = Depends(get_container),
+) -> OkResponse:
+    container.agents_mutations.enable(agent_ref, body.harness)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
+@router.post("/{agent_ref:path}/disable", response_model=OkResponse)
+def disable_agent(
+    agent_ref: str,
+    body: AgentHarnessRequest,
+    container: BackendContainer = Depends(get_container),
+) -> OkResponse:
+    container.agents_mutations.disable(agent_ref, body.harness)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
+@router.post("/{agent_ref:path}/set-harnesses", response_model=SetAgentHarnessesResultResponse)
+def set_agent_harnesses(
+    agent_ref: str,
+    body: SetAgentHarnessesRequest,
+    container: BackendContainer = Depends(get_container),
+) -> SetAgentHarnessesResultResponse:
+    succeeded, failed = container.agents_mutations.set_harnesses(agent_ref, body.harnesses)
+    container.invalidation.invalidate_all()
+    return SetAgentHarnessesResultResponse(
+        ok=not failed,
+        succeeded=succeeded,
+        failed=[
+            AgentMutationFailureResponse(harness=harness, error=error) for harness, error in failed
         ],
     )
 
+
+@router.post("/{agent_ref:path}/adopt", response_model=AdoptAgentResponse)
+def adopt_agent(
+    agent_ref: str,
+    body: AdoptAgentRequest,
+    container: BackendContainer = Depends(get_container),
+):
+    try:
+        slug = container.agents_mutations.adopt(agent_ref, body.onConflict)
+    except AgentAdoptConflict as conflict:
+        # 409 with both sides: the client asks the user which version wins, then retries
+        # with onConflict. Nothing has been mutated at this point.
+        return JSONResponse(
+            status_code=409,
+            content=AdoptAgentConflictResponse(
+                slug=conflict.slug,
+                storePath=str(conflict.store_path),
+                harnessPath=str(conflict.harness_path),
+            ).model_dump(),
+        )
+    container.invalidation.invalidate_all()
+    return AdoptAgentResponse(ok=True, ref=slug)
+
+
+def _detail(agent: AgentDefinition) -> AgentDetailResponse:
+    return AgentDetailResponse(
+        ref=agent.ref,
+        name=agent.name,
+        description=agent.description,
+        prompt=agent.prompt,
+        tools=list(agent.tools),
+    )

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .contracts import (
+    AgentFileBindingProfile,
     CommandFileBindingProfile,
     ConfigSubtreeBindingProfile,
     FamilyKey,
@@ -127,6 +128,11 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("permissions",),
                 codec="claude-code-permissions",
             ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".claude",
+                output_dir_resolver=lambda context: context.home / ".claude" / "agents",
+                docs_url="https://code.claude.com/docs/en/sub-agents",
+            ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=lambda context: context.home / ".claude",
                 output_dir_resolver=lambda context: context.home / ".claude" / "commands",
@@ -225,6 +231,11 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 file_format="jsonc",
                 subtree_path=("experimental", "hook"),
                 codec="opencode-hooks",
+            ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.xdg_config_home / "opencode",
+                output_dir_resolver=lambda context: context.xdg_config_home / "opencode" / "agents",
+                docs_url="https://opencode.ai/docs/agents/",
             ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=lambda context: context.xdg_config_home / "opencode",

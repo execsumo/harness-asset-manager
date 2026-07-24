@@ -9,12 +9,15 @@ from skill_manager.harness.resolution import resolve_context
 from skill_manager.paths import AppPaths, resolve_app_paths
 
 from .scaffold import ScaffoldService
-from .agents import AgentsService
-from .agents.parser import split_frontmatter
+from .agents import (
+    AgentHarnessAdapter,
+    AgentInventoryService,
+    AgentMutationService,
+    AgentStore,
+    resolve_agent_targets,
+)
 from skill_manager.atomic_files import file_lock
 import shutil
-import io
-from ruamel.yaml import YAML
 
 from .cli_marketplace import CliMarketplaceCatalog
 from .invalidation import InvalidationFanout
@@ -102,57 +105,10 @@ class BackendContainer:
     permissions_mutations: PermissionsMutationService
     db: Database
     scaffold_service: ScaffoldService
-    agents_service: AgentsService
+    agents_store: AgentStore
+    agents_inventory: AgentInventoryService
+    agents_mutations: AgentMutationService
     app_home: Path
-
-
-def _rewrite_agent_local_prefix(agent_path: Path) -> bool:
-    """Strip 'local/' prefix from capabilities.skills and capabilities.mcps."""
-    if not agent_path.is_file() or agent_path.suffix != ".md":
-        return False
-    document = agent_path.read_text(encoding="utf-8")
-    try:
-        metadata, body = split_frontmatter(document)
-    except Exception:
-        return False
-    changed = False
-
-    skills = metadata.get("capabilities", {}).get("skills") if isinstance(metadata.get("capabilities"), dict) else None
-    if isinstance(skills, list):
-        new_skills = []
-        for s in skills:
-            s_str = str(s).strip()
-            if s_str.startswith("local/"):
-                new_skills.append(s_str[len("local/"):])
-                changed = True
-            else:
-                new_skills.append(s_str)
-        if changed:
-            metadata.setdefault("capabilities", {})["skills"] = new_skills
-
-    mcps = metadata.get("capabilities", {}).get("mcps") if isinstance(metadata.get("capabilities"), dict) else None
-    if isinstance(mcps, list):
-        new_mcps = []
-        for m in mcps:
-            m_str = str(m).strip()
-            if m_str.startswith("local/"):
-                new_mcps.append(m_str[len("local/"):])
-                changed = True
-            else:
-                new_mcps.append(m_str)
-        if changed:
-            metadata.setdefault("capabilities", {})["mcps"] = new_mcps
-
-    if not changed:
-        return False
-    yaml = YAML()
-    yaml.default_flow_style = False
-    stream = io.StringIO()
-    yaml.dump(metadata, stream)
-    new_frontmatter = stream.getvalue().strip()
-    new_content = f"---\n{new_frontmatter}\n---\n\n{body.lstrip()}"
-    agent_path.write_text(new_content, encoding="utf-8")
-    return True
 
 
 def _migrate_legacy_layouts(data_dir: Path, skills_store_root: Path, agents_root: Path) -> None:
@@ -202,8 +158,6 @@ def _migrate_legacy_layouts(data_dir: Path, skills_store_root: Path, agents_root
                     target = agents_root / item.name
                     if not target.exists():
                         shutil.move(str(item), str(target))
-                        if target.suffix == ".md":
-                            _rewrite_agent_local_prefix(target)
 
 
 def build_backend_container(
@@ -336,11 +290,13 @@ def build_backend_container(
 
     db = Database(paths.db_path)
     scaffold_service = ScaffoldService(paths)
-    agents_service = AgentsService(
-        paths.agents_root,
-        skills_store,
-        app_home,
-    )
+    agents_store = AgentStore(paths.agents_root)
+    agent_targets = resolve_agent_targets(harness_kernel)
+    agent_adapters = {
+        target.id: AgentHarnessAdapter(target, paths.agents_root) for target in agent_targets
+    }
+    agents_inventory = AgentInventoryService(agents_store, agent_targets, agent_adapters)
+    agents_mutations = AgentMutationService(agents_store, agent_targets, agent_adapters)
 
     return BackendContainer(
         paths=paths,
@@ -379,6 +335,8 @@ def build_backend_container(
         permissions_mutations=permissions_mutations,
         db=db,
         scaffold_service=scaffold_service,
-        agents_service=agents_service,
+        agents_store=agents_store,
+        agents_inventory=agents_inventory,
+        agents_mutations=agents_mutations,
         app_home=app_home,
     )

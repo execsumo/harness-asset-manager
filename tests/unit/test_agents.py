@@ -5,17 +5,30 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from skill_manager.application.agents import (
-    AgentCompileError,
+    AgentAdoptConflict,
+    AgentHarnessAdapter,
+    AgentInventoryService,
+    AgentMutationService,
     AgentParseError,
-    AgentsService,
-    GENERATED_MARKER,
+    AgentStore,
+    AgentTarget,
     parse_agent_document,
+    render_agent_document,
 )
-from skill_manager.application.skills.store import SkillStore
+from skill_manager.errors import MutationError
 
 AGENT_DOC = """---
 name: Chief of Staff
 description: Orchestrates tasks and delegates work.
+tools: Read, Bash
+---
+You are the Chief of Staff. Delegate; do not code.
+"""
+
+# The retired compile model wrote these keys. Files on disk still carry them.
+LEGACY_AGENT_DOC = """---
+name: Legacy Agent
+description: Written by the old compile model.
 capabilities:
   skills:
     - project-context
@@ -24,185 +37,275 @@ capabilities:
   tools:
     allowed:
       - read_file
-      - delegate_to_agent
     denied:
       - execute_sql
 harnesses:
   claude:
     model: claude-sonnet-5
-    reasoning_effort: high
-  cursor:
-    model: cursor-fast
-    reasoning_effort: high
 ---
-You are the Chief of Staff. Delegate; do not code.
+Legacy prompt body.
 """
 
 
-def _write_skill(root: Path, dir_name: str, declared_name: str) -> None:
-    skill_dir = root / dir_name
-    skill_dir.mkdir(parents=True, exist_ok=True)
-    (skill_dir / "SKILL.md").write_text(
-        f"---\nname: {declared_name}\ndescription: about {declared_name}\n---\n\nUse {declared_name} wisely.\n",
-        encoding="utf-8",
-    )
-
-
-def _write_agent(agents_root: Path, slug: str, document: str) -> Path:
-    agents_root.mkdir(parents=True, exist_ok=True)
-    path = agents_root / f"{slug}.md"
+def _write(path: Path, document: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(document, encoding="utf-8")
     return path
 
 
 class AgentParserTests(unittest.TestCase):
-    def test_parse_full_document(self) -> None:
-        agent = parse_agent_document(
-            AGENT_DOC, slug="chief-of-staff", path=Path("chief-of-staff.md")
-        )
+    def test_parses_name_description_prompt_and_tools(self) -> None:
+        agent = parse_agent_document(AGENT_DOC, slug="chief", path=Path("chief.md"))
         self.assertEqual(agent.name, "Chief of Staff")
-        self.assertEqual(agent.ref, "chief-of-staff")
-        self.assertEqual(agent.skills, ("project-context",))
-        self.assertEqual(agent.mcps, ("github-mcp",))
-        self.assertEqual(agent.tools_allowed, ("read_file", "delegate_to_agent"))
-        self.assertEqual(agent.tools_denied, ("execute_sql",))
-        self.assertEqual(agent.harness_overrides["claude"]["model"], "claude-sonnet-5")
-        self.assertTrue(agent.prompt.startswith("You are the Chief of Staff."))
+        self.assertEqual(agent.description, "Orchestrates tasks and delegates work.")
+        self.assertEqual(agent.tools, ("Read", "Bash"))
+        self.assertEqual(agent.prompt, "You are the Chief of Staff. Delegate; do not code.")
 
-    def test_parse_rejects_missing_frontmatter(self) -> None:
+    def test_legacy_capability_keys_are_ignored_not_fatal(self) -> None:
+        agent = parse_agent_document(LEGACY_AGENT_DOC, slug="legacy", path=Path("legacy.md"))
+        self.assertEqual(agent.name, "Legacy Agent")
+        self.assertEqual(agent.tools, ())
+        self.assertEqual(agent.prompt, "Legacy prompt body.")
+
+    def test_tools_accepts_a_yaml_list(self) -> None:
+        document = "---\nname: L\ndescription: d\ntools:\n  - Read\n  - Edit\n---\nbody\n"
+        agent = parse_agent_document(document, slug="l", path=Path("l.md"))
+        self.assertEqual(agent.tools, ("Read", "Edit"))
+
+    def test_missing_frontmatter_is_an_error(self) -> None:
         with self.assertRaises(AgentParseError):
-            parse_agent_document("just a prompt", slug="x", path=Path("x.md"))
+            parse_agent_document("no frontmatter here", slug="x", path=Path("x.md"))
 
-    def test_parse_rejects_unterminated_frontmatter(self) -> None:
+    def test_unterminated_frontmatter_is_an_error(self) -> None:
         with self.assertRaises(AgentParseError):
-            parse_agent_document("---\nname: x\n", slug="x", path=Path("x.md"))
+            parse_agent_document("---\nname: X\nbody", slug="x", path=Path("x.md"))
 
-    def test_parse_rejects_non_mapping_capabilities(self) -> None:
-        doc = "---\nname: x\ncapabilities: nope\n---\nbody"
-        with self.assertRaises(AgentParseError):
-            parse_agent_document(doc, slug="x", path=Path("x.md"))
+    def test_render_drops_legacy_keys(self) -> None:
+        agent = parse_agent_document(LEGACY_AGENT_DOC, slug="legacy", path=Path("legacy.md"))
+        rendered = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+        )
+        self.assertNotIn("capabilities", rendered)
+        self.assertNotIn("harnesses", rendered)
+        self.assertIn("name: Legacy Agent", rendered)
 
 
-class AgentsServiceTests(unittest.TestCase):
+class AgentsFixture(unittest.TestCase):
+    """Store + a single 'claude' harness target wired to a temp directory."""
+
     def setUp(self) -> None:
-        self.temp = TemporaryDirectory()
-        base = Path(self.temp.name)
-        self.skills_root = base / "skills"
-        self.agents_root = base / "agents"
-        self.home = base / "home"
-        _write_skill(self.skills_root, "project-context", "Project Context")
-        _write_agent(self.agents_root, "chief-of-staff", AGENT_DOC)
-        self.store = SkillStore(
-            root=self.skills_root,
-            manifest_path=self.skills_root.parent / "skills-manifest.json",
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        root = Path(self._tmp.name)
+        self.store_root = root / "data" / "agents"
+        self.harness_dir = root / "home" / ".claude" / "agents"
+        self.store_root.mkdir(parents=True)
+        self.harness_dir.mkdir(parents=True)
+
+        self.target = AgentTarget(
+            id="claude",
+            label="Claude",
+            logo_key="claude",
+            root_path=self.harness_dir.parent,
+            output_dir=self.harness_dir,
+            file_glob="*.md",
+            docs_url="",
+            installed=True,
+            enabled=True,
         )
-        self.service = AgentsService(self.agents_root, self.store, self.home)
+        self.store = AgentStore(self.store_root)
+        self.adapter = AgentHarnessAdapter(self.target, self.store_root)
+        self.adapters = {"claude": self.adapter}
+        self.inventory = AgentInventoryService(self.store, (self.target,), self.adapters)
+        self.mutations = AgentMutationService(self.store, (self.target,), self.adapters)
 
-    def tearDown(self) -> None:
-        self.temp.cleanup()
+    def entry(self, ref: str):
+        return next(e for e in self.inventory.build().entries if e.ref == ref)
 
-    def test_scan_discovers_active_agents(self) -> None:
-        agents, issues = self.service.scan()
-        self.assertEqual(len(agents), 1)
-        self.assertEqual(len(issues), 0)
-        self.assertEqual(agents[0].name, "Chief of Staff")
 
-    def test_scan_excludes_inactive_package_agents(self) -> None:
-        # With flat layout, all agents are active
-        agents, issues = self.service.scan()
-        self.assertEqual(len(agents), 1)
+class AgentBindingTests(AgentsFixture):
+    def test_enable_creates_a_symlink_into_the_store(self) -> None:
+        agent = self.store.create(name="Red Team", description="probe", prompt="be adversarial")
+        self.mutations.enable("red-team", "claude")
+        link = self.harness_dir / "red-team.md"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), agent.path.resolve())
+        self.assertEqual(self.entry("red-team").bindings[0].state, "enabled")
 
-    def test_get_by_ref(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        self.assertIsNotNone(agent)
-        self.assertEqual(agent.name, "Chief of Staff")
+    def test_disable_removes_the_symlink_but_keeps_the_store_file(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        self.mutations.enable("red-team", "claude")
+        self.mutations.disable("red-team", "claude")
+        self.assertFalse((self.harness_dir / "red-team.md").exists())
+        self.assertTrue((self.store_root / "red-team.md").is_file())
 
-    def test_compile_claude_artifact(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        artifact = self.service.compile(agent, "claude")
-        self.assertEqual(
-            artifact.target_path, self.home / ".claude" / "agents" / "chief-of-staff.md"
-        )
-        self.assertIn(GENERATED_MARKER, artifact.content)
-        self.assertIn("read_file, delegate_to_agent", artifact.content)
-        self.assertIn("model: claude-sonnet-5", artifact.content)
-        self.assertIn("reasoning_effort: high", artifact.content)
-        self.assertIn("## Skill: Project Context (project-context)", artifact.content)
-        self.assertIn("Use Project Context wisely.", artifact.content)
-        self.assertIn("Do not use these tools: execute_sql", artifact.content)
-        self.assertEqual(len(artifact.degradations), 2)
-        self.assertTrue(any("deny-list" in d for d in artifact.degradations))
-        self.assertTrue(any("MCP" in d for d in artifact.degradations))
+    def test_disable_refuses_to_delete_a_real_file(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        _write(self.harness_dir / "red-team.md", "---\nname: theirs\ndescription: d\n---\nbody\n")
+        with self.assertRaises(MutationError):
+            self.mutations.disable("red-team", "claude")
+        self.assertTrue((self.harness_dir / "red-team.md").is_file())
 
-    def test_compile_unknown_skill_alias_fails(self) -> None:
-        _write_agent(
-            self.agents_root,
-            "dangler",
-            "---\nname: Dangler\ncapabilities:\n  skills:\n    - missing\n---\nBody.",
-        )
-        agent = self.service.get("dangler")
-        assert agent is not None
-        with self.assertRaises(AgentCompileError):
-            self.service.compile(agent, "claude")
+    def test_enable_refuses_to_overwrite_a_real_file(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        _write(self.harness_dir / "red-team.md", "---\nname: theirs\ndescription: d\n---\nbody\n")
+        with self.assertRaises(MutationError):
+            self.mutations.enable("red-team", "claude")
 
-    def test_compile_unsupported_harness_fails(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        with self.assertRaises(AgentCompileError):
-            self.service.compile(agent, "windsurf")
+    def test_unknown_harness_is_rejected(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        with self.assertRaises(MutationError):
+            self.mutations.enable("red-team", "cursor")
 
-    def test_compile_cursor_requires_project_dir(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        with self.assertRaises(AgentCompileError):
-            self.service.compile(agent, "cursor")
+    def test_set_harnesses_enables_listed_and_disables_the_rest(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        self.mutations.enable("red-team", "claude")
+        succeeded, failed = self.mutations.set_harnesses("red-team", [])
+        self.assertEqual(failed, [])
+        self.assertEqual(succeeded, ["claude"])
+        self.assertFalse((self.harness_dir / "red-team.md").exists())
 
-    def test_compile_cursor_artifact(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        project = Path(self.temp.name) / "proj"
-        artifact = self.service.compile(agent, "cursor", project_dir=project)
-        self.assertEqual(
-            artifact.target_path,
-            project / ".cursor" / "rules" / "skill-manager.chief-of-staff.mdc",
-        )
-        self.assertIn("alwaysApply: true", artifact.content)
-        self.assertIn(GENERATED_MARKER, artifact.content)
-        self.assertNotIn("model:", artifact.content)
-        self.assertTrue(any("advisory" in d for d in artifact.degradations))
-        self.assertTrue(any("model override" in d for d in artifact.degradations))
-        self.assertTrue(any("reasoning_effort" in d for d in artifact.degradations))
+    def test_delete_removes_bindings_and_the_store_file(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        self.mutations.enable("red-team", "claude")
+        self.mutations.delete("red-team")
+        self.assertFalse((self.harness_dir / "red-team.md").exists())
+        self.assertFalse((self.store_root / "red-team.md").exists())
 
-    def test_compile_codex_artifact(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        artifact = self.service.compile(agent, "codex")
-        self.assertEqual(
-            artifact.target_path, self.home / ".codex" / "prompts" / "chief-of-staff.md"
-        )
-        self.assertIn(GENERATED_MARKER, artifact.content)
-        self.assertIn("## Skill: Project Context (project-context)", artifact.content)
-        self.assertTrue(any("custom prompt" in d for d in artifact.degradations))
 
-    def test_write_artifact_refuses_foreign_file(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        artifact = self.service.compile(agent, "claude")
-        target = artifact.target_path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("hand-written agent, do not clobber", encoding="utf-8")
-        with self.assertRaises(AgentCompileError):
-            self.service.write_artifact(artifact)
+class AgentInventoryTests(AgentsFixture):
+    def test_real_harness_file_is_reported_unmanaged_and_adoptable(self) -> None:
+        _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: d\n---\nbody\n")
+        entry = self.entry("claude/stray")
+        self.assertEqual(entry.kind, "unmanaged")
+        self.assertTrue(entry.can_adopt)
+        self.assertEqual(entry.harness_path, self.harness_dir / "stray.md")
 
-    def test_write_artifact_writes_and_regenerates(self) -> None:
-        agent = self.service.get("chief-of-staff")
-        assert agent is not None
-        artifact = self.service.compile(agent, "claude")
-        self.service.write_artifact(artifact)
-        self.assertTrue(artifact.target_path.is_file())
-        self.service.write_artifact(artifact)
-        self.assertIn(GENERATED_MARKER, artifact.target_path.read_text(encoding="utf-8"))
+    def test_dangling_symlink_is_disabled_with_a_detail(self) -> None:
+        # The store entry still exists, but the link points somewhere that is gone —
+        # e.g. it was written against an older store path.
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        link = self.harness_dir / "red-team.md"
+        link.symlink_to(self.store_root / "moved-away.md")
+        binding = self.entry("red-team").bindings[0]
+        self.assertEqual(binding.state, "disabled")
+        self.assertEqual(binding.detail, "symlink points at a missing file")
+
+    def test_orphaned_link_is_reported_as_an_issue(self) -> None:
+        # Store file deleted out from under us: the agent has no row left to hang a
+        # binding off, so the dead link must surface as an issue rather than silently.
+        agent = self.store.create(name="Red Team", description="probe", prompt="p")
+        self.mutations.enable("red-team", "claude")
+        agent.path.unlink()
+
+        inventory = self.inventory.build()
+
+        self.assertEqual([e.ref for e in inventory.entries], [])
+        self.assertEqual([issue.name for issue in inventory.issues], ["claude/red-team"])
+        self.assertIn("no longer in the store", inventory.issues[0].reason)
+
+    def test_our_symlink_is_never_listed_as_unmanaged(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        self.mutations.enable("red-team", "claude")
+        refs = [e.ref for e in self.inventory.build().entries]
+        self.assertEqual(refs, ["red-team"])
+
+    def test_unparseable_store_file_becomes_an_issue(self) -> None:
+        _write(self.store_root / "broken.md", "not frontmatter")
+        issues = self.inventory.build().issues
+        self.assertEqual([issue.name for issue in issues], ["broken"])
+
+
+class AgentAdoptTests(AgentsFixture):
+    def test_adopt_moves_the_file_into_the_store_and_leaves_a_symlink(self) -> None:
+        _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: d\n---\nbody\n")
+        self.assertEqual(self.mutations.adopt("claude/stray"), "stray")
+        self.assertTrue((self.store_root / "stray.md").is_file())
+        link = self.harness_dir / "stray.md"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), (self.store_root / "stray.md").resolve())
+
+    def test_bare_adopt_on_a_collision_raises_and_mutates_nothing(self) -> None:
+        self.store.create(name="Stray", description="ours", prompt="ours")
+        store_before = (self.store_root / "stray.md").read_text(encoding="utf-8")
+        harness_doc = "---\nname: Stray\ndescription: theirs\n---\ntheirs\n"
+        _write(self.harness_dir / "stray.md", harness_doc)
+
+        with self.assertRaises(AgentAdoptConflict) as caught:
+            self.mutations.adopt("claude/stray")
+
+        self.assertEqual(caught.exception.slug, "stray")
+        self.assertEqual(caught.exception.store_path, self.store_root / "stray.md")
+        self.assertEqual(caught.exception.harness_path, self.harness_dir / "stray.md")
+        # Both sides untouched.
+        self.assertEqual((self.store_root / "stray.md").read_text(encoding="utf-8"), store_before)
+        self.assertEqual((self.harness_dir / "stray.md").read_text(encoding="utf-8"), harness_doc)
+        self.assertFalse((self.harness_dir / "stray.md").is_symlink())
+
+    def test_keep_store_discards_the_harness_file(self) -> None:
+        self.store.create(name="Stray", description="ours", prompt="ours")
+        store_before = (self.store_root / "stray.md").read_text(encoding="utf-8")
+        _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: theirs\n---\ntheirs\n")
+
+        self.mutations.adopt("claude/stray", "keep_store")
+
+        self.assertEqual((self.store_root / "stray.md").read_text(encoding="utf-8"), store_before)
+        self.assertTrue((self.harness_dir / "stray.md").is_symlink())
+
+    def test_replace_store_takes_the_harness_version(self) -> None:
+        self.store.create(name="Stray", description="ours", prompt="ours")
+        harness_doc = "---\nname: Stray\ndescription: theirs\n---\ntheirs\n"
+        _write(self.harness_dir / "stray.md", harness_doc)
+
+        self.mutations.adopt("claude/stray", "replace_store")
+
+        self.assertEqual((self.store_root / "stray.md").read_text(encoding="utf-8"), harness_doc)
+        self.assertTrue((self.harness_dir / "stray.md").is_symlink())
+
+    def test_adopt_all_skips_conflicts_and_reports_them(self) -> None:
+        self.store.create(name="Stray", description="ours", prompt="ours")
+        _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: theirs\n---\nt\n")
+        _write(self.harness_dir / "fresh.md", "---\nname: Fresh\ndescription: d\n---\nbody\n")
+
+        result = self.mutations.adopt_all()
+
+        self.assertEqual(result.adopted, ("fresh",))
+        self.assertEqual([ref for ref, _ in result.skipped], ["claude/stray"])
+        self.assertFalse((self.harness_dir / "stray.md").is_symlink())
+
+    def test_adopt_rejects_a_traversal_ref(self) -> None:
+        with self.assertRaises(MutationError):
+            self.mutations.adopt("claude/../../etc/passwd")
+
+    def test_adopt_rejects_a_ref_without_a_harness(self) -> None:
+        with self.assertRaises(MutationError):
+            self.mutations.adopt("stray")
+
+
+class AgentStoreTests(AgentsFixture):
+    def test_create_slugifies_the_name(self) -> None:
+        agent = self.store.create(name="Chief of Staff", description="d", prompt="p")
+        self.assertEqual(agent.slug, "chief-of-staff")
+        self.assertTrue((self.store_root / "chief-of-staff.md").is_file())
+
+    def test_create_refuses_a_duplicate(self) -> None:
+        self.store.create(name="Dup", description="d", prompt="p")
+        with self.assertRaises(MutationError):
+            self.store.create(name="Dup", description="d2", prompt="p2")
+
+    def test_update_preserves_unspecified_fields(self) -> None:
+        self.store.create(name="Keep", description="original", prompt="body")
+        updated = self.store.update("keep", description="changed")
+        self.assertEqual(updated.description, "changed")
+        self.assertEqual(updated.prompt, "body")
+        self.assertEqual(updated.name, "Keep")
+
+    def test_path_for_rejects_traversal(self) -> None:
+        with self.assertRaises(MutationError):
+            self.store.path_for("../escape")
 
 
 if __name__ == "__main__":
