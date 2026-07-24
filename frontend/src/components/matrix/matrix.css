@@ -90,7 +90,6 @@
 .matrix-table__th--action,
 .matrix-table__cell--action {
   width: var(--matrix-coverage-column-width, 100px);
-  padding-right: var(--space-4);
   text-align: center;
 }
 

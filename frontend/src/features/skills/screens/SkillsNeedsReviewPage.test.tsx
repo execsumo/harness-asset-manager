@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -99,6 +99,21 @@ describe("SkillsNeedsReviewPage", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Adopt" }));
+    await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:trace-lens"));
+  });
+
+  it("adopts selected skills from the bulk action bar", async () => {
+    renderPage();
+
+    // No bulk bar until a row is selected.
+    expect(screen.queryByRole("toolbar", { name: "Bulk actions" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Trace Lens" }));
+
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    expect(within(toolbar).getByText("1 selected")).toBeInTheDocument();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Adopt" }));
     await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:trace-lens"));
   });
 });
