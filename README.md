@@ -267,9 +267,20 @@ Skill Manager owns only the specific hook entries it writes. It merges into each
 
 Agents are Markdown files with YAML frontmatter — `name`, `description`, an optional `tools` list, and the system prompt as the body. They live in Skill Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
 
-Supported today: Claude Code (`~/.claude/agents/`) and OpenCode (`$XDG_CONFIG_HOME/opencode/agents/`). Cursor and Codex have no subagent-definition file format, so they are not offered as targets rather than being approximated with rules or prompt files.
+The agents matrix shows the same harnesses as every other family — whichever you have enabled in Settings:
 
-Skill Manager only ever removes symlinks it owns — a real file sitting in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store and leaves a symlink behind. If the name is already taken in the store, Skill Manager refuses to guess and asks which version to keep.
+| Harness | Location | How it is installed |
+|---|---|---|
+| Claude Code | `~/.claude/agents/` | symlink |
+| Cursor | `~/.cursor/agents/` | symlink |
+| Antigravity | `~/.gemini/antigravity-cli/agents/` | symlink |
+| OpenCode | `$XDG_CONFIG_HOME/opencode/agents/` | symlink |
+| Codex | `~/.codex/agents/` | rendered TOML |
+| Hermes | — | not installable |
+
+Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Skill Manager renders a real file marked `# skill-manager:generated`. Rendered files carry no drift detection — re-enabling overwrites local edits to them. **Hermes** keeps a column for consistency but spawns subagents dynamically and has no agent-definition file to install into, so its cells say so rather than offering a toggle that cannot work.
+
+Skill Manager only ever removes files it owns — a symlink into its store, or a file carrying its generated marker. Anything else in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store (converting Codex TOML to Markdown) and installs it back. If the name is already taken in the store, Skill Manager refuses to guess and asks which version to keep.
 
 ### CLIs
 

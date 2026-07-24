@@ -7,8 +7,10 @@ from typing import Literal
 
 from skill_manager.errors import MutationError
 
-from .adapters import AgentHarnessAdapter
+from .adapters import AgentHarnessAdapter, parse_codex_agent
+from .inventory import TargetResolver
 from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
+from .parser import render_agent_document
 from .store import AgentStore
 
 ConflictResolution = Literal["keep_store", "replace_store"]
@@ -21,21 +23,29 @@ class BulkAdoptResult:
 
 
 class AgentMutationService:
-    def __init__(
-        self,
-        store: AgentStore,
-        targets: tuple[AgentTarget, ...],
-        adapters: dict[str, AgentHarnessAdapter],
-    ) -> None:
+    """Writes agent bindings.
+
+    Like the inventory service, targets are resolved per call so a harness the user
+    just enabled or disabled in Settings takes effect without a restart.
+    """
+
+    def __init__(self, store: AgentStore, resolve: TargetResolver) -> None:
         self.store = store
-        self.targets = targets
-        self.adapters = adapters
+        self._resolve = resolve
+
+    @property
+    def targets(self) -> tuple[AgentTarget, ...]:
+        return self._resolve()[0]
+
+    @property
+    def adapters(self) -> dict[str, AgentHarnessAdapter]:
+        return self._resolve()[1]
 
     # -- per-harness binding ------------------------------------------------
 
     def enable(self, slug: str, harness: str) -> None:
         agent = self._require_agent(slug)
-        self._adapter(harness).enable(agent.path)
+        self._adapter(harness).enable(agent)
 
     def disable(self, slug: str, harness: str) -> None:
         self._require_agent(slug)
@@ -49,10 +59,13 @@ class AgentMutationService:
         succeeded: list[str] = []
         failed: list[tuple[str, str]] = []
         for target in self.targets:
+            if not target.supports_agents:
+                # Nothing to enable or disable; not a failure either.
+                continue
             adapter = self.adapters[target.id]
             try:
                 if target.id in wanted:
-                    adapter.enable(agent.path)
+                    adapter.enable(agent)
                 else:
                     adapter.disable(slug)
                 succeeded.append(target.id)
@@ -80,17 +93,31 @@ class AgentMutationService:
             if on_conflict is None:
                 raise AgentAdoptConflict(slug, store_path, harness_path)
             if on_conflict == "replace_store":
-                self.store.write_raw(slug, harness_path.read_text(encoding="utf-8"))
+                self.store.write_raw(slug, self._as_store_document(adapter, harness_path))
             elif on_conflict != "keep_store":
                 raise MutationError(f"unknown conflict resolution: {on_conflict}")
             # keep_store: the store file stands; the harness copy is simply displaced.
+            harness_path.unlink()
+        elif adapter.renders:
+            # Codex agents are TOML; convert into the store's markdown rather than
+            # moving a file the store cannot parse.
+            self.store.agents_root.mkdir(parents=True, exist_ok=True)
+            self.store.write_raw(slug, self._as_store_document(adapter, harness_path))
             harness_path.unlink()
         else:
             self.store.agents_root.mkdir(parents=True, exist_ok=True)
             shutil.move(str(harness_path), str(store_path))
 
-        adapter.enable(store_path)
+        adapter.enable(self._require_agent(slug))
         return slug
+
+    @staticmethod
+    def _as_store_document(adapter: AgentHarnessAdapter, harness_path: Path) -> str:
+        """Whatever the harness holds, expressed in the store's markdown format."""
+        if not adapter.renders:
+            return harness_path.read_text(encoding="utf-8")
+        name, description, prompt = parse_codex_agent(harness_path)
+        return render_agent_document(name=name, description=description, prompt=prompt)
 
     def adopt_all(self) -> BulkAdoptResult:
         """Adopt every non-conflicting unmanaged agent; report the rest for the user."""
@@ -113,7 +140,8 @@ class AgentMutationService:
     def delete(self, slug: str) -> None:
         self._require_agent(slug)
         for target in self.targets:
-            self.adapters[target.id].disable(slug)
+            if target.supports_agents:
+                self.adapters[target.id].disable(slug)
         self.store.delete(slug)
 
     # -- helpers ------------------------------------------------------------

@@ -29,7 +29,7 @@ class AgentDefinition:
 
 @dataclass(frozen=True)
 class AgentTarget:
-    """A harness that stores subagents as flat ``<slug>.md`` files."""
+    """A harness that stores subagents as flat files in a directory."""
 
     id: str
     label: str
@@ -37,9 +37,14 @@ class AgentTarget:
     root_path: Path
     output_dir: Path
     file_glob: str
+    render_format: Literal["markdown", "codex_toml"]
     docs_url: str
     installed: bool
-    enabled: bool
+    unavailable_reason: str | None = None
+
+    @property
+    def supports_agents(self) -> bool:
+        return self.unavailable_reason is None
 
 
 BindingState = Literal["enabled", "disabled", "unsupported"]

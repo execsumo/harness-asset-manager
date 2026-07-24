@@ -23,8 +23,13 @@ in a given harness. That is the whole model.
    `FamilyKey` (`skill_manager/harness/contracts.py:10`) gains `"agents"`, and harnesses
    that actually support subagent files declare a binding in the catalog.
 
-2. **Only two harnesses get an agents column**, both verified against live docs
-   on 2026-07-24 — invented columns are worse than a narrow matrix:
+2. **~~Only two harnesses get an agents column~~ — SUPERSEDED 2026-07-24.**
+   This decision was wrong. It concluded from a *sitemap scan* that Cursor and Codex
+   had no subagent format; both do, and Antigravity does too. See "Amendment:
+   harness coverage" at the foot of this file for the corrected set and the evidence
+   behind each. The original text is kept below for the record.
+
+   Original:
 
    | Harness  | Global agents dir (docs form)    | Project dir         |
    |----------|----------------------------------|---------------------|
@@ -227,3 +232,50 @@ file survives.
 
 Git discipline per `CLAUDE.md`: short-lived branch off `main`, logical commits, no merge
 to `main` without review; the running instance stays on `main`.
+
+---
+
+## Amendment: harness coverage (2026-07-24, post-merge)
+
+Decision 2 above shipped a two-harness matrix (claude, opencode) built on a curated
+`TARGET_ORDER` list. That was wrong twice over, and both errors are worth recording.
+
+**Error 1 — under-researched.** Cursor and Codex were ruled out from a sitemap scan
+that found no matching URL. Both have documented subagent formats. Antigravity was
+never checked at all, despite `agy` being installed and having an `agy agents` command
+that would have answered it in one call. The bar — "verify, don't infer" — was right;
+it just wasn't applied to every harness.
+
+**Error 2 — curated instead of derived.** A hand-maintained harness list guarantees
+divergence from Skills on the next machine. Columns now come from
+`enabled_harness_ids_for_family("agents")`, the same call the skills read model makes,
+resolved **per request** so toggling a harness in Settings takes effect without a
+restart. Which harnesses appear is a consequence of the catalog and the user's
+settings, never a list someone has to remember to update.
+
+### Evidence per harness
+
+| Harness | Directory | Format | Evidence |
+|---|---|---|---|
+| claude | `~/.claude/agents/` | Markdown | **probe** — live headless session listed a symlinked agent |
+| agy | `~/.gemini/antigravity-cli/agents/` | Markdown | **probe** — `agy agents` listed it; symlink followed |
+| cursor | `~/.cursor/agents/` | Markdown | docs (`cursor.com/docs/subagents`); CLI not installed here, so unprobed |
+| opencode | `$XDG_CONFIG_HOME/opencode/agents/` | Markdown | docs; disabled in this user's settings |
+| codex | `~/.codex/agents/` | **TOML** | official docs (`developers.openai.com/codex/subagents`) |
+| hermes | — | none | config inspection + docs: subagents are spawned dynamically |
+| openclaw | — | none found | no agents binding declared |
+
+### Two consequences accepted deliberately
+
+**A generated marker is back, for Codex only.** Codex needs TOML with different keys,
+so a symlinked `.md` is meaningless. Those files are rendered and marked
+`# skill-manager:generated`; ownership is the marker, not `is_symlink()`. Without this,
+every rendered file would return as an unmanaged Needs Review row forever and `disable`
+would refuse to remove its own output. **Rendered files get no drift detection** —
+re-enabling overwrites local edits. Detecting otherwise means content hashes, which is
+the layer this rebuild exists to remove.
+
+**Hermes keeps a column it can never fill.** `unavailable_reason` on the binding makes
+every Hermes cell `unsupported` with the reason attached, rather than dropping the
+column. Consistency with the other families beats a matrix whose columns shift per
+family, and the cell explains itself instead of failing on click.

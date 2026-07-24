@@ -8,6 +8,7 @@ from .resolution import ResolutionContext
 
 
 FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents"]
+AgentRenderFormat = Literal["markdown", "codex_toml"]
 CommandFileRenderFormat = Literal["frontmatter_markdown", "cursor_plaintext"]
 CommandFileScope = Literal["global", "project"]
 FileTreeAvailability = Literal["cli", "cli_or_app"]
@@ -104,19 +105,34 @@ class CommandFileBindingProfile:
 
 @dataclass(frozen=True)
 class AgentFileBindingProfile:
-    """Subagent definitions as flat ``<slug>.md`` files in a harness-owned directory.
+    """Subagent definitions as flat files in a harness-owned directory.
 
     Distinct from ``FileTreeBindingProfile`` (directory-shaped, for ``<slug>/SKILL.md``)
     and from ``CommandFileBindingProfile`` (carries invocation/render concerns agents
-    do not have). Skill Manager owns an entry by symlinking it into ``output_dir``.
+    do not have).
+
+    Two ownership models, driven by ``render_format``:
+
+    - ``markdown`` — the harness reads the same frontmatter+body format the store
+      holds, so Skill Manager owns an entry by **symlinking** it into ``output_dir``.
+      Verified against live CLIs for Claude and Antigravity.
+    - ``codex_toml`` — Codex needs TOML with different keys, so a symlinked ``.md``
+      is meaningless. Skill Manager renders a real file and marks it as generated.
+      Marker-owned files carry no drift detection: re-enabling overwrites local edits.
+
+    ``unavailable_reason`` marks a harness that has no agent-definition file format at
+    all. It still gets a column — parity with the other families — but every cell
+    reports ``unsupported`` with this text, rather than being silently omitted.
     """
 
     shape: Literal["agent-file"] = "agent-file"
     root_path_resolver: PathResolver | None = None
     output_dir_resolver: PathResolver | None = None
     file_glob: str = "*.md"
+    render_format: AgentRenderFormat = "markdown"
     docs_url: str = ""
     availability: FileTreeAvailability = "cli"
+    unavailable_reason: str | None = None
 
     def resolve_root_path(self, context: ResolutionContext) -> Path:
         if self.root_path_resolver is None:
@@ -185,6 +201,7 @@ class HarnessStatus:
 
 __all__ = [
     "AgentFileBindingProfile",
+    "AgentRenderFormat",
     "BindingProfile",
     "CommandFileScope",
     "CommandFileBindingProfile",

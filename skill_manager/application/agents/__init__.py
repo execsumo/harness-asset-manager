@@ -1,4 +1,10 @@
-from .adapters import AgentHarnessAdapter
+from .adapters import (
+    GENERATED_MARKER,
+    AgentHarnessAdapter,
+    codex_agent_name,
+    parse_codex_agent,
+    render_codex_agent,
+)
 from .inventory import AgentInventoryService
 from .model import (
     AgentAdoptConflict,
@@ -21,6 +27,7 @@ __all__ = [
     "AgentDefinition",
     "AgentEntry",
     "AgentHarnessAdapter",
+    "GENERATED_MARKER",
     "AgentInventory",
     "AgentInventoryService",
     "AgentIssue",
@@ -30,9 +37,12 @@ __all__ = [
     "AgentTarget",
     "BulkAdoptResult",
     "ConflictResolution",
+    "codex_agent_name",
     "parse_agent_document",
     "parse_agent_file",
+    "parse_codex_agent",
     "render_agent_document",
+    "render_codex_agent",
     "resolve_agent_targets",
     "slugify",
     "target_by_id",
