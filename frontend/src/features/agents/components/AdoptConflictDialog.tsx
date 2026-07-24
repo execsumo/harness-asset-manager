@@ -53,17 +53,17 @@ export function AdoptConflictDialog({
             </Dialog.Title>
           </div>
           <Dialog.Description className="dialog-description confirm-dialog__description">
-            <p style={{ marginBottom: "12px" }}>
+            <p className="confirm-dialog__lede">
               An agent with the name <strong>{slug}</strong> already exists in Skill Manager.
             </p>
-            <p style={{ wordBreak: "break-all" }}>
+            <p className="confirm-dialog__path">
               <strong>Project version:</strong> <code>{storePath}</code>
             </p>
-            <p style={{ wordBreak: "break-all" }}>
+            <p className="confirm-dialog__path">
               <strong>Harness version:</strong> <code>{harnessPath}</code>
             </p>
           </Dialog.Description>
-          <div className="dialog-actions confirm-dialog__actions" style={{ flexDirection: "column", gap: "8px", alignItems: "stretch", marginTop: "16px" }}>
+          <div className="dialog-actions confirm-dialog__actions confirm-dialog__actions--stacked">
             <button
               type="button"
               className="btn confirm-dialog__button confirm-dialog__button--primary"
@@ -89,7 +89,7 @@ export function AdoptConflictDialog({
               {common.actions.cancel}
             </button>
             {isPending ? (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: "8px" }}>
+              <div className="confirm-dialog__pending">
                 <LoadingSpinner size="sm" label="Resolving conflict..." />
               </div>
             ) : null}
