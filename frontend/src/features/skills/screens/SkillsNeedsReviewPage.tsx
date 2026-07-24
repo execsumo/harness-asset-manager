@@ -1,11 +1,18 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import {
+  MatrixHarnessCellTarget,
+  MatrixHarnessHeader,
+  MatrixHarnessIcon,
+  MatrixTable,
+} from "../../../components/matrix";
+import { UiTooltip } from "../../../components/ui/UiTooltip";
 import { useCommonCopy } from "../../../i18n";
-import { SkillsNeedsReviewList } from "../components/cards/SkillsNeedsReviewList";
 import { SkillsEmptyState } from "../components/pane/SkillsEmptyState";
 import { useSkillsCopy } from "../i18n";
 import { useSkillsWorkspace } from "../model/workspace-context";
@@ -23,7 +30,6 @@ export default function SkillsNeedsReviewPage() {
     status,
     pendingStructuralActions,
     pendingBulkAction,
-    selectedSkillRef,
     onManageAll,
     onManageSkill,
     onOpenSkill,
@@ -38,6 +44,7 @@ export default function SkillsNeedsReviewPage() {
   const needsReviewCount = useMemo(() => countNeedsReviewRows(data), [data]);
   const adoptableCount = useMemo(() => countAdoptableLocalSkillRows(data), [data]);
   const isReady = status === "ready" && Boolean(data);
+  const harnessColumns = data?.harnessColumns ?? [];
 
   return (
     <>
@@ -78,14 +85,113 @@ export default function SkillsNeedsReviewPage() {
         <div className="panel-state">{copy.review.unableToLoad}</div>
       ) : isReady && data ? (
         rows.length > 0 ? (
-          <SkillsNeedsReviewList
-            rows={rows}
-            pendingStructuralActions={pendingStructuralActions}
-            bulkActionPending={pendingBulkAction !== null}
-            selectedSkillRef={selectedSkillRef}
-            onOpenSkill={onOpenSkill}
-            onManageSkill={onManageSkill}
-          />
+          <MatrixTable
+            ariaLabel="Skills to adopt"
+            harnessColumnCount={harnessColumns.length}
+            harnessColumnWidth="52px"
+            compactColumnWidth="140px"
+            coverageColumnWidth="120px"
+          >
+            <thead className="matrix-table__head">
+              <tr>
+                <th className="matrix-table__th matrix-table__th--identity">Skill</th>
+                {harnessColumns.map((column) => (
+                  <MatrixHarnessHeader
+                    key={column.harness}
+                    label={column.label}
+                    logoKey={column.logoKey}
+                    harness={column.harness}
+                  />
+                ))}
+                <th className="matrix-table__th matrix-table__th--end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const managing = pendingStructuralActions.get(row.skillRef) === "manage";
+                const actionDisabled =
+                  pendingBulkAction !== null ||
+                  pendingStructuralActions.get(row.skillRef) != null ||
+                  !row.actions.canManage;
+                return (
+                  <tr key={row.skillRef} className="matrix-table__row">
+                    <td className="matrix-table__cell matrix-table__cell--identity">
+                      <button
+                        type="button"
+                        className="mcp-matrix__server-button"
+                        aria-label={`Open ${row.name}`}
+                        onClick={() => onOpenSkill(row.skillRef)}
+                      >
+                        <span className="matrix-table__name-row">
+                          <span className="matrix-table__name-text">{row.name}</span>
+                        </span>
+                        {row.description ? (
+                          <span className="matrix-table__description">{row.description}</span>
+                        ) : null}
+                      </button>
+                    </td>
+                    {harnessColumns.map((column) => {
+                      const discovered = row.cells.some(
+                        (cell) => cell.harness === column.harness && cell.state === "found",
+                      );
+                      return (
+                        <td
+                          key={column.harness}
+                          className="matrix-table__cell matrix-table__cell--harness"
+                        >
+                          <UiTooltip
+                            content={
+                              discovered
+                                ? `Found in ${column.label} config`
+                                : `Not found in ${column.label}`
+                            }
+                          >
+                            <MatrixHarnessCellTarget
+                              state={discovered ? "observed" : "empty"}
+                              ariaLabel={
+                                discovered
+                                  ? `Discovered in ${column.label}`
+                                  : `Not found in ${column.label}`
+                              }
+                              disabled
+                            >
+                              {discovered ? (
+                                <MatrixHarnessIcon
+                                  label={column.label}
+                                  logoKey={column.logoKey}
+                                  harness={column.harness}
+                                />
+                              ) : (
+                                "—"
+                              )}
+                            </MatrixHarnessCellTarget>
+                          </UiTooltip>
+                        </td>
+                      );
+                    })}
+                    <td className="matrix-table__cell matrix-table__cell--end">
+                      <button
+                        type="button"
+                        className="action-pill action-pill--accent"
+                        disabled={actionDisabled}
+                        title={
+                          row.actions.canManage
+                            ? "Add this skill to Skill Manager"
+                            : "This skill cannot be adopted automatically"
+                        }
+                        onClick={() => void onManageSkill(row.skillRef)}
+                      >
+                        {managing ? (
+                          <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
+                        ) : null}
+                        Adopt
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </MatrixTable>
         ) : needsReviewCount > 0 ? (
           <SkillsEmptyState copy={copy.filters} onResetFilters={resetFilters} />
         ) : (

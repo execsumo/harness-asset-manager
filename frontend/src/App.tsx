@@ -104,7 +104,6 @@ function AppContent() {
           </Route>
 
           <Route path="mcp" element={<Navigate to="/mcp/use" replace />} />
-          <Route path="scan-config" element={<Navigate to="/settings" replace />} />
           <Route
             path="mcp/use"
             element={

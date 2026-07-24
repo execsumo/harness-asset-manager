@@ -34,9 +34,6 @@ describe("SettingsPage", () => {
           harnesses: [],
         });
       }
-      if (url === "/api/scan/configs") {
-        return okJson({ activeId: null, configs: [] });
-      }
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -44,8 +41,5 @@ describe("SettingsPage", () => {
 
     expect(await screen.findByText("/tmp/data/skill-manager/shared")).toBeInTheDocument();
     expect(screen.getByText("/tmp/data/skill-manager/marketplace")).toBeInTheDocument();
-
-    expect(screen.getByRole("heading", { name: "Scan Config" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New configuration" })).toBeInTheDocument();
   });
 });
