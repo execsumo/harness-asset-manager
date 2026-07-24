@@ -83,6 +83,13 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("permissions",),
                 codec="codex-permissions",
             ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".codex",
+                output_dir_resolver=lambda context: context.home / ".codex" / "agents",
+                file_glob="*.toml",
+                render_format="codex_toml",
+                docs_url="https://developers.openai.com/codex/subagents",
+            ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=lambda context: context.home / ".codex",
                 output_dir_resolver=lambda context: context.home / ".codex" / "prompts",
@@ -172,6 +179,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 file_format="json",
                 subtree_path=("hooks",),
                 codec="cursor-hooks",
+            ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".cursor",
+                output_dir_resolver=lambda context: context.home / ".cursor" / "agents",
+                docs_url="https://cursor.com/docs/subagents",
+                availability="cli_or_app",
             ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=lambda context: context.home / ".cursor",
@@ -267,6 +280,17 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("mcp_servers",),
                 codec="hermes",
             ),
+            # Hermes delegates to dynamically spawned subagents (config.yaml
+            # `orchestrator`/`subagent_*` keys) and has no agent-definition file format
+            # to bind to. It keeps a column for parity; every cell reports why.
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=_hermes_home,
+                output_dir_resolver=lambda context: _hermes_home(context) / "agents",
+                unavailable_reason=(
+                    "Hermes spawns subagents dynamically and has no agent-definition "
+                    "file format to install into"
+                ),
+            ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=_hermes_home,
                 output_dir_resolver=lambda context: _hermes_home(context) / "commands",
@@ -331,6 +355,15 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                         path_resolver=lambda context: context.home / ".gemini" / "skills",
                     ),
                 ),
+            ),
+            # Verified by probe: `agy agents` lists definitions dropped in
+            # ~/.gemini/antigravity-cli/agents (and ~/.gemini/agents), and follows symlinks.
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli",
+                output_dir_resolver=lambda context: context.home
+                / ".gemini"
+                / "antigravity-cli"
+                / "agents",
             ),
             "mcp": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".gemini" / "config" / "mcp_config.json",

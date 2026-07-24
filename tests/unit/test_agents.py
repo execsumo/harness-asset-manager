@@ -112,18 +112,170 @@ class AgentsFixture(unittest.TestCase):
             root_path=self.harness_dir.parent,
             output_dir=self.harness_dir,
             file_glob="*.md",
+            render_format="markdown",
             docs_url="",
             installed=True,
-            enabled=True,
         )
         self.store = AgentStore(self.store_root)
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         self.adapters = {"claude": self.adapter}
-        self.inventory = AgentInventoryService(self.store, (self.target,), self.adapters)
-        self.mutations = AgentMutationService(self.store, (self.target,), self.adapters)
+        snapshot = lambda: ((self.target,), self.adapters)
+        self.inventory = AgentInventoryService(self.store, snapshot)
+        self.mutations = AgentMutationService(self.store, snapshot)
 
     def entry(self, ref: str):
         return next(e for e in self.inventory.build().entries if e.ref == ref)
+
+
+class CodexAgentTests(unittest.TestCase):
+    """Codex reads TOML, not markdown, so it is rendered and marker-owned."""
+
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        root = Path(self._tmp.name)
+        self.store_root = root / "data" / "agents"
+        self.harness_dir = root / "home" / ".codex" / "agents"
+        self.store_root.mkdir(parents=True)
+        self.harness_dir.mkdir(parents=True)
+
+        self.target = AgentTarget(
+            id="codex",
+            label="Codex",
+            logo_key="codex",
+            root_path=self.harness_dir.parent,
+            output_dir=self.harness_dir,
+            file_glob="*.toml",
+            render_format="codex_toml",
+            docs_url="",
+            installed=True,
+        )
+        self.store = AgentStore(self.store_root)
+        self.adapter = AgentHarnessAdapter(self.target, self.store_root)
+        adapters = {"codex": self.adapter}
+        snapshot = lambda: ((self.target,), adapters)
+        self.inventory = AgentInventoryService(self.store, snapshot)
+        self.mutations = AgentMutationService(self.store, snapshot)
+
+    def test_enable_renders_toml_with_underscored_name(self) -> None:
+        self.store.create(name="PR Reviewer", description="reviews", prompt="Be strict.")
+        self.mutations.enable("pr-reviewer", "codex")
+
+        rendered = self.harness_dir / "pr-reviewer.toml"
+        self.assertTrue(rendered.is_file())
+        self.assertFalse(rendered.is_symlink())
+
+        import tomllib
+
+        data = tomllib.loads(rendered.read_text(encoding="utf-8"))
+        # Codex resolves by `name`, not filename; their example pairs a hyphenated
+        # file with an underscored name.
+        self.assertEqual(data["name"], "pr_reviewer")
+        self.assertEqual(data["description"], "reviews")
+        self.assertEqual(data["developer_instructions"].strip(), "Be strict.")
+
+    def test_rendered_file_is_owned_not_reported_unmanaged(self) -> None:
+        self.store.create(name="PR Reviewer", description="d", prompt="p")
+        self.mutations.enable("pr-reviewer", "codex")
+
+        inventory = self.inventory.build()
+        self.assertEqual([e.ref for e in inventory.entries], ["pr-reviewer"])
+        self.assertEqual(inventory.entries[0].bindings[0].state, "enabled")
+
+    def test_disable_removes_only_generated_files(self) -> None:
+        self.store.create(name="PR Reviewer", description="d", prompt="p")
+        self.mutations.enable("pr-reviewer", "codex")
+        self.mutations.disable("pr-reviewer", "codex")
+        self.assertFalse((self.harness_dir / "pr-reviewer.toml").exists())
+
+        hand_written = self.harness_dir / "pr-reviewer.toml"
+        hand_written.write_text('name = "pr_reviewer"\n', encoding="utf-8")
+        with self.assertRaises(MutationError):
+            self.mutations.disable("pr-reviewer", "codex")
+        self.assertTrue(hand_written.is_file())
+
+    def test_enable_refuses_to_overwrite_a_hand_written_file(self) -> None:
+        self.store.create(name="PR Reviewer", description="d", prompt="p")
+        (self.harness_dir / "pr-reviewer.toml").write_text(
+            'name = "mine"\n', encoding="utf-8"
+        )
+        with self.assertRaises(MutationError):
+            self.mutations.enable("pr-reviewer", "codex")
+
+    def test_hand_written_toml_is_unmanaged_and_adopts_into_markdown(self) -> None:
+        (self.harness_dir / "auditor.toml").write_text(
+            'name = "auditor"\n'
+            'description = "audits things"\n'
+            'developer_instructions = """\nCheck everything.\n"""\n',
+            encoding="utf-8",
+        )
+
+        entry = next(
+            e for e in self.inventory.build().entries if e.ref == "codex/auditor"
+        )
+        self.assertEqual(entry.kind, "unmanaged")
+        self.assertEqual(entry.name, "auditor")
+        self.assertEqual(entry.description, "audits things")
+
+        self.mutations.adopt("codex/auditor")
+
+        # The store always holds markdown, whatever the harness format was.
+        stored = (self.store_root / "auditor.md").read_text(encoding="utf-8")
+        self.assertTrue(stored.startswith("---"))
+        self.assertIn("name: auditor", stored)
+        self.assertIn("Check everything.", stored)
+        # And the harness gets a freshly rendered, owned TOML back.
+        self.assertTrue((self.harness_dir / "auditor.toml").is_file())
+        self.assertEqual(
+            [e.ref for e in self.inventory.build().entries], ["auditor"]
+        )
+
+    def test_unparseable_toml_becomes_an_issue(self) -> None:
+        (self.harness_dir / "broken.toml").write_text("not = = toml", encoding="utf-8")
+        issues = self.inventory.build().issues
+        self.assertEqual([i.name for i in issues], ["codex/broken"])
+
+
+class UnsupportedHarnessTests(unittest.TestCase):
+    """A harness with no agent-file format keeps its column and says why."""
+
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        root = Path(self._tmp.name)
+        self.store_root = root / "data" / "agents"
+        self.store_root.mkdir(parents=True)
+
+        self.target = AgentTarget(
+            id="hermes",
+            label="Hermes Agent",
+            logo_key="hermes",
+            root_path=root / "home" / ".hermes",
+            output_dir=root / "home" / ".hermes" / "agents",
+            file_glob="*.md",
+            render_format="markdown",
+            docs_url="",
+            installed=True,
+            unavailable_reason="Hermes spawns subagents dynamically",
+        )
+        self.store = AgentStore(self.store_root)
+        adapters = {"hermes": AgentHarnessAdapter(self.target, self.store_root)}
+        snapshot = lambda: ((self.target,), adapters)
+        self.inventory = AgentInventoryService(self.store, snapshot)
+        self.mutations = AgentMutationService(self.store, snapshot)
+
+    def test_column_is_present_but_every_cell_is_unsupported(self) -> None:
+        self.store.create(name="Red Team", description="d", prompt="p")
+        entry = self.inventory.build().entries[0]
+        binding = entry.bindings[0]
+        self.assertEqual(binding.state, "unsupported")
+        self.assertEqual(binding.detail, "Hermes spawns subagents dynamically")
+
+    def test_enabling_is_refused_with_the_reason(self) -> None:
+        self.store.create(name="Red Team", description="d", prompt="p")
+        with self.assertRaises(MutationError) as caught:
+            self.mutations.enable("red-team", "hermes")
+        self.assertIn("spawns subagents dynamically", str(caught.exception))
 
 
 class AgentBindingTests(AgentsFixture):

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
-from .adapters import AgentHarnessAdapter
+from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .model import (
     AgentBinding,
     AgentEntry,
@@ -14,35 +15,63 @@ from .model import (
 from .parser import parse_agent_file
 from .store import AgentStore
 
+TargetResolver = Callable[[], tuple[tuple[AgentTarget, ...], dict[str, AgentHarnessAdapter]]]
+
 
 class AgentInventoryService:
-    def __init__(
-        self,
-        store: AgentStore,
-        targets: tuple[AgentTarget, ...],
-        adapters: dict[str, AgentHarnessAdapter],
-    ) -> None:
+    """Reads the agents inventory.
+
+    Targets are resolved **per call**, not cached at construction: the user can
+    enable or disable a harness in Settings at any time, and the matrix has to follow
+    immediately, exactly as the skills read model does.
+    """
+
+    def __init__(self, store: AgentStore, resolve: TargetResolver) -> None:
         self.store = store
-        self.targets = targets
-        self.adapters = adapters
+        self._resolve = resolve
+
+    @property
+    def targets(self) -> tuple[AgentTarget, ...]:
+        return self._resolve()[0]
+
+    @property
+    def adapters(self) -> dict[str, AgentHarnessAdapter]:
+        return self._resolve()[1]
 
     def build(self) -> AgentInventory:
+        targets, adapters = self._resolve()
         managed, issues = self.store.scan()
         issue_list = list(issues)
 
-        entries = [self._managed_entry(agent.slug, agent.name, agent.description) for agent in managed]
-        entries.extend(self._unmanaged_entries(issue_list))
+        entries = [
+            self._managed_entry(targets, adapters, agent.slug, agent.name, agent.description)
+            for agent in managed
+        ]
+        entries.extend(self._unmanaged_entries(targets, adapters, issue_list))
         return AgentInventory(
-            columns=self.targets,
+            columns=targets,
             entries=tuple(entries),
             issues=tuple(issue_list),
         )
 
-    def _managed_entry(self, slug: str, name: str, description: str) -> AgentEntry:
+    def _managed_entry(
+        self,
+        targets: tuple[AgentTarget, ...],
+        adapters: dict[str, AgentHarnessAdapter],
+        slug: str,
+        name: str,
+        description: str,
+    ) -> AgentEntry:
         bindings: list[AgentBinding] = []
-        for target in self.targets:
-            adapter = self.adapters[target.id]
-            if adapter.is_dangling(slug):
+        for target in targets:
+            adapter = adapters[target.id]
+            if not target.supports_agents:
+                # Keeps the column for parity with the other families, but says why
+                # rather than offering a toggle that cannot work.
+                bindings.append(
+                    AgentBinding(target.id, "unsupported", target.unavailable_reason)
+                )
+            elif adapter.is_dangling(slug):
                 bindings.append(
                     AgentBinding(target.id, "disabled", "symlink points at a missing file")
                 )
@@ -64,12 +93,17 @@ class AgentInventoryService:
             can_delete=True,
         )
 
-    def _unmanaged_entries(self, issues: list[AgentIssue]) -> list[AgentEntry]:
+    def _unmanaged_entries(
+        self,
+        targets: tuple[AgentTarget, ...],
+        adapters: dict[str, AgentHarnessAdapter],
+        issues: list[AgentIssue],
+    ) -> list[AgentEntry]:
         entries: list[AgentEntry] = []
-        for target in self.targets:
-            adapter = self.adapters[target.id]
+        for target in targets:
+            adapter = adapters[target.id]
             for path in adapter.unmanaged_paths():
-                entries.append(self._unmanaged_entry(target, path, issues))
+                entries.append(self._unmanaged_entry(targets, target, path, issues))
             for path in adapter.orphaned_links():
                 issues.append(
                     AgentIssue(
@@ -83,12 +117,19 @@ class AgentInventoryService:
         return entries
 
     def _unmanaged_entry(
-        self, target: AgentTarget, path: Path, issues: list[AgentIssue]
+        self,
+        targets: tuple[AgentTarget, ...],
+        target: AgentTarget,
+        path: Path,
+        issues: list[AgentIssue],
     ) -> AgentEntry:
         slug = path.stem
         try:
-            parsed = parse_agent_file(path)
-            name, description = parsed.name, parsed.description
+            if target.render_format == "codex_toml":
+                name, description, _prompt = parse_codex_agent(path)
+            else:
+                parsed = parse_agent_file(path)
+                name, description = parsed.name, parsed.description
         except AgentParseError as error:
             issues.append(AgentIssue(name=f"{target.id}/{slug}", reason=str(error)))
             name, description = slug, ""
@@ -100,8 +141,10 @@ class AgentInventoryService:
             kind="unmanaged",
             harness_path=path,
             bindings=tuple(
-                AgentBinding(column.id, "enabled" if column.id == target.id else "disabled")
-                for column in self.targets
+                AgentBinding(column.id, "unsupported", column.unavailable_reason)
+                if not column.supports_agents
+                else AgentBinding(column.id, "enabled" if column.id == target.id else "disabled")
+                for column in targets
             ),
             can_adopt=True,
             can_delete=False,

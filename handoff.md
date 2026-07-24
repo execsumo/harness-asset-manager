@@ -21,10 +21,19 @@ family. They are now a plain inventory with **In Use / Needs Review** views.
   which were never added to MCP i18n, and `McpServerMatrixView.test.tsx` still expected
   the old "Enabled" column label after the rename to "Active". Both fixed.
 - **Backend rebuild — DONE (`8febf40`).** `"agents"` is a `FamilyKey` with a new
-  `AgentFileBindingProfile`, bound for **claude** (`~/.claude/agents`) and **opencode**
-  (`$XDG_CONFIG_HOME/opencode/agents`) only — Cursor and Codex have no subagent-file
-  format, so they get no column. Store/adapters/inventory/mutations replace
-  `AgentsService`; `service.py` deleted along with all compile machinery.
+  `AgentFileBindingProfile`. Store/adapters/inventory/mutations replace `AgentsService`;
+  `service.py` deleted along with all compile machinery.
+- **Harness coverage corrected — branch `feat/agents-harness-coverage`.** The first cut
+  shipped only claude+opencode from a curated `TARGET_ORDER`, which was wrong: Cursor,
+  Codex, and Antigravity all have real subagent formats, and a hand-curated list would
+  drift from Skills anyway. Columns now derive from
+  `enabled_harness_ids_for_family("agents")` — same call the skills read model makes —
+  and are resolved **per request**, so toggling a harness in Settings takes effect
+  without a restart. Evidence per harness is tabulated in the amendment at the foot of
+  `plan-agents-simplify.md`; claude and agy are probe-verified, the rest documented.
+  Two accepted consequences: a generated marker returns **for Codex only** (it reads
+  TOML, so its files are rendered, not symlinked, and get no drift detection), and
+  Hermes keeps a column whose cells all read `unsupported` with a reason.
 - **Ownership is a symlink**, mirroring skills. **Verified empirically**: a symlinked
   `~/.claude/agents/*.md` was picked up by a live headless `claude` session. No content
   hashes, no sync-state, no provenance marker, and no third "drifted" cell state.

@@ -1,6 +1,7 @@
 from .catalog import harness_definitions_for_family, supported_harness_definitions, supported_harness_ids
 from .contracts import (
     AgentFileBindingProfile,
+    AgentRenderFormat,
     BindingProfile,
     CommandFileBindingProfile,
     CommandFileRenderFormat,
@@ -23,6 +24,7 @@ from .support_store import HarnessSupportPreferences, HarnessSupportStore
 
 __all__ = [
     "AgentFileBindingProfile",
+    "AgentRenderFormat",
     "BindingProfile",
     "CommandFileBindingProfile",
     "CommandFileRenderFormat",

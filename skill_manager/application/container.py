@@ -291,12 +291,16 @@ def build_backend_container(
     db = Database(paths.db_path)
     scaffold_service = ScaffoldService(paths)
     agents_store = AgentStore(paths.agents_root)
-    agent_targets = resolve_agent_targets(harness_kernel)
-    agent_adapters = {
-        target.id: AgentHarnessAdapter(target, paths.agents_root) for target in agent_targets
-    }
-    agents_inventory = AgentInventoryService(agents_store, agent_targets, agent_adapters)
-    agents_mutations = AgentMutationService(agents_store, agent_targets, agent_adapters)
+
+    def resolve_agents_snapshot():
+        # Re-resolved per call so toggling a harness in Settings takes effect at once.
+        targets = resolve_agent_targets(harness_kernel)
+        return targets, {
+            target.id: AgentHarnessAdapter(target, paths.agents_root) for target in targets
+        }
+
+    agents_inventory = AgentInventoryService(agents_store, resolve_agents_snapshot)
+    agents_mutations = AgentMutationService(agents_store, resolve_agents_snapshot)
 
     return BackendContainer(
         paths=paths,

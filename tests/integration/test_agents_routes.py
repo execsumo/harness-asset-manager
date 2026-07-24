@@ -17,14 +17,68 @@ def _seed_unmanaged_claude_agent(spec: FakeHomeSpec, slug: str = "stray") -> Non
 
 
 class AgentRoutesTests(unittest.TestCase):
-    def test_inventory_lists_only_agent_capable_harnesses(self) -> None:
+    def test_agent_columns_match_the_skills_columns(self) -> None:
+        """The two pages must never disagree about which harnesses exist.
+
+        Both derive columns from `enabled_harness_ids_for_family`, so a harness the
+        user disables in settings drops out of both at once. This is the regression
+        that shipped once: agents used a hand-curated harness list.
+        """
         with AppTestHarness() as harness:
-            payload = harness.get_json("/api/agents")
-            columns = {column["harness"] for column in payload["columns"]}
-            self.assertEqual(columns, {"claude", "opencode"})
-            # Cursor and Codex have no subagent-file format and must not be offered.
-            self.assertNotIn("cursor", columns)
-            self.assertNotIn("codex", columns)
+            agents = [c["harness"] for c in harness.get_json("/api/agents")["columns"]]
+            skills = [
+                c["harness"] for c in harness.get_json("/api/skills")["harnessColumns"]
+            ]
+            # Agents is a subset: openclaw has a skills root but no agent-file format.
+            self.assertTrue(set(agents) <= set(skills), f"{agents} not within {skills}")
+            # Same relative order, so the two matrices read the same left to right.
+            self.assertEqual(agents, [h for h in skills if h in set(agents)])
+            for expected in ("claude", "codex", "cursor", "hermes", "agy"):
+                self.assertIn(expected, agents)
+
+    def test_disabling_a_harness_drops_its_agents_column(self) -> None:
+        with AppTestHarness() as harness:
+            before = [c["harness"] for c in harness.get_json("/api/agents")["columns"]]
+            self.assertIn("cursor", before)
+
+            harness.put_json("/api/settings/harnesses/cursor/support", {"enabled": False})
+
+            after = [c["harness"] for c in harness.get_json("/api/agents")["columns"]]
+            self.assertNotIn("cursor", after)
+
+    def test_hermes_keeps_a_column_but_reports_why_it_cannot_install(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            entry = self._entry(harness, "red-team")
+            hermes = next(b for b in entry["bindings"] if b["harness"] == "hermes")
+            self.assertEqual(hermes["state"], "unsupported")
+            self.assertIn("dynamically", hermes["detail"])
+
+            payload = harness.post_json(
+                "/api/agents/red-team/enable", {"harness": "hermes"}, expected_status=400
+            )
+            self.assertIn("does not support installable agents", payload["error"])
+
+    def test_codex_gets_a_rendered_toml_not_a_symlink(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "PR Reviewer", "description": "reviews", "prompt": "Be strict."},
+            )
+            harness.post_json("/api/agents/pr-reviewer/enable", {"harness": "codex"})
+
+            rendered = harness.spec.home / ".codex" / "agents" / "pr-reviewer.toml"
+            self.assertTrue(rendered.is_file())
+            self.assertFalse(rendered.is_symlink())
+            body = rendered.read_text(encoding="utf-8")
+            self.assertIn('name = "pr_reviewer"', body)
+            self.assertIn("skill-manager:generated", body)
+
+            # And it must not come back as an unmanaged row.
+            refs = [e["ref"] for e in harness.get_json("/api/agents")["entries"]]
+            self.assertEqual(refs, ["pr-reviewer"])
 
     def test_create_enable_and_disable_round_trip(self) -> None:
         with AppTestHarness() as harness:
@@ -176,15 +230,15 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertIn("error", payload)
             self.assertIn("does-not-exist", payload["error"])
 
-    def test_unsupported_harness_is_refused(self) -> None:
+    def test_unknown_harness_is_refused(self) -> None:
         with AppTestHarness() as harness:
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
             payload = harness.post_json(
-                "/api/agents/red-team/enable", {"harness": "cursor"}, expected_status=409
+                "/api/agents/red-team/enable", {"harness": "nope"}, expected_status=409
             )
-            self.assertIn("cursor", payload["error"])
+            self.assertIn("nope", payload["error"])
 
     def _entry(self, harness: AppTestHarness, ref: str) -> dict:
         payload = harness.get_json("/api/agents")
