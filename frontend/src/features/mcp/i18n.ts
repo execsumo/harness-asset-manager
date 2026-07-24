@@ -4,7 +4,6 @@ const englishMcpCopy = {
   inUse: {
     title: "MCP servers in use",
     subtitle: "Browse, enable, and remove MCP servers across your harnesses.",
-    viewModeAria: "MCP servers in use view mode",
     searchPlaceholder: "Search by name or transport...",
     searchLabel: "Search MCP servers",
     loading: "Loading MCP servers",
@@ -14,11 +13,6 @@ const englishMcpCopy = {
     noMatchesBody: "Adjust the search or filter to see other MCP servers.",
     emptyTitle: "No MCP servers in use yet",
     emptyBody: "Install one from the marketplace, or adopt an existing entry from a harness config.",
-    viewModes: {
-      cards: "Cards",
-      board: "Board",
-      matrix: "Matrix",
-    },
     filters: {
       all: "All",
       enabled: "Enabled",
@@ -85,10 +79,8 @@ const englishMcpCopy = {
     transport: "Transport",
     headers: "Headers",
     openDetail: (name: string) => `Open detail for ${name}`,
-    moreActions: (name: string) => `More actions for ${name}`,
     select: (name: string) => `Select ${name}`,
     deselect: (name: string) => `Deselect ${name}`,
-    installedViaSkillManager: "Installed via skill-manager",
     enabledStatus: {
       enabled: "Enabled",
       disabled: "Disabled",
@@ -121,9 +113,6 @@ const englishMcpCopy = {
         "Provider error. Try again later.",
     },
     mcpStatusAria: (label: string) => `MCP status: ${label}`,
-    enableOnAll: "Enable on all",
-    enableOnAllAria: "Enable on all harnesses",
-    disableEverywhere: "Disable everywhere",
     installConfig: {
       allHarnesses: "all harnesses",
       title: (name: string) => `Configure ${name}`,
@@ -186,7 +175,6 @@ const englishMcpCopy = {
         "Inspect an MCP server found across harnesses and adopt it, or choose a config to adopt.",
     },
     list: {
-      serversAriaLabel: "MCP servers list",
       reviewAriaLabel: "MCP configs to review",
     },
     matrix: {
@@ -220,7 +208,6 @@ export const mcpCopy = {
     inUse: {
       title: "使用中的 MCP 服务器",
       subtitle: "浏览、启用并移除各个 harness 中的 MCP 服务器。",
-      viewModeAria: "使用中的 MCP 服务器视图模式",
       searchPlaceholder: "按名称或传输方式搜索...",
       searchLabel: "搜索 MCP 服务器",
       loading: "正在加载 MCP 服务器",
@@ -229,11 +216,6 @@ export const mcpCopy = {
       noMatchesBody: "调整搜索或筛选条件以查看其他 MCP 服务器。",
       emptyTitle: "还没有使用中的 MCP 服务器",
       emptyBody: "从商城安装一个，或从 harness 配置中采用现有条目。",
-      viewModes: {
-        cards: "卡片",
-        board: "看板",
-        matrix: "矩阵",
-      },
       filters: {
         all: "全部",
         enabled: "已启用",
@@ -295,10 +277,8 @@ export const mcpCopy = {
       transport: "Transport",
       headers: "Headers",
       openDetail: (name: string) => `打开 ${name} 的详情`,
-      moreActions: (name: string) => `${name} 的更多操作`,
       select: (name: string) => `选择 ${name}`,
       deselect: (name: string) => `取消选择 ${name}`,
-      installedViaSkillManager: "通过 skill-manager 安装",
       enabledStatus: {
         enabled: "已启用",
         disabled: "未启用",
@@ -331,9 +311,6 @@ export const mcpCopy = {
           "远程 MCP 服务器返回服务端错误。服务商可能暂时不可用。",
       },
       mcpStatusAria: (label: string) => `MCP 状态：${label}`,
-      enableOnAll: "全部启用",
-      enableOnAllAria: "在所有 harness 上启用",
-      disableEverywhere: "全部停用",
       installConfig: {
         allHarnesses: "所有 harness",
         title: (name: string) => `配置 ${name}`,
@@ -393,7 +370,6 @@ export const mcpCopy = {
         reviewDescription: "查看在 harness 中发现的 MCP 服务器，并采用它或选择要采用的配置。",
       },
       list: {
-        serversAriaLabel: "MCP 服务器列表",
         reviewAriaLabel: "待确认的 MCP 配置",
       },
       matrix: {
