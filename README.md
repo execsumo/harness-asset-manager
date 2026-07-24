@@ -37,7 +37,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Install or adopt MCP server configs, resolve differences, and enable them where supported.
 - Manage reusable slash commands once, then sync them to supported harnesses.
 - Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
-- Define Agents — scoped personas that bundle a prompt, skills, and tool constraints — and "hire" them into supported harnesses with a dry-run preview and an honest report of what each harness can and cannot enforce.
+- Manage Agents — agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
 - Keep everything in portable packages: the default `local` package holds your own resources, and additional packages can be dropped in (or deactivated) as a unit.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 
@@ -90,14 +90,7 @@ Typical flow:
 
 ### Agents
 
-Define an agent once — a persona with a system prompt, a curated set of skills, tool constraints, and per-harness overrides — then compile ("hire") it into the harness where it should run.
-
-Typical flow:
-
-1. Create an agent in `packages/<package>/agents/<slug>.md` (YAML frontmatter + prompt body), or scaffold one from the Agents page.
-2. Reference skills by `<package>/<skill-dir>` alias; they are resolved and pinned at compile time.
-3. Pick a target harness and preview the compiled artifact (dry run), including the degradation report — anything the harness cannot enforce is listed instead of silently dropped.
-4. Hire: the artifact is written with a provenance marker, and Skill Manager refuses to overwrite files it did not generate.
+Agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
 
 ### Marketplace
 
@@ -266,15 +259,7 @@ Skill Manager owns only the specific hook entries it writes. It merges into each
 
 ### Agents
 
-Agents are Markdown files with YAML frontmatter in a package's `agents/` directory: a name and description, `capabilities` (skill aliases, MCP references, tool allow/deny lists), optional per-harness overrides (model, reasoning effort), and the persona prompt as the body.
-
-Compiling ("hiring") an agent renders a harness-specific artifact:
-
-- Claude Code: `~/.claude/agents/<slug>.md` — frontmatter carries the tool allowlist and model/reasoning overrides; referenced skills are embedded in full.
-- Cursor: `<project>/.cursor/rules/skill-manager.<slug>.mdc` — rules are project-scoped, so a project directory is required; Skill Manager never touches `.cursorrules`.
-- Codex: `~/.codex/prompts/<slug>.md` — compiled as a custom prompt invoked with `/`, since Codex has no agent-definition file Skill Manager can own without overwriting user `AGENTS.md`.
-
-Every artifact embeds a provenance marker (agent ref, definition hash, pinned skill revisions). Skill Manager only overwrites files carrying that marker — hand-written files are never clobbered. Constraints a harness cannot enforce (tool deny-lists everywhere, any tool lists on Cursor/Codex, model overrides outside Claude) are surfaced as **degradation notes** in the compile response and the Hire preview, never silently dropped.
+Agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
 
 ### CLIs
 
@@ -387,11 +372,9 @@ npm run build
 
 - [x] Hook support
 - [x] Slash command support
-- [x] Agent personas (define once, hire into Claude Code / Cursor / Codex)
+- [x] Agent personas
 - [x] Package-based storage (portable resource bundles)
 - [ ] Plugin support
-- [ ] Agent-scoped MCP compilation
-- [ ] Compiled-artifact drift detection surfacing
 
 ### Harness expansion
 
