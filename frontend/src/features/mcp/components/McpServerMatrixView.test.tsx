@@ -112,7 +112,7 @@ describe("McpServerMatrixView", () => {
     expect(cols[cols.length - 2]).toHaveClass("matrix-table__col-compact");
     expect(cols[cols.length - 1]).toHaveClass("matrix-table__col-coverage");
     expect(screen.getByText("Server").closest("th")).toHaveClass("matrix-table__th--identity");
-    expect(screen.getByText("Enabled").closest("th")).toHaveClass("matrix-table__th--end");
+    expect(screen.getByText("Active").closest("th")).toHaveClass("matrix-table__th--end");
     expect(screen.getByLabelText("Codex")).toHaveClass("matrix-harness-target--header");
   });
 
