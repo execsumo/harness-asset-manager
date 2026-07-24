@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from skill_manager.errors import MutationError
+
 
 class AgentParseError(ValueError):
     """Raised when an agent definition file cannot be parsed safely."""
@@ -81,14 +83,17 @@ class AgentInventory:
     issues: tuple[AgentIssue, ...]
 
 
-class AgentAdoptConflict(Exception):
+class AgentAdoptConflict(MutationError):
     """An unmanaged agent's slug already names an entry in the store.
 
     Carries both sides so the caller can present the choice; the server never picks.
+    The agents router catches this to return a structured 409 body; inheriting from
+    ``MutationError`` means any other path still degrades to a normal 409 with a
+    message rather than a bare 500.
     """
 
     def __init__(self, slug: str, store_path: Path, harness_path: Path) -> None:
-        super().__init__(f"an agent named {slug} already exists in the store")
+        super().__init__(f"an agent named {slug} already exists in the store", status=409)
         self.slug = slug
         self.store_path = store_path
         self.harness_path = harness_path
