@@ -4,12 +4,63 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ---
 
+## 2026-07-24 — Agents rebuilt as a normal resource family
+
+The compile/"hire" model shipped on 2026-07-13 (below) is being **retired**.
+**`plan-agents-simplify.md` is the design of record** — read it first when resuming; it
+supersedes `plan-agents-packages.md` decisions 2, 4, 6 and its Stages 2–4. The entries
+below this one are left as the historical record of what actually shipped that day.
+
+Why: agents had grown a bespoke capability-mapping + compiler model unlike every other
+family. They are now a plain inventory with **In Use / Needs Review** views.
+
+### Status — branch `feat/agents-simplify` (off `main`)
+
+- **Pre-existing break fixed first (`b44b54a`).** `e1c9c41` had left `main` red:
+  `McpNeedsReviewPage` referenced `copy.review.adoptSelected` / `.adoptingSelected`,
+  which were never added to MCP i18n, and `McpServerMatrixView.test.tsx` still expected
+  the old "Enabled" column label after the rename to "Active". Both fixed.
+- **Backend rebuild — DONE (`8febf40`).** `"agents"` is a `FamilyKey` with a new
+  `AgentFileBindingProfile`, bound for **claude** (`~/.claude/agents`) and **opencode**
+  (`$XDG_CONFIG_HOME/opencode/agents`) only — Cursor and Codex have no subagent-file
+  format, so they get no column. Store/adapters/inventory/mutations replace
+  `AgentsService`; `service.py` deleted along with all compile machinery.
+- **Ownership is a symlink**, mirroring skills. **Verified empirically**: a symlinked
+  `~/.claude/agents/*.md` was picked up by a live headless `claude` session. No content
+  hashes, no sync-state, no provenance marker, and no third "drifted" cell state.
+- **Adopt conflicts are resolved by the user, never guessed.** A bare adopt on a
+  store-name collision raises `AgentAdoptConflict` → **HTTP 409** carrying both paths;
+  the client re-issues with `onConflict: keep_store | replace_store`. Bulk adopt skips
+  conflicts and returns them in `skipped[]`.
+- **Orphaned links surface as issues.** If a store file is deleted out from under a
+  link, the agent has no inventory row left to hang a binding off, so the dead link is
+  reported as an issue rather than silently disappearing.
+- **Template/scaffold/docs — DONE** (agy delegate `agy-agents-scaffold`, independently
+  verified). Agent frontmatter is now just `name` / `description` / optional `tools`;
+  the parser ignores legacy `capabilities:` / `harnesses:` keys on read and drops them
+  on write, so **no migration script is needed** and existing files keep working.
+  `_rewrite_agent_local_prefix` deleted from `container.py` (the file move stays).
+- **Frontend rebuild — IN FLIGHT** (agy delegate `agy-agents-fe`, worktree
+  `../skill-manager-worktrees/agy-agents-fe`): flat `/agents/use` + `/agents/review`
+  routes, sidebar NavGroup, overview card, `features/agents/public.ts`, and the
+  `AdoptConflictDialog`. Structure copies Hooks; look and language copy Skills.
+
+### Behavior change worth flagging
+
+Compiled agents used to **inline full `SKILL.md` bodies** into the rendered artifact.
+Deployed agents no longer carry skill text — both target harnesses resolve skills
+natively.
+
+---
+
 ## 2026-07-13 (evening) — Packages & Agents: plan locked, Stage 1 delegated
 
 The "Agents & Packages" RFC was reviewed and revised; **`plan-agents-packages.md` is the
 design of record** — read it first when resuming. Key amendments over the raw RFC:
 packages *migrate* the legacy store (no parallel resolution paths), stable `SkillRef`
-ids stay primary, no hardcoded model ids, and cross-harness delegation runtime is cut from v1.
+ids stay primary with `pkg/slug` as compile-time-pinned aliases, compiled artifacts get
+provenance headers + drift detection, per-harness capability-degradation reports, no
+hardcoded model ids, and cross-harness delegation runtime is cut from v1.
 
 ### Status
 
@@ -25,15 +76,20 @@ ids stay primary, no hardcoded model ids, and cross-harness delegation runtime i
 - **Also on `main`:** upstream mode-io merge `0b54469` (came in mid-session from
   another agent) + `9224d79` fixing its artifacts (duplicate hermes mapper key,
   duplicate README Hermes cell, upstream png). Fork features verified intact.
-- **Stage 2 (agents family) — DONE, merged as `5f8f808`.** Agents
-  live in `packages/<slug>/agents/*.md`; `AgentsService` in
-  `skill_manager/application/agents/`; `GET /api/agents`; OpenAPI regenerated. 11 new unit tests.
-- **Stage 3 (cursor/codex targets) — DONE, merged as `dec09ae`.**
+- **Stage 2 (agents family + Claude compile) — DONE, merged as `5f8f808`.** Agents
+  live in `packages/<slug>/agents/*.md`; `AgentsService` (scan/resolve/compile) in
+  `skill_manager/application/agents/`; `GET /api/agents` +
+  `POST /api/agents/{ref}/compile` (`dryRun`, `projectDir`); provenance marker +
+  refuse-to-overwrite-foreign-files; OpenAPI regenerated. 11 new unit tests.
+- **Stage 3 (cursor/codex targets + degradation reports) — DONE, merged as `dec09ae`.**
+  Cursor → `<project>/.cursor/rules/skill-manager.<slug>.mdc` (projectDir required);
+  Codex → `~/.codex/prompts/<slug>.md` (custom prompt; reported as degradation).
   Suite at merge: backend 330+133, frontend 269, typecheck, build — all green,
   independently run.
 - **Stage 4 (agents UI) — DONE, merged as `076641a`** (agy delegate, independently
   verified: typecheck, frontend 272, backend 330+133, build). `/agents` route,
-  sidebar entry, agent cards. Note: agy's original commit regressed
+  sidebar entry, agent cards, Hire dialog with dry-run preview + degradation
+  warnings + cursor projectDir gating. Note: agy's original commit regressed
   `handoff.md` from stale worktree state — stripped via amend before merge.
 - **All four stages complete.** `frontend/dist` rebuilt on `main`. **Restart the
   running instance** — backend gained the agents router, and the packages migration
@@ -43,8 +99,9 @@ ids stay primary, no hardcoded model ids, and cross-harness delegation runtime i
   `../skill-manager-worktrees/{agy-package-store,agents-family}`, merged branches
   `delegate/agy-package-store`, `delegate/agy-agents-ui`, `feat/agents-family`.
 - **Deferred (v1 cuts + follow-ups):** cross-harness delegation runtime; package
-  deps; packages inventory UI view; non-local vs
-  non-local duplicate-ref policy (both retained today, issue emitted).
+  deps; packages inventory UI view; agent-scoped MCP compilation; non-local vs
+  non-local duplicate-ref policy (both retained today, issue emitted); drift
+  detection surfacing for compiled artifacts (marker exists, no UI/API check yet).
 
 ### To resume mid-flight
 
