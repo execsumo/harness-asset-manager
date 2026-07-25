@@ -36,7 +36,7 @@ def _services(home: Path, root: Path):
     store = SlashCommandStore(SlashCommandStorePaths(root=root / "app" / "slash-commands", commands_dir=root / "app" / "slash-commands" / "commands"))
     sync_state = SlashCommandSyncStateStore(root / "app" / "slash-commands" / "sync-state.json")
     path_policy = SlashCommandPathPolicy()
-    read_models = SlashCommandReadModelService(store, sync_state, targets, path_policy)
+    read_models = SlashCommandReadModelService(store, sync_state, lambda: resolve_slash_targets(kernel), path_policy)
     queries = SlashCommandQueryService(read_models)
     mutations = SlashCommandMutationService(
         store,
@@ -44,7 +44,7 @@ def _services(home: Path, root: Path):
         queries,
         read_models,
         SlashCommandPlanner(path_policy),
-        targets,
+        lambda: resolve_slash_targets(kernel),
     )
     return kernel, targets, store, sync_state, queries, mutations
 
@@ -149,9 +149,9 @@ class SlashCommandStoreTests(unittest.TestCase):
             )
 
             targets = resolve_slash_targets(kernel)
-            codex = next(target for target in targets if target.id == "codex")
+            codex_ids = [target.id for target in targets if target.id == "codex"]
 
-            self.assertFalse(codex.enabled)
+            self.assertEqual(codex_ids, [])
 
     def test_sync_refuses_to_overwrite_untracked_manual_file(self) -> None:
         with TemporaryDirectory() as tmp:

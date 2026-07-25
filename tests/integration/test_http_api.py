@@ -84,7 +84,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(detail["displayStatus"], "Managed")
             self.assertEqual(
                 [cell["label"] for cell in detail["harnessCells"]],
-                ["Codex", "Claude", "Cursor", "OpenCode", "Hermes Agent", "OpenClaw", "Antigravity"],
+                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Hermes Agent", "OpenClaw"],
             )
             self.assertNotIn("updateStatus", detail["actions"])
             self.assertEqual(source_status["updateStatus"], "no_update_available")

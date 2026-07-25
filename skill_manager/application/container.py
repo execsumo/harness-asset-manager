@@ -209,10 +209,15 @@ def build_backend_container(
         targets=slash_targets,
         path_policy=slash_command_path_policy,
     )
+
+    def resolve_slash_snapshot():
+        # Re-resolved per call so toggling a harness in Settings takes effect at once.
+        return resolve_slash_targets(harness_kernel)
+
     slash_command_read_models = SlashCommandReadModelService(
         slash_command_store,
         slash_command_sync_state,
-        slash_targets,
+        resolve_slash_snapshot,
         slash_command_path_policy,
     )
     slash_command_queries = SlashCommandQueryService(slash_command_read_models)
@@ -222,7 +227,7 @@ def build_backend_container(
         slash_command_queries,
         slash_command_read_models,
         SlashCommandPlanner(slash_command_path_policy),
-        slash_targets,
+        resolve_slash_snapshot,
     )
 
     cache = MarketplaceCache.from_environment(active_env)

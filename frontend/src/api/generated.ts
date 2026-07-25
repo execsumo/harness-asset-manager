@@ -14,7 +14,25 @@ export interface paths {
         /** List Agents */
         get: operations["list_agents_api_agents_get"];
         put?: never;
-        post?: never;
+        /** Create Agent */
+        post: operations["create_agent_api_agents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/adopt-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adopt All Agents */
+        post: operations["adopt_all_agents_api_agents_adopt_all_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -28,17 +46,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Agent */
+        get: operations["get_agent_api_agents__agent_ref__get"];
         /** Update Agent */
         put: operations["update_agent_api_agents__agent_ref__put"];
         post?: never;
-        delete?: never;
+        /** Delete Agent */
+        delete: operations["delete_agent_api_agents__agent_ref__delete"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/agents/{agent_ref}/compile": {
+    "/api/agents/{agent_ref}/adopt": {
         parameters: {
             query?: never;
             header?: never;
@@ -47,8 +67,59 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Compile Agent */
-        post: operations["compile_agent_api_agents__agent_ref__compile_post"];
+        /** Adopt Agent */
+        post: operations["adopt_agent_api_agents__agent_ref__adopt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Agent */
+        post: operations["disable_agent_api_agents__agent_ref__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Agent */
+        post: operations["enable_agent_api_agents__agent_ref__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/set-harnesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Agent Harnesses */
+        post: operations["set_agent_harnesses_api_agents__agent_ref__set_harnesses_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1025,6 +1096,34 @@ export interface components {
             /** Scope */
             scope: string;
         };
+        /** AdoptAgentRequest */
+        AdoptAgentRequest: {
+            /** Onconflict */
+            onConflict?: ("keep_store" | "replace_store") | null;
+        };
+        /** AdoptAgentResponse */
+        AdoptAgentResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Ref */
+            ref: string;
+        };
+        /** AdoptAllAgentsResponse */
+        AdoptAllAgentsResponse: {
+            /** Adopted */
+            adopted: string[];
+            /** Ok */
+            ok: boolean;
+            /** Skipped */
+            skipped: components["schemas"]["AdoptAllSkippedResponse"][];
+        };
+        /** AdoptAllSkippedResponse */
+        AdoptAllSkippedResponse: {
+            /** Reason */
+            reason: string;
+            /** Ref */
+            ref: string;
+        };
         /** AdoptMcpRequest */
         AdoptMcpRequest: {
             /** Harnesses */
@@ -1034,33 +1133,140 @@ export interface components {
             /** Observed harness */
             observedHarness?: string | null;
         };
-        /** AgentSummaryResponse */
-        AgentSummaryResponse: {
-            /** Compiletargets */
-            compileTargets: string[];
+        /** AgentActionsResponse */
+        AgentActionsResponse: {
+            /** Canadopt */
+            canAdopt: boolean;
+            /** Candelete */
+            canDelete: boolean;
+        };
+        /** AgentBindingResponse */
+        AgentBindingResponse: {
+            /** Detail */
+            detail?: string | null;
+            /** Harness */
+            harness: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled" | "unsupported";
+        };
+        /** AgentColumnResponse */
+        AgentColumnResponse: {
+            /** Harness */
+            harness: string;
+            /** Installed */
+            installed: boolean;
+            /** Label */
+            label: string;
+            /** Logokey */
+            logoKey?: string | null;
+        };
+        /**
+         * AgentConfigEntryResponse
+         * @description One frontmatter key we do not interpret, shown verbatim.
+         */
+        AgentConfigEntryResponse: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
+        };
+        /** AgentDetailResponse */
+        AgentDetailResponse: {
+            /** Candelete */
+            canDelete: boolean;
+            /** Configuration */
+            configuration?: components["schemas"]["AgentConfigEntryResponse"][];
             /** Description */
             description: string;
-            /** Mcps */
-            mcps: string[];
+            /** Document */
+            document: string;
+            /** Harnesses */
+            harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
+            /** Name */
+            name: string;
+            /** Prompt */
+            prompt: string;
+            /** Ref */
+            ref: string;
+            /** Storepath */
+            storePath: string;
+            /** Tools */
+            tools: string[];
+        };
+        /** AgentEntryResponse */
+        AgentEntryResponse: {
+            actions: components["schemas"]["AgentActionsResponse"];
+            /** Bindings */
+            bindings: components["schemas"]["AgentBindingResponse"][];
+            /** Description */
+            description: string;
+            /** Harnesspath */
+            harnessPath?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "managed" | "unmanaged";
             /** Name */
             name: string;
             /** Ref */
             ref: string;
-            /** Skills */
-            skills: string[];
-            /** Slug */
-            slug: string;
-            /** Toolsallowed */
-            toolsAllowed: string[];
-            /** Toolsdenied */
-            toolsDenied: string[];
         };
-        /** AgentsPageResponse */
-        AgentsPageResponse: {
-            /** Agents */
-            agents: components["schemas"]["AgentSummaryResponse"][];
+        /** AgentHarnessDetailResponse */
+        AgentHarnessDetailResponse: {
+            /** Detail */
+            detail?: string | null;
+            /** Harness */
+            harness: string;
+            /**
+             * Installmethod
+             * @enum {string}
+             */
+            installMethod: "symlink" | "rendered" | "none";
+            /** Installed */
+            installed: boolean;
+            /** Label */
+            label: string;
+            /** Logokey */
+            logoKey?: string | null;
+            /** Path */
+            path: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled" | "unsupported";
+        };
+        /** AgentHarnessRequest */
+        AgentHarnessRequest: {
+            /** Harness */
+            harness: string;
+        };
+        /** AgentInventoryResponse */
+        AgentInventoryResponse: {
+            /** Columns */
+            columns: components["schemas"]["AgentColumnResponse"][];
+            /** Entries */
+            entries: components["schemas"]["AgentEntryResponse"][];
             /** Issues */
-            issues: string[];
+            issues?: components["schemas"]["AgentIssueResponse"][];
+        };
+        /** AgentIssueResponse */
+        AgentIssueResponse: {
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+        };
+        /** AgentMutationFailureResponse */
+        AgentMutationFailureResponse: {
+            /** Error */
+            error: string;
+            /** Harness */
+            harness: string;
         };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {
@@ -1169,36 +1375,22 @@ export interface components {
             /** Nextoffset */
             nextOffset?: number | null;
         };
-        /** CompileAgentRequest */
-        CompileAgentRequest: {
+        /** CreateAgentRequest */
+        CreateAgentRequest: {
             /**
-             * Dryrun
-             * @default false
+             * Description
+             * @default
              */
-            dryRun: boolean;
-            /** Harness */
-            harness: string;
-            /** Projectdir */
-            projectDir?: string | null;
-        };
-        /** CompileAgentResponse */
-        CompileAgentResponse: {
-            /** Agentref */
-            agentRef: string;
-            /** Content */
-            content: string | null;
-            /** Degradations */
-            degradations: string[];
-            /** Harness */
-            harness: string;
-            /** Ok */
-            ok: boolean;
-            /** Resolvedskills */
-            resolvedSkills: components["schemas"]["ResolvedSkillResponse"][];
-            /** Targetpath */
-            targetPath: string;
-            /** Written */
-            written: boolean;
+            description: string;
+            /** Name */
+            name: string;
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
+            /** Tools */
+            tools?: string[];
         };
         /** DisableHookRequest */
         DisableHookRequest: {
@@ -2177,38 +2369,33 @@ export interface components {
              */
             sourceKind: "managed" | "harness";
         };
-        /** ResolvedSkillResponse */
-        ResolvedSkillResponse: {
-            /** Alias */
-            alias: string;
-            /** Name */
-            name: string;
-            /** Revision */
-            revision: string;
-        };
         /** ScaffoldRequest */
         ScaffoldRequest: {
             /** Asset Type */
             asset_type: string;
             /** Description */
             description: string;
-            /**
-             * Mcps
-             * @default []
-             */
-            mcps: string[];
             /** Name */
             name: string;
-            /**
-             * Skills
-             * @default []
-             */
-            skills: string[];
         };
         /** ScaffoldResponse */
         ScaffoldResponse: {
             /** File Path */
             file_path: string;
+        };
+        /** SetAgentHarnessesRequest */
+        SetAgentHarnessesRequest: {
+            /** Harnesses */
+            harnesses?: string[];
+        };
+        /** SetAgentHarnessesResultResponse */
+        SetAgentHarnessesResultResponse: {
+            /** Failed */
+            failed: components["schemas"]["AgentMutationFailureResponse"][];
+            /** Ok */
+            ok: boolean;
+            /** Succeeded */
+            succeeded: string[];
         };
         /** SetHarnessSupportRequest */
         SetHarnessSupportRequest: {
@@ -2440,14 +2627,14 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex" | "hermes";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandListResponse */
         SlashCommandListResponse: {
             /** Commands */
             commands: components["schemas"]["SlashCommandResponse"][];
             /** Defaulttargets */
-            defaultTargets: ("opencode" | "claude" | "cursor" | "codex" | "hermes")[];
+            defaultTargets: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[];
             /** Reviewcommands */
             reviewCommands: components["schemas"]["SlashCommandReviewResponse"][];
             /** Storepath */
@@ -2466,7 +2653,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashCommandMutationResponse */
         SlashCommandMutationResponse: {
@@ -2489,7 +2676,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex" | "hermes";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandResponse */
         SlashCommandResponse: {
@@ -2531,7 +2718,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex" | "hermes";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
             /** Targetlabel */
             targetLabel: string;
         };
@@ -2542,7 +2729,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashSyncEntryResponse */
         SlashSyncEntryResponse: {
@@ -2559,12 +2746,12 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex" | "hermes";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashSyncRequest */
         SlashSyncRequest: {
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashTargetResponse */
         SlashTargetResponse: {
@@ -2582,7 +2769,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "opencode" | "claude" | "cursor" | "codex" | "hermes";
+            id: "claude" | "codex" | "cursor" | "opencode" | "hermes";
             /** Invocationprefix */
             invocationPrefix: string;
             /** Label */
@@ -2610,12 +2797,12 @@ export interface components {
         UpdateAgentRequest: {
             /** Description */
             description?: string | null;
-            /** Mcps */
-            mcps?: string[] | null;
             /** Name */
             name?: string | null;
-            /** Skills */
-            skills?: string[] | null;
+            /** Prompt */
+            prompt?: string | null;
+            /** Tools */
+            tools?: string[] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2654,7 +2841,91 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AgentsPageResponse"];
+                    "application/json": components["schemas"]["AgentInventoryResponse"];
+                };
+            };
+        };
+    };
+    create_agent_api_agents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adopt_all_agents_api_agents_adopt_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdoptAllAgentsResponse"];
+                };
+            };
+        };
+    };
+    get_agent_api_agents__agent_ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2680,7 +2951,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AgentSummaryResponse"];
+                    "application/json": components["schemas"]["AgentDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2694,7 +2965,38 @@ export interface operations {
             };
         };
     };
-    compile_agent_api_agents__agent_ref__compile_post: {
+    delete_agent_api_agents__agent_ref__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adopt_agent_api_agents__agent_ref__adopt_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2705,7 +3007,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CompileAgentRequest"];
+                "application/json": components["schemas"]["AdoptAgentRequest"];
             };
         };
         responses: {
@@ -2715,7 +3017,112 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompileAgentResponse"];
+                    "application/json": components["schemas"]["AdoptAgentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_agent_api_agents__agent_ref__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentHarnessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_agent_api_agents__agent_ref__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentHarnessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_agent_harnesses_api_agents__agent_ref__set_harnesses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAgentHarnessesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetAgentHarnessesResultResponse"];
                 };
             };
             /** @description Validation Error */
