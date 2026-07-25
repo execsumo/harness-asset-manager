@@ -4,6 +4,34 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ---
 
+## 2026-07-24 — `permissions-ux-redesign` triaged: half salvaged, half deliberately dropped
+
+The branch had sat 4 weeks and 87 commits behind `main`, unpushed. It is now backed up at
+`fork/permissions-ux-redesign` — **do not merge it**.
+
+**Salvaged (landed on `main`):** `c2d2770`, the decision/applied-state split. Permissions
+carry a decision (allow/ask/deny) *and* a per-harness applied state; the UI reused
+"Enabled/Disabled" for the second on rows that already showed the first, so a deny rule
+offered "Enable all". The applied-state axis is now Applied / Not applied / Differs /
+Untracked. It also removed the In Use matrix's bulk-select column, which was decorative —
+the page passed `checkedIds={new Set()}` and `onToggleChecked={() => {}}`. Needs Review
+keeps its checkboxes; those are wired to real state.
+
+**Dropped on purpose:** `d3005b1`, the "Tier 2 pilot" that merges Permissions' In Use and
+Needs Review into a single page. It contradicts the entry below — the Agents rebuild
+standardized every family on the two-view pattern, which Permissions still uses and the
+sidebar still renders as two children. "Tier 2" appears in no plan doc. **If you want a
+single-page inventory, that is a cross-family design decision to make deliberately, not a
+branch to merge.** A trial merge also produced 5 conflicts and would orphan
+`PermissionsNeedsReviewPage.test.tsx`, which postdates the branch.
+
+Two resolutions worth knowing when reading the salvage commit: `MatrixTable` did **not**
+regain the branch's `hasCheckboxColumn` prop (it existed only to align the `<colgroup>`
+that `b967504` deleted), and Needs Review kept `main`'s matrix layout over the branch's
+older card layout.
+
+---
+
 ## 2026-07-24 — One canonical harness order; disabled harnesses leave the matrices
 
 **Landed on `main` and running.** Reported symptom: the Slash commands matrix led with
