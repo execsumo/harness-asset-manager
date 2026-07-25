@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from skill_manager.application import BackendContainer
 
 from .errors import install_error_handlers
+from .guards import LoopbackOnlyMiddleware
 from .routers import agents, health, hooks, marketplace, mcp, scaffold, settings, skills, slash_commands, permissions
 
 
@@ -15,10 +16,12 @@ def create_app(
     container: BackendContainer,
     *,
     frontend_dist: Path | None = None,
+    allow_remote: bool = False,
 ) -> FastAPI:
     app = FastAPI(title="skill-manager", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
     app.state.container = container
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
+    app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(settings.router)
@@ -41,7 +44,9 @@ def create_app(
 
         requested = (dist / full_path).resolve() if full_path else dist / "index.html"
         dist_root = dist.resolve()
-        if full_path and str(requested).startswith(str(dist_root)) and requested.exists() and requested.is_file():
+        # ``is_relative_to`` — not a string prefix check: a sibling like
+        # ``dist-backup/`` would pass ``startswith(str(dist_root))``.
+        if full_path and requested.is_relative_to(dist_root) and requested.exists() and requested.is_file():
             return FileResponse(requested)
 
         index_path = dist / "index.html"
