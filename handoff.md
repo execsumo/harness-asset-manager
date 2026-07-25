@@ -4,6 +4,36 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ---
 
+## 2026-07-24 — RECOMMENDATIONS.md Tier 1 shipped
+
+All four Tier 1 items from `RECOMMENDATIONS.md` landed on `main` in merge `98c3417`
+(short-lived branch `fix/tier-1-hardening`, now deleted).
+
+- **Audit gates**: react-router bumped to 7.18.1 (clears all current advisories except
+  `GHSA-qwww-vcr4-c8h2`, which is RSC-mode-only and N/A for this client-only SPA —
+  allowlisted with justification in `scripts/audit_gate.cjs`). `npm run audit:check` now
+  runs in `frontend-validate`; `pip-audit` runs in `backend-compat`.
+- **Request guards** (`skill_manager/api/guards.py`): ASGI middleware rejects non-loopback
+  `Host` headers (DNS rebinding) and non-loopback `Origin` on mutations (simple-request
+  CSRF). Non-browser local clients send no `Origin` and are unaffected. `--host` now
+  requires `--allow-remote` for non-loopback binds, with a loud warning; `start` passes it
+  through. Chosen over a per-launch token: equal browser-side protection, zero plumbing,
+  Vite dev flow untouched.
+- **Static serving**: SPA catch-all uses `is_relative_to(dist_root)`; regression test with
+  a `dist-secret` decoy sibling (`tests/integration/test_static_frontend.py`).
+- **Deletion pass**: removed the fully-unused `skill_manager/db/` package (was creating and
+  migrating `skill-manager.db` on every launch with zero readers), the removed LLM-scan
+  feature's `scan` extras + `data/prompts/` payloads + PyInstaller spec entry, and the
+  duplicate `certifi` pin. Marketplace clients now derive User-Agent from `__version__`.
+
+Validated: typecheck, 349 unit + 155 integration, 263 frontend tests, build,
+`codegen:check`, `audit:check`, version sync — all green.
+
+Note for future sessions: existing user data dirs may still contain a `skill-manager.db`
+file from before the removal. It is inert; leave it (do not delete user files silently).
+
+---
+
 ## 2026-07-24 — `permissions-ux-redesign` triaged: half salvaged, half deliberately dropped
 
 The branch had sat 4 weeks and 87 commits behind `main`, unpushed. It is now backed up at
