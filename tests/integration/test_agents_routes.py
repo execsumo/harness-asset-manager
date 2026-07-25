@@ -230,6 +230,75 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertIn("error", payload)
             self.assertIn("does-not-exist", payload["error"])
 
+    def test_detail_carries_everything_the_detail_view_needs(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Red Team",
+                    "description": "probes systems",
+                    "prompt": "Be adversarial.",
+                    "tools": ["Read", "Bash"],
+                },
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+            harness.post_json("/api/agents/red-team/enable", {"harness": "codex"})
+
+            detail = harness.get_json("/api/agents/red-team")
+
+            self.assertEqual(detail["name"], "Red Team")
+            self.assertEqual(detail["description"], "probes systems")
+            self.assertEqual(detail["prompt"], "Be adversarial.")
+            self.assertEqual(detail["tools"], ["Read", "Bash"])
+            self.assertTrue(detail["document"].startswith("---"))
+            self.assertTrue(detail["storePath"].endswith("/agents/red-team.md"))
+
+            by_harness = {h["harness"]: h for h in detail["harnesses"]}
+            # Every column from the matrix is present, so the two agree.
+            columns = [c["harness"] for c in harness.get_json("/api/agents")["columns"]]
+            self.assertEqual(list(by_harness), columns)
+
+            self.assertEqual(by_harness["claude"]["state"], "enabled")
+            self.assertEqual(by_harness["claude"]["installMethod"], "symlink")
+            self.assertTrue(by_harness["claude"]["path"].endswith(".claude/agents/red-team.md"))
+
+            # Codex is rendered, not linked — the detail view says so.
+            self.assertEqual(by_harness["codex"]["installMethod"], "rendered")
+            self.assertTrue(by_harness["codex"]["path"].endswith(".codex/agents/red-team.toml"))
+
+            self.assertEqual(by_harness["hermes"]["state"], "unsupported")
+            self.assertEqual(by_harness["hermes"]["installMethod"], "none")
+            self.assertIn("dynamically", by_harness["hermes"]["detail"])
+
+    def test_detail_of_a_missing_agent_is_404(self) -> None:
+        with AppTestHarness() as harness:
+            payload = harness.get_json("/api/agents/nope", expected_status=404)
+            self.assertIn("nope", payload["error"])
+
+    def test_update_preserves_fields_the_client_omits(self) -> None:
+        """The edit form must not be able to blank a field by leaving it out.
+
+        The first cut of EditAgentDialog opened with empty inputs and submitted them,
+        renaming the agent to its slug and wiping description/prompt/tools.
+        """
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Red Team",
+                    "description": "probes systems",
+                    "prompt": "Be adversarial.",
+                    "tools": ["Read"],
+                },
+            )
+
+            updated = harness.put_json("/api/agents/red-team", {"description": "new blurb"})
+
+            self.assertEqual(updated["description"], "new blurb")
+            self.assertEqual(updated["name"], "Red Team")
+            self.assertEqual(updated["prompt"], "Be adversarial.")
+            self.assertEqual(updated["tools"], ["Read"])
+
     def test_unknown_harness_is_refused(self) -> None:
         with AppTestHarness() as harness:
             harness.post_json(

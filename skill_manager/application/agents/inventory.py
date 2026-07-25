@@ -6,6 +6,8 @@ from typing import Callable
 from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .model import (
     AgentBinding,
+    AgentDetail,
+    AgentHarnessDetail,
     AgentEntry,
     AgentInventory,
     AgentIssue,
@@ -52,6 +54,52 @@ class AgentInventoryService:
             columns=targets,
             entries=tuple(entries),
             issues=tuple(issue_list),
+        )
+
+    def detail(self, slug: str) -> AgentDetail | None:
+        """Everything the detail view needs, including where each harness copy lives."""
+        agent = self.store.get(slug)
+        if agent is None:
+            return None
+        targets, adapters = self._resolve()
+        harnesses: list[AgentHarnessDetail] = []
+        for target in targets:
+            adapter = adapters[target.id]
+            if not target.supports_agents:
+                state, detail = "unsupported", target.unavailable_reason
+                method = "none"
+            else:
+                method = "rendered" if adapter.renders else "symlink"
+                if adapter.is_dangling(slug):
+                    state, detail = "disabled", "symlink points at a missing file"
+                elif adapter.is_enabled(slug):
+                    state, detail = "enabled", None
+                elif adapter.binding_path(slug).exists():
+                    state, detail = "disabled", "a file we do not manage occupies this name"
+                else:
+                    state, detail = "disabled", None
+            harnesses.append(
+                AgentHarnessDetail(
+                    harness=target.id,
+                    label=target.label,
+                    logo_key=target.logo_key,
+                    state=state,
+                    detail=detail,
+                    path=adapter.binding_path(slug),
+                    install_method=method,
+                    installed=target.installed,
+                )
+            )
+        return AgentDetail(
+            ref=agent.slug,
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            document=agent.path.read_text(encoding="utf-8"),
+            store_path=agent.path,
+            harnesses=tuple(harnesses),
+            can_delete=True,
         )
 
     def _managed_entry(

@@ -15,6 +15,7 @@ from skill_manager.api.schemas.agents import (
     AgentColumnResponse,
     AgentDetailResponse,
     AgentEntryResponse,
+    AgentHarnessDetailResponse,
     AgentHarnessRequest,
     AgentInventoryResponse,
     AgentIssueResponse,
@@ -26,7 +27,7 @@ from skill_manager.api.schemas.agents import (
 )
 from skill_manager.api.schemas.common import OkResponse
 from skill_manager.application import BackendContainer
-from skill_manager.application.agents import AgentAdoptConflict, AgentDefinition
+from skill_manager.application.agents import AgentAdoptConflict, AgentDetail
 from skill_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
@@ -82,7 +83,7 @@ def create_agent(
         tools=tuple(body.tools),
     )
     container.invalidation.invalidate_all()
-    return _detail(agent)
+    return _require_detail(container, agent.slug)
 
 
 @router.post("/adopt-all", response_model=AdoptAllAgentsResponse)
@@ -103,10 +104,10 @@ def get_agent(
     agent_ref: str,
     container: BackendContainer = Depends(get_container),
 ) -> AgentDetailResponse:
-    agent = container.agents_store.get(agent_ref)
-    if agent is None:
+    detail = container.agents_inventory.detail(agent_ref)
+    if detail is None:
         raise MutationError(f"agent not found: {agent_ref}", status=404)
-    return _detail(agent)
+    return _detail(detail)
 
 
 @router.put("/{agent_ref:path}", response_model=AgentDetailResponse)
@@ -123,7 +124,7 @@ def update_agent(
         tools=tuple(body.tools) if body.tools is not None else None,
     )
     container.invalidation.invalidate_all()
-    return _detail(agent)
+    return _require_detail(container, agent.slug)
 
 
 @router.delete("/{agent_ref:path}", response_model=OkResponse)
@@ -198,11 +199,34 @@ def adopt_agent(
     return AdoptAgentResponse(ok=True, ref=slug)
 
 
-def _detail(agent: AgentDefinition) -> AgentDetailResponse:
+def _detail(detail: AgentDetail) -> AgentDetailResponse:
     return AgentDetailResponse(
-        ref=agent.ref,
-        name=agent.name,
-        description=agent.description,
-        prompt=agent.prompt,
-        tools=list(agent.tools),
+        ref=detail.ref,
+        name=detail.name,
+        description=detail.description,
+        prompt=detail.prompt,
+        tools=list(detail.tools),
+        document=detail.document,
+        storePath=str(detail.store_path),
+        harnesses=[
+            AgentHarnessDetailResponse(
+                harness=harness.harness,
+                label=harness.label,
+                logoKey=harness.logo_key,
+                state=harness.state,
+                detail=harness.detail,
+                path=str(harness.path),
+                installMethod=harness.install_method,
+                installed=harness.installed,
+            )
+            for harness in detail.harnesses
+        ],
+        canDelete=detail.can_delete,
     )
+
+
+def _require_detail(container: BackendContainer, ref: str) -> AgentDetailResponse:
+    detail = container.agents_inventory.detail(ref)
+    if detail is None:
+        raise MutationError(f"agent not found: {ref}", status=404)
+    return _detail(detail)

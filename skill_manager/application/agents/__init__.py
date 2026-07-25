@@ -9,6 +9,8 @@ from .inventory import AgentInventoryService
 from .model import (
     AgentAdoptConflict,
     AgentBinding,
+    AgentDetail,
+    AgentHarnessDetail,
     AgentDefinition,
     AgentEntry,
     AgentInventory,
@@ -24,6 +26,8 @@ from .targets import resolve_agent_targets, target_by_id
 __all__ = [
     "AgentAdoptConflict",
     "AgentBinding",
+    "AgentDetail",
+    "AgentHarnessDetail",
     "AgentDefinition",
     "AgentEntry",
     "AgentHarnessAdapter",

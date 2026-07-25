@@ -106,12 +106,27 @@ class UpdateAgentRequest(BaseModel):
     tools: list[str] | None = None
 
 
+class AgentHarnessDetailResponse(BaseModel):
+    harness: str
+    label: str
+    logoKey: str | None = None
+    state: Literal["enabled", "disabled", "unsupported"]
+    detail: str | None = None
+    path: str
+    installMethod: Literal["symlink", "rendered", "none"]
+    installed: bool
+
+
 class AgentDetailResponse(BaseModel):
     ref: str
     name: str
     description: str
     prompt: str
     tools: list[str]
+    document: str
+    storePath: str
+    harnesses: list[AgentHarnessDetailResponse]
+    canDelete: bool
 
 
 __all__ = [
@@ -125,6 +140,7 @@ __all__ = [
     "AgentColumnResponse",
     "AgentDetailResponse",
     "AgentEntryResponse",
+    "AgentHarnessDetailResponse",
     "AgentHarnessRequest",
     "AgentInventoryResponse",
     "AgentIssueResponse",
