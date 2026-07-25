@@ -134,10 +134,10 @@ export function PermissionDetailSheet({
                     const canWriteConfig = isPermissionsHarnessAddressable(column);
 
                     const stateLabel = () => {
-                      if (state === "managed") return "Enabled";
-                      if (state === "drifted") return "Different config";
-                      if (state === "unmanaged") return "Found in harness";
-                      return "Disabled";
+                      if (state === "managed") return "Applied";
+                      if (state === "drifted") return "Differs";
+                      if (state === "unmanaged") return "Untracked";
+                      return "Not applied";
                     };
 
                     const stateTone = () => {
@@ -159,7 +159,7 @@ export function PermissionDetailSheet({
                           logoKey={column.logoKey}
                           statusLabel={stateLabel()}
                           tone={stateTone()}
-                          visibleStatus={state === "drifted" ? "Different config" : null}
+                          visibleStatus={state === "drifted" ? "Differs" : null}
                           detail={state === "drifted" ? binding?.driftDetail : null}
                         />
                         <div className="detail-sheet__binding-actions">
@@ -173,7 +173,7 @@ export function PermissionDetailSheet({
                               disabled={pending || !detail.canEnable || !canWriteConfig}
                             >
                               {pending ? <Loader2 size={12} className="card-action-spinner" aria-hidden="true" /> : null}
-                              {detail.canEnable && canWriteConfig ? "Enable" : "Unavailable"}
+                              {detail.canEnable && canWriteConfig ? "Apply" : "Unavailable"}
                             </button>
                           ) : null}
 
@@ -185,7 +185,7 @@ export function PermissionDetailSheet({
                               disabled={pending}
                             >
                               {pending ? <Loader2 size={12} className="card-action-spinner" aria-hidden="true" /> : null}
-                              Disable
+                              Remove
                             </button>
                           ) : null}
 
@@ -197,7 +197,7 @@ export function PermissionDetailSheet({
                                 onClick={() => handleResolve("managed", column.harness)}
                                 disabled={pending || resolvePending}
                               >
-                                Use central spec
+                                Keep central
                               </button>
                               <button
                                 type="button"
@@ -205,7 +205,7 @@ export function PermissionDetailSheet({
                                 onClick={() => handleResolve("harness", column.harness)}
                                 disabled={pending || resolvePending}
                               >
-                                Adopt harness spec
+                                Take harness's
                               </button>
                             </div>
                           ) : null}
