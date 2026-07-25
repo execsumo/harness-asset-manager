@@ -42,6 +42,56 @@ def harness_definitions_for_family(family: FamilyKey) -> tuple[HarnessDefinition
 
 SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
     HarnessDefinition(
+        harness="claude",
+        label="Claude",
+        logo_key="claude",
+        install_probe="claude",
+        bindings={
+            "skills": FileTreeBindingProfile(
+                managed_env="SKILL_MANAGER_CLAUDE_ROOT",
+                managed_default=lambda context: context.home / ".claude" / "skills",
+            ),
+            "mcp": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".claude.json",
+                file_format="json",
+                subtree_path=("mcpServers",),
+                discovery_subtree_path_resolvers=(
+                    lambda context: ("projects", str(context.home), "mcpServers"),
+                    lambda context: ("projects", str(context.home.resolve()), "mcpServers"),
+                ),
+                codec="claude-code",
+            ),
+            "hooks": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
+                file_format="json",
+                subtree_path=("hooks",),
+                codec="claude-code-hooks",
+            ),
+            "permissions": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
+                file_format="json",
+                subtree_path=("permissions",),
+                codec="claude-code-permissions",
+            ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".claude",
+                output_dir_resolver=lambda context: context.home / ".claude" / "agents",
+                docs_url="https://code.claude.com/docs/en/sub-agents",
+            ),
+            "slash_commands": CommandFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".claude",
+                output_dir_resolver=lambda context: context.home / ".claude" / "commands",
+                invocation_prefix="/",
+                render_format="frontmatter_markdown",
+                scope="global",
+                docs_url="https://code.claude.com/docs/en/slash-commands",
+                file_glob="*.md",
+                supports_frontmatter=True,
+                support_note="Claude Code has merged custom commands into skills, while existing .claude/commands files remain supported.",
+            ),
+        },
+    ),
+    HarnessDefinition(
         harness="codex",
         label="Codex",
         logo_key="codex",
@@ -104,52 +154,60 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         },
     ),
     HarnessDefinition(
-        harness="claude",
-        label="Claude",
-        logo_key="claude",
-        install_probe="claude",
+        harness="agy",
+        label="Antigravity",
+        logo_key="agy",
+        install_probe="agy",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_CLAUDE_ROOT",
-                managed_default=lambda context: context.home / ".claude" / "skills",
+                managed_env="SKILL_MANAGER_AGY_ROOT",
+                managed_default=lambda context: context.home / ".gemini" / "antigravity-cli" / "skills",
+                discovery_roots=(
+                    FileTreeDiscoveryRoot(
+                        kind="compat-root",
+                        scope="agents-compat",
+                        label="Agents compatibility root",
+                        path_resolver=lambda context: context.home / ".agents" / "skills",
+                    ),
+                    FileTreeDiscoveryRoot(
+                        kind="legacy-root",
+                        scope="legacy",
+                        label="Legacy import root",
+                        path_resolver=lambda context: context.home / ".gemini" / "skills",
+                    ),
+                ),
+            ),
+            # Verified by probe: `agy agents` lists definitions dropped in
+            # ~/.gemini/antigravity-cli/agents (and ~/.gemini/agents), and follows symlinks.
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli",
+                output_dir_resolver=lambda context: context.home
+                / ".gemini"
+                / "antigravity-cli"
+                / "agents",
             ),
             "mcp": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".claude.json",
+                config_path_resolver=lambda context: context.home / ".gemini" / "config" / "mcp_config.json",
+                discovery_config_path_resolvers=(
+                    lambda context: context.home / ".gemini" / "antigravity-cli" / "mcp_config.json",
+                    lambda context: context.home / ".gemini" / "antigravity" / "mcp_config.json",
+                    lambda context: context.home / ".gemini" / "antigravity-ide" / "mcp_config.json",
+                ),
                 file_format="json",
                 subtree_path=("mcpServers",),
-                discovery_subtree_path_resolvers=(
-                    lambda context: ("projects", str(context.home), "mcpServers"),
-                    lambda context: ("projects", str(context.home.resolve()), "mcpServers"),
-                ),
-                codec="claude-code",
+                codec="antigravity-cli",
             ),
             "hooks": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
+                config_path_resolver=lambda context: context.home / ".gemini" / "config" / "hooks.json",
                 file_format="json",
-                subtree_path=("hooks",),
-                codec="claude-code-hooks",
+                subtree_path=(),
+                codec="antigravity-hooks",
             ),
             "permissions": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
+                config_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli" / "settings.json",
                 file_format="json",
                 subtree_path=("permissions",),
-                codec="claude-code-permissions",
-            ),
-            "agents": AgentFileBindingProfile(
-                root_path_resolver=lambda context: context.home / ".claude",
-                output_dir_resolver=lambda context: context.home / ".claude" / "agents",
-                docs_url="https://code.claude.com/docs/en/sub-agents",
-            ),
-            "slash_commands": CommandFileBindingProfile(
-                root_path_resolver=lambda context: context.home / ".claude",
-                output_dir_resolver=lambda context: context.home / ".claude" / "commands",
-                invocation_prefix="/",
-                render_format="frontmatter_markdown",
-                scope="global",
-                docs_url="https://code.claude.com/docs/en/slash-commands",
-                file_glob="*.md",
-                supports_frontmatter=True,
-                support_note="Claude Code has merged custom commands into skills, while existing .claude/commands files remain supported.",
+                codec="antigravity-permissions",
             ),
         },
     ),
@@ -329,64 +387,6 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 capability_unavailable_reason=(
                     "Installed OpenClaw does not expose MCP config support"
                 ),
-            ),
-        },
-    ),
-    HarnessDefinition(
-        harness="agy",
-        label="Antigravity",
-        logo_key="agy",
-        install_probe="agy",
-        bindings={
-            "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_AGY_ROOT",
-                managed_default=lambda context: context.home / ".gemini" / "antigravity-cli" / "skills",
-                discovery_roots=(
-                    FileTreeDiscoveryRoot(
-                        kind="compat-root",
-                        scope="agents-compat",
-                        label="Agents compatibility root",
-                        path_resolver=lambda context: context.home / ".agents" / "skills",
-                    ),
-                    FileTreeDiscoveryRoot(
-                        kind="legacy-root",
-                        scope="legacy",
-                        label="Legacy import root",
-                        path_resolver=lambda context: context.home / ".gemini" / "skills",
-                    ),
-                ),
-            ),
-            # Verified by probe: `agy agents` lists definitions dropped in
-            # ~/.gemini/antigravity-cli/agents (and ~/.gemini/agents), and follows symlinks.
-            "agents": AgentFileBindingProfile(
-                root_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli",
-                output_dir_resolver=lambda context: context.home
-                / ".gemini"
-                / "antigravity-cli"
-                / "agents",
-            ),
-            "mcp": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".gemini" / "config" / "mcp_config.json",
-                discovery_config_path_resolvers=(
-                    lambda context: context.home / ".gemini" / "antigravity-cli" / "mcp_config.json",
-                    lambda context: context.home / ".gemini" / "antigravity" / "mcp_config.json",
-                    lambda context: context.home / ".gemini" / "antigravity-ide" / "mcp_config.json",
-                ),
-                file_format="json",
-                subtree_path=("mcpServers",),
-                codec="antigravity-cli",
-            ),
-            "hooks": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".gemini" / "config" / "hooks.json",
-                file_format="json",
-                subtree_path=(),
-                codec="antigravity-hooks",
-            ),
-            "permissions": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli" / "settings.json",
-                file_format="json",
-                subtree_path=("permissions",),
-                codec="antigravity-permissions",
             ),
         },
     ),

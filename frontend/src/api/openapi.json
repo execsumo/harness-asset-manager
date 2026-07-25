@@ -113,6 +113,92 @@
         "title": "AddPermissionRequest",
         "type": "object"
       },
+      "AdoptAgentRequest": {
+        "properties": {
+          "onConflict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "keep_store",
+                  "replace_store"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onconflict"
+          }
+        },
+        "title": "AdoptAgentRequest",
+        "type": "object"
+      },
+      "AdoptAgentResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "ref"
+        ],
+        "title": "AdoptAgentResponse",
+        "type": "object"
+      },
+      "AdoptAllAgentsResponse": {
+        "properties": {
+          "adopted": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Adopted",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/AdoptAllSkippedResponse"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "adopted",
+          "skipped"
+        ],
+        "title": "AdoptAllAgentsResponse",
+        "type": "object"
+      },
+      "AdoptAllSkippedResponse": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "reason"
+        ],
+        "title": "AdoptAllSkippedResponse",
+        "type": "object"
+      },
       "AdoptMcpRequest": {
         "additionalProperties": false,
         "properties": {
@@ -153,25 +239,211 @@
         "title": "AdoptMcpRequest",
         "type": "object"
       },
-      "AgentSummaryResponse": {
+      "AgentActionsResponse": {
         "properties": {
-          "compileTargets": {
+          "canAdopt": {
+            "title": "Canadopt",
+            "type": "boolean"
+          },
+          "canDelete": {
+            "title": "Candelete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canAdopt",
+          "canDelete"
+        ],
+        "title": "AgentActionsResponse",
+        "type": "object"
+      },
+      "AgentBindingResponse": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "enabled",
+              "disabled",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "harness",
+          "state"
+        ],
+        "title": "AgentBindingResponse",
+        "type": "object"
+      },
+      "AgentColumnResponse": {
+        "properties": {
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "logoKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logokey"
+          }
+        },
+        "required": [
+          "harness",
+          "label",
+          "installed"
+        ],
+        "title": "AgentColumnResponse",
+        "type": "object"
+      },
+      "AgentConfigEntryResponse": {
+        "description": "One frontmatter key we do not interpret, shown verbatim.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "AgentConfigEntryResponse",
+        "type": "object"
+      },
+      "AgentDetailResponse": {
+        "properties": {
+          "canDelete": {
+            "title": "Candelete",
+            "type": "boolean"
+          },
+          "configuration": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AgentConfigEntryResponse"
             },
-            "title": "Compiletargets",
+            "title": "Configuration",
             "type": "array"
           },
           "description": {
             "title": "Description",
             "type": "string"
           },
-          "mcps": {
+          "document": {
+            "title": "Document",
+            "type": "string"
+          },
+          "harnesses": {
+            "items": {
+              "$ref": "#/components/schemas/AgentHarnessDetailResponse"
+            },
+            "title": "Harnesses",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "storePath": {
+            "title": "Storepath",
+            "type": "string"
+          },
+          "tools": {
             "items": {
               "type": "string"
             },
-            "title": "Mcps",
+            "title": "Tools",
             "type": "array"
+          }
+        },
+        "required": [
+          "ref",
+          "name",
+          "description",
+          "prompt",
+          "tools",
+          "document",
+          "storePath",
+          "harnesses",
+          "canDelete"
+        ],
+        "title": "AgentDetailResponse",
+        "type": "object"
+      },
+      "AgentEntryResponse": {
+        "properties": {
+          "actions": {
+            "$ref": "#/components/schemas/AgentActionsResponse"
+          },
+          "bindings": {
+            "items": {
+              "$ref": "#/components/schemas/AgentBindingResponse"
+            },
+            "title": "Bindings",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "harnessPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harnesspath"
+          },
+          "kind": {
+            "enum": [
+              "managed",
+              "unmanaged"
+            ],
+            "title": "Kind",
+            "type": "string"
           },
           "name": {
             "title": "Name",
@@ -180,69 +452,167 @@
           "ref": {
             "title": "Ref",
             "type": "string"
-          },
-          "skills": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Skills",
-            "type": "array"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "toolsAllowed": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Toolsallowed",
-            "type": "array"
-          },
-          "toolsDenied": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Toolsdenied",
-            "type": "array"
           }
         },
         "required": [
           "ref",
-          "slug",
           "name",
           "description",
-          "skills",
-          "mcps",
-          "toolsAllowed",
-          "toolsDenied",
-          "compileTargets"
+          "kind",
+          "bindings",
+          "actions"
         ],
-        "title": "AgentSummaryResponse",
+        "title": "AgentEntryResponse",
         "type": "object"
       },
-      "AgentsPageResponse": {
+      "AgentHarnessDetailResponse": {
         "properties": {
-          "agents": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "installMethod": {
+            "enum": [
+              "symlink",
+              "rendered",
+              "none"
+            ],
+            "title": "Installmethod",
+            "type": "string"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "logoKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logokey"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "enabled",
+              "disabled",
+              "unsupported"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "harness",
+          "label",
+          "state",
+          "path",
+          "installMethod",
+          "installed"
+        ],
+        "title": "AgentHarnessDetailResponse",
+        "type": "object"
+      },
+      "AgentHarnessRequest": {
+        "properties": {
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          }
+        },
+        "required": [
+          "harness"
+        ],
+        "title": "AgentHarnessRequest",
+        "type": "object"
+      },
+      "AgentInventoryResponse": {
+        "properties": {
+          "columns": {
             "items": {
-              "$ref": "#/components/schemas/AgentSummaryResponse"
+              "$ref": "#/components/schemas/AgentColumnResponse"
             },
-            "title": "Agents",
+            "title": "Columns",
+            "type": "array"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AgentEntryResponse"
+            },
+            "title": "Entries",
             "type": "array"
           },
           "issues": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AgentIssueResponse"
             },
             "title": "Issues",
             "type": "array"
           }
         },
         "required": [
-          "agents",
-          "issues"
+          "columns",
+          "entries"
         ],
-        "title": "AgentsPageResponse",
+        "title": "AgentInventoryResponse",
+        "type": "object"
+      },
+      "AgentIssueResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "AgentIssueResponse",
+        "type": "object"
+      },
+      "AgentMutationFailureResponse": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          }
+        },
+        "required": [
+          "harness",
+          "error"
+        ],
+        "title": "AgentMutationFailureResponse",
         "type": "object"
       },
       "BulkManageFailureResponse": {
@@ -635,94 +1005,34 @@
         "title": "CliMarketplacePageResponse",
         "type": "object"
       },
-      "CompileAgentRequest": {
+      "CreateAgentRequest": {
         "properties": {
-          "dryRun": {
-            "default": false,
-            "title": "Dryrun",
-            "type": "boolean"
-          },
-          "harness": {
-            "title": "Harness",
+          "description": {
+            "default": "",
+            "title": "Description",
             "type": "string"
           },
-          "projectDir": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Projectdir"
-          }
-        },
-        "required": [
-          "harness"
-        ],
-        "title": "CompileAgentRequest",
-        "type": "object"
-      },
-      "CompileAgentResponse": {
-        "properties": {
-          "agentRef": {
-            "title": "Agentref",
+          "name": {
+            "title": "Name",
             "type": "string"
           },
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
+          "prompt": {
+            "default": "",
+            "title": "Prompt",
+            "type": "string"
           },
-          "degradations": {
+          "tools": {
             "items": {
               "type": "string"
             },
-            "title": "Degradations",
+            "title": "Tools",
             "type": "array"
-          },
-          "harness": {
-            "title": "Harness",
-            "type": "string"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "resolvedSkills": {
-            "items": {
-              "$ref": "#/components/schemas/ResolvedSkillResponse"
-            },
-            "title": "Resolvedskills",
-            "type": "array"
-          },
-          "targetPath": {
-            "title": "Targetpath",
-            "type": "string"
-          },
-          "written": {
-            "title": "Written",
-            "type": "boolean"
           }
         },
         "required": [
-          "ok",
-          "agentRef",
-          "harness",
-          "targetPath",
-          "written",
-          "content",
-          "degradations",
-          "resolvedSkills"
+          "name"
         ],
-        "title": "CompileAgentResponse",
+        "title": "CreateAgentRequest",
         "type": "object"
       },
       "DisableHookRequest": {
@@ -3687,29 +3997,6 @@
         "title": "ReconcilePermissionRequest",
         "type": "object"
       },
-      "ResolvedSkillResponse": {
-        "properties": {
-          "alias": {
-            "title": "Alias",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "revision": {
-            "title": "Revision",
-            "type": "string"
-          }
-        },
-        "required": [
-          "alias",
-          "name",
-          "revision"
-        ],
-        "title": "ResolvedSkillResponse",
-        "type": "object"
-      },
       "ScaffoldRequest": {
         "properties": {
           "asset_type": {
@@ -3720,25 +4007,9 @@
             "title": "Description",
             "type": "string"
           },
-          "mcps": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Mcps",
-            "type": "array"
-          },
           "name": {
             "title": "Name",
             "type": "string"
-          },
-          "skills": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Skills",
-            "type": "array"
           }
         },
         "required": [
@@ -3760,6 +4031,48 @@
           "file_path"
         ],
         "title": "ScaffoldResponse",
+        "type": "object"
+      },
+      "SetAgentHarnessesRequest": {
+        "properties": {
+          "harnesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Harnesses",
+            "type": "array"
+          }
+        },
+        "title": "SetAgentHarnessesRequest",
+        "type": "object"
+      },
+      "SetAgentHarnessesResultResponse": {
+        "properties": {
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/AgentMutationFailureResponse"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "succeeded": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Succeeded",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "succeeded",
+          "failed"
+        ],
+        "title": "SetAgentHarnessesResultResponse",
         "type": "object"
       },
       "SetHarnessSupportRequest": {
@@ -4449,10 +4762,10 @@
           },
           "target": {
             "enum": [
-              "opencode",
               "claude",
-              "cursor",
               "codex",
+              "cursor",
+              "opencode",
               "hermes"
             ],
             "title": "Target",
@@ -4478,10 +4791,10 @@
           "defaultTargets": {
             "items": {
               "enum": [
-                "opencode",
                 "claude",
-                "cursor",
                 "codex",
+                "cursor",
+                "opencode",
                 "hermes"
               ],
               "type": "string"
@@ -4545,10 +4858,10 @@
               {
                 "items": {
                   "enum": [
-                    "opencode",
                     "claude",
-                    "cursor",
                     "codex",
+                    "cursor",
+                    "opencode",
                     "hermes"
                   ],
                   "type": "string"
@@ -4620,10 +4933,10 @@
           },
           "target": {
             "enum": [
-              "opencode",
               "claude",
-              "cursor",
               "codex",
+              "cursor",
+              "opencode",
               "hermes"
             ],
             "title": "Target",
@@ -4734,10 +5047,10 @@
           },
           "target": {
             "enum": [
-              "opencode",
               "claude",
-              "cursor",
               "codex",
+              "cursor",
+              "opencode",
               "hermes"
             ],
             "title": "Target",
@@ -4781,10 +5094,10 @@
               {
                 "items": {
                   "enum": [
-                    "opencode",
                     "claude",
-                    "cursor",
                     "codex",
+                    "cursor",
+                    "opencode",
                     "hermes"
                   ],
                   "type": "string"
@@ -4838,10 +5151,10 @@
           },
           "target": {
             "enum": [
-              "opencode",
               "claude",
-              "cursor",
               "codex",
+              "cursor",
+              "opencode",
               "hermes"
             ],
             "title": "Target",
@@ -4863,10 +5176,10 @@
               {
                 "items": {
                   "enum": [
-                    "opencode",
                     "claude",
-                    "cursor",
                     "codex",
+                    "cursor",
+                    "opencode",
                     "hermes"
                   ],
                   "type": "string"
@@ -4907,10 +5220,10 @@
           },
           "id": {
             "enum": [
-              "opencode",
               "claude",
-              "cursor",
               "codex",
+              "cursor",
+              "opencode",
               "hermes"
             ],
             "title": "Id",
@@ -4995,20 +5308,6 @@
             ],
             "title": "Description"
           },
-          "mcps": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mcps"
-          },
           "name": {
             "anyOf": [
               {
@@ -5020,7 +5319,18 @@
             ],
             "title": "Name"
           },
-          "skills": {
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "tools": {
             "anyOf": [
               {
                 "items": {
@@ -5032,7 +5342,7 @@
                 "type": "null"
               }
             ],
-            "title": "Skills"
+            "title": "Tools"
           }
         },
         "title": "UpdateAgentRequest",
@@ -5094,7 +5404,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AgentsPageResponse"
+                  "$ref": "#/components/schemas/AgentInventoryResponse"
                 }
               }
             },
@@ -5105,9 +5415,149 @@
         "tags": [
           "Agents"
         ]
+      },
+      "post": {
+        "operationId": "create_agent_api_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAgentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/adopt-all": {
+      "post": {
+        "operationId": "adopt_all_agents_api_agents_adopt_all_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdoptAllAgentsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Adopt All Agents",
+        "tags": [
+          "Agents"
+        ]
       }
     },
     "/api/agents/{agent_ref}": {
+      "delete": {
+        "operationId": "delete_agent_api_agents__agent_ref__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Agent",
+        "tags": [
+          "Agents"
+        ]
+      },
+      "get": {
+        "operationId": "get_agent_api_agents__agent_ref__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Agent",
+        "tags": [
+          "Agents"
+        ]
+      },
       "put": {
         "operationId": "update_agent_api_agents__agent_ref__put",
         "parameters": [
@@ -5136,7 +5586,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AgentSummaryResponse"
+                  "$ref": "#/components/schemas/AgentDetailResponse"
                 }
               }
             },
@@ -5159,9 +5609,9 @@
         ]
       }
     },
-    "/api/agents/{agent_ref}/compile": {
+    "/api/agents/{agent_ref}/adopt": {
       "post": {
-        "operationId": "compile_agent_api_agents__agent_ref__compile_post",
+        "operationId": "adopt_agent_api_agents__agent_ref__adopt_post",
         "parameters": [
           {
             "in": "path",
@@ -5177,7 +5627,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CompileAgentRequest"
+                "$ref": "#/components/schemas/AdoptAgentRequest"
               }
             }
           },
@@ -5188,7 +5638,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CompileAgentResponse"
+                  "$ref": "#/components/schemas/AdoptAgentResponse"
                 }
               }
             },
@@ -5205,7 +5655,163 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Compile Agent",
+        "summary": "Adopt Agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/{agent_ref}/disable": {
+      "post": {
+        "operationId": "disable_agent_api_agents__agent_ref__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentHarnessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disable Agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/{agent_ref}/enable": {
+      "post": {
+        "operationId": "enable_agent_api_agents__agent_ref__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentHarnessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Enable Agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/{agent_ref}/set-harnesses": {
+      "post": {
+        "operationId": "set_agent_harnesses_api_agents__agent_ref__set_harnesses_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAgentHarnessesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetAgentHarnessesResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Agent Harnesses",
         "tags": [
           "Agents"
         ]
