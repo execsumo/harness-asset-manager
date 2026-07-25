@@ -7,7 +7,6 @@ from .contracts import HookHarnessAdapter
 from .read_models import HooksReadModelService
 from .store import HookSpec
 
-
 HarnessAction = Literal["enable", "disable"]
 ManifestCommit = Callable[[], None]
 

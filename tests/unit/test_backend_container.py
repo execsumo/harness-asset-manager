@@ -1,16 +1,15 @@
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from skill_manager.application import build_backend_container
-from skill_manager.application.container import _migrate_legacy_layouts
 from skill_manager.application.agents.parser import parse_agent_file
+from skill_manager.application.container import _migrate_legacy_layouts
 from skill_manager.application.skills.manifest import SkillStoreEntry
 from skill_manager.application.skills.package import fingerprint_package
 from skill_manager.sources import ResolvedGitHubSkill
-
 from tests.support.fake_home import (
     create_fake_home_spec,
     seed_divergent_source_fixture,

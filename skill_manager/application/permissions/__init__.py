@@ -17,7 +17,6 @@ from .query import PermissionsQueryService
 from .read_models import PermissionsReadModelService, PermissionsReadModelSnapshot
 from .store import PermissionSpec, PermissionStore
 
-
 __all__ = [
     "BindingState",
     "FileBackedPermissionsAdapter",

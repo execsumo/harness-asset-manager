@@ -9,7 +9,6 @@ from typing import Mapping
 
 from skill_manager.atomic_files import atomic_write_text, file_lock
 
-
 CURRENT_HOOKS_MANIFEST_VERSION = 1
 
 

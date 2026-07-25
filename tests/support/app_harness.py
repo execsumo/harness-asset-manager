@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from contextlib import AbstractContextManager
-import json
 from http.client import IncompleteRead
 from pathlib import Path
 from tempfile import TemporaryDirectory

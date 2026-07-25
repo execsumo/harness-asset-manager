@@ -5,7 +5,6 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-
 from skill_manager.paths import AppPaths
 
 

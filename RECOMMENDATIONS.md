@@ -1,13 +1,16 @@
 # Recommendations
 
-> Review of 2026-07-24, commit `0d071a6` (`main`). Verified by reading the code and running the
-> suites: backend 347 unit + 146 integration tests pass, `npm run typecheck` clean.
+> Review of 2026-07-25, refreshed against `main` after the Tier-1 batch. Verified by running the
+> suites: backend unit (385) + integration (155) tests pass, `npm run typecheck` clean, `npm test`
+> green (263), `ruff check` clean, OpenAPI drift gate clean.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
 >
-> **This list is kept to open items only — shipped recommendations are removed.** The first
-> batch (dependency audit gates, loopback request guards, static-root containment, dead-code
-> pass) landed 2026-07-24 in merge `98c3417`; see `handoff.md` for the record.
+> **This list is kept to open items only — shipped work is removed.** Shipped batches:
+> 2026-07-24 merge `98c3417` (audit gates, loopback guards, static-root containment, dead-code pass);
+> 2026-07-25 Tier-1 batch (Dependabot + SHA-pinned actions; golden writer round-trip tests; ruff lint
+> gate; Hermes slash provisional label) — see `handoff.md` for the record. Partially-shipped items
+> below keep their number and describe only the remaining scope.
 
 ## Already strong — don't churn these
 
@@ -18,59 +21,56 @@
 - Subprocess calls are all list-form (no `shell=True`); marketplace fetchers use a pinned CA
   context with TLS fixtures under test.
 - CI matrix across Python 3.11–3.14 plus a full packaging smoke on four OS/arch targets.
+- Ruff lint gate in CI (`[tool.ruff]` in `pyproject.toml`): import sorting + pyflakes enforced
+  and baselined green; `requirements-dev.txt` pins the tool.
 
 ---
 
 ## Tier 1 — High value, moderate effort
 
-### 1.1 Codify the round-trip test that your own retrospective calls for — M
+### 1.1 Harden the writers so unknown user fields survive a round-trip — M
 
-`plan-agents-simplify.md` ends with a hard-won lesson: two data-loss bugs shipped with the same
-shape — *"a component rewrote a whole artifact from the subset of fields it understood"* — and
-names the test that catches it: **"read a realistic file, write it, diff the parts you never
-touched."** Agents got that fix; the other writers haven't been audited for the same class.
+**Shipped (2026-07-25):** `tests/unit/test_writer_round_trip.py` codifies the test the retrospective
+in `plan-agents-simplify.md` calls for — for every writer of a user-authored file (slash frontmatter
+codec, every MCP transport mapper) it pins idempotency, owned-field preservation, and a
+*characterization* of the unknown keys/comments currently dropped. The data-loss surface is now
+visible and locked.
 
-**Action:** for every component that writes a user-authored file — MCP config mappers
-(`application/mcp/mappers.py`), hooks settings writers (`application/hooks/harness_application.py`),
-slash-command frontmatter codecs, permissions writers — add golden round-trip tests using
-*realistic* fixtures (messy key order, unknown keys, empty strings, comments). Diff the untouched
-regions byte-for-byte. This is the cheapest insurance against the worst bug class this product
-can have: silently destroying user config. Consider `hypothesis` for frontmatter/JSON round-trip
-properties once the golden tests exist.
+**Remaining:** the characterization tests today assert that unknown frontmatter keys/comments and
+unknown MCP entry fields (e.g. `disabled`, `autoApprove`) are *dropped* — the writers still destroy
+what they do not model. Flip those to preservation assertions: have
+`FrontmatterMarkdownCommandCodec` carry unknown frontmatter verbatim and `McpServerSpec` carry
+per-entry extras, so re-writing a realistic file leaves untouched regions byte-identical (OpenCode's
+force-`enabled=True` is the clearest live example). Consider `hypothesis` for frontmatter/JSON
+round-trip properties once preservation lands.
 
-### 1.2 Add static-analysis gates the codebase already half-adopted — M
+### 1.2 Finish static-analysis adoption (type-check + frontend lint + baseline cleanup) — M
 
-Fifteen backend files carry `# noqa: BLE001` comments — ruff/flake8-blind-except rule codes —
-yet **there is no ruff config, no mypy/pyright config, no ESLint/Prettier config, and no lint
-step in CI**. Someone linted once; nothing keeps it true. The Python code is consistently typed,
-so a type checker should be nearly free to adopt.
+**Shipped (2026-07-25):** ruff is the backend lint gate — `[tool.ruff]` in `pyproject.toml`,
+`requirements-dev.txt`, and a "Backend lint" CI step. Import sorting (I) is enforced and applied
+across the tree; pyflakes (F) is enforced with `F401`/`F821`/`F841` baselined (the baseline is
+documented in-config and meant to shrink).
 
-**Action:** add `ruff` (lint + format) and `pyright` (or `mypy`) with a committed config and a CI
-step; add ESLint (typescript + react-hooks rules) for `frontend/src`. Baseline existing
-violations rather than fixing them in the adoption PR.
+**Remaining:** (a) chip the ruff baseline — drop `F401` by removing the 29 unused imports in a
+verified per-module pass (a blanket `--fix` rewrote import paths and broke test collection, so this
+needs care), then broaden `select` toward `E`/`W`/`UP`/`B`; (b) add `pyright` (or `mypy`) with a
+committed config + CI step, starting from `basic`; (c) add ESLint (typescript + react-hooks) for
+`frontend/src`. The fifteen `# noqa: BLE001` comments are the existing half-adoption this completes.
 
 
-### 1.3 Verify or visibly label the Hermes harness — M
+### 1.3 Finish labeling (or verify) the Hermes harness — M
 
-Per `handoff.md`, Hermes MCP (`~/.hermes/mcp.json`) and slash (`~/.hermes/commands`) conventions
-are **unverified assumptions**, hooks are unimplemented, and the adapters "have never run against
-a real Hermes install." The app writes to real user config based on those assumptions.
+**Shipped (2026-07-25):** the Hermes **slash** binding now carries a provisional `support_note`
+("…unverified against a real Hermes install; writes may not take effect…") in
+`harness/catalog.py`, surfaced to the UI via the existing `SlashTarget.supportNote` path. The agents
+binding was already labeled unavailable (no agent-definition format).
 
-**Action:** either validate against a real Hermes build (and record the evidence in
-`handoff.md`, as was done for Claude/agy agent symlinks), or mark the binding provisional —
-`unavailable_reason`-style — so users aren't trusting unverified writes. With seven more
-harnesses on the README roadmap, define a repeatable "new harness verification" checklist
+**Remaining:** MCP and hooks are still written on unverified assumptions with no provisional label.
+Thread a `support_note` through `ConfigSubtreeBindingProfile` → the MCP/hooks read models (typed,
+so it needs an OpenAPI regen) and mark both provisional, **or** validate against a real Hermes
+build and record the evidence in `handoff.md` (as was done for Claude/agy agent symlinks). With
+seven more harnesses on the README roadmap, define a repeatable "new harness verification" checklist
 (probe CLI, real read, real write, round-trip diff) and reuse it per harness.
-
-### 1.4 Dependency-update and supply-chain automation — S–M
-
-No Dependabot/Renovate config, and GitHub Actions are pinned by major tag (`actions/checkout@v6`)
-rather than commit SHA. The audit gate shipped in `98c3417` catches advisories in CI; this
-closes the loop: advisories are found automatically, updates arrive as PRs, and the CI matrix
-(which is genuinely good) validates them.
-
-**Action:** add `.github/dependabot.yml` (npm + pip + github-actions ecosystems, weekly), and
-SHA-pin the actions in both workflows.
 
 ---
 
@@ -78,10 +78,10 @@ SHA-pin the actions in both workflows.
 
 ### 2.1 A mutation audit journal — M–L
 
-A tool whose job is mutating local config has almost no observability: exactly one module uses
-`logging` (`db/migrations.py`), and uvicorn runs with `access_log=False`. When something goes
-wrong in a user's setup — or a user asks "what did Skill Manager change?" — there is no answer
-on disk.
+A tool whose job is mutating local config has almost no observability: a `grep -rn 'logging'`
+over `skill_manager/` now returns **zero** hits (the last holdout, `db/migrations.py`, was removed
+in `9f23101`), and uvicorn runs with `access_log=False`. When something goes wrong in a
+user's setup — or a user asks "what did Skill Manager change?" — there is no answer on disk.
 
 **Action:** append a structured record (JSON Lines) to
 `${XDG_DATA_HOME}/skill-manager/audit.log` for every mutation: timestamp, family, operation,
@@ -90,7 +90,7 @@ the trust story that "Needs Review" already builds.
 
 ### 2.2 Coverage measurement with a ratchet — S–M
 
-493 backend tests and 62 frontend test files exist, but nothing measures what they cover, so
+385 backend unit tests, 155 integration tests, and 62 frontend test files (263 tests) exist, but nothing measures what they cover, so
 gaps are invisible (e.g. the two data-loss bugs in §1.1 lived in well-tested-looking code).
 
 **Action:** add `coverage.py` to `scripts/test_backend.sh` and `vitest --coverage` to CI; report
@@ -135,15 +135,20 @@ modules).
   re-bind. Two quick starts can collide between the probes. Bind once and keep the socket (the
   code already passes `fd` to uvicorn, so this is mostly deleting the probe). — **S**
 - **Clean local scratch from the repo dir.** Stale `test_scan_*.pyc` and `.pytest_cache` linger
-  in the working tree (untracked, but confusing); the project standardizes on `unittest`, so
-  either document pytest compatibility or remove the cache dirs. — **S**
+  in the working tree (untracked, but confusing); and the `skill_manager/db/` directory now
+  contains **only** stale `__pycache__/*.pyc` — its source was removed in `9f23101` but the
+  compiled cache and the empty package dir were left behind. The project standardizes on
+  `unittest`, so either document pytest compatibility or remove the cache dirs / orphaned
+  `db/` package. — **S**
 
 ---
 
 ## Suggested sequencing
 
-1. **Next (all S/M):** 1.4 (Dependabot + SHA pinning) as one PR, then 1.1 (round-trip tests),
-   1.2 (lint/type gates), and 1.3 (Hermes verification).
+1. **Tier-1 batch shipped 2026-07-25** (1.4 Dependabot + SHA pinning; 1.1 golden round-trip tests;
+   1.2 ruff gate; 1.3 Hermes slash label). **Next (all S/M):** finish the partials in value order —
+   1.1 harden the writers to preserve unknown fields, 1.2 add pyright + ESLint + chip the ruff
+   baseline, 1.3 label/verify Hermes MCP & hooks.
 2. **When planning the next family or harness:** 2.3 first, 2.1 alongside, 2.2 to keep it honest.
 3. **Tier 3 housekeeping** rides along whenever its files are touched next.
 

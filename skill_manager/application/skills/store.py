@@ -6,7 +6,7 @@ from pathlib import Path
 from skill_manager.atomic_files import file_lock
 
 from .health import CheckIssue
-from .identity import SourceDescriptor, SkillRef
+from .identity import SkillRef, SourceDescriptor
 from .manifest import (
     SkillStoreEntry,
     SkillStoreManifest,

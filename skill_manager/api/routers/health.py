@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from skill_manager.application import BackendContainer
 from skill_manager.api.deps import get_container
+from skill_manager.application import BackendContainer
 
 router = APIRouter(prefix="/api")
 

@@ -10,8 +10,8 @@ from typing import Mapping
 
 import tomli_w
 
-from skill_manager.errors import MutationError
 from skill_manager.atomic_files import atomic_write_text, file_lock
+from skill_manager.errors import MutationError
 from skill_manager.harness import (
     ConfigSubtreeBindingProfile,
     HarnessDefinition,
@@ -19,7 +19,13 @@ from skill_manager.harness import (
     ResolutionContext,
 )
 
-from .contracts import PermissionHarnessAdapter, PermissionHarnessScan, PermissionHarnessStatus, PermissionObservedEntry, BindingState
+from .contracts import (
+    BindingState,
+    PermissionHarnessAdapter,
+    PermissionHarnessScan,
+    PermissionHarnessStatus,
+    PermissionObservedEntry,
+)
 from .mappers import PermissionMapper, RawPermissionEntry, get_mapper
 from .store import PermissionSpec
 
@@ -199,8 +205,8 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
     def has_binding(self, id: str) -> bool:
         specs = ()
         try:
-            from skill_manager.paths import resolve_app_paths
             from skill_manager.application.permissions.store import PermissionStore
+            from skill_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = PermissionStore(app_paths.permissions_store_manifest)
             specs = store.list_managed()
@@ -274,8 +280,8 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
 
     def _get_managed_pattern(self, id: str) -> str | None:
         try:
-            from skill_manager.paths import resolve_app_paths
             from skill_manager.application.permissions.store import PermissionStore
+            from skill_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = PermissionStore(app_paths.permissions_store_manifest)
             spec = store.get_managed(id)

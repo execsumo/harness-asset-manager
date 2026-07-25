@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import unittest
+
 from skill_manager.application.permissions.mappers import (
-    ClaudeCodePermissionsMapper,
     AntigravityPermissionsMapper,
+    ClaudeCodePermissionsMapper,
     CodexPermissionsMapper,
 )
 from skill_manager.application.permissions.store import PermissionSpec

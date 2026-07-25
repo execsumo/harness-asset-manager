@@ -6,7 +6,12 @@ from pathlib import Path
 from skill_manager.errors import MutationError
 
 from .codecs import parse_slash_command_document
-from .models import SlashCommand, SlashCommandReviewRow, SlashCommandSyncEntry, SlashTarget
+from .models import (
+    SlashCommand,
+    SlashCommandReviewRow,
+    SlashCommandSyncEntry,
+    SlashTarget,
+)
 from .path_policy import SlashCommandPathPolicy
 from .store import SlashCommandStore
 from .sync_state import SlashCommandSyncRecord, SlashCommandSyncStateStore, hash_file

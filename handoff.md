@@ -367,3 +367,41 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
 - **Restart the running instance** to pick up backend changes; `frontend/dist` is already rebuilt.
 - `README.md` updated (Hermes row + provisional footnote). `README.zh-CN.md` was **removed** from
   this fork (not needed); its link was dropped from `README.md`.
+
+---
+
+## 2026-07-25 — Tier-1 recommendations batch
+
+Landed the high-value Tier-1 recommendations from `RECOMMENDATIONS.md` (see that file for the
+open remainders). Full suite green at commit time: backend unit 385 + integration 155, frontend
+263, `npm run typecheck` clean, `ruff check` clean, OpenAPI drift gate clean.
+
+1. **Supply-chain automation (was §1.4, shipped).** Added `.github/dependabot.yml` (npm + pip +
+   github-actions, weekly, grouped) and SHA-pinned every action in `ci.yml` / `release.yml` with a
+   `# vN` comment for auditability. No bare `@vN` refs remain.
+
+2. **Golden writer round-trip tests (was §1.1, partial).** New `tests/unit/test_writer_round_trip.py`
+   pins, for the slash frontmatter codec and every MCP transport mapper: idempotency, owned-field
+   preservation, and a *characterization* of the unknown keys/comments currently dropped
+   (OpenCode's force-`enabled=True` is called out explicitly). The data-loss surface is now locked;
+   the remaining work is to flip those to preservation assertions (hardening the codecs/spec to
+   carry unknown fields), tracked in `RECOMMENDATIONS.md §1.1`.
+
+3. **Ruff lint gate (was §1.2, partial).** `[tool.ruff]` in `pyproject.toml` enforces `I` (import
+   sorting — applied across the tree) + `F` (pyflakes), with `F401`/`F821`/`F841` baselined green
+   (documented in-config). `requirements-dev.txt` pins ruff; a "Backend lint" step runs it in CI.
+   A blanket `ruff --fix` was attempted and **reverted** — it rewrote import paths and broke test
+   collection, so the baseline cleanup is deferred to a verified per-module pass. pyright + ESLint
+   are the remaining §1.2 slice.
+
+4. **Hermes slash provisional label (was §1.3, partial).** The Hermes `slash_commands` binding
+   in `harness/catalog.py` now carries a provisional `support_note` surfaced via
+   `SlashTarget.supportNote`. MCP/hooks labeling still needs a `support_note` threaded through the
+   typed MCP/hooks read models (OpenAPI regen) — see `RECOMMENDATIONS.md §1.3`.
+
+### Notes
+
+- isort-only (`ruff --select I001 --fix`) reorganized imports across ~120 files; mechanical and
+  verified (suite green). The combined/auto fixes were not kept.
+- `requirements-dev.txt` is new; the runtime `requirements.txt` is unchanged, so `pip-audit` scope
+  is unchanged.

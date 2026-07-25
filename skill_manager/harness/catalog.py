@@ -358,6 +358,14 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 docs_url="",
                 file_glob="*.md",
                 supports_frontmatter=True,
+                # Provisional (RECOMMENDATIONS.md §1.3): the ~/.hermes/commands
+                # convention is an unverified assumption and the adapters have never
+                # run against a real Hermes install. Surface that so users do not
+                # trust unverified writes.
+                support_note=(
+                    "Provisional: Hermes slash-command conventions are unverified "
+                    "against a real Hermes install; writes may not take effect."
+                ),
             ),
         },
     ),

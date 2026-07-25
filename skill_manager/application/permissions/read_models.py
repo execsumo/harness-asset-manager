@@ -9,8 +9,12 @@ from skill_manager.errors import MutationError
 from skill_manager.harness import HarnessKernelService
 
 from .adapters import build_permissions_adapters
-from .contracts import PermissionHarnessAdapter, PermissionHarnessScan, PermissionHarnessStatus
-from .store import PermissionStore, PermissionSpec
+from .contracts import (
+    PermissionHarnessAdapter,
+    PermissionHarnessScan,
+    PermissionHarnessStatus,
+)
+from .store import PermissionSpec, PermissionStore
 
 
 @dataclass(frozen=True)

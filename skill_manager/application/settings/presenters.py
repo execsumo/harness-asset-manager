@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from skill_manager.harness import HarnessStatus
-from skill_manager.platform_context import PlatformName
 from skill_manager.paths import AppPaths
+from skill_manager.platform_context import PlatformName
 
 
 def settings_payload(

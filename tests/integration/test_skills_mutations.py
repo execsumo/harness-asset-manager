@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from tempfile import TemporaryDirectory
 import unittest
+from tempfile import TemporaryDirectory
 
 from skill_manager.application.skills.manifest import SkillStoreEntry
 from skill_manager.application.skills.package import fingerprint_package
-
 from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import seed_shared_only_fixture, seed_skill_package, seed_store_manifest
+from tests.support.fake_home import (
+    seed_shared_only_fixture,
+    seed_skill_package,
+    seed_store_manifest,
+)
 
 
 def seed_local_changes_fixture(spec):

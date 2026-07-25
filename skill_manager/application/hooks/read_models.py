@@ -10,7 +10,7 @@ from skill_manager.harness import HarnessKernelService
 
 from .adapters import build_hooks_adapters
 from .contracts import HookHarnessAdapter, HookHarnessScan, HookHarnessStatus
-from .store import HookStore, HookSpec
+from .store import HookSpec, HookStore
 
 
 @dataclass(frozen=True)

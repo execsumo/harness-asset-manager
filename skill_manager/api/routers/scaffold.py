@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from skill_manager.api.deps import get_container
 from skill_manager.application import BackendContainer
 from skill_manager.application.scaffold import ScaffoldRequest
-from skill_manager.api.deps import get_container
-
 
 router = APIRouter(prefix="/api/scaffold", tags=["Scaffold"])
 

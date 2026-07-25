@@ -6,7 +6,6 @@ from typing import Literal, Protocol
 
 from .store import PermissionSpec
 
-
 BindingState = Literal["managed", "drifted", "unmanaged", "missing", "unsupported"]
 
 

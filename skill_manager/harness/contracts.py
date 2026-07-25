@@ -6,7 +6,6 @@ from typing import Callable, Literal, Mapping, TypeAlias
 
 from .resolution import ResolutionContext
 
-
 FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents"]
 AgentRenderFormat = Literal["markdown", "codex_toml"]
 CommandFileRenderFormat = Literal["frontmatter_markdown", "cursor_plaintext"]

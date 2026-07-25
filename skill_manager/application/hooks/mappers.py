@@ -5,6 +5,7 @@ import shlex
 from typing import Iterable, Mapping, Protocol
 
 from skill_manager.errors import MutationError
+
 from .store import HookSpec
 
 

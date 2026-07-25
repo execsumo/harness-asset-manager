@@ -9,7 +9,18 @@ from skill_manager.application import BackendContainer
 
 from .errors import install_error_handlers
 from .guards import LoopbackOnlyMiddleware
-from .routers import agents, health, hooks, marketplace, mcp, scaffold, settings, skills, slash_commands, permissions
+from .routers import (
+    agents,
+    health,
+    hooks,
+    marketplace,
+    mcp,
+    permissions,
+    scaffold,
+    settings,
+    skills,
+    slash_commands,
+)
 
 
 def create_app(

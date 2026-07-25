@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass
 
+from skill_manager.atomic_files import file_lock
 from skill_manager.harness import HarnessKernelService, HarnessSupportStore
 from skill_manager.harness.resolution import resolve_context
 from skill_manager.paths import AppPaths, resolve_app_paths
 
-from .scaffold import ScaffoldService
 from .agents import (
     AgentHarnessAdapter,
     AgentInventoryService,
@@ -15,32 +16,41 @@ from .agents import (
     AgentStore,
     resolve_agent_targets,
 )
-from skill_manager.atomic_files import file_lock
-import shutil
-
 from .cli_marketplace import CliMarketplaceCatalog
+from .hooks import (
+    HooksMutationService,
+    HooksQueryService,
+    HooksReadModelService,
+    HookStore,
+)
 from .invalidation import InvalidationFanout
+from .marketplace_cache import MarketplaceCache
+from .mcp.availability import McpAvailabilityProbe
 from .mcp.enrichment import McpEnrichmentService
 from .mcp.marketplace import McpMarketplaceCatalog
 from .mcp.mutations import McpMutationService
 from .mcp.planner import McpAdoptionPlanner
-from .mcp.availability import McpAvailabilityProbe
 from .mcp.query import McpQueryService
 from .mcp.read_models import McpReadModelService
 from .mcp.store import McpServerStore
-from .hooks import (
-    HookStore,
-    HooksReadModelService,
-    HooksQueryService,
-    HooksMutationService,
-)
 from .permissions import (
-    PermissionStore,
-    PermissionsReadModelService,
-    PermissionsQueryService,
     PermissionsMutationService,
+    PermissionsQueryService,
+    PermissionsReadModelService,
+    PermissionStore,
 )
+from .scaffold import ScaffoldService
 from .settings import SettingsMutationService, SettingsQueryService
+from .skills import SkillsMutationService, SkillsQueryService
+from .skills.marketplace import (
+    MarketplaceCatalog,
+    MarketplaceDocumentService,
+    MarketplaceInstallService,
+    MarketplaceQueryService,
+)
+from .skills.read_models import SkillsReadModelService
+from .skills.source_fetch import SourceFetchService
+from .skills.store import SkillStore
 from .slash_commands import (
     SlashCommandMutationService,
     SlashCommandPathPolicy,
@@ -53,17 +63,6 @@ from .slash_commands import (
     migrate_legacy_slash_commands,
     resolve_slash_targets,
 )
-from .skills import SkillsMutationService, SkillsQueryService
-from .skills.marketplace import (
-    MarketplaceCatalog,
-    MarketplaceDocumentService,
-    MarketplaceInstallService,
-    MarketplaceQueryService,
-)
-from .skills.read_models import SkillsReadModelService
-from .skills.source_fetch import SourceFetchService
-from .skills.store import SkillStore
-from .marketplace_cache import MarketplaceCache
 
 
 @dataclass(frozen=True)

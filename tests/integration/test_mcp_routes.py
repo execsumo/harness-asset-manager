@@ -8,7 +8,6 @@ from skill_manager.application.mcp.availability import McpAvailabilityResult
 from skill_manager.application.mcp.stdio import parse_static_stdio_function
 from skill_manager.application.mcp.store import McpServerSpec, McpSource
 from skill_manager.errors import MutationError
-
 from tests.support.app_harness import AppTestHarness
 
 

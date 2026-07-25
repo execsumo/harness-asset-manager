@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import json
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-import json
 from pathlib import Path
-import shutil
 from uuid import uuid4
 
 from skill_manager.errors import MutationError

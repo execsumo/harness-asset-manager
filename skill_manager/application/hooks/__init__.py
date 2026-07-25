@@ -17,7 +17,6 @@ from .query import HooksQueryService
 from .read_models import HooksReadModelService, HooksReadModelSnapshot
 from .store import HookSpec, HookStore
 
-
 __all__ = [
     "BindingState",
     "FileBackedHooksAdapter",

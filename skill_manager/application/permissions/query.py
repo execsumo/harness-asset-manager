@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from skill_manager.errors import MutationError
 
-from .contracts import PermissionHarnessScan, PermissionInventory, PermissionInventoryIssue
+from .contracts import (
+    PermissionHarnessScan,
+    PermissionInventory,
+    PermissionInventoryIssue,
+)
 from .inventory import build_inventory
 from .managed_state import entry_payload, inventory_payload
 from .read_models import PermissionsReadModelService

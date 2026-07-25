@@ -7,8 +7,8 @@ from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .model import (
     AgentBinding,
     AgentDetail,
-    AgentHarnessDetail,
     AgentEntry,
+    AgentHarnessDetail,
     AgentInventory,
     AgentIssue,
     AgentParseError,

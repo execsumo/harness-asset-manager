@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 from skill_manager.application.skills.adapters import build_skills_adapters
 from skill_manager.errors import MutationError
 from skill_manager.harness import HarnessKernelService, HarnessSupportStore
-
 from tests.support.fake_home import create_fake_home_spec, seed_skill_package
 
 

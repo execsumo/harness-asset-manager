@@ -7,7 +7,6 @@ from .contracts import PermissionHarnessAdapter
 from .read_models import PermissionsReadModelService
 from .store import PermissionSpec
 
-
 HarnessAction = Literal["enable", "disable"]
 ManifestCommit = Callable[[], None]
 

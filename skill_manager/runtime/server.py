@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import socket
+import time
 from dataclasses import dataclass
 from pathlib import Path
-import socket
 from threading import Thread
-import time
 from typing import TYPE_CHECKING
 
 from skill_manager.application import BackendContainer

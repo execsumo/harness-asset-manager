@@ -9,10 +9,10 @@ from .inventory import AgentInventoryService
 from .model import (
     AgentAdoptConflict,
     AgentBinding,
-    AgentDetail,
-    AgentHarnessDetail,
     AgentDefinition,
+    AgentDetail,
     AgentEntry,
+    AgentHarnessDetail,
     AgentInventory,
     AgentIssue,
     AgentParseError,

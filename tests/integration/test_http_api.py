@@ -6,7 +6,10 @@ from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 
 from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import seed_divergent_source_fixture, seed_managed_linked_fixture
+from tests.support.fake_home import (
+    seed_divergent_source_fixture,
+    seed_managed_linked_fixture,
+)
 
 
 class HttpApiTests(unittest.TestCase):

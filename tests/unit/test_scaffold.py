@@ -1,9 +1,11 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+from skill_manager.application.scaffold import ScaffoldRequest, ScaffoldService
 from skill_manager.paths import resolve_app_paths
-from skill_manager.application.scaffold import ScaffoldService, ScaffoldRequest
 from tests.unit.test_paths import isolated_env
+
 
 class ScaffoldServiceTests(unittest.TestCase):
     def setUp(self) -> None:

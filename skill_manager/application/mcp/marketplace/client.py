@@ -15,7 +15,6 @@ from skill_manager.application.marketplace_http import (
 )
 from skill_manager.errors import MarketplaceUpstreamError
 
-
 DEFAULT_MCP_REGISTRY_BASE_URL = "https://registry.modelcontextprotocol.io"
 MCP_REGISTRY_BASE_URL_ENV = "SKILL_MANAGER_MCP_REGISTRY_BASE_URL"
 _TIMEOUT_SECONDS = 15

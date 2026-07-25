@@ -10,8 +10,8 @@ from typing import Mapping
 
 import tomli_w
 
-from skill_manager.errors import MutationError
 from skill_manager.atomic_files import atomic_write_text, file_lock
+from skill_manager.errors import MutationError
 from skill_manager.harness import (
     ConfigSubtreeBindingProfile,
     HarnessDefinition,
@@ -19,7 +19,13 @@ from skill_manager.harness import (
     ResolutionContext,
 )
 
-from .contracts import HookHarnessAdapter, HookHarnessScan, HookHarnessStatus, HookObservedEntry, BindingState
+from .contracts import (
+    BindingState,
+    HookHarnessAdapter,
+    HookHarnessScan,
+    HookHarnessStatus,
+    HookObservedEntry,
+)
 from .mappers import HookMapper, RawHookEntry, get_mapper
 from .store import HookSpec
 
@@ -198,8 +204,8 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
     def has_binding(self, id: str) -> bool:
         specs = ()
         try:
-            from skill_manager.paths import resolve_app_paths
             from skill_manager.application.hooks.store import HookStore
+            from skill_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = HookStore(app_paths.hooks_store_manifest)
             specs = store.list_managed()
@@ -273,8 +279,8 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
 
     def _get_managed_command(self, id: str) -> str | None:
         try:
-            from skill_manager.paths import resolve_app_paths
             from skill_manager.application.hooks.store import HookStore
+            from skill_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = HookStore(app_paths.hooks_store_manifest)
             spec = store.get_managed(id)

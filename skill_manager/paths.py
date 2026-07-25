@@ -6,7 +6,6 @@ from pathlib import Path
 
 from .platform_context import PlatformContext, resolve_platform_context
 
-
 APP_NAME = "skill-manager"
 
 SETTINGS_PATH_ENV = "SKILL_MANAGER_SETTINGS_PATH"

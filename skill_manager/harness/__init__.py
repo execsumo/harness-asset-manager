@@ -1,4 +1,8 @@
-from .catalog import harness_definitions_for_family, supported_harness_definitions, supported_harness_ids
+from .catalog import (
+    harness_definitions_for_family,
+    supported_harness_definitions,
+    supported_harness_ids,
+)
 from .contracts import (
     AgentFileBindingProfile,
     AgentRenderFormat,
@@ -9,9 +13,9 @@ from .contracts import (
     ConfigSubtreeBindingProfile,
     FamilyKey,
     FileTreeAvailability,
-    FileTreeLayout,
     FileTreeBindingProfile,
     FileTreeDiscoveryRoot,
+    FileTreeLayout,
     HarnessDefinition,
     HarnessStatus,
     PathResolver,
