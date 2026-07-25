@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessHeader,
@@ -36,33 +34,12 @@ export function SlashCommandReviewMatrixView({
 }: SlashCommandReviewMatrixViewProps) {
   const copy = useSlashCommandsCopy();
 
-  const displayTargets = useMemo(() => {
-    if (targets.length > 0) {
-      return targets;
-    }
-    const map = new Map<string, { id: string; label: string }>();
-    for (const row of rows) {
-      if (!map.has(row.target)) {
-        map.set(row.target, { id: row.target, label: row.targetLabel });
-      }
-    }
-    return Array.from(map.values()).map((t) => ({
-      id: t.id,
-      label: t.label,
-      rootPath: "",
-      outputDir: "",
-      invocationPrefix: "",
-      renderFormat: "",
-      scope: "",
-      docsUrl: "",
-      fileGlob: "",
-      supportsFrontmatter: false,
-      supportNote: null,
-      defaultSelected: false,
-      enabled: true,
-      available: true,
-    }));
-  }, [targets, rows]);
+  // Columns come from the payload's target list and nothing else: it is already
+  // ordered canonically and already excludes harnesses disabled in Settings.
+  // Synthesizing columns from the rows instead would resurrect both problems —
+  // row order is not harness order, and a row can only exist for a target the
+  // payload also lists.
+  const displayTargets = targets;
 
   return (
     <MatrixTable
