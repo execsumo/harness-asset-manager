@@ -48,6 +48,11 @@ jobs:
           ./.venv/bin/python -m pip install --upgrade pip
           ./.venv/bin/pip install -r requirements.txt
 
+      - name: Python dependency audit
+        run: |
+          ./.venv/bin/pip install pip-audit
+          ./.venv/bin/pip-audit
+
       - name: Backend compatibility tests
         run: bash scripts/test_backend.sh
 
@@ -72,6 +77,9 @@ jobs:
 
       - name: Install Node dependencies
         run: npm ci
+
+      - name: Dependency audit
+        run: npm run audit:check
 
       - name: Check version sync
         run: ./.venv/bin/python scripts/sync_version.py --check
