@@ -6,7 +6,8 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ## 2026-07-24 — Agents rebuilt as a normal resource family
 
-The compile/"hire" model shipped on 2026-07-13 (below) is being **retired**.
+**Landed on `main` and running.** The compile/"hire" model shipped on 2026-07-13 (below)
+is **retired**.
 **`plan-agents-simplify.md` is the design of record** — read it first when resuming; it
 supersedes `plan-agents-packages.md` decisions 2, 4, 6 and its Stages 2–4. The entries
 below this one are left as the historical record of what actually shipped that day.
@@ -14,7 +15,13 @@ below this one are left as the historical record of what actually shipped that d
 Why: agents had grown a bespoke capability-mapping + compiler model unlike every other
 family. They are now a plain inventory with **In Use / Needs Review** views.
 
-### Status — branch `feat/agents-simplify` (off `main`)
+### Status — all merged to `main`
+
+Suite at completion, run independently: typecheck clean, backend 347 + 144, frontend
+263 across 62 files, build green. Run the app off `main`; rebuild `frontend/dist` and
+restart after pulling, since the backend gained the agents router and the old
+single-page `/agents` route is gone.
+
 
 - **Pre-existing break fixed first (`b44b54a`).** `e1c9c41` had left `main` red:
   `McpNeedsReviewPage` referenced `copy.review.adoptSelected` / `.adoptingSelected`,
@@ -53,6 +60,40 @@ family. They are now a plain inventory with **In Use / Needs Review** views.
   `../skill-manager-worktrees/agy-agents-fe`): flat `/agents/use` + `/agents/review`
   routes, sidebar NavGroup, overview card, `features/agents/public.ts`, and the
   `AdoptConflictDialog`. Structure copies Hooks; look and language copy Skills.
+
+- **Detail view — DONE.** Clicking an agent opened `EditAgentDialog`, which populated
+  from a placeholder (`setName(agentRef)`, everything else `""`) and wrote that back on
+  save — renaming the agent to its slug and wiping description/prompt/tools. Replaced
+  with a Skills-style detail modal (About → System prompt → Configuration → Harnesses →
+  Locations, Edit/Delete footer) built on the shared `components/detail/` primitives.
+  `GET /api/agents/{ref}` grew the fields it needs: raw document, store path, and a
+  per-harness row with `state` / `path` / `installMethod`. Ported by an agy delegate
+  against a contract I implemented and curl-verified **first** — that ordering is what
+  stopped a third round of invented endpoints.
+- **Frontmatter is preserved, not shrunk — DONE.** Second data-loss bug, same shape as
+  the first: the writer re-rendered agent files from only name/description/tools, so
+  every other key was deleted on save. Real Claude agents carry `model`, `effort`,
+  `permissionMode`, `disallowedTools`, `skills`, `mcpServers`, `maxTurns`, `hooks`.
+  Edits now merge into the original frontmatter; unrecognized keys survive byte-for-byte
+  and are listed verbatim under **Configuration** in the detail view. Only
+  `capabilities:`/`harnesses:` are still dropped. See the amendment at the foot of
+  `plan-agents-simplify.md` — including the generalizable lesson, since this class of
+  bug shipped twice.
+
+### Frontend contract failures worth remembering
+
+Two rounds of agy work passed their own DoD while being wrong on the wire, because the
+frontend tests mock `fetch`:
+
+1. Invented `/api/v1/agents` and `/bindings/{harness}` endpoints, and read `err.detail`
+   when this API returns `{"error": ...}`.
+2. After I corrected it to `/api/agents`, that doubled the base — `apiPath()` already
+   prepends `/api` — producing `/api/api/agents` and 404ing on every call. The page
+   tests missed it because they assert with `.includes("/enable")`, which passes for the
+   doubled path too.
+
+Fixed by `features/agents/api/client.test.ts`, which asserts the **fully composed** URL
+(`toBe("/api/agents")`, not `includes`). Verified it fails against the broken client.
 
 ### Behavior change worth flagging
 

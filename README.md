@@ -265,7 +265,9 @@ Skill Manager owns only the specific hook entries it writes. It merges into each
 
 ### Agents
 
-Agents are Markdown files with YAML frontmatter — `name`, `description`, an optional `tools` list, and the system prompt as the body. They live in Skill Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
+Agents are Markdown files with YAML frontmatter and the system prompt as the body. They live in Skill Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
+
+Skill Manager reads `name`, `description`, and `tools`, and **leaves every other frontmatter key alone**. Harness agents routinely carry settings we have no business interpreting — Claude's `model`, `permissionMode`, `maxTurns`, `hooks`; Cursor's `readonly` and `is_background`; Codex's `sandbox_mode` — so an edit merges into the original frontmatter rather than re-rendering it, and unrecognized keys survive untouched. The detail view lists them verbatim under **Configuration**, which means a new harness field shows up without any code change here. The only keys dropped on write are `capabilities:` and `harnesses:` from the retired compile model, which nothing reads.
 
 The agents matrix shows the same harnesses as every other family — whichever you have enabled in Settings:
 

@@ -69,7 +69,14 @@ in a given harness. That is the whole model.
    correct, because both target harnesses resolve skills natively, but it is a real
    behavior change.
 
-6. **Frontmatter shrinks to `name`, `description`, and optional `tools`.** The parser
+6. **~~Frontmatter shrinks to `name`, `description`, and optional `tools`~~ — AMENDED
+   2026-07-24.** "Shrinks" was too strong and caused data loss: the writer re-rendered
+   files from only those three fields, deleting every other key. See "Amendment:
+   frontmatter is preserved, not shrunk" at the foot of this file. What survives from
+   this decision is that Skill Manager *interprets* only those three, and that
+   `capabilities:` / `harnesses:` are dropped on write. Original text:
+
+   The parser
    ignores legacy `capabilities:` / `harnesses:` keys on read and drops them on write, so
    existing files (e.g. the current `red-team.md`) keep working with no migration script.
 
@@ -279,3 +286,39 @@ the layer this rebuild exists to remove.
 every Hermes cell `unsupported` with the reason attached, rather than dropping the
 column. Consistency with the other families beats a matrix whose columns shift per
 family, and the cell explains itself instead of failing on click.
+
+---
+
+## Amendment: frontmatter is preserved, not shrunk (2026-07-24, post-merge)
+
+Decision 6 said agent frontmatter "shrinks to `name`, `description`, and optional
+`tools`." The implementation took that literally: `render_agent_document` built the file
+from those three fields, so **every other key was deleted on the first save.** The 11
+real Claude agents in this workspace carry eight more — `model`, `effort`,
+`permissionMode`, `disallowedTools`, `skills`, `mcpServers`, `maxTurns`, `hooks` — and
+adopting one and editing its description would have silently destroyed all of it.
+
+The distinction the original decision missed: **interpreting a field and owning it are
+different things.** Skill Manager needs to *understand* only name/description/tools. It
+has no business *deleting* what it does not understand.
+
+### Corrected behavior
+
+- `AgentDefinition.metadata` holds the frontmatter mapping verbatim.
+- `render_agent_document(..., base_metadata=...)` merges edits into the original rather
+  than re-rendering, so unrecognized keys survive an edit byte-for-byte in value and in
+  file order. Empty strings are quoted so `effort: ""` does not decay to null.
+- The detail view lists everything except `name`/`description` under **Configuration**,
+  verbatim. No per-harness whitelist exists or should be added — Cursor's `readonly` and
+  Codex's `sandbox_mode` display for free, and a field a harness adds next month will
+  too.
+- `RETIRED_KEYS = {capabilities, harnesses}` are the sole exception: ours, dead, dropped.
+
+### The generalizable lesson
+
+Two data-loss bugs shipped in this rebuild, and both had the same shape: **a component
+rewrote a whole artifact from the subset of fields it understood.** The edit dialog did
+it with form state (opening blank and saving the blanks); the writer did it with
+frontmatter. Neither was caught by tests, because both round-tripped perfectly through
+the fields the tests knew about. When writing back a user-authored file, the test that
+matters is "read a realistic file, write it, diff the parts you never touched."
