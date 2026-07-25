@@ -270,6 +270,50 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(by_harness["hermes"]["installMethod"], "none")
             self.assertIn("dynamically", by_harness["hermes"]["detail"])
 
+    def test_detail_surfaces_frontmatter_and_an_edit_preserves_it(self) -> None:
+        """Adopt a real-shaped Claude agent, read its config, edit, config survives."""
+
+        def seed(spec: FakeHomeSpec) -> None:
+            agents = spec.home / ".claude" / "agents"
+            agents.mkdir(parents=True, exist_ok=True)
+            (agents / "bookman.md").write_text(
+                "---\n"
+                "name: Bookman\n"
+                "description: Vault librarian.\n"
+                "model: sonnet\n"
+                "tools: Read, Grep\n"
+                'permissionMode: "acceptEdits"\n'
+                "maxTurns: 50\n"
+                "disallowedTools: []\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                "    - matcher: Bash\n"
+                "---\n\nIndex the vault.\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            harness.post_json("/api/agents/claude/bookman/adopt", {})
+
+            detail = harness.get_json("/api/agents/bookman")
+            config = {row["key"]: row["value"] for row in detail["configuration"]}
+            self.assertEqual(detail["description"], "Vault librarian.")
+            self.assertEqual(config["model"], "sonnet")
+            self.assertEqual(config["permissionMode"], "acceptEdits")
+            self.assertEqual(config["maxTurns"], "50")
+            self.assertEqual(config["disallowedTools"], "[]")
+            self.assertEqual(config["hooks"], "(1 entry)")
+            # name/description have their own places in the view.
+            self.assertNotIn("name", config)
+            self.assertNotIn("description", config)
+
+            harness.put_json("/api/agents/bookman", {"description": "Updated."})
+
+            after = harness.get_json("/api/agents/bookman")
+            after_config = {row["key"]: row["value"] for row in after["configuration"]}
+            self.assertEqual(after["description"], "Updated.")
+            self.assertEqual(after_config, config)
+
     def test_detail_of_a_missing_agent_is_404(self) -> None:
         with AppTestHarness() as harness:
             payload = harness.get_json("/api/agents/nope", expected_status=404)

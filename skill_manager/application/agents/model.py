@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Mapping
 
 from skill_manager.errors import MutationError
 
@@ -13,7 +13,13 @@ class AgentParseError(ValueError):
 
 @dataclass(frozen=True)
 class AgentDefinition:
-    """A subagent: a markdown file with `name`, `description`, and a prompt body."""
+    """A subagent: a markdown file with `name`, `description`, and a prompt body.
+
+    ``metadata`` is the frontmatter mapping **verbatim**, including keys Skill Manager
+    does not interpret (``model``, ``permissionMode``, ``maxTurns``, Cursor's
+    ``readonly``, …). Those are surfaced read-only and, critically, written back
+    untouched — an edit here must never silently drop a harness's own configuration.
+    """
 
     slug: str
     name: str
@@ -21,10 +27,20 @@ class AgentDefinition:
     prompt: str
     tools: tuple[str, ...]
     path: Path
+    metadata: Mapping[str, object] = field(default_factory=dict)
 
     @property
     def ref(self) -> str:
         return self.slug
+
+    @property
+    def extra_metadata(self) -> tuple[tuple[str, object], ...]:
+        """Frontmatter beyond the fields the detail view renders on their own."""
+        return tuple(
+            (key, value)
+            for key, value in self.metadata.items()
+            if key not in {"name", "description"}
+        )
 
 
 @dataclass(frozen=True)
@@ -106,6 +122,8 @@ class AgentDetail:
     store_path: Path
     harnesses: tuple[AgentHarnessDetail, ...]
     can_delete: bool
+    # Frontmatter beyond name/description, verbatim and in file order.
+    configuration: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

@@ -89,6 +89,9 @@ class AgentStore:
                 description=description if description is not None else current.description,
                 prompt=prompt if prompt is not None else current.prompt,
                 tools=tools if tools is not None else current.tools,
+                # Carry the original frontmatter forward so keys we do not interpret
+                # (model, permissionMode, hooks, …) survive the edit.
+                base_metadata=current.metadata,
             ),
         )
         return parse_agent_file(current.path)

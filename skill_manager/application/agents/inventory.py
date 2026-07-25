@@ -100,6 +100,9 @@ class AgentInventoryService:
             store_path=agent.path,
             harnesses=tuple(harnesses),
             can_delete=True,
+            configuration=tuple(
+                (key, _format_config_value(value)) for key, value in agent.extra_metadata
+            ),
         )
 
     def _managed_entry(
@@ -197,6 +200,20 @@ class AgentInventoryService:
             can_adopt=True,
             can_delete=False,
         )
+
+
+def _format_config_value(value: object) -> str:
+    """Render a frontmatter value for display without interpreting it."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, list):
+        return "[]" if not value else ", ".join(str(item) for item in value)
+    if isinstance(value, dict):
+        count = len(value)
+        return f"({count} {'entry' if count == 1 else 'entries'})"
+    return str(value)
 
 
 __all__ = ["AgentInventoryService"]

@@ -112,15 +112,20 @@ export function AgentDetailContent({
             </div>
           </DetailDisclosure>
 
-          {detail.tools.length > 0 ? (
-            <DetailSection heading="Tools">
-              <div className="agent-detail__tools-list">
-                {detail.tools.map(tool => (
-                  <span key={tool} className="detail-loading-chip agent-detail__tool-chip">
-                    {tool}
-                  </span>
+          {detail.configuration.length > 0 ? (
+            <DetailSection heading="Configuration">
+              {/* Frontmatter Skill Manager does not interpret, shown verbatim so a
+                  harness's own settings are visible rather than invisible-and-fragile. */}
+              <dl className="agent-detail__config">
+                {detail.configuration.map(({ key, value }) => (
+                  <div key={key} className="agent-detail__config-row">
+                    <dt className="agent-detail__config-key">{key}</dt>
+                    <dd className="agent-detail__config-value">
+                      {value === "" ? <span className="agent-detail__config-empty">—</span> : value}
+                    </dd>
+                  </div>
                 ))}
-              </div>
+              </dl>
             </DetailSection>
           ) : null}
 

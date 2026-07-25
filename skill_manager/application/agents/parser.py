@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 from pathlib import Path
+from typing import Mapping
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
@@ -8,6 +10,13 @@ from ruamel.yaml.error import YAMLError
 from .model import AgentDefinition, AgentParseError
 
 _yaml = YAML(typ="safe")
+_rt_yaml = YAML()
+_rt_yaml.default_flow_style = False
+
+# Written by the retired compile model and read by nothing. Unknown *harness* keys are
+# preserved on write; these two are ours, dead, and dropped so they stop showing up as
+# configuration. Everything else survives untouched.
+RETIRED_KEYS = frozenset({"capabilities", "harnesses"})
 
 
 def parse_agent_file(path: Path) -> AgentDefinition:
@@ -21,9 +30,12 @@ def parse_agent_file(path: Path) -> AgentDefinition:
 def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefinition:
     """Parse an agent definition.
 
-    Only ``name``, ``description``, and ``tools`` are meaningful. Legacy keys from the
-    retired compile model (``capabilities``, ``harnesses``) are ignored on read and
-    dropped on the next write, so existing files keep working without a migration.
+    ``name``, ``description``, and ``tools`` drive behavior. Every other frontmatter
+    key is kept verbatim in ``metadata`` — harness agents carry `model`,
+    `permissionMode`, `maxTurns`, Cursor's `readonly`, and so on, and Skill Manager
+    must display those without interpreting or destroying them. The only keys dropped
+    on write are ``RETIRED_KEYS``, which the retired compile model wrote and nothing
+    reads.
     """
     metadata, prompt = split_frontmatter(document)
     return AgentDefinition(
@@ -33,18 +45,62 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         prompt=prompt.strip(),
         tools=_str_tuple(metadata.get("tools"), "tools"),
         path=path,
+        metadata=dict(metadata),
     )
 
 
 def render_agent_document(
-    *, name: str, description: str, prompt: str, tools: tuple[str, ...] = ()
+    *,
+    name: str,
+    description: str,
+    prompt: str,
+    tools: tuple[str, ...] = (),
+    base_metadata: Mapping[str, object] | None = None,
 ) -> str:
-    """Render an agent file. Emits only the keys the current model understands."""
-    lines = ["---", f"name: {name}", f"description: {description}"]
+    """Render an agent file.
+
+    When ``base_metadata`` is supplied (any edit of an existing agent) the original
+    frontmatter is the starting point and only the edited keys are replaced, so keys
+    Skill Manager does not interpret survive. Harness agents routinely carry `model`,
+    `permissionMode`, `maxTurns`, `disallowedTools`, hooks and more; re-rendering from
+    the three fields we understand would delete all of it on the first save.
+    """
+    metadata: dict[str, object] = {
+        key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
+    }
+    metadata["name"] = name
+    metadata["description"] = description
     if tools:
-        lines.append("tools: " + ", ".join(tools))
+        metadata["tools"] = ", ".join(tools)
+    elif "tools" in metadata:
+        # An explicit empty edit clears it; leave the key out rather than writing null.
+        del metadata["tools"]
+
+    # `name` and `description` lead, then everything else in its original order.
+    ordered = ["name", "description"] + [k for k in metadata if k not in {"name", "description"}]
+    lines = ["---"]
+    for key in ordered:
+        lines.extend(_render_entry(key, metadata[key]))
     lines.append("---")
     return "\n".join(lines) + "\n\n" + prompt.strip() + "\n"
+
+
+def _render_entry(key: str, value: object) -> list[str]:
+    if isinstance(value, str) or value is None:
+        return [f"{key}: {'' if value is None else value}"]
+    if isinstance(value, bool):
+        return [f"{key}: {'true' if value else 'false'}"]
+    if isinstance(value, (int, float)):
+        return [f"{key}: {value}"]
+    if isinstance(value, list):
+        if not value:
+            return [f"{key}: []"]
+        return [f"{key}:"] + [f"  - {item}" for item in value]
+    if isinstance(value, dict):
+        stream = io.StringIO()
+        _rt_yaml.dump({key: value}, stream)
+        return stream.getvalue().rstrip("\n").splitlines()
+    return [f"{key}: {value}"]
 
 
 def split_frontmatter(document: str) -> tuple[dict, str]:

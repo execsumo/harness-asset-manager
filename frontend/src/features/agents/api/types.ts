@@ -72,5 +72,7 @@ export interface AgentDetailDto {
     installMethod: "symlink" | "rendered" | "none";
     installed: boolean;
   }>;
+  /** Frontmatter beyond name/description, verbatim and in file order. */
+  configuration: Array<{ key: string; value: string }>;
   canDelete: boolean;
 }

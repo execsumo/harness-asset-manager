@@ -13,6 +13,7 @@ from skill_manager.api.schemas.agents import (
     AgentActionsResponse,
     AgentBindingResponse,
     AgentColumnResponse,
+    AgentConfigEntryResponse,
     AgentDetailResponse,
     AgentEntryResponse,
     AgentHarnessDetailResponse,
@@ -220,6 +221,9 @@ def _detail(detail: AgentDetail) -> AgentDetailResponse:
                 installed=harness.installed,
             )
             for harness in detail.harnesses
+        ],
+        configuration=[
+            AgentConfigEntryResponse(key=key, value=value) for key, value in detail.configuration
         ],
         canDelete=detail.can_delete,
     )

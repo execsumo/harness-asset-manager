@@ -80,13 +80,65 @@ class AgentParserTests(unittest.TestCase):
         with self.assertRaises(AgentParseError):
             parse_agent_document("---\nname: X\nbody", slug="x", path=Path("x.md"))
 
+    def test_unknown_frontmatter_survives_an_edit(self) -> None:
+        """The keys a harness owns must never be collateral damage of an edit.
+
+        Real Claude agents carry model / permissionMode / maxTurns / hooks and more.
+        Re-rendering from just name+description+tools deleted all of it.
+        """
+        document = (
+            "---\n"
+            "name: Bookman\n"
+            "description: Vault librarian.\n"
+            "model: sonnet\n"
+            "tools: Read, Grep\n"
+            'permissionMode: "acceptEdits"\n'
+            "maxTurns: 50\n"
+            "disallowedTools: []\n"
+            "hooks:\n"
+            "  PreToolUse:\n"
+            "    - matcher: Bash\n"
+            "---\n\nIndex the vault.\n"
+        )
+        agent = parse_agent_document(document, slug="bookman", path=Path("bookman.md"))
+
+        rewritten = render_agent_document(
+            name=agent.name,
+            description="Vault librarian, updated.",
+            prompt=agent.prompt,
+            tools=agent.tools,
+            base_metadata=agent.metadata,
+        )
+
+        reparsed = parse_agent_document(rewritten, slug="bookman", path=Path("bookman.md"))
+        self.assertEqual(reparsed.description, "Vault librarian, updated.")
+        self.assertEqual(reparsed.name, "Bookman")
+        self.assertEqual(reparsed.prompt, "Index the vault.")
+        self.assertEqual(
+            [key for key, _ in reparsed.extra_metadata],
+            ["model", "tools", "permissionMode", "maxTurns", "disallowedTools", "hooks"],
+        )
+        self.assertEqual(reparsed.metadata["model"], "sonnet")
+        self.assertEqual(reparsed.metadata["maxTurns"], 50)
+        self.assertEqual(reparsed.metadata["permissionMode"], "acceptEdits")
+        self.assertEqual(reparsed.metadata["hooks"], {"PreToolUse": [{"matcher": "Bash"}]})
+
+    def test_extra_metadata_excludes_the_fields_shown_on_their_own(self) -> None:
+        agent = parse_agent_document(AGENT_DOC, slug="chief", path=Path("chief.md"))
+        keys = [key for key, _ in agent.extra_metadata]
+        self.assertNotIn("name", keys)
+        self.assertNotIn("description", keys)
+        self.assertIn("tools", keys)
+
     def test_render_drops_legacy_keys(self) -> None:
+        """Our own retired compile keys are the one thing still dropped on write."""
         agent = parse_agent_document(LEGACY_AGENT_DOC, slug="legacy", path=Path("legacy.md"))
         rendered = render_agent_document(
             name=agent.name,
             description=agent.description,
             prompt=agent.prompt,
             tools=agent.tools,
+            base_metadata=agent.metadata,
         )
         self.assertNotIn("capabilities", rendered)
         self.assertNotIn("harnesses", rendered)

@@ -117,6 +117,13 @@ class AgentHarnessDetailResponse(BaseModel):
     installed: bool
 
 
+class AgentConfigEntryResponse(BaseModel):
+    """One frontmatter key we do not interpret, shown verbatim."""
+
+    key: str
+    value: str
+
+
 class AgentDetailResponse(BaseModel):
     ref: str
     name: str
@@ -126,6 +133,7 @@ class AgentDetailResponse(BaseModel):
     document: str
     storePath: str
     harnesses: list[AgentHarnessDetailResponse]
+    configuration: list[AgentConfigEntryResponse] = Field(default_factory=list)
     canDelete: bool
 
 
@@ -138,6 +146,7 @@ __all__ = [
     "AgentActionsResponse",
     "AgentBindingResponse",
     "AgentColumnResponse",
+    "AgentConfigEntryResponse",
     "AgentDetailResponse",
     "AgentEntryResponse",
     "AgentHarnessDetailResponse",

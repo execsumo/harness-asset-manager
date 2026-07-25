@@ -1,12 +1,40 @@
-.agent-detail__tools-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* Frontmatter we do not interpret, rendered verbatim as key/value rows. */
+.agent-detail__config {
+  display: grid;
+  gap: 6px;
+  margin: 0;
 }
 
-.agent-detail__tool-chip {
+.agent-detail__config-row {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.agent-detail__config-key {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  word-break: break-word;
+}
+
+.agent-detail__config-value {
+  margin: 0;
+  font-size: var(--font-size-sm);
   color: var(--color-text);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  word-break: break-word;
+}
+
+.agent-detail__config-empty {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 520px) {
+  .agent-detail__config-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 .agent-detail__unsupported-pill {

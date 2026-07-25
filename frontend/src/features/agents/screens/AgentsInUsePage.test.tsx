@@ -17,6 +17,14 @@ function agentDetailFixture(): AgentDetailDto {
     tools: ["tool1", "tool2"],
     document: "# Test Doc",
     storePath: "/store/agent-1.md",
+    configuration: [
+      { key: "model", value: "sonnet" },
+      { key: "tools", value: "tool1, tool2" },
+      { key: "permissionMode", value: "acceptEdits" },
+      { key: "maxTurns", value: "50" },
+      { key: "hooks", value: "(1 entry)" },
+      { key: "effort", value: "" },
+    ],
     harnesses: [
       {
         harness: "cursor",
@@ -123,15 +131,23 @@ describe("AgentsInUsePage", () => {
       });
     });
 
-    it("renders name, description, tools, and harness rows", async () => {
+    it("renders name, description, configuration, and harness rows", async () => {
       renderPage();
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
       
       await waitFor(() => expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument());
       expect(screen.getByText("Detail description")).toBeInTheDocument();
-      expect(screen.getByText("tool1")).toBeInTheDocument();
-      expect(screen.getByText("tool2")).toBeInTheDocument();
+      // Every frontmatter key we do not interpret is shown verbatim, not dropped.
+      expect(screen.getByText("model")).toBeInTheDocument();
+      expect(screen.getByText("sonnet")).toBeInTheDocument();
+      expect(screen.getByText("permissionMode")).toBeInTheDocument();
+      expect(screen.getByText("acceptEdits")).toBeInTheDocument();
+      expect(screen.getByText("maxTurns")).toBeInTheDocument();
+      expect(screen.getByText("hooks")).toBeInTheDocument();
+      expect(screen.getByText("(1 entry)")).toBeInTheDocument();
+      // name/description have their own sections and must not repeat here.
+      expect(screen.queryByText("description")).not.toBeInTheDocument();
       expect(screen.getByText("Cursor")).toBeInTheDocument();
       expect(screen.getByText("Windsurf")).toBeInTheDocument();
     });
