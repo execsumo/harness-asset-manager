@@ -26,18 +26,44 @@ const ALLOWLIST = [
 const FAIL_SEVERITIES = new Set(["high", "critical"]);
 
 function collectAdvisories(auditJson) {
-  const findings = [];
+  // npm audit attributes advisories two ways: inline objects on the owning
+  // package, and plain strings ("react-router-dom" via ["react-router"]) that
+  // point at another entry in the vulnerabilities map. Follow the strings so
+  // every finding names the package that actually carries the advisory.
   const vulnerabilities = auditJson.vulnerabilities ?? {};
-  for (const [name, vuln] of Object.entries(vulnerabilities)) {
+  const findings = [];
+  const seen = new Set();
+
+  function visit(name, seenPackages) {
+    const vuln = vulnerabilities[name];
+    if (!vuln) return;
     const via = Array.isArray(vuln.via) ? vuln.via : [];
-    const advisories = via.filter((entry) => entry && typeof entry === "object" && entry.url);
-    if (advisories.length === 0) {
-      findings.push({ name, severity: vuln.severity, id: null, title: String(vuln.via) });
-      continue;
+    for (const entry of via) {
+      if (typeof entry === "string") {
+        if (!seenPackages.has(entry)) {
+          seenPackages.add(entry);
+          visit(entry, seenPackages);
+        }
+        continue;
+      }
+      if (entry && typeof entry === "object" && entry.url) {
+        const finding = {
+          name,
+          severity: entry.severity ?? vuln.severity,
+          id: extractAdvisoryId(entry.url),
+          title: entry.title,
+        };
+        const key = `${finding.name}|${finding.id}|${finding.title}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          findings.push(finding);
+        }
+      }
     }
-    for (const advisory of advisories) {
-      findings.push({ name, severity: advisory.severity ?? vuln.severity, id: extractAdvisoryId(advisory.url), title: advisory.title });
-    }
+  }
+
+  for (const name of Object.keys(vulnerabilities)) {
+    visit(name, new Set([name]));
   }
   return findings;
 }
@@ -48,13 +74,21 @@ function extractAdvisoryId(url) {
 }
 
 function main() {
-  const result = spawnSync("npm", ["audit", "--omit=dev", "--json"], { encoding: "utf-8" });
+  // AUDIT_GATE_JSON_FILE reads a saved `npm audit --json` payload instead of
+  // querying npm — used to test the gate against recorded advisory shapes.
   let auditJson;
-  try {
-    auditJson = JSON.parse(result.stdout);
-  } catch {
-    process.stderr.write(`audit_gate: could not parse npm audit output.\n${result.stderr}\n${result.stdout}\n`);
-    process.exit(2);
+  const replayFile = process.env.AUDIT_GATE_JSON_FILE;
+  if (replayFile) {
+    const { readFileSync } = require("node:fs");
+    auditJson = JSON.parse(readFileSync(replayFile, "utf-8"));
+  } else {
+    const result = spawnSync("npm", ["audit", "--omit=dev", "--json"], { encoding: "utf-8" });
+    try {
+      auditJson = JSON.parse(result.stdout);
+    } catch {
+      process.stderr.write(`audit_gate: could not parse npm audit output.\n${result.stderr}\n${result.stdout}\n`);
+      process.exit(2);
+    }
   }
 
   const findings = collectAdvisories(auditJson);
