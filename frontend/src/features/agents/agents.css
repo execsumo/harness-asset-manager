@@ -1,0 +1,67 @@
+.agent-detail__tools-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-detail__tool-chip {
+  color: var(--color-text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.agent-detail__unsupported-pill {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-detail__rendered-note {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  text-transform: none;
+  font-size: 0.85rem;
+  letter-spacing: normal;
+  font-family: inherit;
+}
+
+.agent-action-spinner {
+  margin-right: 4px;
+}
+
+.agent-icon-margin {
+  margin-right: 4px;
+}
+
+.agent-pointer {
+  cursor: pointer;
+}
+
+.agent-opacity-half {
+  opacity: 0.5;
+}
+
+.agent-dialog-content {
+  max-width: 620px;
+  width: 92vw;
+}
+
+.agent-dialog-form {
+  margin-top: 16px;
+}
+
+.agent-dialog-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agent-dialog-footer {
+  margin-top: 24px;
+}
+
+.agent-dialog-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+  color: var(--color-text-muted);
+}

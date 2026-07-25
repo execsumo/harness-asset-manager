@@ -1,3 +1,4 @@
+import "../agents.css";
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, X } from "lucide-react";
@@ -50,7 +51,7 @@ export function CreateAgentDialog({
       toast(`Successfully created agent ${name.trim()}`);
       onOpenChange(false);
     } catch (err: any) {
-      setError(err.detail ?? err.message ?? "An error occurred while creating the agent.");
+      setError(err.error ?? "An error occurred while creating the agent.");
     }
   }
 
@@ -58,7 +59,7 @@ export function CreateAgentDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content" style={{ maxWidth: "620px", width: "92vw" }}>
+        <Dialog.Content className="dialog-content agent-dialog-content">
           <div className="dialog-header">
             <Dialog.Title className="dialog-title">
               Create New Agent Persona
@@ -68,8 +69,8 @@ export function CreateAgentDialog({
             </Dialog.Close>
           </div>
 
-          <form onSubmit={handleSubmit} className="dialog-form" style={{ marginTop: "16px" }}>
-            <div className="dialog-form-fields" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <form onSubmit={handleSubmit} className="dialog-form agent-dialog-form">
+            <div className="dialog-form-fields agent-dialog-form-fields">
               {error && (
                 <ErrorBanner message={error} onDismiss={() => setError(null)} />
               )}
@@ -125,7 +126,7 @@ export function CreateAgentDialog({
               </label>
             </div>
 
-            <div className="dialog-footer" style={{ marginTop: "24px" }}>
+            <div className="dialog-footer agent-dialog-footer">
               <Dialog.Close asChild>
                 <button type="button" className="action-pill action-pill--md" disabled={isPending}>
                   Cancel

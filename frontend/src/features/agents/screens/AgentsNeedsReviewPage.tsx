@@ -1,3 +1,4 @@
+import "../agents.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, Plus, X } from "lucide-react";
@@ -153,7 +154,7 @@ export default function AgentsNeedsReviewPage() {
               disabled={adoptingSelected || adoptableCount === 0}
               onClick={() => void handleAdoptAll()}
             >
-              <Plus size={16} style={{ marginRight: "4px" }} />
+              <Plus size={16} className="agent-icon-margin" />
               Adopt all eligible
             </button>
           }

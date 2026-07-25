@@ -82,6 +82,33 @@ class AgentIssue:
 
 
 @dataclass(frozen=True)
+class AgentHarnessDetail:
+    """One harness row in the detail view: state plus where the file actually is."""
+
+    harness: str
+    label: str
+    logo_key: str | None
+    state: BindingState
+    detail: str | None
+    path: Path
+    install_method: Literal["symlink", "rendered", "none"]
+    installed: bool
+
+
+@dataclass(frozen=True)
+class AgentDetail:
+    ref: str
+    name: str
+    description: str
+    prompt: str
+    tools: tuple[str, ...]
+    document: str
+    store_path: Path
+    harnesses: tuple[AgentHarnessDetail, ...]
+    can_delete: bool
+
+
+@dataclass(frozen=True)
 class AgentInventory:
     columns: tuple[AgentTarget, ...]
     entries: tuple[AgentEntry, ...]

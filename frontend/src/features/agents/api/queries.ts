@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAgentsInventory, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
+import { fetchAgentsInventory, fetchAgentDetail, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
 import { agentsKeys } from "./keys";
 import type { AgentAdoptConflict, AdoptAllResponse } from "./types";
 
@@ -10,12 +10,20 @@ export function useAgentsInventoryQuery() {
   });
 }
 
+export function useAgentDetailQuery(ref: string) {
+  return useQuery({
+    queryKey: agentsKeys.detail(ref),
+    queryFn: () => fetchAgentDetail(ref),
+  });
+}
+
 export function useEnableAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ref, harness }: { ref: string; harness: string }) => enableAgent(ref, harness),
-    onSuccess: () => {
+    onSuccess: (_, { ref }) => {
       queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
     },
   });
 }
@@ -24,8 +32,9 @@ export function useDisableAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ref, harness }: { ref: string; harness: string }) => disableAgent(ref, harness),
-    onSuccess: () => {
+    onSuccess: (_, { ref }) => {
       queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
     },
   });
 }
@@ -66,8 +75,9 @@ export function useUpdateAgentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ ref, request }: Parameters<typeof updateAgent>[0] & { ref: string }) => updateAgent({ ref, request }),
-    onSuccess: () => {
+    onSuccess: (_, { ref }) => {
       queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
     },
   });
 }
