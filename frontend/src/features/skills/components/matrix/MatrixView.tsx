@@ -49,7 +49,6 @@ export function MatrixView({
   return (
     <MatrixTable
       ariaLabel="Skills harness matrix"
-      harnessColumnCount={harnessColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"

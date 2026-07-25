@@ -67,11 +67,9 @@ export function SlashCommandReviewMatrixView({
   return (
     <MatrixTable
       ariaLabel={copy.review.listAria || "Slash commands to review list"}
-      harnessColumnCount={displayTargets.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="140px"
-      hasCheckbox={true}
     >
       <thead className="matrix-table__head">
         <tr>

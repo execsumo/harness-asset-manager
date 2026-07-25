@@ -119,12 +119,10 @@ export default function AgentsInUsePage() {
         entries.length > 0 ? (
           <MatrixTable
             ariaLabel="Agents Matrix"
-            harnessColumnCount={columns.length}
             harnessColumnWidth="52px"
             compactColumnWidth="140px"
             coverageColumnWidth="96px"
             minWidth="800px"
-            hasCheckbox={false}
           >
             <thead className="matrix-table__head">
               <tr>

@@ -68,7 +68,6 @@ export function McpNeedsReviewMatrixView({
   return (
     <MatrixTable
       ariaLabel={copy.detail.list.reviewAriaLabel || "MCP configs to review"}
-      harnessColumnCount={columns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="160px"

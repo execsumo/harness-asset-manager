@@ -47,7 +47,6 @@ export function McpServerMatrixView({
   return (
     <MatrixTable
       ariaLabel={copy.detail.matrix.ariaLabel}
-      harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="160px"

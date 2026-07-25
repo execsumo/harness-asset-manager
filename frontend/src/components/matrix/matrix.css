@@ -18,21 +18,8 @@
   font-size: var(--font-size-sm);
 }
 
-.matrix-table__col-checkbox {
-  width: 44px;
-}
-
-.matrix-table__col-harness {
-  width: var(--matrix-harness-column-width, 52px);
-}
-
-.matrix-table__col-compact {
-  width: 0;
-}
-
-.matrix-table__col-coverage {
-  width: var(--matrix-coverage-column-width, 64px);
-}
+/* Column widths come from the header cells (`.matrix-table__th--*`) below, not
+   from a colgroup — see MatrixTable.tsx. */
 
 .matrix-table__head {
   position: sticky;
@@ -318,14 +305,6 @@
 }
 
 @media (max-width: 900px) {
-  .matrix-table__col-harness {
-    width: 0;
-  }
-
-  .matrix-table__col-compact {
-    width: var(--matrix-compact-column-width, 140px);
-  }
-
   .matrix-table__th--compact,
   .matrix-table__cell--compact {
     display: table-cell;

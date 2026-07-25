@@ -61,7 +61,6 @@ export function SlashCommandMatrix({
   return (
     <MatrixTable
       ariaLabel="Slash commands target matrix"
-      harnessColumnCount={targets.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="140px"

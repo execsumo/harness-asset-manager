@@ -48,7 +48,6 @@ export function PermissionsMatrixView({
   return (
     <MatrixTable
       ariaLabel="Permissions Matrix"
-      harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"

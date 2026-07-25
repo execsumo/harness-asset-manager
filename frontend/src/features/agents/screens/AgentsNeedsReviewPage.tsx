@@ -202,12 +202,10 @@ export default function AgentsNeedsReviewPage() {
       ) : (
         <MatrixTable
           ariaLabel="Agents to review"
-          harnessColumnCount={columns.length}
           harnessColumnWidth="52px"
           compactColumnWidth="140px"
           coverageColumnWidth="96px"
           minWidth="800px"
-          hasCheckbox={true}
         >
           <thead className="matrix-table__head">
             <tr>

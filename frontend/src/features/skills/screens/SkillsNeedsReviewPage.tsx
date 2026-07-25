@@ -165,7 +165,6 @@ export default function SkillsNeedsReviewPage() {
         sortedRows.length > 0 ? (
           <MatrixTable
             ariaLabel="Skills to adopt"
-            harnessColumnCount={harnessColumns.length}
             harnessColumnWidth="52px"
             compactColumnWidth="140px"
             coverageColumnWidth="96px"

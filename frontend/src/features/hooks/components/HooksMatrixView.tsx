@@ -48,7 +48,6 @@ export function HooksMatrixView({
   return (
     <MatrixTable
       ariaLabel="Hooks Matrix"
-      harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"
