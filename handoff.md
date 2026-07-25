@@ -4,6 +4,62 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 
 ---
 
+## 2026-07-24 — One canonical harness order; disabled harnesses leave the matrices
+
+**Landed on `main` and running.** Reported symptom: the Slash commands matrix led with
+OpenCode, and OpenCode still had a column there despite being switched off in Settings.
+
+### The ordering rule, now stated once
+
+Harness order is **Claude, Codex, Antigravity, Cursor, OpenCode, Hermes, OpenClaw**, and
+it lives in exactly one place: the declaration order of `SUPPORTED_HARNESS_DEFINITIONS`
+in `skill_manager/harness/catalog.py`. Every family reaches it through
+`bindings_for_family`, and `support_store.enabled_harnesses` preserves that order rather
+than the settings file's — so reordering the catalog reorders Settings, Skills, MCP,
+Hooks, Permissions, Agents, and Slash commands together.
+
+**If you are adding a harness or changing order, edit the catalog tuple and nothing
+else.** Slash commands used to keep its own curated `TARGET_ORDER`; that is what put
+OpenCode first, and it is gone. Do not reintroduce a per-family order list.
+
+### Disabled harnesses
+
+`resolve_slash_targets` now filters out harnesses disabled in Settings, matching
+`resolve_agent_targets`. Targets are also **re-resolved per call** (a plain callable
+threaded into `SlashCommandReadModelService` / `SlashCommandMutationService`, mirroring
+`resolve_agents_snapshot` at `container.py:295`), so a Settings toggle applies with no
+restart. `migrate_legacy_slash_commands` deliberately keeps its one-shot build-time
+resolve — it is a migration, not a read path.
+
+Consequence, verified not assumed: a disabled harness also loses its review rows, but its
+command files and sync records survive untouched and come back intact on re-enable.
+
+### Two things the reorder exposed
+
+1. **`_manage_entry` validated harnesses mid-loop.** Whether it rejected a missing install
+   *before* creating any binding depended on which harness came first — Codex, by luck of
+   the old catalog order. With Claude first it adopted Claude's copy and *then* raised on
+   Codex, leaving a half-applied mutation. Fixed with a pre-flight validation pass.
+   Knock-on: the managed package dir is ingested from `harness_sightings[0]`, so a skill
+   found under different names in different harnesses is now named after Claude's copy.
+   Existing managed skills unaffected; new manage operations only.
+2. **The slash review matrix had a fallback** that synthesized columns from row order with
+   `enabled: true` hardcoded — both bugs, in the reported view. It was unreachable
+   (rows are empty whenever targets are) and is now deleted.
+
+### Validation at completion, run independently of the delegate
+
+typecheck clean · backend 347 + 146 · frontend 62 files / 263 tests · build clean ·
+`codegen:check` clean. Three pressure tests run directly: all harnesses disabled yields a
+well-formed empty payload; sync→disable→re-enable round-trips a file and its sync record;
+a mutation against a disabled harness returns a clean 400.
+
+**Delegation note:** agy did the per-call refactor competently, but `git commit --amend`ed
+the orchestrator's HEAD commit instead of adding its own. Give it a separate worktree, or
+tell it explicitly never to amend.
+
+---
+
 ## 2026-07-24 — Agents rebuilt as a normal resource family
 
 **Landed on `main` and running.** The compile/"hire" model shipped on 2026-07-13 (below)

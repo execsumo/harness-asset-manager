@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import get_args
 
 from skill_manager.errors import MutationError
 
 from .executor import SlashCommandSyncExecutor
-from .models import SlashCommand, SlashReviewAction, SlashTarget
+from .models import SlashCommand, SlashReviewAction, SlashTarget, SlashTargetId
 from .planner import SlashCommandPlanner
 from .queries import SlashCommandQueryService
 from .read_models import SlashCommandReadModelService
@@ -110,11 +111,14 @@ class SlashCommandMutationService:
 
     def _require_target(self, target_id: str, resolved_targets: tuple[SlashTarget, ...]) -> SlashTarget:
         target = target_by_id(resolved_targets, target_id)
-        if target is None:
-            raise MutationError(f"unknown slash command target: {target_id}", status=400)
-        if not target.enabled:
+        if target is not None:
+            return target
+        # Resolved targets already exclude harnesses disabled in Settings, so a
+        # target that is a real slash-command harness yet missing here is disabled,
+        # not unknown. Report it the way MCP, hooks, permissions, and skills do.
+        if target_id in get_args(SlashTargetId):
             raise MutationError(f"harness support is disabled: {target_id}", status=400)
-        return target
+        raise MutationError(f"unknown slash command target: {target_id}", status=400)
 
 
 __all__ = ["SlashCommandMutationService"]

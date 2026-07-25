@@ -30,6 +30,31 @@ class SlashCommandApiTests(unittest.TestCase):
             updated_target_ids = [target["id"] for target in updated_payload["targets"]]
             self.assertNotIn("codex", updated_target_ids)
 
+    def test_sync_distinguishes_a_disabled_harness_from_an_unknown_one(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/slash-commands",
+                {"name": "audit", "description": "Audit", "prompt": "Audit this"},
+            )
+            harness.put_json("/api/settings/harnesses/codex/support", {"enabled": False})
+
+            disabled = harness.post_json(
+                "/api/slash-commands/audit/sync",
+                {"targets": ["codex"]},
+                expected_status=400,
+            )
+            self.assertEqual(disabled["error"], "harness support is disabled: codex")
+
+            # An id that is not a slash-command harness at all never reaches the
+            # mutation layer: the request schema's Literal rejects it first. The
+            # "unknown slash command target" message is for internal callers only.
+            unknown = harness.post_json(
+                "/api/slash-commands/audit/sync",
+                {"targets": ["nope"]},
+                expected_status=422,
+            )
+            self.assertIn("Input should be", unknown["error"])
+
     def test_create_update_sync_and_delete_command(self) -> None:
         with AppTestHarness() as harness:
             response = harness.post_json(

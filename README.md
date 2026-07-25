@@ -133,14 +133,19 @@ Native release artifacts are published on GitHub Releases for macOS ARM64/x64 an
 <table align="center">
   <tr>
     <td align="center" valign="middle">
+      <img src="assets/harness-logos/claude-code-logo.svg" alt="Claude Code" height="56" /><br />
+      <strong>Claude Code</strong><br />
+      <a href="https://code.claude.com/docs/en/overview">Docs</a>
+    </td>
+    <td align="center" valign="middle">
       <img src="assets/harness-logos/codex-logo.svg" alt="Codex CLI" height="56" /><br />
       <strong>Codex CLI</strong><br />
       <a href="https://developers.openai.com/codex/cli">Docs</a>
     </td>
     <td align="center" valign="middle">
-      <img src="assets/harness-logos/claude-code-logo.svg" alt="Claude Code" height="56" /><br />
-      <strong>Claude Code</strong><br />
-      <a href="https://code.claude.com/docs/en/overview">Docs</a>
+      <img src="assets/harness-logos/agy-logo.svg" alt="Antigravity CLI" height="56" /><br />
+      <strong>Antigravity (agy)</strong><br />
+      <a href="https://antigravity.google">Docs</a>
     </td>
     <td align="center" valign="middle">
       <img src="assets/harness-logos/cursor-logo.svg" alt="Cursor" height="56" /><br />
@@ -153,22 +158,23 @@ Native release artifacts are published on GitHub Releases for macOS ARM64/x64 an
       <a href="https://opencode.ai/docs">Docs</a>
     </td>
     <td align="center" valign="middle">
-      <img src="assets/harness-logos/openclaw-logo.svg" alt="OpenClaw" height="56" /><br />
-      <strong>OpenClaw</strong><br />
-      <a href="https://docs.openclaw.ai/start/getting-started">Docs</a>
-    </td>
-    <td align="center" valign="middle">
-      <img src="assets/harness-logos/agy-logo.svg" alt="Antigravity CLI" height="56" /><br />
-      <strong>Antigravity (agy)</strong><br />
-      <a href="https://antigravity.google">Docs</a>
-    </td>
-    <td align="center" valign="middle">
       <img src="assets/harness-logos/hermes-logo.svg" alt="Hermes Agent" height="56" /><br />
       <strong>Hermes Agent</strong><br />
       <a href="https://hermes-agent.nousresearch.com/docs">Docs</a>
     </td>
+    <td align="center" valign="middle">
+      <img src="assets/harness-logos/openclaw-logo.svg" alt="OpenClaw" height="56" /><br />
+      <strong>OpenClaw</strong><br />
+      <a href="https://docs.openclaw.ai/start/getting-started">Docs</a>
+    </td>
   </tr>
 </table>
+
+Harnesses appear in this order everywhere in the app — Settings, and every resource
+matrix. The order is declared once, in `SUPPORTED_HARNESS_DEFINITIONS`
+(`skill_manager/harness/catalog.py`); every family derives its columns from it, so there
+is no per-page ordering to keep in sync. A harness switched off in Settings is dropped
+from every matrix rather than shown as an inert column.
 
 | Harness | Skills | MCP servers | Slash commands | Hooks |
 |---|---:|---:|---:|---:|
@@ -240,12 +246,16 @@ When Skill Manager finds different configs for the same MCP server, it asks you 
 
 Slash commands are stored as TOML records under Skill Manager app storage, then rendered into each supported harness format:
 
-- OpenCode writes Markdown command files under `~/.config/opencode/commands` and invokes them with `/`.
 - Claude Code writes Markdown command files under `~/.claude/commands` and invokes them with `/`.
-- Cursor writes plain text command files under `~/.cursor/commands` and invokes them with `/`.
 - Codex writes prompt files under `~/.codex/prompts` and invokes them with `/prompts:`.
+- Cursor writes plain text command files under `~/.cursor/commands` and invokes them with `/`.
+- OpenCode writes Markdown command files under `~/.config/opencode/commands` and invokes them with `/`.
 - Hermes Agent writes Markdown command files under `~/.hermes/commands` and invokes them with `/` (provisional).
 - OpenClaw and Antigravity (agy) slash command writes are not yet supported.
+
+Disabling a harness in Settings removes its column here immediately, without a restart.
+Command files already written to that harness and their sync records are left alone —
+re-enabling it restores the column and its sync state unchanged.
 
 Skill Manager tracks target ownership with sync state and content hashes. It will not overwrite an untracked command file automatically, and it reports managed files as changed or missing when the target no longer matches the last synced hash. Review actions let you adopt unmanaged commands, restore managed content, adopt a changed harness command as the new source, or remove a broken binding while leaving the harness file untouched.
 
