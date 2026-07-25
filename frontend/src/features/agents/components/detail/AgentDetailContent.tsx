@@ -54,7 +54,7 @@ export function AgentDetailContent({
     try {
       await onToggleHarness(detail.ref, harness, currentState === "enabled");
     } catch (err: any) {
-      setLocalActionError(err.error || err.message || "Failed to toggle harness");
+      setLocalActionError(err.error || "Failed to toggle harness");
     }
   };
 
@@ -67,7 +67,7 @@ export function AgentDetailContent({
       await promise;
     } catch (err: any) {
       // The modal is closed, but this is a best-effort catch.
-      setLocalActionError(err.error || err.message || "Failed to delete agent");
+      setLocalActionError(err.error || "Failed to delete agent");
       setDeleteDialogOpen(false);
     }
   };
