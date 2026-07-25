@@ -34,7 +34,7 @@ describe("permissions selectors", () => {
     const cell = matrixCellFor(entry, column);
     expect(cell.state).toBe("enabled");
     expect(cell.tooltip).toBe(
-      "Enabled on Antigravity (Caveat: On Antigravity this maps to PreInvocation, which fires before every model invocation, not only on user-prompt submit.)"
+      "Applied on Antigravity (Caveat: On Antigravity this maps to PreInvocation, which fires before every model invocation, not only on user-prompt submit.)"
     );
   });
 
@@ -57,7 +57,7 @@ describe("permissions selectors", () => {
     const cell = matrixCellFor(entry, column);
     expect(cell.state).toBe("disabled");
     expect(cell.tooltip).toBe(
-      "Disabled on Antigravity (Caveat: On Antigravity this maps to PreInvocation, which fires before every model invocation, not only on user-prompt submit.)"
+      "Not applied on Antigravity (Caveat: On Antigravity this maps to PreInvocation, which fires before every model invocation, not only on user-prompt submit.)"
     );
   });
 
@@ -111,6 +111,6 @@ describe("permissions selectors", () => {
 
     const cell = matrixCellFor(entry, column);
     expect(cell.state).toBe("enabled");
-    expect(cell.tooltip).toBe("Enabled on Antigravity");
+    expect(cell.tooltip).toBe("Applied on Antigravity");
   });
 });

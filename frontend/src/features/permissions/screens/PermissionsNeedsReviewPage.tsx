@@ -123,8 +123,8 @@ export default function PermissionsNeedsReviewPage() {
       <div className="page-chrome">
         <PageHeader
           title="Permissions to review"
-          subtitle="Permission rules found in your harness configs that skill-manager does not yet track. Promote the ones you want to manage globally."
-        actions={
+          subtitle="Permission rules found in your harness configs that skill-manager does not yet track. Adopt the ones you want to manage centrally."
+          actions={
             <button
               type="button"
               className="action-pill action-pill--md action-pill--accent"

@@ -140,8 +140,8 @@ export function matrixCellFor(
       binding,
       writable,
       pendingKey,
-      tooltip: `Enabled on ${column.label}`,
-      ariaLabel: `Disable ${baseLabel}`,
+      tooltip: `Applied on ${column.label}`,
+      ariaLabel: `Remove ${baseLabel}`,
       action: "disable",
     };
   } else if (binding?.state === "drifted") {
@@ -151,7 +151,7 @@ export function matrixCellFor(
       binding,
       writable,
       pendingKey,
-      tooltip: `Different config on ${column.label}${detail}`,
+      tooltip: `Config differs on ${column.label}${detail}`,
       ariaLabel: `Resolve config for ${baseLabel}`,
       action: "resolve",
     };
@@ -161,7 +161,7 @@ export function matrixCellFor(
       binding,
       writable,
       pendingKey,
-      tooltip: `Configured outside skill-manager on ${column.label}`,
+      tooltip: `Untracked on ${column.label}`,
       ariaLabel: `Open details for ${baseLabel}`,
       action: "open",
     };
@@ -181,8 +181,8 @@ export function matrixCellFor(
       binding,
       writable,
       pendingKey,
-      tooltip: `Disabled on ${column.label}`,
-      ariaLabel: `Enable ${baseLabel}`,
+      tooltip: `Not applied on ${column.label}`,
+      ariaLabel: `Apply ${baseLabel}`,
       action: "enable",
     };
   }
