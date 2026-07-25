@@ -86,8 +86,11 @@ def render_agent_document(
 
 
 def _render_entry(key: str, value: object) -> list[str]:
-    if isinstance(value, str) or value is None:
-        return [f"{key}: {'' if value is None else value}"]
+    if value is None:
+        return [f"{key}:"]
+    if isinstance(value, str):
+        # Quote the empty string so it round-trips as "" rather than becoming null.
+        return [f'{key}: ""'] if value == "" else [f"{key}: {value}"]
     if isinstance(value, bool):
         return [f"{key}: {'true' if value else 'false'}"]
     if isinstance(value, (int, float)):

@@ -123,6 +123,24 @@ class AgentParserTests(unittest.TestCase):
         self.assertEqual(reparsed.metadata["permissionMode"], "acceptEdits")
         self.assertEqual(reparsed.metadata["hooks"], {"PreToolUse": [{"matcher": "Bash"}]})
 
+    def test_empty_string_values_round_trip_as_empty_strings(self) -> None:
+        """`effort: ""` must not silently become null on the way back out."""
+        document = '---\nname: A\ndescription: d\neffort: ""\n---\n\nbody\n'
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        self.assertEqual(agent.metadata["effort"], "")
+
+        rewritten = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            base_metadata=agent.metadata,
+        )
+        self.assertIn('effort: ""', rewritten)
+        self.assertEqual(
+            parse_agent_document(rewritten, slug="a", path=Path("a.md")).metadata["effort"], ""
+        )
+
     def test_extra_metadata_excludes_the_fields_shown_on_their_own(self) -> None:
         agent = parse_agent_document(AGENT_DOC, slug="chief", path=Path("chief.md"))
         keys = [key for key, _ in agent.extra_metadata]
