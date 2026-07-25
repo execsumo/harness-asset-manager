@@ -62,6 +62,14 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         default=True,
         help="Open the browser automatically after startup.",
     )
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help=(
+            "Permit binding a non-loopback --host. WARNING: the API has no authentication; "
+            "anyone who can reach the port can mutate local harness config."
+        ),
+    )
     parser.add_argument("--state-dir", help="Override the runtime state directory.")
 
 
@@ -86,10 +94,35 @@ def main(argv: list[str] | None = None) -> int:
     return serve_command(args)
 
 
+def guard_remote_host(args: argparse.Namespace) -> int | None:
+    """Refuse non-loopback binds unless the operator opted in with --allow-remote."""
+    from skill_manager.api.guards import is_loopback_host
+
+    if is_loopback_host(args.host):
+        return None
+    if not args.allow_remote:
+        print(
+            f"error: refusing to bind non-loopback host {args.host!r}.\n"
+            "The skill-manager API has no authentication and can mutate local files. "
+            "Pass --allow-remote only on a network you fully trust.",
+            file=sys.stderr,
+        )
+        return 2
+    print(
+        f"WARNING: serving the unauthenticated skill-manager API on {args.host!r}; "
+        "anyone who can reach this port can mutate local harness configuration.",
+        file=sys.stderr,
+    )
+    return None
+
+
 def serve_command(args: argparse.Namespace) -> int:
     from skill_manager.application import build_backend_container
     from skill_manager.runtime.server import serve_foreground
 
+    refusal = guard_remote_host(args)
+    if refusal is not None:
+        return refusal
     env = runtime_env(args.state_dir)
     container = build_backend_container(env)
     return serve_foreground(
@@ -98,12 +131,16 @@ def serve_command(args: argparse.Namespace) -> int:
         port=args.port,
         frontend_dist=args.frontend_dist,
         open_browser=args.open_browser,
+        allow_remote=args.allow_remote,
     )
 
 
 def start_command(args: argparse.Namespace) -> int:
     from skill_manager.runtime.server import choose_port
 
+    refusal = guard_remote_host(args)
+    if refusal is not None:
+        return refusal
     env = runtime_env(args.state_dir)
     existing = load_runtime_state(env)
     if existing is not None and is_owned_runtime_process(existing):
@@ -124,6 +161,7 @@ def start_command(args: argparse.Namespace) -> int:
         "--port",
         str(port),
         "--no-open-browser",
+        *(["--allow-remote"] if args.allow_remote else []),
         *frontend_dist_args(args.frontend_dist),
         *state_dir_args(args.state_dir),
     )
