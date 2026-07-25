@@ -9,6 +9,7 @@ import {
   disableAgent,
   enableAgent,
   fetchAgentsInventory,
+  fetchAgentDetail,
   setAgentHarnesses,
   updateAgent,
 } from "./client";
@@ -41,6 +42,11 @@ describe("agents api client urls", () => {
     await fetchAgentsInventory();
     expect(calledUrl()).toBe("/api/agents");
     expect(calledUrl()).not.toContain("/api/api");
+  });
+
+  it("composes fetchAgentDetail url exactly", async () => {
+    await fetchAgentDetail("red-team");
+    expect(calledUrl()).toBe("/api/agents/red-team");
   });
 
   it("composes every mutation path exactly once", async () => {

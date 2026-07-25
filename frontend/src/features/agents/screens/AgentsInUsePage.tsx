@@ -1,3 +1,4 @@
+import "../agents.css";
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -25,6 +26,7 @@ import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText"
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import { EditAgentDialog } from "../components/EditAgentDialog";
 import { CreateAgentDialog } from "../components/CreateAgentDialog";
+import { AgentDetailModal } from "../components/detail/AgentDetailModal";
 
 export default function AgentsInUsePage() {
   const {
@@ -53,6 +55,7 @@ export default function AgentsInUsePage() {
   const columns = inventory?.columns ?? [];
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [detailRef, setDetailRef] = useState<string | null>(null);
   const [editRef, setEditRef] = useState<string | null>(null);
 
   const pillOptions = useMemo(
@@ -78,7 +81,7 @@ export default function AgentsInUsePage() {
               className="action-pill action-pill--md action-pill--accent"
               onClick={() => setCreateDialogOpen(true)}
             >
-              <Plus size={16} style={{ marginRight: "4px" }} />
+              <Plus size={16} className="agent-icon-margin" />
               Add Agent
             </button>
           }
@@ -144,9 +147,8 @@ export default function AgentsInUsePage() {
                 return (
                   <tr key={entry.ref} className="matrix-table__row">
                     <td
-                      className="matrix-table__cell matrix-table__cell--identity"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => setEditRef(entry.ref)}
+                      className="matrix-table__cell matrix-table__cell--identity agent-pointer"
+                      onClick={() => setDetailRef(entry.ref)}
                     >
                       <div className="matrix-table__name-row">
                         <OverflowTooltipText as="span" className="matrix-table__name-text">
@@ -195,7 +197,7 @@ export default function AgentsInUsePage() {
                               }}
                             >
                               {state === "unavailable" ? (
-                                <span style={{ opacity: 0.5 }}>—</span>
+                                <span className="agent-opacity-half">—</span>
                               ) : (
                                 <MatrixHarnessIcon
                                   label={column.label}
@@ -262,6 +264,17 @@ export default function AgentsInUsePage() {
       <CreateAgentDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
+      />
+      <AgentDetailModal
+        open={Boolean(detailRef)}
+        agentRef={detailRef}
+        pendingPerHarnessKeys={pendingPerHarnessKeys}
+        onToggleHarness={handleToggleHarness}
+        onClose={() => setDetailRef(null)}
+        onEdit={(ref) => {
+          setDetailRef(null);
+          setEditRef(ref);
+        }}
       />
       {editRef && (
         <EditAgentDialog

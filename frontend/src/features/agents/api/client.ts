@@ -7,10 +7,15 @@ import type {
   AgentSummaryResponse,
   AgentAdoptConflict,
   AdoptAllResponse,
+  AgentDetailDto,
 } from "./types";
 
 export async function fetchAgentsInventory(): Promise<AgentInventoryDto> {
   return fetchJson<AgentInventoryDto>("/agents");
+}
+
+export async function fetchAgentDetail(ref: string): Promise<AgentDetailDto> {
+  return fetchJson<AgentDetailDto>(`/agents/${ref}`);
 }
 
 export async function createAgent(
