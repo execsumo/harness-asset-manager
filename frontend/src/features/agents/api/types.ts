@@ -53,3 +53,24 @@ export interface AgentSummaryResponse {
   prompt?: string;
   tools?: string[];
 }
+
+export interface AgentDetailDto {
+  ref: string;
+  name: string;
+  description: string;
+  prompt: string;
+  tools: string[];
+  document: string;
+  storePath: string;
+  harnesses: Array<{
+    harness: string;
+    label: string;
+    logoKey: string | null;
+    state: "enabled" | "disabled" | "unsupported";
+    detail: string | null;
+    path: string;
+    installMethod: "symlink" | "rendered" | "none";
+    installed: boolean;
+  }>;
+  canDelete: boolean;
+}
