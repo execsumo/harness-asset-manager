@@ -401,9 +401,9 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             managed_trace = next(row for row in refreshed["rows"] if row["name"] == "Trace Lens")
             self.assertEqual(managed_trace["displayStatus"], "Managed")
-            self.assertTrue((harness.spec.codex_root / "trace-lens").is_symlink())
+            self.assertTrue((harness.spec.codex_root / "trace-lens-copy").is_symlink())
             self.assertTrue((harness.spec.claude_root / "trace-lens-copy").is_symlink())
-            self.assertTrue((harness.spec.opencode_root / "trace-lens").is_symlink())
+            self.assertTrue((harness.spec.opencode_root / "trace-lens-copy").is_symlink())
             self.assertTrue((harness.spec.codex_legacy_root / "trace-lens").is_dir())
             self.assertFalse((harness.spec.codex_legacy_root / "trace-lens").is_symlink())
 
@@ -441,9 +441,9 @@ class SkillsMutationTests(unittest.TestCase):
             result = harness.post_json(f"/api/skills/{trace_lens['skillRef']}/manage", expected_status=400)
 
             self.assertIn("Codex is not installed or not available on PATH", result["error"])
-            self.assertFalse((harness.spec.codex_root / "trace-lens").exists())
+            self.assertFalse((harness.spec.codex_root / "trace-lens-copy").exists())
             self.assertFalse((harness.spec.claude_root / "trace-lens-copy").is_symlink())
-            self.assertFalse((harness.spec.opencode_root / "trace-lens").exists())
+            self.assertFalse((harness.spec.opencode_root / "trace-lens-copy").exists())
 
     def test_manage_unknown_skill_returns_404(self) -> None:
         with AppTestHarness() as harness:
