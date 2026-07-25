@@ -9,6 +9,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
+from skill_manager import __version__
 from skill_manager.errors import MarketplaceUpstreamError
 from skill_manager.application.marketplace_http import (
     configured_marketplace_ca_file,
@@ -18,7 +19,7 @@ from skill_manager.application.marketplace_http import (
 DEFAULT_SKILLS_SH_BASE_URL = "https://skills.sh"
 MARKETPLACE_BASE_URL_ENV = "SKILL_MANAGER_MARKETPLACE_BASE_URL"
 _TIMEOUT_SECONDS = 15
-_USER_AGENT = "skill-manager/0.1"
+_USER_AGENT = f"skill-manager/{__version__}"
 
 
 def configured_marketplace_base_url(env: dict[str, str] | None = None) -> str:

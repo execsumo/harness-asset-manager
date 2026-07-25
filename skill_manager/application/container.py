@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from skill_manager.db import Database
 from skill_manager.harness import HarnessKernelService, HarnessSupportStore
 from skill_manager.harness.resolution import resolve_context
 from skill_manager.paths import AppPaths, resolve_app_paths
@@ -103,7 +102,6 @@ class BackendContainer:
     permissions_read_models: PermissionsReadModelService
     permissions_queries: PermissionsQueryService
     permissions_mutations: PermissionsMutationService
-    db: Database
     scaffold_service: ScaffoldService
     agents_store: AgentStore
     agents_inventory: AgentInventoryService
@@ -293,7 +291,6 @@ def build_backend_container(
         read_models=permissions_read_models,
     )
 
-    db = Database(paths.db_path)
     scaffold_service = ScaffoldService(paths)
     agents_store = AgentStore(paths.agents_root)
 
@@ -342,7 +339,6 @@ def build_backend_container(
         permissions_read_models=permissions_read_models,
         permissions_queries=permissions_queries,
         permissions_mutations=permissions_mutations,
-        db=db,
         scaffold_service=scaffold_service,
         agents_store=agents_store,
         agents_inventory=agents_inventory,

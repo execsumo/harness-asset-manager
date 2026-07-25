@@ -68,10 +68,11 @@ def serve_foreground(
     port: int = 8000,
     frontend_dist: str | Path | None = None,
     open_browser: bool = True,
+    allow_remote: bool = False,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend)
+    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote)
     sock, actual_host, actual_port = bind_socket(host, port)
     url = f"http://{actual_host}:{actual_port}"
     print(url, flush=True)
@@ -92,10 +93,11 @@ def serve_in_thread(
     host: str = "127.0.0.1",
     port: int = 0,
     frontend_dist: str | Path | None = None,
+    allow_remote: bool = False,
 ) -> ServerHandle:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend)
+    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote)
     sock, actual_host, actual_port = bind_socket(host, port)
     uvicorn = _uvicorn()
     config = uvicorn.Config(

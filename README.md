@@ -325,7 +325,6 @@ Useful Linux paths:
 - slash command library: `${XDG_DATA_HOME:-~/.local/share}/skill-manager/slash-commands/commands`
 - slash command sync state: `${XDG_DATA_HOME:-~/.local/share}/skill-manager/slash-commands/sync-state.json`
 - marketplace cache: `${XDG_DATA_HOME:-~/.local/share}/skill-manager/marketplace`
-- app database: `${XDG_DATA_HOME:-~/.local/share}/skill-manager/skill-manager.db`
 - app settings: `${XDG_CONFIG_HOME:-~/.config}/skill-manager/settings.json`
 
 Most users do not need to change these locations. If you manage skills in a custom environment, you can override individual skill roots with environment variables.
@@ -382,6 +381,15 @@ Default local URLs:
 - Frontend: `http://127.0.0.1:5173`
 - Backend: `http://127.0.0.1:8000`
 - Health: `http://127.0.0.1:8000/api/health`
+
+The server binds to loopback only, and it rejects requests with a non-loopback `Host` header
+(DNS-rebinding protection) and mutations with a non-loopback `Origin` header (CSRF protection).
+Binding a non-loopback address requires an explicit opt-in, and is discouraged because the API
+has no authentication:
+
+```bash
+skill-manager serve --host 0.0.0.0 --allow-remote
+```
 
 Validation:
 
