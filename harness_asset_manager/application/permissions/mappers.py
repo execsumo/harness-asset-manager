@@ -43,9 +43,9 @@ class ClaudeCodePermissionsMapper:
     """Mapper for Claude Code permissions under ~/.claude/settings.json."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        supported_decisions = {"allow", "deny", "ask"}
+        supported_decisions = {"deny"}
         if spec.decision not in supported_decisions:
-            return False, f"Decision '{spec.decision}' is not supported by Claude Code", None
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"shell", "file_read", "file_write", "web", "mcp"}
         if spec.scope not in supported_scopes:
@@ -259,9 +259,9 @@ class AntigravityPermissionsMapper:
     """Mapper for Antigravity permissions under ~/.gemini/antigravity-cli/settings.json."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        supported_decisions = {"allow", "deny", "ask"}
+        supported_decisions = {"deny"}
         if spec.decision not in supported_decisions:
-            return False, f"Decision '{spec.decision}' is not supported by Antigravity", None
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"shell", "mcp"}
         if spec.scope not in supported_scopes:
@@ -433,8 +433,8 @@ class CodexPermissionsMapper:
     """Mapper for OpenAI Codex permissions under ~/.codex/config.toml."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        if spec.decision == "ask":
-            return False, "Codex does not support ask decision for rules", None
+        if spec.decision != "deny":
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"file_read", "file_write", "web"}
         if spec.scope not in supported_scopes:

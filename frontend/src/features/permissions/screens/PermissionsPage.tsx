@@ -25,8 +25,6 @@ const DETAIL_PARAM = "permission";
 
 const DECISION_OPTIONS: readonly { value: PermissionsDecisionFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "allow", label: "Allow" },
-  { value: "ask", label: "Ask" },
   { value: "deny", label: "Deny" },
 ];
 

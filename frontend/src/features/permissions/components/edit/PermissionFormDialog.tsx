@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, X, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
-const SUPPORTED_DECISIONS = ["deny", "allow", "ask"];
+const SUPPORTED_DECISIONS = ["deny"];
 const SUPPORTED_SCOPES = ["shell", "file_read", "file_write", "web", "mcp", "any"];
 
 interface PermissionFormValue {
