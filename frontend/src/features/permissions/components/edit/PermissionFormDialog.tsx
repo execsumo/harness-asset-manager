@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, X, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 
-const SUPPORTED_DECISIONS = ["allow", "deny", "ask"];
+const SUPPORTED_DECISIONS = ["deny", "allow", "ask"];
 const SUPPORTED_SCOPES = ["shell", "file_read", "file_write", "web", "mcp", "any"];
 
 interface PermissionFormValue {
@@ -27,7 +27,7 @@ export function PermissionFormDialog({
   onSubmit,
 }: PermissionFormDialogProps) {
   const [id, setId] = useState("");
-  const [decision, setDecision] = useState("allow");
+  const [decision, setDecision] = useState("deny");
   const [scope, setScope] = useState("shell");
   const [pattern, setPattern] = useState("");
   const [description, setDescription] = useState("");
@@ -35,7 +35,7 @@ export function PermissionFormDialog({
   useEffect(() => {
     if (!open) return;
     setId("");
-    setDecision("allow");
+    setDecision("deny");
     setScope("shell");
     setPattern("");
     setDescription("");
