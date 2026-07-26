@@ -63,8 +63,6 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          <ConfigSnapshotsSection />
-
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.harnesses.heading}</h2>
             {controller.data.harnesses.map((harness) => (
@@ -77,6 +75,8 @@ export default function SettingsPage() {
               />
             ))}
           </section>
+
+          <ConfigSnapshotsSection />
         </>
       )}
 
