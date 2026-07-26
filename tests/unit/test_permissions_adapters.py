@@ -14,7 +14,7 @@ from harness_asset_manager.harness import HarnessKernelService, HarnessSupportSt
 def _spec(id: str = "test-perm", **overrides) -> PermissionSpec:
     base = dict(
         id=id,
-        decision="allow",
+        decision="deny",
         scope="shell",
         pattern="git push",
         description="A test permission",
@@ -71,8 +71,8 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
                 json.dumps(
                     {
                         "permissions": {
-                            "deny": [
-                                "Bash(git push)" # user drifted decision to deny
+                            "allow": [
+                                "Bash(git push)" # user drifted decision to allow
                             ]
                         }
                     }
@@ -94,7 +94,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             adapter = _adapter("claude", home=home)
             adapter.enable_permission(spec)
             
-            # Should have written both Edit and Write
+            # Should have written both Edit and Write under deny
             scan = adapter.scan(store.list_managed())
             states = {entry.id: entry.state for entry in scan.entries}
             self.assertEqual(states.get("p-write"), "managed")
@@ -103,7 +103,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             adapter.config_path.write_text(
                 json.dumps({
                     "permissions": {
-                        "allow": ["Edit(~/.zshrc)"]
+                        "deny": ["Edit(~/.zshrc)"]
                     }
                 }),
                 encoding="utf-8"
@@ -156,7 +156,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
 
             # Seed user profile
             adapter.config_path.write_text(
-                "[permissions.user-profile]\nextends = \":read-only\"\n[permissions.harness-asset-manager.filesystem]\n\"~/.zshrc\" = \"read\"\n",
+                "[permissions.user-profile]\nextends = \":read-only\"\n[permissions.harness-asset-manager.filesystem]\n\"~/.zshrc\" = \"deny\"\n",
                 encoding="utf-8"
             )
 
@@ -186,7 +186,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             adapter_claude = _adapter("claude", home=home)
             adapter_claude.config_path.parent.mkdir(parents=True, exist_ok=True)
             # Pre-existing user-authored key/data AND malformed JSON
-            adapter_claude.config_path.write_text('{"theme": "dark", "permissions": { "allow": ["Bash(git push)"] }, "malformed": {', encoding="utf-8")
+            adapter_claude.config_path.write_text('{"theme": "dark", "permissions": { "deny": ["Bash(git push)"] }, "malformed": {', encoding="utf-8")
 
             # Scan should not crash, but report scan issue
             scan_claude = adapter_claude.scan(store.list_managed())
@@ -198,13 +198,13 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
                 adapter_claude.enable_permission(spec)
 
             # Fix JSON syntax but keep foreign keys, then enable
-            adapter_claude.config_path.write_text('{"theme": "dark", "permissions": { "allow": [] }}', encoding="utf-8")
+            adapter_claude.config_path.write_text('{"theme": "dark", "permissions": { "deny": [] }}', encoding="utf-8")
             adapter_claude.enable_permission(spec)
             
             # Confirm foreign key "theme" is preserved
             doc_claude = json.loads(adapter_claude.config_path.read_text(encoding="utf-8"))
             self.assertEqual(doc_claude.get("theme"), "dark")
-            self.assertIn("Bash(git push)", doc_claude["permissions"]["allow"])
+            self.assertIn("Bash(git push)", doc_claude["permissions"]["deny"])
 
             # 2) TOML Format (Codex config.toml)
             adapter_codex = _adapter("codex", home=home)
