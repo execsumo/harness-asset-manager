@@ -2,11 +2,11 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-07-25 — Plan: User-Level Native Config Snapshot Service
+## 2026-07-25 — User-Level Native Config Snapshot Service & Web UI Controls
 
-**Goal**: Implement a snapshot & backup service for user-level native harness configuration files, storing canonical copies and backups under `~/.harness-asset-manager/configs/<harness_id>/`.
+**Shipped on `main`**. All backend services, CLI commands, Web UI controls, unit/integration tests, and documentation are complete.
 
-- **Storage Location**: `~/.harness-asset-manager/configs/<harness_id>/`
+- **Storage Location**: Canonical baselines and timestamped snapshots stored under `~/.harness-asset-manager/configs/<harness_id>/`.
 - **Target Harness Config Matrix**:
   - `claude`: `~/.claude.json`, `~/.claude/settings.json`
   - `codex`: `~/.codex/config.toml`
@@ -16,13 +16,20 @@ Running status for in-flight work. Read this before resuming. Newest session on 
   - `hermes`: `~/.hermes/config.yaml`
   - `openclaw`: `~/.openclaw/openclaw.json`
 - **Triggers**:
-  1. *Pre-Write / Pre-Sync*: Automatically take a snapshot immediately before HAM mutates a harness config.
-  2. *Webapp Launch / Inventory Scan*: Hash-check existing native files vs latest snapshot; capture if external edits occurred.
-  3. *On-Demand*: CLI (`ham snapshot`) or Web GUI manual trigger.
+  1. *Pre-Write / Pre-Sync*: Automatically takes a snapshot prior to HAM writes.
+  2. *Webapp Launch / Startup Scan*: Hash-checks existing native files vs latest snapshot; captures external edits automatically.
+  3. *On-Demand*: CLI (`ham snapshot` / `python -m harness_asset_manager snapshot`) or Web UI "Take Snapshot Now" button.
+- **Web UI Component**:
+  - Added `ConfigSnapshotsSection` component to Settings Page ([SettingsPage.tsx](file:///Users/hgill/projects/skill-manager/frontend/src/features/settings/screens/SettingsPage.tsx)).
+  - Shows active snapshot baselines, SHA-256 prefixes, trigger badges (*Manual*, *External*, *Pre-Write*), timestamps, and a 1-click **Take Snapshot Now** button.
 - **Safety & Storage Policy**:
-  - SHA-256 hash deduplication (prevent duplicate snapshot writes).
+  - SHA-256 hash deduplication (skips duplicate snapshot creation if content is unchanged).
   - Secret redaction pipeline (redacting API keys, bearer tokens, OAuth secrets prior to export/backup).
   - Preserves real files in harness home folders to avoid atomic `rename()` symlink severing.
+- **Verification**:
+  - Backend pytest suite: 543 / 543 passed.
+  - Frontend Vitest suite: 265 / 265 passed across 61 test files.
+  - `npm run typecheck` and `npm run build` clean.
 
 ---
 

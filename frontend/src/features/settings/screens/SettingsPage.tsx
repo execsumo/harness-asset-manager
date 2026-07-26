@@ -4,6 +4,7 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { useFormatPath } from "../../../lib/paths";
+import { ConfigSnapshotsSection } from "../components/ConfigSnapshotsSection";
 import { SettingsHarnessCard } from "../components/SettingsHarnessCard";
 import { useSettingsCopy } from "../i18n";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
@@ -61,6 +62,8 @@ export default function SettingsPage() {
               <span className="settings-path">{formatPath(controller.data.storage.marketplaceCachePath)}</span>
             </div>
           </section>
+
+          <ConfigSnapshotsSection />
 
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.harnesses.heading}</h2>
