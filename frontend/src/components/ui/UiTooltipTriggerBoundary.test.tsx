@@ -10,13 +10,13 @@ describe("UiTooltipTriggerBoundary", () => {
       <UiTooltipProvider delayDuration={0} skipDelayDuration={0}>
         <UiTooltipTriggerBoundary content="Blocked for testing">
           <button type="button" disabled>
-            Remove from Skill Manager
+            Remove from Harness Asset Manager
           </button>
         </UiTooltipTriggerBoundary>
       </UiTooltipProvider>,
     );
 
-    const trigger = screen.getByText("Remove from Skill Manager").closest(".ui-tooltip-trigger");
+    const trigger = screen.getByText("Remove from Harness Asset Manager").closest(".ui-tooltip-trigger");
     expect(trigger).not.toBeNull();
 
     fireEvent.focus(trigger!);

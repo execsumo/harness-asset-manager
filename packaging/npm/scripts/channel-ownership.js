@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
-const REMEDIATION_MESSAGE = "skill-manager is already installed via Homebrew. Run 'brew uninstall skill-manager' before 'npm install -g @mode-io/skill-manager', or keep using the Homebrew installation.";
+const REMEDIATION_MESSAGE = "harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @mode-io/harness-asset-manager', or keep using the Homebrew installation.";
 
 function isGlobalNpmInstall() {
   const value = String(process.env.npm_config_global || "").toLowerCase();
@@ -61,7 +61,7 @@ function detectHomebrewInstall() {
     prefixes.add("/usr/local");
   }
 
-  const brewList = spawnSync("brew", ["list", "--versions", "skill-manager"], { encoding: "utf8" });
+  const brewList = spawnSync("brew", ["list", "--versions", "harness-asset-manager"], { encoding: "utf8" });
   if (brewList.status === 0 && brewList.stdout.trim()) {
     return true;
   }
@@ -70,10 +70,10 @@ function detectHomebrewInstall() {
     if (!prefix) {
       continue;
     }
-    if (fs.existsSync(path.join(prefix, "opt", "skill-manager"))) {
+    if (fs.existsSync(path.join(prefix, "opt", "harness-asset-manager"))) {
       return true;
     }
-    if (isNonEmptyDirectory(path.join(prefix, "Cellar", "skill-manager"))) {
+    if (isNonEmptyDirectory(path.join(prefix, "Cellar", "harness-asset-manager"))) {
       return true;
     }
   }

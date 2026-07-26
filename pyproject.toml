@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "skill-manager"
+name = "harness-asset-manager"
 dynamic = ["version"]
-description = "Local app and browser UI for universal skill management across agent harnesses."
+description = "Local app and browser UI for universal asset management across agent harnesses."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -18,9 +18,9 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "certifi>=2024.0.0",
   "fastapi>=0.135,<0.136",
   "tomli-w>=1.2,<2",
+  "ruamel.yaml>=0.18,<0.19",
   "uvicorn>=0.44,<0.45",
   "certifi>=2024.8.30,<2026",
 ]
@@ -29,28 +29,45 @@ dependencies = [
 build = [
   "pyinstaller>=6.11,<7",
 ]
-scan = [
-  "azure-identity>=1.16,<2",
-  "google-genai>=1,<2",
-  "litellm>=1.40,<2",
-]
 
 [project.scripts]
-skill-manager = "skill_manager.cli:main"
+harness-asset-manager = "harness_asset_manager.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mode-io/skill-manager"
-Repository = "https://github.com/mode-io/skill-manager"
-Issues = "https://github.com/mode-io/skill-manager/issues"
+Homepage = "https://github.com/execsumo/harness-asset-manager"
+Repository = "https://github.com/execsumo/harness-asset-manager"
+Issues = "https://github.com/execsumo/harness-asset-manager/issues"
 
 [tool.setuptools]
 license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
-version = { attr = "skill_manager.__version__" }
+version = { attr = "harness_asset_manager.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["skill_manager*"]
+include = ["harness_asset_manager*"]
 
 [tool.setuptools.package-data]
-skill_manager = ["VERSION", "data/prompts/*"]
+harness_asset_manager = ["VERSION", "data/templates/*"]
+
+# Static analysis -------------------------------------------------------------
+# Ruff is the backend lint gate (per RECOMMENDATIONS.md §1.2). We adopt the
+# highest-value, lowest-noise pair first and keep it GREEN on adoption:
+#   * ``I``  -- import sorting (applied across the tree; enforced from here on)
+#   * ``F``  -- pyflakes (redefinitions, unused names, etc.)
+# Codes in ``ignore`` are the current baseline of pre-existing findings kept
+# green on adoption; each is a deliberate "fix-later". Removing a code from
+# ``ignore`` means the codebase now satisfies it and it is enforced — the list
+# is meant to shrink over time. Broadening ``select`` (E/W/UP/B/...) is the
+# follow-up once the deferred cleanup lands.
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["I", "F"]
+ignore = [
+    "F401",  # unused imports — 29 pre-existing; drop in a verified follow-up PR.
+    "F821",  # ruff false positives on conditional / TYPE_CHECKING-guarded names.
+    "F841",  # intentionally-unused locals (mostly test readability).
+]
+

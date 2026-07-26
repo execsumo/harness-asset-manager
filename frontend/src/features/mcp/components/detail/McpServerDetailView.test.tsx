@@ -318,7 +318,7 @@ describe("McpServerDetailView", () => {
             url: "https://exa.run.tools",
             headers: {
               Authorization: "Bearer live-secret-token",
-              "X-Client-Name": "skill-manager",
+              "X-Client-Name": "harness-asset-manager",
             },
             installedAt: "2026-04-21T00:00:00Z",
             revision: "abc",
@@ -332,7 +332,7 @@ describe("McpServerDetailView", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "Exa Search" })).toBeInTheDocument());
     expect(screen.queryByText(/live-secret-token/)).not.toBeInTheDocument();
     expect(screen.getByText(/Authorization/)).toHaveTextContent("••••••••");
-    expect(screen.getByText(/X-Client-Name/)).toHaveTextContent("skill-manager");
+    expect(screen.getByText(/X-Client-Name/)).toHaveTextContent("harness-asset-manager");
   });
 
   it("masks secret-like headers in config choice previews", async () => {
@@ -353,14 +353,14 @@ describe("McpServerDetailView", () => {
               sourceKind: "managed",
               observedHarness: null,
               recommended: true,
-              label: "Skill Manager config",
+              label: "Harness Asset Manager config",
               logoKey: null,
               configPath: null,
               payloadPreview: {
                 url: "https://exa.run.tools",
                 headers: {
                   Authorization: "Bearer live-secret-token",
-                  "X-Client-Name": "skill-manager",
+                  "X-Client-Name": "harness-asset-manager",
                 },
               },
               spec: {
@@ -386,7 +386,7 @@ describe("McpServerDetailView", () => {
     fireEvent.click(await screen.findByRole("button", { name: /show config preview/i }));
     expect(screen.queryByText(/live-secret-token/)).not.toBeInTheDocument();
     expect(screen.getByText(/Authorization/)).toHaveTextContent("••••••••");
-    expect(screen.getByText(/X-Client-Name/)).toHaveTextContent("skill-manager");
+    expect(screen.getByText(/X-Client-Name/)).toHaveTextContent("harness-asset-manager");
   });
 
   it("calls onEnableHarness when clicking Enable on a missing harness row", async () => {
@@ -525,7 +525,7 @@ describe("McpServerDetailView", () => {
               sourceKind: "managed",
               observedHarness: null,
               recommended: false,
-              label: "Skill Manager config",
+              label: "Harness Asset Manager config",
               logoKey: null,
               configPath: null,
               payloadPreview: { url: "https://exa.run.tools" },
@@ -583,7 +583,7 @@ describe("McpServerDetailView", () => {
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Resolve different configs" })).toBeInTheDocument(),
     );
-    expect(screen.getByText("Skill Manager config")).toBeInTheDocument();
+    expect(screen.getByText("Harness Asset Manager config")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Apply config" }));
     await waitFor(() => expect(onResolveConfig).toHaveBeenCalled());
     expect(onDisableHarness).not.toHaveBeenCalled();

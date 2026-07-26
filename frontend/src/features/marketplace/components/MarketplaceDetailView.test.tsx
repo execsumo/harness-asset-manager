@@ -21,7 +21,7 @@ describe("MarketplaceDetailView", () => {
       }),
       isPending: false,
       isFetching: false,
-      error: new Error("Marketplace is temporarily unavailable. Check your network connection or reinstall skill-manager if the problem persists."),
+      error: new Error("Marketplace is temporarily unavailable. Check your network connection or reinstall harness-asset-manager if the problem persists."),
     } as ReturnType<typeof useMarketplaceDetailQuery>);
     useMarketplaceDocumentQueryMock.mockReturnValue({
       data: {
@@ -44,7 +44,7 @@ describe("MarketplaceDetailView", () => {
       />,
     );
 
-    expect(screen.getByText("Marketplace is temporarily unavailable. Check your network connection or reinstall skill-manager if the problem persists.")).toBeInTheDocument();
+    expect(screen.getByText("Marketplace is temporarily unavailable. Check your network connection or reinstall harness-asset-manager if the problem persists.")).toBeInTheDocument();
     expect(screen.queryByText("Open Skill Folder")).not.toBeInTheDocument();
   });
 

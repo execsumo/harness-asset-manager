@@ -1,21 +1,26 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import socket
-from tempfile import TemporaryDirectory
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from skill_manager.runtime import process as runtime_process
-from skill_manager.runtime.assets import resolve_frontend_dist
-from skill_manager.runtime.server import choose_port
-from skill_manager.runtime.startup import (
+from harness_asset_manager.runtime import process as runtime_process
+from harness_asset_manager.runtime.assets import resolve_frontend_dist
+from harness_asset_manager.runtime.server import choose_port
+from harness_asset_manager.runtime.startup import (
     PACKAGED_STARTUP_TIMEOUT_SECONDS,
     SOURCE_STARTUP_TIMEOUT_SECONDS,
     startup_timeout_seconds,
 )
-from skill_manager.runtime.state import RuntimeState, clear_runtime_state, load_runtime_state, write_runtime_state
+from harness_asset_manager.runtime.state import (
+    RuntimeState,
+    clear_runtime_state,
+    load_runtime_state,
+    write_runtime_state,
+)
 
 
 class RuntimeTests(unittest.TestCase):
@@ -34,7 +39,7 @@ class RuntimeTests(unittest.TestCase):
                 port=8123,
                 base_url="http://127.0.0.1:8123",
                 version="0.1.0",
-                executable="/tmp/skill-manager",
+                executable="/tmp/harness-asset-manager",
                 started_at=1.23,
             )
 
@@ -60,16 +65,16 @@ class RuntimeTests(unittest.TestCase):
         self.assertGreater(chosen, 0)
 
     def test_process_command_falls_back_to_system_ps_when_path_is_isolated(self) -> None:
-        with patch.dict(os.environ, {"PATH": "/tmp/skill-manager-fake-bin"}):
+        with patch.dict(os.environ, {"PATH": "/tmp/harness-asset-manager-fake-bin"}):
             with (
                 patch.object(runtime_process.shutil, "which", side_effect=[None, "/bin/ps"]) as which_mock,
                 patch.object(runtime_process.subprocess, "run") as run_mock,
             ):
-                run_mock.return_value.stdout = "python -m skill_manager"
+                run_mock.return_value.stdout = "python -m harness_asset_manager"
 
                 command = runtime_process.process_command(1234)
 
-        self.assertEqual(command, "python -m skill_manager")
+        self.assertEqual(command, "python -m harness_asset_manager")
         self.assertEqual(which_mock.call_count, 2)
         self.assertEqual(run_mock.call_args.args[0][0], "/bin/ps")
 

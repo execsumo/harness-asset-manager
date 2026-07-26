@@ -1,11 +1,11 @@
 {
-  "name": "@mode-io/skill-manager",
+  "name": "@mode-io/harness-asset-manager",
   "version": "0.3.1",
-  "description": "Public macOS/Linux installer wrapper for the Mode IO skill-manager native release artifact.",
+  "description": "Public macOS/Linux installer wrapper for the Mode IO harness-asset-manager native release artifact.",
   "license": "MIT",
   "private": false,
   "bin": {
-    "skill-manager": "bin/skill-manager.js"
+    "harness-asset-manager": "bin/harness-asset-manager.js"
   },
   "scripts": {
     "preinstall": "node scripts/preinstall.js",
@@ -19,14 +19,14 @@
     "bin",
     "scripts"
   ],
-  "homepage": "https://github.com/mode-io/skill-manager",
+  "homepage": "https://github.com/mode-io/harness-asset-manager",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mode-io/skill-manager.git",
+    "url": "git+https://github.com/mode-io/harness-asset-manager.git",
     "directory": "packaging/npm"
   },
   "bugs": {
-    "url": "https://github.com/mode-io/skill-manager/issues"
+    "url": "https://github.com/mode-io/harness-asset-manager/issues"
   },
   "os": [
     "darwin",

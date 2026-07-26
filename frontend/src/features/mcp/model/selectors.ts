@@ -29,7 +29,7 @@ export interface McpMatrixCellModel {
 }
 
 /**
- * True when an MCP harness can receive Skill Manager MCP writes on this system.
+ * True when an MCP harness can receive Harness Asset Manager MCP writes on this system.
  * Discovery remains broader on the backend so stale/bad configs can still be
  * disabled, but frontend enable affordances must follow the verified write
  * capability exposed by the backend.

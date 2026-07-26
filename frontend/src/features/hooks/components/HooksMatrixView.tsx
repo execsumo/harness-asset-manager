@@ -7,6 +7,7 @@ import {
   MatrixHarnessIcon,
   MatrixTable,
 } from "../../../components/matrix";
+import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { HookInventoryColumnDto, HookInventoryEntryDto } from "../api/management-types";
 import { useHooksCopy, type HooksCopy } from "../i18n";
@@ -47,10 +48,10 @@ export function HooksMatrixView({
   return (
     <MatrixTable
       ariaLabel="Hooks Matrix"
-      harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="72px"
+      coverageColumnWidth="96px"
+      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>
@@ -67,7 +68,7 @@ export function HooksMatrixView({
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Enabled</th>
+          <th className="matrix-table__th matrix-table__th--end">Active</th>
         </tr>
       </thead>
       <tbody>
@@ -126,20 +127,18 @@ function HooksMatrixRow({
           disabled={pendingHook}
         />
       </td>
-      <td className="matrix-table__cell matrix-table__cell--identity">
-        <button
-          type="button"
-          className="mcp-matrix__server-button"
-          aria-label={copy.detail.openDetail(entry.displayName)}
-          onClick={() => onOpenDetail(entry.id)}
-        >
-          <span className="matrix-table__name-row">
-            <span className="matrix-table__name-text">{entry.displayName}</span>
-          </span>
-          <span className="matrix-table__description">
-            <code>{entry.spec?.command ?? "—"}</code> · {entry.spec?.event ?? "—"}
-          </span>
-        </button>
+      <td
+        className="matrix-table__cell matrix-table__cell--identity"
+        onClick={() => onOpenDetail(entry.id)}
+      >
+        <div className="matrix-table__name-row">
+          <OverflowTooltipText as="span" className="matrix-table__name-text">
+            {entry.displayName}
+          </OverflowTooltipText>
+        </div>
+        <OverflowTooltipText as="p" className="matrix-table__description">
+          <code>{entry.spec?.command ?? "—"}</code> · {entry.spec?.event ?? "—"}
+        </OverflowTooltipText>
       </td>
       {columns.map((column) => {
         const cell = matrixCellFor(entry, column, copy);

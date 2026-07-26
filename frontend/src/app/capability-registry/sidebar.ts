@@ -1,21 +1,25 @@
 import { useMemo } from "react";
 
 import { mcpRoutes, useMcpInventoryQuery } from "../../features/mcp/public";
-import { useSkillsCopy } from "../../features/skills/i18n";
 import { skillsRoutes, useSkillsListQuery } from "../../features/skills/public";
 import { slashCommandRoutes, useSlashCommandsQuery } from "../../features/slash-commands/public";
 import { marketplaceRoutes } from "../../features/marketplace/public";
 import { hooksRoutes, useHooksInventoryQuery } from "../../features/hooks/public";
 import { permissionsRoutes, usePermissionsInventoryQuery } from "../../features/permissions/public";
+import { agentsRoutes, useAgentsInventoryQuery } from "../../features/agents/public";
 import { useCommonCopy } from "../../i18n";
 
-export type SidebarIconKey = "overview" | "skills" | "slash-commands" | "mcp" | "marketplace" | "hooks" | "permissions";
+export type SidebarIconKey = "overview" | "skills" | "slash-commands" | "mcp" | "marketplace" | "hooks" | "permissions" | "agents";
 
 export interface SidebarLinkModel {
   key: string;
   to: string;
   label: string;
   count?: number | null;
+}
+
+export interface SidebarTopLinkModel extends SidebarLinkModel {
+  iconKey: SidebarIconKey;
 }
 
 export interface SidebarGroupModel {
@@ -27,7 +31,7 @@ export interface SidebarGroupModel {
 }
 
 export interface SidebarModel {
-  topLinks: SidebarLinkModel[];
+  topLinks: SidebarTopLinkModel[];
   groups: SidebarGroupModel[];
 }
 
@@ -36,7 +40,6 @@ export function useSidebarModel(): SidebarModel {
   const mcpQuery = useMcpInventoryQuery();
   const slashCommandsQuery = useSlashCommandsQuery();
   const common = useCommonCopy();
-  const skillsCopy = useSkillsCopy();
 
   const inUseSkills = skillsQuery.data?.summary.managed ?? null;
   const needsReviewSkills = skillsQuery.data?.summary.unmanaged ?? null;
@@ -47,6 +50,8 @@ export function useSidebarModel(): SidebarModel {
   const hooksCounts = hooksSidebarCounts(hooksQuery.data);
   const permissionsQuery = usePermissionsInventoryQuery();
   const permissionsCounts = permissionsSidebarCounts(permissionsQuery.data);
+  const agentsQuery = useAgentsInventoryQuery();
+  const agentsCounts = agentsSidebarCounts(agentsQuery.data);
 
   return useMemo(
     () => ({
@@ -55,9 +60,26 @@ export function useSidebarModel(): SidebarModel {
           key: "overview",
           to: "/overview",
           label: common.nav.overview,
+          iconKey: "overview",
         },
+        
       ],
       groups: [
+        {
+          key: "agents",
+          label: "Agents",
+          iconKey: "agents",
+          count: agentsCounts.total,
+          links: [
+            { key: "agents-use", to: agentsRoutes.inUse, label: common.productLanguage.inUse, count: agentsCounts.inUse },
+            {
+              key: "agents-review",
+              to: agentsRoutes.needsReview,
+              label: common.productLanguage.needsReview,
+              count: agentsCounts.needsReview,
+            },
+          ],
+        },
         {
           key: "skills",
           label: common.nav.skills,
@@ -71,7 +93,6 @@ export function useSidebarModel(): SidebarModel {
               label: common.productLanguage.needsReview,
               count: needsReviewSkills,
             },
-            { key: "skills-scan-config", to: skillsRoutes.scanConfig, label: skillsCopy.scan.configNav },
           ],
         },
         {
@@ -112,7 +133,7 @@ export function useSidebarModel(): SidebarModel {
         {
           key: "hooks",
           label: "Hooks",
-          iconKey: "mcp",
+          iconKey: "hooks",
           count: hooksCounts.total,
           links: [
             { key: "hooks-use", to: hooksRoutes.inUse, label: common.productLanguage.inUse, count: hooksCounts.inUse },
@@ -162,11 +183,13 @@ export function useSidebarModel(): SidebarModel {
       permissionsCounts.inUse,
       permissionsCounts.needsReview,
       permissionsCounts.total,
+      agentsCounts.inUse,
+      agentsCounts.needsReview,
+      agentsCounts.total,
       needsReviewSkills,
       slashCommandCount,
       slashCommandReviewCount,
       common,
-      skillsCopy,
     ],
   );
 }
@@ -217,6 +240,23 @@ function hooksSidebarCounts(inventory: ReturnType<typeof useHooksInventoryQuery>
 }
 
 function permissionsSidebarCounts(inventory: ReturnType<typeof usePermissionsInventoryQuery>["data"]): {
+  inUse: number | null;
+  needsReview: number | null;
+  total: number | null;
+} {
+  if (!inventory || !inventory.entries) {
+    return { inUse: null, needsReview: null, total: null };
+  }
+  const inUse = inventory.entries.filter((entry) => entry.kind === "managed").length;
+  const needsReview = inventory.entries.filter((entry) => entry.kind === "unmanaged").length;
+  return {
+    inUse,
+    needsReview,
+    total: sumLoadedCounts(inUse, needsReview),
+  };
+}
+
+function agentsSidebarCounts(inventory: ReturnType<typeof useAgentsInventoryQuery>["data"]): {
   inUse: number | null;
   needsReview: number | null;
   total: number | null;

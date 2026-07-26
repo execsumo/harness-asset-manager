@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
+import tomllib
 import unittest
 from pathlib import Path
 
 import tomli_w
-import tomllib
 
 from tests.support.app_harness import AppTestHarness
 
@@ -117,7 +117,7 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(codex_path.is_file())
             with open(codex_path, "rb") as f:
                 codex_cfg = tomllib.load(f)
-            self.assertEqual(codex_cfg["permissions"]["skill-manager"]["filesystem"]["~/.zshrc"], "read")
+            self.assertEqual(codex_cfg["permissions"]["harness-asset-manager"]["filesystem"]["~/.zshrc"], "read")
 
             # Disable on all three
             self.assertTrue(harness.post_json("/api/permissions/my-perm/disable", {"harness": "claude"})["ok"])

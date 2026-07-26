@@ -4,7 +4,6 @@ const englishPermissionsCopy = {
   inUse: {
     title: "Permissions in use",
     subtitle: "Apply a rule once across your harnesses, and resolve any that differ.",
-    viewModeAria: "Permissions in use view mode",
     searchPlaceholder: "Search by ID, decision, scope or pattern...",
     searchLabel: "Search permissions",
     loading: "Loading permissions",
@@ -12,10 +11,6 @@ const englishPermissionsCopy = {
     noMatchesBody: "Adjust the search or filter to see other permissions.",
     emptyTitle: "No permissions in use yet",
     emptyBody: "Add a permission or enable one to see it here.",
-    viewModes: {
-      cards: "Cards",
-      matrix: "Matrix",
-    },
     filters: {
       all: "All",
       enabled: "Applied",
@@ -27,8 +22,8 @@ const englishPermissionsCopy = {
     uninstall: {
       action: "Delete",
       title: (id: string) => `Delete ${id}?`,
-      description: "Remove this permission from skill-manager and disable it on all harnesses.",
-      singleDescription: "Remove this permission from skill-manager and disable it on all harnesses.",
+      description: "Remove this permission from harness-asset-manager and disable it on all harnesses.",
+      singleDescription: "Remove this permission from harness-asset-manager and disable it on all harnesses.",
       pending: "Deleting",
       fallbackName: "this permission",
     },
@@ -40,11 +35,11 @@ const englishPermissionsCopy = {
     unableTitle: "Unable to load permission details",
     about: "About",
     differentConfigsTitle: "Config differs",
-    differentConfigsBody: "Choose which config Skill Manager should manage, then apply it to current bindings.",
+    differentConfigsBody: "Choose which config Harness Asset Manager should manage, then apply it to current bindings.",
     resolveConfig: "Resolve",
     bindings: "Bindings",
     uninstall: "Delete",
-    skillManagerConfig: "Skill Manager config",
+    skillManagerConfig: "Harness Asset Manager config",
     decision: "Decision",
     scope: "Scope",
     pattern: "Pattern",

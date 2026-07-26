@@ -10,7 +10,7 @@ const englishGlossary = {
   clis: "CLIs",
   slashCommand: "Slash command",
   slashCommands: "Slash Commands",
-  skillManager: "Skill Manager",
+  skillManager: "Harness Asset Manager",
   marketplace: "Marketplace",
 } as const;
 
@@ -28,7 +28,7 @@ export const glossaryCopy = {
     clis: "CLI",
     slashCommand: "Slash command",
     slashCommands: "Slash command",
-    skillManager: "Skill Manager",
+    skillManager: "Harness Asset Manager",
     marketplace: "商城",
   },
 } satisfies LocalizedCopy<GlossaryCopy>;

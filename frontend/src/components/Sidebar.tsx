@@ -21,6 +21,8 @@ import {
   Store,
   SunMedium,
   Terminal,
+  Webhook,
+  Bot,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
@@ -45,7 +47,7 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
     <aside className="sidebar ui-scrollbar--thin" aria-label={common.nav.primary}>
       <div className="sidebar__brand">
         <Link to="/overview" className="sidebar__brand-name">
-          skill-manager
+          harness-asset-manager
         </Link>
       </div>
 
@@ -55,7 +57,7 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
             key={link.key}
             to={link.to}
             label={link.label}
-            icon={<LayoutDashboard size={16} />}
+            icon={sidebarIcon(link.iconKey)}
           />
         ))}
 
@@ -174,7 +176,9 @@ function sidebarIcon(iconKey: SidebarIconKey): ReactNode {
   if (iconKey === "skills") return <BookOpen size={16} />;
   if (iconKey === "slash-commands") return <Command size={16} />;
   if (iconKey === "mcp") return <Terminal size={16} />;
+  if (iconKey === "hooks") return <Webhook size={16} />;
   if (iconKey === "marketplace") return <Store size={16} />;
+  if (iconKey === "agents") return <Bot size={16} />;
   return <LayoutDashboard size={16} />;
 }
 

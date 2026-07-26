@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.platform_context import resolve_platform_context
+from harness_asset_manager.platform_context import resolve_platform_context
 
 
 class PlatformContextTests(unittest.TestCase):

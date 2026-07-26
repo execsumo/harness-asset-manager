@@ -4,6 +4,128 @@
  */
 
 export interface paths {
+    "/api/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Agents */
+        get: operations["list_agents_api_agents_get"];
+        put?: never;
+        /** Create Agent */
+        post: operations["create_agent_api_agents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/adopt-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adopt All Agents */
+        post: operations["adopt_all_agents_api_agents_adopt_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent */
+        get: operations["get_agent_api_agents__agent_ref__get"];
+        /** Update Agent */
+        put: operations["update_agent_api_agents__agent_ref__put"];
+        post?: never;
+        /** Delete Agent */
+        delete: operations["delete_agent_api_agents__agent_ref__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/adopt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adopt Agent */
+        post: operations["adopt_agent_api_agents__agent_ref__adopt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Agent */
+        post: operations["disable_agent_api_agents__agent_ref__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Agent */
+        post: operations["enable_agent_api_agents__agent_ref__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/{agent_ref}/set-harnesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Agent Harnesses */
+        post: operations["set_agent_harnesses_api_agents__agent_ref__set_harnesses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -605,42 +727,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scan/availability": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Check Scan Availability */
-        get: operations["check_scan_availability_api_scan_availability_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/configs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Scan Configs */
-        get: operations["list_scan_configs_api_scan_configs_get"];
-        put?: never;
-        /** Create Scan Config */
-        post: operations["create_scan_config_api_scan_configs_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/configs/validate": {
+    "/api/scaffold": {
         parameters: {
             query?: never;
             header?: never;
@@ -649,94 +736,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Validate Scan Config */
-        post: operations["validate_scan_config_api_scan_configs_validate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/configs/{config_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Scan Config */
-        put: operations["update_scan_config_api_scan_configs__config_id__put"];
-        post?: never;
-        /** Delete Scan Config */
-        delete: operations["delete_scan_config_api_scan_configs__config_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/configs/{config_id}/active": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set Active Scan Config */
-        put: operations["set_active_scan_config_api_scan_configs__config_id__active_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/configs/{config_id}/secret": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Reveal Scan Config Secret */
-        get: operations["reveal_scan_config_secret_api_scan_configs__config_id__secret_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/llm/detection": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Detect Llm */
-        get: operations["detect_llm_api_scan_llm_detection_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scan/skills/{skill_ref}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Scan Skill */
-        post: operations["scan_skill_api_scan_skills__skill_ref__post"];
+        /** Scaffold Asset */
+        post: operations["scaffold_asset_api_scaffold_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1095,6 +1096,34 @@ export interface components {
             /** Scope */
             scope: string;
         };
+        /** AdoptAgentRequest */
+        AdoptAgentRequest: {
+            /** Onconflict */
+            onConflict?: ("keep_store" | "replace_store") | null;
+        };
+        /** AdoptAgentResponse */
+        AdoptAgentResponse: {
+            /** Ok */
+            ok: boolean;
+            /** Ref */
+            ref: string;
+        };
+        /** AdoptAllAgentsResponse */
+        AdoptAllAgentsResponse: {
+            /** Adopted */
+            adopted: string[];
+            /** Ok */
+            ok: boolean;
+            /** Skipped */
+            skipped: components["schemas"]["AdoptAllSkippedResponse"][];
+        };
+        /** AdoptAllSkippedResponse */
+        AdoptAllSkippedResponse: {
+            /** Reason */
+            reason: string;
+            /** Ref */
+            ref: string;
+        };
         /** AdoptMcpRequest */
         AdoptMcpRequest: {
             /** Harnesses */
@@ -1103,6 +1132,141 @@ export interface components {
             name: string;
             /** Observed harness */
             observedHarness?: string | null;
+        };
+        /** AgentActionsResponse */
+        AgentActionsResponse: {
+            /** Canadopt */
+            canAdopt: boolean;
+            /** Candelete */
+            canDelete: boolean;
+        };
+        /** AgentBindingResponse */
+        AgentBindingResponse: {
+            /** Detail */
+            detail?: string | null;
+            /** Harness */
+            harness: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled" | "unsupported";
+        };
+        /** AgentColumnResponse */
+        AgentColumnResponse: {
+            /** Harness */
+            harness: string;
+            /** Installed */
+            installed: boolean;
+            /** Label */
+            label: string;
+            /** Logokey */
+            logoKey?: string | null;
+        };
+        /**
+         * AgentConfigEntryResponse
+         * @description One frontmatter key we do not interpret, shown verbatim.
+         */
+        AgentConfigEntryResponse: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
+        };
+        /** AgentDetailResponse */
+        AgentDetailResponse: {
+            /** Candelete */
+            canDelete: boolean;
+            /** Configuration */
+            configuration?: components["schemas"]["AgentConfigEntryResponse"][];
+            /** Description */
+            description: string;
+            /** Document */
+            document: string;
+            /** Harnesses */
+            harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
+            /** Name */
+            name: string;
+            /** Prompt */
+            prompt: string;
+            /** Ref */
+            ref: string;
+            /** Storepath */
+            storePath: string;
+            /** Tools */
+            tools: string[];
+        };
+        /** AgentEntryResponse */
+        AgentEntryResponse: {
+            actions: components["schemas"]["AgentActionsResponse"];
+            /** Bindings */
+            bindings: components["schemas"]["AgentBindingResponse"][];
+            /** Description */
+            description: string;
+            /** Harnesspath */
+            harnessPath?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "managed" | "unmanaged";
+            /** Name */
+            name: string;
+            /** Ref */
+            ref: string;
+        };
+        /** AgentHarnessDetailResponse */
+        AgentHarnessDetailResponse: {
+            /** Detail */
+            detail?: string | null;
+            /** Harness */
+            harness: string;
+            /**
+             * Installmethod
+             * @enum {string}
+             */
+            installMethod: "symlink" | "rendered" | "none";
+            /** Installed */
+            installed: boolean;
+            /** Label */
+            label: string;
+            /** Logokey */
+            logoKey?: string | null;
+            /** Path */
+            path: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "enabled" | "disabled" | "unsupported";
+        };
+        /** AgentHarnessRequest */
+        AgentHarnessRequest: {
+            /** Harness */
+            harness: string;
+        };
+        /** AgentInventoryResponse */
+        AgentInventoryResponse: {
+            /** Columns */
+            columns: components["schemas"]["AgentColumnResponse"][];
+            /** Entries */
+            entries: components["schemas"]["AgentEntryResponse"][];
+            /** Issues */
+            issues?: components["schemas"]["AgentIssueResponse"][];
+        };
+        /** AgentIssueResponse */
+        AgentIssueResponse: {
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string;
+        };
+        /** AgentMutationFailureResponse */
+        AgentMutationFailureResponse: {
+            /** Error */
+            error: string;
+            /** Harness */
+            harness: string;
         };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {
@@ -1211,18 +1375,22 @@ export interface components {
             /** Nextoffset */
             nextOffset?: number | null;
         };
-        /** DetectedProviderResponse */
-        DetectedProviderResponse: {
-            /** Apikeysource */
-            apiKeySource: string;
-            /** Baseurl */
-            baseUrl?: string | null;
-            /** Isavailable */
-            isAvailable: boolean;
-            /** Model */
-            model?: string | null;
-            /** Provider */
-            provider: string;
+        /** CreateAgentRequest */
+        CreateAgentRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
+            /** Tools */
+            tools?: string[];
         };
         /** DisableHookRequest */
         DisableHookRequest: {
@@ -1451,17 +1619,6 @@ export interface components {
         InstallMarketplaceSkillRequest: {
             /** Installtoken */
             installToken: string;
-        };
-        /** LLMDetectionResponse */
-        LLMDetectionResponse: {
-            /** Defaultmodel */
-            defaultModel?: string | null;
-            /** Defaultprovider */
-            defaultProvider?: string | null;
-            /** Hasanyavailable */
-            hasAnyAvailable: boolean;
-            /** Providers */
-            providers: components["schemas"]["DetectedProviderResponse"][];
         };
         /** McpAdoptionIssueResponse */
         McpAdoptionIssueResponse: {
@@ -2212,248 +2369,33 @@ export interface components {
              */
             sourceKind: "managed" | "harness";
         };
-        /** ScanAvailabilityResponse */
-        ScanAvailabilityResponse: {
-            /** Available */
-            available: boolean;
-        };
-        /** ScanConfigItem */
-        ScanConfigItem: {
-            /** Apikeymasked */
-            apiKeyMasked: string;
-            /** Apiversion */
-            apiVersion: string;
-            /** Awsprofile */
-            awsProfile: string;
-            /** Awsregion */
-            awsRegion: string;
-            /** Baseurl */
-            baseUrl: string;
-            /** Consensusruns */
-            consensusRuns: number;
-            /** Id */
-            id: number;
-            /** Isactive */
-            isActive: boolean;
-            /** Lastvalidatedat */
-            lastValidatedAt?: string | null;
-            /**
-             * Lastvalidationerror
-             * @default
-             */
-            lastValidationError: string;
-            /** Maxtokens */
-            maxTokens: number;
-            /** Model */
-            model: string;
-            /** Name */
-            name: string;
-            /** Provider */
-            provider: string;
-        };
-        /** ScanConfigListResponse */
-        ScanConfigListResponse: {
-            /** Activeid */
-            activeId: number | null;
-            /** Configs */
-            configs: components["schemas"]["ScanConfigItem"][];
-        };
-        /** ScanConfigSaveRequest */
-        ScanConfigSaveRequest: {
-            /** Apikey */
-            apiKey: string;
-            /**
-             * Apiversion
-             * @default
-             */
-            apiVersion: string;
-            /**
-             * Awsprofile
-             * @default
-             */
-            awsProfile: string;
-            /**
-             * Awsregion
-             * @default
-             */
-            awsRegion: string;
-            /**
-             * Awssessiontoken
-             * @default
-             */
-            awsSessionToken: string;
-            /** Baseurl */
-            baseUrl: string;
-            /**
-             * Consensusruns
-             * @default 1
-             */
-            consensusRuns: number;
-            /**
-             * Maxtokens
-             * @default 8192
-             */
-            maxTokens: number;
-            /** Model */
-            model: string;
-            /** Name */
-            name: string;
-            /**
-             * Provider
-             * @default
-             */
-            provider: string;
-        };
-        /** ScanConfigSecretResponse */
-        ScanConfigSecretResponse: {
-            /** Apikey */
-            apiKey: string;
-        };
-        /** ScanConfigValidateRequest */
-        ScanConfigValidateRequest: {
-            /** Apikey */
-            apiKey: string;
-            /**
-             * Apiversion
-             * @default
-             */
-            apiVersion: string;
-            /**
-             * Awsprofile
-             * @default
-             */
-            awsProfile: string;
-            /**
-             * Awsregion
-             * @default
-             */
-            awsRegion: string;
-            /**
-             * Awssessiontoken
-             * @default
-             */
-            awsSessionToken: string;
-            /** Baseurl */
-            baseUrl: string;
-            /**
-             * Consensusruns
-             * @default 1
-             */
-            consensusRuns: number;
-            /** Existingconfigid */
-            existingConfigId?: number | null;
-            /**
-             * Maxtokens
-             * @default 8192
-             */
-            maxTokens: number;
-            /** Model */
-            model: string;
-            /** Name */
-            name: string;
-            /**
-             * Provider
-             * @default
-             */
-            provider: string;
-        };
-        /** ScanConfigValidationResponse */
-        ScanConfigValidationResponse: {
-            /** Durationms */
-            durationMs?: number | null;
-            /** Errorcode */
-            errorCode?: string | null;
-            /** Message */
-            message: string;
-            /** Model */
-            model?: string | null;
-            /** Ok */
-            ok: boolean;
-            /** Provider */
-            provider?: string | null;
-        };
-        /** ScanFindingResponse */
-        ScanFindingResponse: {
-            /** Analyzer */
-            analyzer?: string | null;
-            /** Category */
-            category: string;
+        /** ScaffoldRequest */
+        ScaffoldRequest: {
+            /** Asset Type */
+            asset_type: string;
             /** Description */
             description: string;
-            /** Filepath */
-            filePath?: string | null;
-            /** Id */
-            id: string;
-            /** Linenumber */
-            lineNumber?: number | null;
-            /**
-             * Metadata
-             * @default {}
-             */
-            metadata: {
-                [key: string]: unknown;
-            };
-            /** Remediation */
-            remediation?: string | null;
-            /** Ruleid */
-            ruleId: string;
-            /** Severity */
-            severity: string;
-            /** Snippet */
-            snippet?: string | null;
-            /** Title */
-            title: string;
+            /** Name */
+            name: string;
         };
-        /** ScanOptionsRequest */
-        ScanOptionsRequest: {
-            /** Awsprofile */
-            awsProfile?: string | null;
-            /** Awsregion */
-            awsRegion?: string | null;
-            /** Awssessiontoken */
-            awsSessionToken?: string | null;
-            /** Llmapikey */
-            llmApiKey?: string | null;
-            /** Llmapiversion */
-            llmApiVersion?: string | null;
-            /** Llmbaseurl */
-            llmBaseUrl?: string | null;
-            /**
-             * Llmconsensusruns
-             * @default 1
-             */
-            llmConsensusRuns: number;
-            /**
-             * Llmmaxtokens
-             * @default 8192
-             */
-            llmMaxTokens: number;
-            /** Llmmodel */
-            llmModel?: string | null;
-            /** Llmprovider */
-            llmProvider?: string | null;
-            /**
-             * Usellm
-             * @default true
-             */
-            useLlm: boolean;
+        /** ScaffoldResponse */
+        ScaffoldResponse: {
+            /** File Path */
+            file_path: string;
         };
-        /** ScanResultResponse */
-        ScanResultResponse: {
-            /** Analyzersused */
-            analyzersUsed: string[];
-            /** Durationseconds */
-            durationSeconds: number;
-            /** Findings */
-            findings: components["schemas"]["ScanFindingResponse"][];
-            /** Findingscount */
-            findingsCount: number;
-            /** Issafe */
-            isSafe: boolean;
-            /** Maxseverity */
-            maxSeverity: string;
-            /** Skillname */
-            skillName: string;
+        /** SetAgentHarnessesRequest */
+        SetAgentHarnessesRequest: {
+            /** Harnesses */
+            harnesses?: string[];
+        };
+        /** SetAgentHarnessesResultResponse */
+        SetAgentHarnessesResultResponse: {
+            /** Failed */
+            failed: components["schemas"]["AgentMutationFailureResponse"][];
+            /** Ok */
+            ok: boolean;
+            /** Succeeded */
+            succeeded: string[];
         };
         /** SetHarnessSupportRequest */
         SetHarnessSupportRequest: {
@@ -2685,14 +2627,14 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandListResponse */
         SlashCommandListResponse: {
             /** Commands */
             commands: components["schemas"]["SlashCommandResponse"][];
             /** Defaulttargets */
-            defaultTargets: ("opencode" | "claude" | "cursor" | "codex")[];
+            defaultTargets: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[];
             /** Reviewcommands */
             reviewCommands: components["schemas"]["SlashCommandReviewResponse"][];
             /** Storepath */
@@ -2711,7 +2653,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashCommandMutationResponse */
         SlashCommandMutationResponse: {
@@ -2734,7 +2676,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandResponse */
         SlashCommandResponse: {
@@ -2776,7 +2718,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
             /** Targetlabel */
             targetLabel: string;
         };
@@ -2787,7 +2729,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashSyncEntryResponse */
         SlashSyncEntryResponse: {
@@ -2804,12 +2746,12 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "opencode" | "claude" | "cursor" | "codex";
+            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
         };
         /** SlashSyncRequest */
         SlashSyncRequest: {
             /** Targets */
-            targets?: ("opencode" | "claude" | "cursor" | "codex")[] | null;
+            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashTargetResponse */
         SlashTargetResponse: {
@@ -2827,7 +2769,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "opencode" | "claude" | "cursor" | "codex";
+            id: "claude" | "codex" | "cursor" | "opencode" | "hermes";
             /** Invocationprefix */
             invocationPrefix: string;
             /** Label */
@@ -2851,6 +2793,17 @@ export interface components {
             /** Supportsfrontmatter */
             supportsFrontmatter: boolean;
         };
+        /** UpdateAgentRequest */
+        UpdateAgentRequest: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Prompt */
+            prompt?: string | null;
+            /** Tools */
+            tools?: string[] | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -2873,6 +2826,316 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_agents_api_agents_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentInventoryResponse"];
+                };
+            };
+        };
+    };
+    create_agent_api_agents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adopt_all_agents_api_agents_adopt_all_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdoptAllAgentsResponse"];
+                };
+            };
+        };
+    };
+    get_agent_api_agents__agent_ref__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_agent_api_agents__agent_ref__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_agent_api_agents__agent_ref__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adopt_agent_api_agents__agent_ref__adopt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdoptAgentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdoptAgentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_agent_api_agents__agent_ref__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentHarnessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_agent_api_agents__agent_ref__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentHarnessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_agent_harnesses_api_agents__agent_ref__set_harnesses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAgentHarnessesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetAgentHarnessesResultResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_api_health_get: {
         parameters: {
             query?: never;
@@ -4178,47 +4441,7 @@ export interface operations {
             };
         };
     };
-    check_scan_availability_api_scan_availability_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanAvailabilityResponse"];
-                };
-            };
-        };
-    };
-    list_scan_configs_api_scan_configs_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanConfigListResponse"];
-                };
-            };
-        };
-    };
-    create_scan_config_api_scan_configs_post: {
+    scaffold_asset_api_scaffold_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4227,7 +4450,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ScanConfigSaveRequest"];
+                "application/json": components["schemas"]["ScaffoldRequest"];
             };
         };
         responses: {
@@ -4237,223 +4460,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ScanConfigItem"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_scan_config_api_scan_configs_validate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ScanConfigValidateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanConfigValidationResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_scan_config_api_scan_configs__config_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                config_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ScanConfigSaveRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanConfigItem"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_scan_config_api_scan_configs__config_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                config_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    set_active_scan_config_api_scan_configs__config_id__active_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                config_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reveal_scan_config_secret_api_scan_configs__config_id__secret_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                config_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanConfigSecretResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    detect_llm_api_scan_llm_detection_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LLMDetectionResponse"];
-                };
-            };
-        };
-    };
-    scan_skill_api_scan_skills__skill_ref__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                skill_ref: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ScanOptionsRequest"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ScanResultResponse"];
+                    "application/json": components["schemas"]["ScaffoldResponse"];
                 };
             };
             /** @description Validation Error */

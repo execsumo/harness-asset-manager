@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.permissions.store import PermissionSpec, PermissionStore
+from harness_asset_manager.application.permissions.store import PermissionSpec, PermissionStore
 
 
 def _spec(perm_id: str = "test-perm", **overrides) -> PermissionSpec:

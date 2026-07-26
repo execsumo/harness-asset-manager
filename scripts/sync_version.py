@@ -8,7 +8,7 @@ import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VERSION_FILE = REPO_ROOT / "skill_manager" / "VERSION"
+VERSION_FILE = REPO_ROOT / "harness_asset_manager" / "VERSION"
 ROOT_PACKAGE_JSON = REPO_ROOT / "package.json"
 NPM_PACKAGE_JSON = REPO_ROOT / "packaging" / "npm" / "package.json"
 
@@ -31,7 +31,7 @@ def sync_json_version(path: Path, version: str, *, write: bool) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sync package versions from skill_manager/VERSION.")
+    parser = argparse.ArgumentParser(description="Sync package versions from harness_asset_manager/VERSION.")
     parser.add_argument("--check", action="store_true", help="Validate versions without modifying files.")
     parser.add_argument("--write", action="store_true", help="Rewrite version fields to match the source of truth.")
     args = parser.parse_args(argv)

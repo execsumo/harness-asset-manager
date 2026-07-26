@@ -1,11 +1,10 @@
-# skill-manager — working agreement
+# harness-asset-manager — working agreement
 
-This is **our fork** of skill-manager. Read this before doing any git or delegation work.
+This is **our fork** of harness-asset-manager. Read this before doing any git or delegation work.
 
 ## Remotes
 
-- `fork` → `execsumo/skill-manager` — **ours**. This is where we develop and ship.
-- `origin` → `mode-io/skill-manager` — **upstream**. Contributing back is optional.
+- `origin` → `execsumo/harness-asset-manager` — **standalone repository**. This is where we develop and ship.
 
 ## Branch strategy — fork `main` is the cumulative trunk
 
@@ -28,12 +27,12 @@ features (light mode, etc.) and breaks the running instance. Do it in a separate
 main checkout never moves:
 
 ```bash
-git worktree add ../skill-manager-upstream origin/main
-cd ../skill-manager-upstream
+git worktree add ../harness-asset-manager-upstream origin/main
+cd ../harness-asset-manager-upstream
 git cherry-pick <only the commits upstream should get>   # keep it a clean subset
 git push fork <extract-branch>
-gh pr create --repo mode-io/skill-manager --base main --head execsumo:<extract-branch>
-cd - && git worktree remove ../skill-manager-upstream
+gh pr create --repo mode-io/harness-asset-manager --base main --head execsumo:<extract-branch>
+cd - && git worktree remove ../harness-asset-manager-upstream
 ```
 
 Keep the upstream PR a focused subset; do not bundle unrelated fork features into it.

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import unittest
-from skill_manager.application.permissions.mappers import (
-    ClaudeCodePermissionsMapper,
+
+from harness_asset_manager.application.permissions.mappers import (
     AntigravityPermissionsMapper,
+    ClaudeCodePermissionsMapper,
     CodexPermissionsMapper,
 )
-from skill_manager.application.permissions.store import PermissionSpec
-from skill_manager.errors import MutationError
+from harness_asset_manager.application.permissions.store import PermissionSpec
+from harness_asset_manager.errors import MutationError
 
 
 class ClaudeCodePermissionsMapperTests(unittest.TestCase):
@@ -140,7 +141,7 @@ class CodexPermissionsMapperTests(unittest.TestCase):
         mapper.enable_permission(doc, spec_deny)
         mapper.enable_permission(doc, spec_web)
 
-        profile = doc["permissions"]["skill-manager"]
+        profile = doc["permissions"]["harness-asset-manager"]
         self.assertEqual(profile["extends"], ":read-only")
         self.assertEqual(profile["filesystem"]["~/.zshrc"], "read")
         self.assertEqual(profile["filesystem"]["./secrets/**"], "write")
@@ -155,10 +156,10 @@ class CodexPermissionsMapperTests(unittest.TestCase):
 
         # Disable one by one
         mapper.disable_permission(doc, "p-read", "~/.zshrc")
-        self.assertNotIn("~/.zshrc", doc["permissions"]["skill-manager"]["filesystem"])
+        self.assertNotIn("~/.zshrc", doc["permissions"]["harness-asset-manager"]["filesystem"])
 
         mapper.disable_permission(doc, "p-web", "api.example.com")
-        self.assertNotIn("network", doc["permissions"]["skill-manager"])
+        self.assertNotIn("network", doc["permissions"]["harness-asset-manager"])
 
     def test_user_authored_profile_preservation(self) -> None:
         mapper = CodexPermissionsMapper()
@@ -177,16 +178,16 @@ class CodexPermissionsMapperTests(unittest.TestCase):
         spec = PermissionSpec("p-read", "allow", "file_read", "~/.zshrc")
         mapper.enable_permission(doc, spec)
 
-        # The skill-manager profile should be created, and user-profile preserved
-        self.assertIn("skill-manager", doc["permissions"])
+        # The harness-asset-manager profile should be created, and user-profile preserved
+        self.assertIn("harness-asset-manager", doc["permissions"])
         self.assertIn("user-profile", doc["permissions"])
         self.assertEqual(doc["permissions"]["user-profile"]["filesystem"]["~/.bashrc"], "read")
 
         # Disable managed permission
         mapper.disable_permission(doc, "p-read", "~/.zshrc")
         
-        # skill-manager profile should be cleaned up, user-profile preserved
-        self.assertNotIn("skill-manager", doc["permissions"])
+        # harness-asset-manager profile should be cleaned up, user-profile preserved
+        self.assertNotIn("harness-asset-manager", doc["permissions"])
         self.assertIn("user-profile", doc["permissions"])
         self.assertEqual(doc["permissions"]["user-profile"]["filesystem"]["~/.bashrc"], "read")
 

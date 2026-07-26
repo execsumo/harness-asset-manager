@@ -4,7 +4,6 @@ const englishMcpCopy = {
   inUse: {
     title: "MCP servers in use",
     subtitle: "Browse, enable, and remove MCP servers across your harnesses.",
-    viewModeAria: "MCP servers in use view mode",
     searchPlaceholder: "Search by name or transport...",
     searchLabel: "Search MCP servers",
     loading: "Loading MCP servers",
@@ -14,10 +13,6 @@ const englishMcpCopy = {
     noMatchesBody: "Adjust the search or filter to see other MCP servers.",
     emptyTitle: "No MCP servers in use yet",
     emptyBody: "Install one from the marketplace, or adopt an existing entry from a harness config.",
-    viewModes: {
-      cards: "Cards",
-      matrix: "Matrix",
-    },
     filters: {
       all: "All",
       enabled: "Enabled",
@@ -31,9 +26,9 @@ const englishMcpCopy = {
       title: (name: string) => `Uninstall ${name}?`,
       bulkTitle: (count: number) => `Uninstall ${count} server${count === 1 ? "" : "s"}?`,
       description:
-        "Remove each server from the Skill Manager catalog and delete its bindings from all harnesses where it is currently present.",
+        "Remove each server from the Harness Asset Manager catalog and delete its bindings from all harnesses where it is currently present.",
       singleDescription:
-        "Remove this server from the Skill Manager catalog and delete its bindings from all harnesses where it is currently present.",
+        "Remove this server from the Harness Asset Manager catalog and delete its bindings from all harnesses where it is currently present.",
       pending: "Uninstalling",
       fallbackName: "this server",
     },
@@ -45,13 +40,15 @@ const englishMcpCopy = {
         ? `${count} unique server${count === 1 ? "" : "s"} across your harness configs.`
         : "No local MCP config entries need review across your harnesses.",
     adoptIdentical: (count: number) => `Adopt identical servers (${count})`,
+    adoptSelected: "Adopt",
+    adoptingSelected: "Adopting selected servers",
     searchPlaceholder: "Search by server name...",
     searchLabel: "Search MCP configs to review",
     loading: "Loading MCP configs to review",
     noMatchesBody: "Clear the search to see all MCP configs that need review.",
     emptyTitle: "No local MCP configs need review",
     emptyBody:
-      "Your harness configs only reference MCP servers that skill-manager already tracks. Install a new server from the marketplace to add more.",
+      "Your harness configs only reference MCP servers that harness-asset-manager already tracks. Install a new server from the marketplace to add more.",
   },
   detail: {
     close: "Close MCP server detail",
@@ -62,7 +59,7 @@ const englishMcpCopy = {
     unableToLoadInstallConfig: "Unable to load MCP configuration fields.",
     about: "About",
     differentConfigsTitle: "Different configs found",
-    differentConfigsBody: "Choose which config Skill Manager should manage, then apply it to current bindings.",
+    differentConfigsBody: "Choose which config Harness Asset Manager should manage, then apply it to current bindings.",
     resolveConfig: "Resolve config",
     connection: "Connection",
     bindings: "Bindings",
@@ -76,7 +73,7 @@ const englishMcpCopy = {
     noRegistryLink: "This MCP server is not linked to an MCP Registry entry.",
     noGithubLink: "No GitHub repository is listed for this MCP server.",
     noWebsiteLink: "No website is listed for this MCP server.",
-    skillManagerConfig: "Skill Manager config",
+    skillManagerConfig: "Harness Asset Manager config",
     noConnectionData: "No connection data.",
     command: "Command",
     args: "Args",
@@ -84,10 +81,8 @@ const englishMcpCopy = {
     transport: "Transport",
     headers: "Headers",
     openDetail: (name: string) => `Open detail for ${name}`,
-    moreActions: (name: string) => `More actions for ${name}`,
     select: (name: string) => `Select ${name}`,
     deselect: (name: string) => `Deselect ${name}`,
-    installedViaSkillManager: "Installed via skill-manager",
     enabledStatus: {
       enabled: "Enabled",
       disabled: "Disabled",
@@ -120,15 +115,12 @@ const englishMcpCopy = {
         "Provider error. Try again later.",
     },
     mcpStatusAria: (label: string) => `MCP status: ${label}`,
-    enableOnAll: "Enable on all",
-    enableOnAllAria: "Enable on all harnesses",
-    disableEverywhere: "Disable everywhere",
     installConfig: {
       allHarnesses: "all harnesses",
       title: (name: string) => `Configure ${name}`,
       description: (harness: string) => `Configure for ${harness}. These values will be written to your local Agent MCP config.`,
       bulkRequiresSingle: (name: string) =>
-        `${name} requires credentials. Enable it by itself so Skill Manager can collect the required configuration.`,
+        `${name} requires credentials. Enable it by itself so Harness Asset Manager can collect the required configuration.`,
       requiredHint: "Complete the required fields before saving.",
       optionalHint: "Optional configuration",
       missingRequired: (fields: string) => `Missing required fields: ${fields}`,
@@ -145,8 +137,8 @@ const englishMcpCopy = {
       marketplaceMatch: "Match in marketplace",
       sightings: "Sightings",
       configToAdopt: "Config to adopt",
-      addTooltip: "Add this server to Skill Manager",
-      chooseTooltip: "Choose which config Skill Manager should keep",
+      addTooltip: "Add this server to Harness Asset Manager",
+      chooseTooltip: "Choose which config Harness Asset Manager should keep",
       adopt: "Adopt",
       chooseConfigToAdopt: "Choose config to adopt",
       identical: "Identical",
@@ -157,9 +149,9 @@ const englishMcpCopy = {
       adoptTitle: "Choose config to adopt",
       resolveTitle: "Resolve different configs",
       adoptDescription:
-        "Pick the config to store as the Skill Manager config. Other harness entries will be rewritten to match it.",
+        "Pick the config to store as the Harness Asset Manager config. Other harness entries will be rewritten to match it.",
       resolveDescription:
-        "Pick the config Skill Manager should manage. Current bindings will be rewritten to match it.",
+        "Pick the config Harness Asset Manager should manage. Current bindings will be rewritten to match it.",
       adoptConfirm: "Adopt",
       applyConfig: "Apply config",
       ariaLabel: (title: string, serverName: string) => `${title} for ${serverName}`,
@@ -172,7 +164,7 @@ const englishMcpCopy = {
       showPreview: "Show config preview",
       hidePreview: "Hide config preview",
       cancel: "Cancel",
-      adoptTooltip: "Add to Skill Manager using the selected config",
+      adoptTooltip: "Add to Harness Asset Manager using the selected config",
       resolveTooltip: "Apply the selected config to current bindings",
     },
     sheet: {
@@ -185,7 +177,6 @@ const englishMcpCopy = {
         "Inspect an MCP server found across harnesses and adopt it, or choose a config to adopt.",
     },
     list: {
-      serversAriaLabel: "MCP servers list",
       reviewAriaLabel: "MCP configs to review",
     },
     matrix: {
@@ -193,7 +184,7 @@ const englishMcpCopy = {
       selectColumn: "Select",
       serverColumn: "Server",
       harnessesColumn: "Harnesses",
-      enabledColumn: "Enabled",
+      enabledColumn: "Active",
       coverage: (enabled: number, writable: number) =>
         `Enabled on ${enabled} of ${writable} writable harnesses`,
       baseLabel: (serverName: string, harnessLabel: string) => `${serverName} on ${harnessLabel}`,
@@ -219,7 +210,6 @@ export const mcpCopy = {
     inUse: {
       title: "使用中的 MCP 服务器",
       subtitle: "浏览、启用并移除各个 harness 中的 MCP 服务器。",
-      viewModeAria: "使用中的 MCP 服务器视图模式",
       searchPlaceholder: "按名称或传输方式搜索...",
       searchLabel: "搜索 MCP 服务器",
       loading: "正在加载 MCP 服务器",
@@ -228,10 +218,6 @@ export const mcpCopy = {
       noMatchesBody: "调整搜索或筛选条件以查看其他 MCP 服务器。",
       emptyTitle: "还没有使用中的 MCP 服务器",
       emptyBody: "从商城安装一个，或从 harness 配置中采用现有条目。",
-      viewModes: {
-        cards: "卡片",
-        matrix: "矩阵",
-      },
       filters: {
         all: "全部",
         enabled: "已启用",
@@ -244,8 +230,8 @@ export const mcpCopy = {
         action: "卸载",
         title: (name: string) => `卸载 ${name}？`,
         bulkTitle: (count: number) => `卸载 ${count} 个 MCP 服务器？`,
-        description: "从 Skill Manager 目录中移除每个服务器，并删除当前所有 harness 中的绑定。",
-        singleDescription: "从 Skill Manager 目录中移除此服务器，并删除当前所有 harness 中的绑定。",
+        description: "从 Harness Asset Manager 目录中移除每个服务器，并删除当前所有 harness 中的绑定。",
+        singleDescription: "从 Harness Asset Manager 目录中移除此服务器，并删除当前所有 harness 中的绑定。",
         pending: "卸载中",
         fallbackName: "此服务器",
       },
@@ -255,12 +241,14 @@ export const mcpCopy = {
       subtitle: (count: number) =>
         count > 0 ? `${count} 个唯一服务器出现在你的 harness 配置中。` : "没有本地 MCP 配置条目需要确认。",
       adoptIdentical: (count: number) => `采用相同服务器（${count}）`,
+      adoptSelected: "采用",
+      adoptingSelected: "正在采用所选服务器",
       searchPlaceholder: "按服务器名称搜索...",
       searchLabel: "搜索待确认的 MCP 配置",
       loading: "正在加载待确认的 MCP 配置",
       noMatchesBody: "清除搜索即可查看所有需要确认的 MCP 配置。",
       emptyTitle: "没有本地 MCP 配置需要确认",
-      emptyBody: "你的 harness 配置只引用了 Skill Manager 已跟踪的 MCP 服务器。可以从商城安装新的服务器。",
+      emptyBody: "你的 harness 配置只引用了 Harness Asset Manager 已跟踪的 MCP 服务器。可以从商城安装新的服务器。",
     },
     detail: {
       close: "关闭 MCP 服务器详情",
@@ -271,7 +259,7 @@ export const mcpCopy = {
       unableToLoadInstallConfig: "无法加载 MCP 配置字段。",
       about: "简介",
       differentConfigsTitle: "发现不同配置",
-      differentConfigsBody: "选择 Skill Manager 应管理哪份配置，然后应用到当前绑定。",
+      differentConfigsBody: "选择 Harness Asset Manager 应管理哪份配置，然后应用到当前绑定。",
       resolveConfig: "解决配置",
       connection: "连接",
       bindings: "绑定",
@@ -285,7 +273,7 @@ export const mcpCopy = {
       noRegistryLink: "此 MCP 服务器未关联 MCP Registry 条目。",
       noGithubLink: "此 MCP 服务器未提供 GitHub 仓库。",
       noWebsiteLink: "此 MCP 服务器未提供官网链接。",
-      skillManagerConfig: "Skill Manager 配置",
+      skillManagerConfig: "Harness Asset Manager 配置",
       noConnectionData: "没有连接数据。",
       command: "Command",
       args: "Args",
@@ -293,10 +281,8 @@ export const mcpCopy = {
       transport: "Transport",
       headers: "Headers",
       openDetail: (name: string) => `打开 ${name} 的详情`,
-      moreActions: (name: string) => `${name} 的更多操作`,
       select: (name: string) => `选择 ${name}`,
       deselect: (name: string) => `取消选择 ${name}`,
-      installedViaSkillManager: "通过 skill-manager 安装",
       enabledStatus: {
         enabled: "已启用",
         disabled: "未启用",
@@ -311,14 +297,14 @@ export const mcpCopy = {
       mcpStatusReason: {
         available: "MCP 端点可连接。",
         needs_config: "缺少必填配置。启用此 MCP 时请补充这些配置。",
-        connection_issue: "Skill Manager 无法通过当前配置连接到此 MCP。",
+        connection_issue: "Harness Asset Manager 无法通过当前配置连接到此 MCP。",
         unchecked: "尚未检查可用性。",
         httpUnauthorized: () =>
           "远程 MCP 服务器需要认证，但 Registry 未提供认证入口。请打开 MCP 详情查看是否有服务商文档。",
         httpUnauthorizedWithDocs: () =>
           "远程 MCP 服务器需要认证，但 Registry 未提供认证入口。请查看官网或 GitHub 文档了解服务商的授权方式。",
         httpUnauthorizedNoDocs: () =>
-          "远程 MCP 服务器需要认证，但 Registry 未提供认证入口或文档链接，Skill Manager 当前无法完成此 MCP 的认证。",
+          "远程 MCP 服务器需要认证，但 Registry 未提供认证入口或文档链接，Harness Asset Manager 当前无法完成此 MCP 的认证。",
         httpForbidden: () =>
           "远程 MCP 服务器拒绝访问。请检查 API key、账号权限、额度，或服务商是否限制了请求来源。",
         httpNotFound: () =>
@@ -329,15 +315,12 @@ export const mcpCopy = {
           "远程 MCP 服务器返回服务端错误。服务商可能暂时不可用。",
       },
       mcpStatusAria: (label: string) => `MCP 状态：${label}`,
-      enableOnAll: "全部启用",
-      enableOnAllAria: "在所有 harness 上启用",
-      disableEverywhere: "全部停用",
       installConfig: {
         allHarnesses: "所有 harness",
         title: (name: string) => `配置 ${name}`,
         description: (harness: string) => `配置到 ${harness}。这些值会写入本机 Agent MCP 配置。`,
         bulkRequiresSingle: (name: string) =>
-          `${name} 需要认证配置。请单独启用这个 MCP，以便 Skill Manager 收集必填配置。`,
+          `${name} 需要认证配置。请单独启用这个 MCP，以便 Harness Asset Manager 收集必填配置。`,
         requiredHint: "保存前请填写必填字段。",
         optionalHint: "可选配置",
         missingRequired: (fields: string) => `缺少必填字段：${fields}`,
@@ -354,8 +337,8 @@ export const mcpCopy = {
         marketplaceMatch: "商城匹配项",
         sightings: "发现位置",
         configToAdopt: "将采用的配置",
-        addTooltip: "将此服务器添加到 Skill Manager",
-        chooseTooltip: "选择 Skill Manager 应保留哪份配置",
+        addTooltip: "将此服务器添加到 Harness Asset Manager",
+        chooseTooltip: "选择 Harness Asset Manager 应保留哪份配置",
         adopt: "采用",
         chooseConfigToAdopt: "选择要采用的配置",
         identical: "相同",
@@ -365,8 +348,8 @@ export const mcpCopy = {
       configChoice: {
         adoptTitle: "选择要采用的配置",
         resolveTitle: "解决不同配置",
-        adoptDescription: "选择要保存为 Skill Manager 配置的版本。其他 harness 条目会被改写为与它一致。",
-        resolveDescription: "选择 Skill Manager 应管理哪份配置。当前绑定会被改写为与它一致。",
+        adoptDescription: "选择要保存为 Harness Asset Manager 配置的版本。其他 harness 条目会被改写为与它一致。",
+        resolveDescription: "选择 Harness Asset Manager 应管理哪份配置。当前绑定会被改写为与它一致。",
         adoptConfirm: "采用",
         applyConfig: "应用配置",
         ariaLabel: (title: string, serverName: string) => `${serverName}：${title}`,
@@ -379,7 +362,7 @@ export const mcpCopy = {
         showPreview: "显示配置预览",
         hidePreview: "隐藏配置预览",
         cancel: "取消",
-        adoptTooltip: "使用所选配置添加到 Skill Manager",
+        adoptTooltip: "使用所选配置添加到 Harness Asset Manager",
         resolveTooltip: "将所选配置应用到当前绑定",
       },
       sheet: {
@@ -391,7 +374,6 @@ export const mcpCopy = {
         reviewDescription: "查看在 harness 中发现的 MCP 服务器，并采用它或选择要采用的配置。",
       },
       list: {
-        serversAriaLabel: "MCP 服务器列表",
         reviewAriaLabel: "待确认的 MCP 配置",
       },
       matrix: {
@@ -399,7 +381,7 @@ export const mcpCopy = {
         selectColumn: "选择",
         serverColumn: "服务器",
         harnessesColumn: "Harness",
-        enabledColumn: "已启用",
+        enabledColumn: "启用",
         coverage: (enabled: number, writable: number) => `已在 ${enabled} / ${writable} 个可写 harness 中启用`,
         baseLabel: (serverName: string, harnessLabel: string) => `${serverName} 在 ${harnessLabel}`,
         enabledTooltip: (harnessLabel: string) => `${harnessLabel} - 已启用`,

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
-from tempfile import TemporaryDirectory
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from skill_manager.application.skills.marketplace.skillssh import (
+from harness_asset_manager.application.skills.marketplace.skillssh import (
     extract_detail_description,
     normalize_skill,
     parse_homepage_leaderboard,
     raw_skill_from_payload,
 )
-from skill_manager.sources.github import (
+from harness_asset_manager.sources.github import (
     GitHubSource,
     ResolvedGitHubSkill,
     _find_skill,
@@ -21,7 +21,6 @@ from skill_manager.sources.github import (
     github_repo_from_locator,
     is_valid_github_repo,
 )
-
 from tests.support.fake_home import seed_skill_package
 
 

@@ -6,10 +6,12 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.mcp import FileBackedMcpAdapter
-from skill_manager.application.mcp.store import McpServerSpec, McpServerStore, McpSource
-from skill_manager.errors import MutationError
-from skill_manager.harness import HarnessKernelService, HarnessSupportStore
+from ruamel.yaml import YAML
+
+from harness_asset_manager.application.mcp import FileBackedMcpAdapter
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpServerStore, McpSource
+from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 
 
 def _spec(name: str = "exa") -> McpServerSpec:
@@ -22,6 +24,10 @@ def _spec(name: str = "exa") -> McpServerSpec:
         args=("-y", f"{name}-mcp-server"),
         env=(("KEY", "value"),),
     )
+
+def _load_yaml(path: Path) -> dict[str, object]:
+    payload = YAML(typ="safe").load(path.read_text(encoding="utf-8"))
+    return payload if isinstance(payload, dict) else {}
 
 
 def _adapter(
@@ -188,6 +194,97 @@ class FileBackedMcpAdapterTests(unittest.TestCase):
             adapter.disable_server("exa")
             payload = tomllib.loads(adapter.config_path.read_text(encoding="utf-8"))
             self.assertEqual(payload.get("mcp_servers", {}), {})
+
+    def test_enable_and_disable_round_trip_for_hermes_yaml(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            adapter = _adapter("hermes", home=home)
+            adapter.config_path.parent.mkdir(parents=True, exist_ok=True)
+            adapter.config_path.write_text(
+                "model: test-model\nmcp_servers:\n  existing:\n    command: ls\n",
+                encoding="utf-8",
+            )
+
+            adapter.enable_server(_spec())
+            payload = _load_yaml(adapter.config_path)
+            self.assertEqual(payload["model"], "test-model")
+            self.assertEqual(payload["mcp_servers"]["existing"]["command"], "ls")
+            self.assertEqual(payload["mcp_servers"]["exa"]["command"], "npx")
+            self.assertEqual(payload["mcp_servers"]["exa"]["env"], {"KEY": "value"})
+
+            adapter.disable_server("exa")
+            payload = _load_yaml(adapter.config_path)
+            self.assertIn("existing", payload["mcp_servers"])
+            self.assertNotIn("exa", payload["mcp_servers"])
+
+    def test_hermes_yaml_round_trip_preserves_comments_and_existing_format(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            adapter = _adapter("hermes", home=home)
+            adapter.config_path.parent.mkdir(parents=True, exist_ok=True)
+            adapter.config_path.write_text(
+                """# top-level comment
+model: "test-model"  # inline model comment
+
+# keep this block comment
+mcp_servers:
+  # existing server comment
+  existing:
+    command: ls  # command comment
+    args: ["-la"]  # flow-style args comment
+
+# unrelated block comment
+profiles:
+  default: true  # profile comment
+""",
+                encoding="utf-8",
+            )
+
+            adapter.enable_server(_spec())
+            enabled_text = adapter.config_path.read_text(encoding="utf-8")
+
+            self.assertIn("# top-level comment", enabled_text)
+            self.assertIn("# inline model comment", enabled_text)
+            self.assertIn("# keep this block comment", enabled_text)
+            self.assertIn("# existing server comment", enabled_text)
+            self.assertIn("# command comment", enabled_text)
+            self.assertIn("# flow-style args comment", enabled_text)
+            self.assertIn("# unrelated block comment", enabled_text)
+            self.assertIn("# profile comment", enabled_text)
+            self.assertIn("exa:", enabled_text)
+            self.assertIn('model: "test-model"', enabled_text)
+
+            adapter.disable_server("exa")
+            disabled_text = adapter.config_path.read_text(encoding="utf-8")
+
+            self.assertNotIn("  exa:", disabled_text)
+            self.assertIn("# top-level comment", disabled_text)
+            self.assertIn("# existing server comment", disabled_text)
+            self.assertIn("# command comment", disabled_text)
+            self.assertIn("# unrelated block comment", disabled_text)
+            self.assertIn("existing:", disabled_text)
+
+    def test_hermes_yaml_http_uses_headers_and_sse_transport(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            adapter = _adapter("hermes", home=home)
+
+            adapter.enable_server(
+                McpServerSpec(
+                    name="remote",
+                    display_name="Remote",
+                    source=McpSource.marketplace("@remote/server"),
+                    transport="sse",
+                    url="https://mcp.example.com/sse",
+                    headers=(("Authorization", "Bearer token"),),
+                )
+            )
+
+            payload = _load_yaml(adapter.config_path)
+            remote = payload["mcp_servers"]["remote"]
+            self.assertEqual(remote["url"], "https://mcp.example.com/sse")
+            self.assertEqual(remote["transport"], "sse")
+            self.assertEqual(remote["headers"], {"Authorization": "Bearer token"})
 
     def test_cursor_writes_explicit_type_for_stdio_and_http(self) -> None:
         with TemporaryDirectory() as tmp:

@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
-from skill_manager.application.mcp.availability import McpAvailabilityProbe
-from skill_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.mcp.availability import McpAvailabilityProbe
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
 
 def _http_spec() -> McpServerSpec:
@@ -136,7 +136,7 @@ class McpAvailabilityProbeTests(unittest.TestCase):
 
         response = SseResponse()
 
-        with patch("skill_manager.application.mcp.availability.urlopen", return_value=response):
+        with patch("harness_asset_manager.application.mcp.availability.urlopen", return_value=response):
             payload, headers = McpAvailabilityProbe()._default_http_post(
                 "https://server.example/sse",
                 {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},

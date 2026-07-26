@@ -19,7 +19,6 @@ function stubEmptyApi() {
     createRouteFetchMock(
       [
         { match: "/api/skills", response: skillsPayload() },
-        { match: "/api/scan/configs", response: { configs: [], activeId: null } },
         { match: "/api/mcp/servers", response: mcpInventoryPayload() },
         { match: "/api/settings", response: settingsPayload() },
         { match: "/api/slash-commands", response: slashCommandsPayload() },
@@ -56,10 +55,9 @@ describe("App shell", () => {
   it("renders the sidebar with primary nav groups", async () => {
     renderApp("/skills/use");
     await waitFor(() => expect(screen.getByLabelText(/primary navigation/i)).toBeInTheDocument());
-    expect(screen.getByText(/skill-manager/)).toBeInTheDocument();
+    expect(screen.getByText(/harness-asset-manager/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Skills/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Scan Config" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Slash Commands/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /MCP Servers/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Marketplace/i })).toBeInTheDocument();
@@ -98,10 +96,9 @@ describe("App shell", () => {
       expect(screen.getByRole("button", { name: "MCP Servers 3" })).toBeInTheDocument();
     });
     expect(screen.getByRole("link", { name: "In use 10" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Needs review 3" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Scan Config" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Unmanaged 3" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "In use 2" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Needs review 1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Unmanaged 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marketplace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Skills" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "MCP" })).toBeInTheDocument();
@@ -127,7 +124,6 @@ describe("App shell", () => {
     ["/overview", "Overview"],
     ["/skills/use", "Skills in use"],
     ["/skills/review", "Skills to review"],
-    ["/scan-config", "Scan Config"],
     ["/slash-commands", "Slash Commands"],
     ["/slash-commands/use", "Slash Commands"],
     ["/slash-commands/review", "Slash commands to review"],
@@ -156,7 +152,7 @@ describe("App shell", () => {
   });
 
   it("shows the preview-only note only on the CLI marketplace tab", async () => {
-    const note = "Preview only · Skill Manager does not install or manage CLIs";
+    const note = "Preview only · Harness Asset Manager does not install or manage CLIs";
 
     const cliView = renderApp("/marketplace/clis");
     await waitFor(() =>
@@ -188,13 +184,13 @@ describe("App shell", () => {
     );
   });
 
-  it("navigates to overview from the skill-manager brand", async () => {
+  it("navigates to overview from the harness-asset-manager brand", async () => {
     renderApp("/settings");
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByRole("link", { name: /skill-manager/i }));
+    fireEvent.click(screen.getByRole("link", { name: /harness-asset-manager/i }));
 
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument(),
@@ -238,8 +234,8 @@ describe("App shell", () => {
 
 function slashCommandsPayload({ count = 0, reviewCount = 0 }: { count?: number; reviewCount?: number } = {}) {
   return {
-    storePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/commands",
-    syncStatePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/sync-state.json",
+    storePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/commands",
+    syncStatePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/sync-state.json",
     targets: [
       {
         id: "opencode",
@@ -334,12 +330,12 @@ function settingsPayload() {
   return {
     storage: {
       platform: "linux",
-      configDir: "/tmp/config/skill-manager",
-      dataDir: "/tmp/data/skill-manager",
-      stateDir: "/tmp/state/skill-manager",
-      skillsStorePath: "/tmp/data/skill-manager/shared",
-      marketplaceCachePath: "/tmp/data/skill-manager/marketplace",
-      settingsPath: "/tmp/config/skill-manager/settings.json",
+      configDir: "/tmp/config/harness-asset-manager",
+      dataDir: "/tmp/data/harness-asset-manager",
+      stateDir: "/tmp/state/harness-asset-manager",
+      skillsStorePath: "/tmp/data/harness-asset-manager/shared",
+      marketplaceCachePath: "/tmp/data/harness-asset-manager/marketplace",
+      settingsPath: "/tmp/config/harness-asset-manager/settings.json",
     },
     harnesses: [],
   };

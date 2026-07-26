@@ -3,12 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import mkdtemp
 
-from skill_manager.application.marketplace_cache import MarketplaceCache
-from skill_manager.application.skills.marketplace import MarketplaceCatalog
-from skill_manager.application.skills.marketplace.models import SkillsShSkill
-from skill_manager.application.skills.marketplace.repo_snapshots import GitHubRepoSnapshotService
-from skill_manager.application.skills.marketplace.resolver import DetailEnrichment, GitHubSkillResolver
-from skill_manager.sources import GitHubRepoMetadata, GitHubRepoMetadataClient
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog
+from harness_asset_manager.application.skills.marketplace.models import SkillsShSkill
+from harness_asset_manager.application.skills.marketplace.repo_snapshots import (
+    GitHubRepoSnapshotService,
+)
+from harness_asset_manager.application.skills.marketplace.resolver import (
+    DetailEnrichment,
+    GitHubSkillResolver,
+)
+from harness_asset_manager.sources import GitHubRepoMetadata, GitHubRepoMetadataClient
 from tests.support.marketplace_payloads import FIXTURE_FOLDER_URLS, FIXTURE_SKILLS
 
 
@@ -23,7 +28,7 @@ def fixture_marketplace_search(query: str, limit: int) -> list[SkillsShSkill]:
 
 
 def create_fixture_marketplace_service() -> MarketplaceCatalog:
-    cache_root = Path(mkdtemp(prefix="skill-manager-marketplace-cache-"))
+    cache_root = Path(mkdtemp(prefix="harness-asset-manager-marketplace-cache-"))
     cache = MarketplaceCache(cache_root)
     skills = [item_from_payload(item) for item in FIXTURE_SKILLS]
     cache.write("leaderboard", "all-time", [skill_to_dict(item) for item in skills])

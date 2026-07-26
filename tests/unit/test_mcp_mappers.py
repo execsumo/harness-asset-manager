@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp import (
+from harness_asset_manager.application.mcp import (
     ClaudeCodeMapper,
     CodexMapper,
     CursorMapper,
     OpenClawMapper,
     OpenCodeMapper,
 )
-from skill_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
 
 def _stdio() -> McpServerSpec:

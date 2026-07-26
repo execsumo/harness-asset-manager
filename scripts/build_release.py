@@ -13,14 +13,14 @@ from release_targets import artifact_name, resolve_current_target
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VERSION_FILE = REPO_ROOT / "skill_manager" / "VERSION"
-SPEC_FILE = REPO_ROOT / "packaging" / "pyinstaller" / "skill-manager.spec"
+VERSION_FILE = REPO_ROOT / "harness_asset_manager" / "VERSION"
+SPEC_FILE = REPO_ROOT / "packaging" / "pyinstaller" / "harness-asset-manager.spec"
 ARTIFACTS_DIR = REPO_ROOT / ".artifacts" / "release"
 LICENSE_FILE = REPO_ROOT / "LICENSE"
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build a release artifact for skill-manager.")
+    parser = argparse.ArgumentParser(description="Build a release artifact for harness-asset-manager.")
     parser.add_argument("--skip-frontend-build", action="store_true")
     parser.add_argument("--output-dir", default=str(ARTIFACTS_DIR))
     return parser
@@ -55,10 +55,10 @@ def build_bundle() -> Path:
     shutil.rmtree(dist_dir, ignore_errors=True)
     shutil.rmtree(build_dir, ignore_errors=True)
     run([sys.executable, "-m", "PyInstaller", "--noconfirm", str(SPEC_FILE)])
-    bundle_dir = dist_dir / "skill-manager"
-    binary = bundle_dir / "skill-manager"
+    bundle_dir = dist_dir / "harness-asset-manager"
+    binary = bundle_dir / "harness-asset-manager"
     if not binary.exists():
-        raise RuntimeError("PyInstaller did not produce dist/skill-manager/skill-manager")
+        raise RuntimeError("PyInstaller did not produce dist/harness-asset-manager/harness-asset-manager")
     copy_license(bundle_dir)
     return bundle_dir
 
@@ -75,7 +75,7 @@ def package_artifact(bundle_dir: Path, output_dir: Path, version: str) -> tuple[
     output_dir.mkdir(parents=True, exist_ok=True)
     artifact_path = output_dir / artifact_name(version, target)
     with tarfile.open(artifact_path, "w:gz") as archive:
-        archive.add(bundle_dir, arcname="skill-manager")
+        archive.add(bundle_dir, arcname="harness-asset-manager")
     checksum_path = write_checksum(artifact_path)
     return artifact_path, checksum_path
 

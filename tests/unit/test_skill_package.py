@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
-from skill_manager.application.skills.identity import SourceDescriptor
-from skill_manager.application.skills.package import (
+from harness_asset_manager.application.skills.identity import SourceDescriptor
+from harness_asset_manager.application.skills.package import (
     SkillParseError,
     fingerprint_package,
     parse_skill_manifest_text,
     parse_skill_package,
 )
-
 from tests.support.fake_home import seed_skill_package
 
 

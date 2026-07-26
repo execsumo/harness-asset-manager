@@ -1,12 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 
+import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { useCommonCopy } from "../../../i18n";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
+import {
+  MatrixHarnessCellTarget,
+  MatrixHarnessHeader,
+  MatrixHarnessIcon,
+  MatrixTable,
+} from "../../../components/matrix";
 import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import { hooksRoutes } from "../public";
@@ -29,11 +36,72 @@ export default function HooksNeedsReviewPage() {
   const entries = useMemo(() => filterHooksNeedsReview(inventory, search), [inventory, search]);
   const totalReview = useMemo(() => filterHooksNeedsReview(inventory, "").length, [inventory]);
   const columns = inventory?.columns ?? [];
-  const labelByHarness = useMemo(() => new Map(columns.map((c) => [c.harness, c.label])), [columns]);
-  const logoByHarness = useMemo(
-    () => new Map(columns.map((c) => [c.harness, c.logoKey ?? c.harness])),
-    [columns],
-  );
+
+
+  const common = useCommonCopy();
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [adoptingSelected, setAdoptingSelected] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds((current) => {
+      let changed = false;
+      const next = new Set<string>();
+      const entryIds = new Set(entries.map((e) => e.id));
+      for (const id of current) {
+        if (entryIds.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [entries]);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelected = () => setSelectedIds(new Set());
+
+  const handleAdoptSelected = async () => {
+    const ids = entries.filter((e) => selectedIds.has(e.id)).map((e) => e.id);
+    if (ids.length === 0) return;
+    setAdoptingSelected(true);
+    try {
+      for (const id of ids) {
+        try {
+          await promoteMutation.mutateAsync({ id });
+        } catch {
+        }
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setAdoptingSelected(false);
+    }
+  };
+
+  const handleAdoptAll = async () => {
+    const ids = entries.map((e) => e.id);
+    if (ids.length === 0) return;
+    setAdoptingSelected(true);
+    try {
+      for (const id of ids) {
+        try {
+          await promoteMutation.mutateAsync({ id });
+        } catch {
+        }
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setAdoptingSelected(false);
+    }
+  };
+
+  const selectedCount = selectedIds.size;
+  const adoptableCount = entries.length;
 
   const isInitialLoading = inventoryQuery.isPending && !inventory;
   const loadError = inventoryQuery.error instanceof Error ? inventoryQuery.error.message : "";
@@ -55,7 +123,17 @@ export default function HooksNeedsReviewPage() {
       <div className="page-chrome">
         <PageHeader
           title="Hooks to review"
-          subtitle="Hooks found in your harness configs that skill-manager does not yet track. Promote the ones you want to manage globally."
+          subtitle="Hooks found in your harness configs that harness-asset-manager does not yet track. Promote the ones you want to manage globally."
+        actions={
+            <button
+              type="button"
+              className="action-pill action-pill--md action-pill--accent"
+              disabled={adoptingSelected || adoptableCount === 0}
+              onClick={() => void handleAdoptAll()}
+            >
+              Adopt all eligible
+            </button>
+          }
         />
         {totalReview > 0 ? (
           <FilterBar
@@ -79,7 +157,7 @@ export default function HooksNeedsReviewPage() {
         <div className="empty-panel">
           <h3 className="empty-panel__title">No hooks need review</h3>
           <p className="empty-panel__body">
-            Your harness configs only reference hooks that skill-manager already tracks.
+            Your harness configs only reference hooks that harness-asset-manager already tracks.
           </p>
           <div className="empty-panel__actions">
             <Link to={hooksRoutes.inUse} className="action-pill action-pill--md action-pill--accent">
@@ -98,63 +176,153 @@ export default function HooksNeedsReviewPage() {
           </div>
         </div>
       ) : (
-        <div className="skill-grid">
-          {entries.map((entry) => {
-            const observed = entry.sightings.filter((b) => b.state === "unmanaged");
-            const pending = pendingId === entry.id;
-            return (
-              <article key={entry.id} className="skill-card hook-card">
-                <div className="skill-card__head hook-card__head">
-                  <OverflowTooltipText as="h3" className="skill-card__name">
-                    {entry.displayName}
-                  </OverflowTooltipText>
-                  {entry.spec && <HooksStatusChip event={entry.spec.event} />}
-                </div>
-
-                <p className="hook-card__command">
-                  <code>{entry.spec?.command ?? "—"}</code>
-                </p>
-
-                <div className="skill-card__footer">
-                  <div className="harness-stack" aria-label={`Found on ${observed.length} harness(es)`}>
-                    {observed.map((binding, index) => {
-                      const presentation = getHarnessPresentation(
-                        logoByHarness.get(binding.harness) ?? null,
-                      );
-                      const label = labelByHarness.get(binding.harness) ?? binding.harness;
-                      return (
-                        <UiTooltip key={binding.harness} content={`Found in ${label} config`}>
-                          <span
-                            className="harness-stack__item"
-                            style={{ zIndex: observed.length - index }}
+        <MatrixTable
+          ariaLabel="Hooks to review"
+          harnessColumnWidth="52px"
+          compactColumnWidth="140px"
+          coverageColumnWidth="96px"
+          minWidth="800px"
+        >
+          <thead className="matrix-table__head">
+            <tr>
+              <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
+              <th className="matrix-table__th matrix-table__th--identity">Hook ID</th>
+              {columns.map((column) => (
+                <MatrixHarnessHeader
+                  key={column.harness}
+                  label={column.label}
+                  logoKey={column.logoKey}
+                  harness={column.harness}
+                />
+              ))}
+              <th className="matrix-table__th matrix-table__th--action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => {
+              const pending = pendingId === entry.id;
+              const isSelected = selectedIds.has(entry.id);
+              return (
+                <tr
+                  key={entry.id}
+                  className="matrix-table__row"
+                  data-checked={isSelected ? "true" : undefined}
+                >
+                  <td className="matrix-table__cell matrix-table__cell--checkbox">
+                    <CardSelectCheckbox
+                      checked={isSelected}
+                      disabled={adoptingSelected || pending}
+                      label={isSelected ? `Deselect ${entry.displayName}` : `Select ${entry.displayName}`}
+                      onToggle={() => toggleSelected(entry.id)}
+                    />
+                  </td>
+                  <td className="matrix-table__cell matrix-table__cell--identity">
+                    <div className="matrix-table__name-row">
+                      <OverflowTooltipText as="span" className="matrix-table__name-text">
+                        {entry.displayName}
+                      </OverflowTooltipText>
+                      {entry.spec && <HooksStatusChip event={entry.spec.event} />}
+                    </div>
+                    <OverflowTooltipText as="p" className="matrix-table__description">
+                      <code>{entry.spec?.command ?? "—"}</code>
+                    </OverflowTooltipText>
+                  </td>
+                  {columns.map((column) => {
+                    const discovered = entry.sightings.some(
+                      (b) => b.harness === column.harness && b.state === "unmanaged",
+                    );
+                    return (
+                      <td key={column.harness} className="matrix-table__cell matrix-table__cell--harness">
+                        <UiTooltip
+                          content={
+                            discovered
+                              ? `Found in ${column.label} config`
+                              : `Not found in ${column.label}`
+                          }
+                        >
+                          <MatrixHarnessCellTarget
+                            state={discovered ? "observed" : "empty"}
+                            ariaLabel={
+                              discovered
+                                ? `Discovered in ${column.label}`
+                                : `Not found in ${column.label}`
+                            }
+                            disabled
                           >
-                            {presentation ? (
-                              <img src={presentation.logoSrc} alt="" aria-hidden="true" />
+                            {discovered ? (
+                              <MatrixHarnessIcon
+                                label={column.label}
+                                logoKey={column.logoKey}
+                                harness={column.harness}
+                              />
                             ) : (
-                              <span className="harness-stack__fallback">{label.slice(0, 1)}</span>
+                              "—"
                             )}
-                          </span>
+                          </MatrixHarnessCellTarget>
                         </UiTooltip>
-                      );
-                    })}
-                  </div>
-                  <button
-                    type="button"
-                    className="action-pill action-pill--accent"
-                    disabled={pending}
-                    onClick={() => void handlePromote(entry.id)}
-                  >
-                    {pending ? (
-                      <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
-                    ) : null}
-                    Promote to global
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="matrix-table__cell matrix-table__cell--action">
+                    <button
+                      type="button"
+                      className="action-pill action-pill--accent"
+                      disabled={pending}
+                      onClick={() => void handlePromote(entry.id)}
+                    >
+                      {pending ? (
+                        <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
+                      ) : null}
+                      Adopt
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </MatrixTable>
       )}
+
+      {selectedCount > 0 ? (
+        <div className="bulk-dock">
+          <div className="bulk-dock__fade" />
+          <div
+            className="bulk-bar"
+            data-state="open"
+            role="toolbar"
+            aria-label={common.bulk.ariaLabel}
+          >
+            <div className="bulk-bar__group">
+              <span className="bulk-bar__count">{common.bulk.selected(selectedCount)}</span>
+              <button
+                type="button"
+                className="bulk-bar__clear"
+                onClick={clearSelected}
+                disabled={adoptingSelected}
+                aria-label={common.actions.clearSelection}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <span className="bulk-bar__divider" aria-hidden="true" />
+
+            <button
+              type="button"
+              className="bulk-bar__action"
+              onClick={() => void handleAdoptSelected()}
+              disabled={adoptingSelected}
+            >
+              {adoptingSelected ? (
+                <LoadingSpinner size="sm" label="Adopting selected hooks..." />
+              ) : (
+                <Plus size={15} />
+              )}
+              Adopt selected
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

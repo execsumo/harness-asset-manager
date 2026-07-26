@@ -5,17 +5,11 @@ const englishSlashCommandsCopy = {
   inUse: {
     title: "Slash Commands",
     subtitle: "Create one global prompt and sync it into local slash command folders.",
-    viewModeAria: "Slash commands view mode",
     newCommand: "New command",
     searchPlaceholder: "Search slash commands",
     searchLabel: "Search slash commands",
     loading: "Loading slash commands",
     unableToLoad: "Unable to load slash commands.",
-    viewModes: {
-      grid: "Grid",
-      board: "Board",
-      matrix: "Matrix",
-    },
     deleteTitle: (name: string) => `Delete ${name}?`,
     deleteDescription: "This removes the source command and generated command files from every synced target.",
     deleting: "Deleting",
@@ -50,7 +44,7 @@ const englishSlashCommandsCopy = {
       if (action === "restore_managed") return "Restore the managed command content to this harness";
       if (action === "adopt_target") return "Use this harness command as the managed command content";
       if (action === "remove_binding") return "Stop tracking this harness command without deleting it";
-      return "Adopt this command into Skill Manager";
+      return "Adopt this command into Harness Asset Manager";
     },
     metaText: (row: SlashCommandReviewDto) => {
       if (row.kind === "drifted") return `Changed in ${row.targetLabel}`;
@@ -59,20 +53,9 @@ const englishSlashCommandsCopy = {
     },
   },
   detail: {
-    listEmptyTitle: "No slash commands yet",
-    listEmptyBody: "Create one command and sync it into your local AI tools.",
-    listAria: "Slash commands in use list",
     delete: "Delete",
-    moreActions: (name: string) => `More actions for ${name}`,
-    select: (name: string) => `Select ${name}`,
-    deselect: (name: string) => `Deselect ${name}`,
-    activeOnTargets: (active: number, total: number) => `Active on ${active} of ${total} targets`,
     enableTargetFor: (target: string, name: string) => `Enable ${target} for ${name}`,
     disableTargetFor: (target: string, name: string) => `Disable ${target} for ${name}`,
-    notSelected: "not selected",
-    enableOnAllTargets: "Enable on all targets",
-    enableOnAll: "Enable on all",
-    disableEverywhere: "Disable everywhere",
     close: "Close slash command detail",
     actionsAria: "Slash command actions",
     edit: "Edit",
@@ -108,15 +91,15 @@ const englishSlashCommandsCopy = {
     review: {
       actionsAria: "Slash command review actions",
       conflictNotice:
-        "A managed slash command already uses this name. Adopting the harness command will replace the Skill Manager source.",
+        "A managed slash command already uses this name. Adopting the harness command will replace the Harness Asset Manager source.",
       driftedNotice:
-        "The harness command changed after Skill Manager last synced it. Restore writes the Skill Manager source back to the harness; Adopt updates Skill Manager from this harness command.",
+        "The harness command changed after Harness Asset Manager last synced it. Restore writes the Harness Asset Manager source back to the harness; Adopt updates Harness Asset Manager from this harness command.",
       canonicalGapNotice:
         "The review entry says this command is managed, but the canonical command is not present in the current slash command list.",
       harnessContext: (name: string) => `Harness review context for ${name}`,
       noDescriptionParsed: "No description parsed.",
       noPromptParsed: "No prompt content parsed.",
-      skillManagerSource: "Skill Manager source",
+      skillManagerSource: "Harness Asset Manager source",
       noCanonicalContent: "No canonical command content is available.",
       harnessCommand: "Harness command",
       path: "Path",
@@ -138,17 +121,11 @@ export const slashCommandsCopy = {
     inUse: {
       title: "Slash command",
       subtitle: "创建一个全局 prompt，并同步到本地 slash command 文件夹。",
-      viewModeAria: "Slash command 视图模式",
       newCommand: "新建 command",
       searchPlaceholder: "搜索 Slash command",
       searchLabel: "搜索 Slash command",
       loading: "正在加载 Slash command",
       unableToLoad: "无法加载 Slash command。",
-      viewModes: {
-        grid: "网格",
-        board: "看板",
-        matrix: "矩阵",
-      },
       deleteTitle: (name: string) => `删除 ${name}？`,
       deleteDescription: "这会移除源 command，以及每个已同步目标中的生成 command 文件。",
       deleting: "删除中",
@@ -179,7 +156,7 @@ export const slashCommandsCopy = {
         if (action === "restore_managed") return "将托管 command 内容恢复到此 harness";
         if (action === "adopt_target") return "使用此 harness command 作为托管内容";
         if (action === "remove_binding") return "停止跟踪此 harness command，但不删除文件";
-        return "将此 command 采用到 Skill Manager";
+        return "将此 command 采用到 Harness Asset Manager";
       },
       metaText: (row: SlashCommandReviewDto) => {
         if (row.kind === "drifted") return `${row.targetLabel} 中有变更`;
@@ -188,20 +165,9 @@ export const slashCommandsCopy = {
       },
     },
     detail: {
-      listEmptyTitle: "还没有 Slash command",
-      listEmptyBody: "创建一个 command，并同步到本地 AI 工具。",
-      listAria: "使用中的 Slash command 列表",
       delete: "删除",
-      moreActions: (name: string) => `${name} 的更多操作`,
-      select: (name: string) => `选择 ${name}`,
-      deselect: (name: string) => `取消选择 ${name}`,
-      activeOnTargets: (active: number, total: number) => `${total} 个 target 中已启用 ${active} 个`,
       enableTargetFor: (target: string, name: string) => `为 ${name} 启用 ${target}`,
       disableTargetFor: (target: string, name: string) => `为 ${name} 停用 ${target}`,
-      notSelected: "未选择",
-      enableOnAllTargets: "在所有 target 上启用",
-      enableOnAll: "全部启用",
-      disableEverywhere: "全部停用",
       close: "关闭 Slash command 详情",
       actionsAria: "Slash command 操作",
       edit: "编辑",
@@ -237,15 +203,15 @@ export const slashCommandsCopy = {
       review: {
         actionsAria: "Slash command 确认操作",
         conflictNotice:
-          "已有托管 Slash command 使用此名称。采用 harness command 会替换 Skill Manager 来源。",
+          "已有托管 Slash command 使用此名称。采用 harness command 会替换 Harness Asset Manager 来源。",
         driftedNotice:
-          "此 harness command 在 Skill Manager 上次同步后发生变化。恢复会把 Skill Manager 来源写回 harness；采用会用此 harness command 更新 Skill Manager。",
+          "此 harness command 在 Harness Asset Manager 上次同步后发生变化。恢复会把 Harness Asset Manager 来源写回 harness；采用会用此 harness command 更新 Harness Asset Manager。",
         canonicalGapNotice:
           "确认条目显示此 command 已托管，但当前 Slash command 列表中没有规范 command。",
         harnessContext: (name: string) => `${name} 的 harness 确认上下文`,
         noDescriptionParsed: "没有解析到描述。",
         noPromptParsed: "没有解析到 prompt 内容。",
-        skillManagerSource: "Skill Manager 来源",
+        skillManagerSource: "Harness Asset Manager 来源",
         noCanonicalContent: "没有可用的规范 command 内容。",
         harnessCommand: "Harness command",
         path: "路径",

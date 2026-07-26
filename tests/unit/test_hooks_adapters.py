@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.hooks.adapters import FileBackedHooksAdapter
-from skill_manager.application.hooks.store import HookSpec, HookStore
-from skill_manager.errors import MutationError
-from skill_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.application.hooks.adapters import FileBackedHooksAdapter
+from harness_asset_manager.application.hooks.store import HookSpec, HookStore
+from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 
 
 def _spec(id: str = "test-hook", **overrides) -> HookSpec:

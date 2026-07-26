@@ -9,7 +9,7 @@ fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_PATH="$(cd "$(dirname "$ARTIFACT_PATH")" && pwd)/$(basename "$ARTIFACT_PATH")"
-TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/skill-manager-npm-XXXXXX")"
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/harness-asset-manager-npm-XXXXXX")"
 FIXTURE_MANIFEST="$TMP_DIR/marketplace-fixture.json"
 FIXTURE_LOG="$TMP_DIR/marketplace-fixture.log"
 FIXTURE_PID=""
@@ -45,8 +45,8 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 cleanup() {
-  if [[ -x "$TMP_DIR/node_modules/.bin/skill-manager" ]]; then
-    "$TMP_DIR/node_modules/.bin/skill-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null 2>&1 || true
+  if [[ -x "$TMP_DIR/node_modules/.bin/harness-asset-manager" ]]; then
+    "$TMP_DIR/node_modules/.bin/harness-asset-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null 2>&1 || true
   fi
   if [[ -n "$FIXTURE_PID" ]]; then
     kill "$FIXTURE_PID" >/dev/null 2>&1 || true
@@ -101,21 +101,21 @@ SSL_CERT_FILE="$("$PYTHON_BIN" -c 'import json, sys; print(json.load(open(sys.ar
 export SKILL_MANAGER_LOCAL_ARTIFACT_PATH="$ARTIFACT_PATH"
 npm install --no-package-lock "./$PACK_FILE" >/dev/null
 
-VERSION_OUTPUT="$("$TMP_DIR/node_modules/.bin/skill-manager" --version)"
-if [[ ! "$VERSION_OUTPUT" =~ ^skill-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
+VERSION_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" --version)"
+if [[ ! "$VERSION_OUTPUT" =~ ^harness-asset-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
   echo "Unexpected npm wrapper version output: $VERSION_OUTPUT" >&2
   exit 1
 fi
 
 mkdir -p "$TMP_DIR/runtime"
-START_OUTPUT="$("$TMP_DIR/node_modules/.bin/skill-manager" start --state-dir "$TMP_DIR/runtime" --no-open-browser --port 0)"
-if [[ "$START_OUTPUT" != *"skill-manager started at http://127.0.0.1:"* ]]; then
+START_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" start --state-dir "$TMP_DIR/runtime" --no-open-browser --port 0)"
+if [[ "$START_OUTPUT" != *"harness-asset-manager started at http://127.0.0.1:"* ]]; then
   echo "Unexpected npm wrapper start output: $START_OUTPUT" >&2
   exit 1
 fi
 
-STATUS_OUTPUT="$("$TMP_DIR/node_modules/.bin/skill-manager" status --state-dir "$TMP_DIR/runtime")"
-if [[ "$STATUS_OUTPUT" != *"skill-manager is running at http://127.0.0.1:"* ]]; then
+STATUS_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" status --state-dir "$TMP_DIR/runtime")"
+if [[ "$STATUS_OUTPUT" != *"harness-asset-manager is running at http://127.0.0.1:"* ]]; then
   echo "Unexpected npm wrapper status output: $STATUS_OUTPUT" >&2
   exit 1
 fi
@@ -162,12 +162,12 @@ if [[ "${1:-}" == "--prefix" && $# -eq 1 ]]; then
   printf '/opt/homebrew\n'
   exit 0
 fi
-if [[ "${1:-}" == "--prefix" && "${2:-}" == "skill-manager" ]]; then
-  printf '/opt/homebrew/opt/skill-manager\n'
+if [[ "${1:-}" == "--prefix" && "${2:-}" == "harness-asset-manager" ]]; then
+  printf '/opt/homebrew/opt/harness-asset-manager\n'
   exit 0
 fi
-if [[ "${1:-}" == "list" && "${2:-}" == "--versions" && "${3:-}" == "skill-manager" ]]; then
-  printf 'skill-manager 0.1.0\n'
+if [[ "${1:-}" == "list" && "${2:-}" == "--versions" && "${3:-}" == "harness-asset-manager" ]]; then
+  printf 'harness-asset-manager 0.1.0\n'
   exit 0
 fi
 exit 1
@@ -178,18 +178,18 @@ EOF
     PATH="$FAKE_BIN_DIR:$PATH" \
     npm install --global --prefix "$TMP_DIR/global-prefix" "./$PACK_FILE" 2>&1 || true
   )"
-  if [[ "$CONFLICT_OUTPUT" != *"skill-manager is already installed via Homebrew. Run 'brew uninstall skill-manager' before 'npm install -g @mode-io/skill-manager', or keep using the Homebrew installation."* ]]; then
+  if [[ "$CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @mode-io/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
     echo "Global npm conflict check did not emit the expected remediation message." >&2
     echo "$CONFLICT_OUTPUT" >&2
     exit 1
   fi
 
-  ln -sf "$TMP_DIR/node_modules/@mode-io/skill-manager/bin/skill-manager.js" "$TMP_DIR/global-skill-manager"
+  ln -sf "$TMP_DIR/node_modules/@mode-io/harness-asset-manager/bin/harness-asset-manager.js" "$TMP_DIR/global-harness-asset-manager"
   RUNTIME_CONFLICT_OUTPUT="$(
     PATH="$FAKE_BIN_DIR:$PATH" \
-    "$TMP_DIR/global-skill-manager" --version 2>&1 || true
+    "$TMP_DIR/global-harness-asset-manager" --version 2>&1 || true
   )"
-  if [[ "$RUNTIME_CONFLICT_OUTPUT" != *"skill-manager is already installed via Homebrew. Run 'brew uninstall skill-manager' before 'npm install -g @mode-io/skill-manager', or keep using the Homebrew installation."* ]]; then
+  if [[ "$RUNTIME_CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @mode-io/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
     echo "Runtime conflict check did not emit the expected remediation message." >&2
     echo "$RUNTIME_CONFLICT_OUTPUT" >&2
     exit 1
@@ -205,11 +205,11 @@ if [[ "\${1:-}" == "--prefix" && \$# -eq 1 ]]; then
   printf '%s\n' "$TAPPED_BREW_ROOT"
   exit 0
 fi
-if [[ "\${1:-}" == "--prefix" && "\${2:-}" == "skill-manager" ]]; then
-  printf '%s\n' "$TAPPED_BREW_ROOT/opt/skill-manager"
+if [[ "\${1:-}" == "--prefix" && "\${2:-}" == "harness-asset-manager" ]]; then
+  printf '%s\n' "$TAPPED_BREW_ROOT/opt/harness-asset-manager"
   exit 0
 fi
-if [[ "\${1:-}" == "list" && "\${2:-}" == "--versions" && "\${3:-}" == "skill-manager" ]]; then
+if [[ "\${1:-}" == "list" && "\${2:-}" == "--versions" && "\${3:-}" == "harness-asset-manager" ]]; then
   exit 1
 fi
 exit 1
@@ -221,12 +221,12 @@ EOF
 
   TAPPED_VERSION_OUTPUT="$(
     PATH="$TAPPED_BIN_DIR:$PATH" \
-    "$TMP_DIR/tapped-global-prefix/bin/skill-manager" --version
+    "$TMP_DIR/tapped-global-prefix/bin/harness-asset-manager" --version
   )"
-  if [[ ! "$TAPPED_VERSION_OUTPUT" =~ ^skill-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
+  if [[ ! "$TAPPED_VERSION_OUTPUT" =~ ^harness-asset-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
     echo "Tapped-but-uninstalled Homebrew case unexpectedly blocked npm wrapper: $TAPPED_VERSION_OUTPUT" >&2
     exit 1
   fi
 fi
 
-"$TMP_DIR/node_modules/.bin/skill-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null
+"$TMP_DIR/node_modules/.bin/harness-asset-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null

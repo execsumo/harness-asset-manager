@@ -11,8 +11,8 @@ describe("capability overview model", () => {
         rows: [],
       },
       {
-        storePath: "/tmp/skill-manager/slash-commands/commands",
-        syncStatePath: "/tmp/skill-manager/slash-commands/sync-state.json",
+        storePath: "/tmp/harness-asset-manager/slash-commands/commands",
+        syncStatePath: "/tmp/harness-asset-manager/slash-commands/sync-state.json",
         targets: [],
         defaultTargets: [],
         commands: [
@@ -65,7 +65,7 @@ describe("capability overview model", () => {
             availabilityStatus: "unavailable",
             mcpStatus: {
               kind: "connection_issue",
-              reason: "Skill Manager does not have a valid MCP spec for this server.",
+              reason: "Harness Asset Manager does not have a valid MCP spec for this server.",
             },
             installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
             sightings: [],
@@ -75,9 +75,10 @@ describe("capability overview model", () => {
       },
       null,
       null,
+      null,
     );
 
-    expect(model.extensions.map((entry) => entry.key)).toEqual(["skills", "slash-commands", "mcp", "hooks", "permissions"]);
+    expect(model.extensions.map((entry) => entry.key)).toEqual(["skills", "slash-commands", "mcp", "hooks", "permissions", "agents"]);
     expect(model.marketplaceEntries.map((entry) => entry.key)).toEqual(["skills", "mcp", "clis"]);
     expect(model.marketplaceEntries.find((entry) => entry.key === "clis")).toMatchObject({
       badge: "Preview only",

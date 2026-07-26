@@ -4,11 +4,10 @@ import json
 import unittest
 from pathlib import Path
 
-from skill_manager.application.mcp.availability import McpAvailabilityResult
-from skill_manager.application.mcp.stdio import parse_static_stdio_function
-from skill_manager.application.mcp.store import McpServerSpec, McpSource
-from skill_manager.errors import MutationError
-
+from harness_asset_manager.application.mcp.availability import McpAvailabilityResult
+from harness_asset_manager.application.mcp.stdio import parse_static_stdio_function
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
 
 
@@ -160,7 +159,7 @@ class McpRoutesTests(unittest.TestCase):
             payload = harness.get_json("/api/mcp/servers")
             assert isinstance(payload, dict)
             self.assertEqual(payload.get("entries"), [])
-            # Columns reflect enabled harnesses (codex, claude, cursor, opencode, openclaw)
+            # Columns reflect enabled harnesses (codex, claude, cursor, opencode, hermes, openclaw)
             cols = [col["harness"] for col in payload["columns"]]
             self.assertIn("codex", cols)
             self.assertIn("claude", cols)
@@ -185,7 +184,7 @@ class McpRoutesTests(unittest.TestCase):
             detail = harness.get_json("/api/mcp/servers/exa")
             self.assertEqual(detail["enabledStatus"], "disabled")
 
-            # Installing from the marketplace only updates Skill Manager's manifest.
+            # Installing from the marketplace only updates Harness Asset Manager's manifest.
             self.assertFalse((harness.spec.home / ".cursor" / "mcp.json").exists())
             self.assertFalse((harness.spec.home / ".claude.json").exists())
             self.assertFalse((harness.spec.home / ".codex" / "config.toml").exists())
@@ -404,7 +403,7 @@ class McpRoutesTests(unittest.TestCase):
                 "/api/mcp/servers/exa/set-harnesses", {"target": "enabled"}
             )
             self.assertTrue(response["ok"])
-            self.assertEqual(set(response["succeeded"]), {"codex", "claude", "cursor", "opencode", "openclaw", "agy"})
+            self.assertEqual(set(response["succeeded"]), {"codex", "claude", "cursor", "opencode", "openclaw", "agy", "hermes"})
 
             # Verify each config file
             self.assertTrue((harness.spec.home / ".cursor" / "mcp.json").is_file())
@@ -413,6 +412,7 @@ class McpRoutesTests(unittest.TestCase):
             self.assertTrue((harness.spec.home / ".opencode" / "opencode.jsonc").is_file())
             self.assertTrue((harness.spec.home / ".openclaw" / "openclaw.json").is_file())
             self.assertTrue((harness.spec.home / ".gemini" / "config" / "mcp_config.json").is_file())
+            self.assertTrue(harness.spec.hermes_config_path.is_file())
 
     def test_uninstall_cleans_all_harnesses_and_central(self) -> None:
         with AppTestHarness() as harness:
@@ -1091,7 +1091,7 @@ class McpRoutesTests(unittest.TestCase):
             self.assertEqual(result["server"]["url"], "https://claude.example")
 
     def test_adopt_silently_enriches_when_marketplace_match_exists(self) -> None:
-        from skill_manager.application.mcp.enrichment import MarketplaceLink
+        from harness_asset_manager.application.mcp.enrichment import MarketplaceLink
 
         with AppTestHarness() as harness:
             payload = {"command": "uvx", "args": ["context7-mcp"]}

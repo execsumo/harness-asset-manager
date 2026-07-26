@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from tempfile import TemporaryDirectory
 import time
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from skill_manager.application.marketplace_cache import MarketplaceCache
-from skill_manager.application.skills.marketplace.repo_snapshots import GitHubRepoSnapshotService
-from skill_manager.sources import (
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.skills.marketplace.repo_snapshots import (
+    GitHubRepoSnapshotService,
+)
+from harness_asset_manager.sources import (
     GitHubRepoMetadata,
     GitHubRepoMetadataClient,
     GitHubRepoMetadataError,

@@ -6,6 +6,7 @@ import {
   MatrixHarnessIcon,
   MatrixTable,
 } from "../../../components/matrix";
+import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../api/management-types";
 import { usePermissionsCopy, type PermissionsCopy } from "../i18n";
@@ -45,11 +46,11 @@ export function PermissionsMatrixView({
   return (
     <MatrixTable
       ariaLabel="Permissions Matrix"
-      harnessColumnCount={displayColumns.length}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="104px"
       hasCheckboxColumn={false}
+      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>

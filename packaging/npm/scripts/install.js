@@ -12,7 +12,7 @@ const { assertNoHomebrewConflict, isGlobalNpmInstall } = require("./channel-owne
 const { artifactName } = require("./release-targets");
 
 function releaseBaseUrl(version) {
-  return process.env.SKILL_MANAGER_RELEASE_BASE_URL || `https://github.com/mode-io/skill-manager/releases/download/v${version}`;
+  return process.env.SKILL_MANAGER_RELEASE_BASE_URL || `https://github.com/mode-io/harness-asset-manager/releases/download/v${version}`;
 }
 
 function copyFile(source, destination) {
@@ -58,7 +58,7 @@ function extractArtifact(artifactPath, vendorDir) {
   fs.mkdirSync(vendorDir, { recursive: true });
   const result = spawnSync("tar", ["-xzf", artifactPath, "-C", vendorDir], { stdio: "inherit" });
   if (result.status !== 0) {
-    throw new Error("Failed to extract skill-manager release artifact.");
+    throw new Error("Failed to extract harness-asset-manager release artifact.");
   }
 }
 
@@ -67,7 +67,7 @@ async function main() {
 
   const version = packageJson.version;
   const artifact = artifactName(version);
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-manager-npm-"));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "harness-asset-manager-npm-"));
   const artifactPath = path.join(tempDir, artifact);
   const checksumPath = `${artifactPath}.sha256`;
   const vendorDir = path.resolve(__dirname, "..", "vendor");
@@ -91,9 +91,9 @@ async function main() {
   }
 
   extractArtifact(artifactPath, vendorDir);
-  const binaryPath = path.join(vendorDir, "skill-manager", "skill-manager");
+  const binaryPath = path.join(vendorDir, "harness-asset-manager", "harness-asset-manager");
   if (!fs.existsSync(binaryPath)) {
-    throw new Error("Installed artifact is missing vendor/skill-manager/skill-manager.");
+    throw new Error("Installed artifact is missing vendor/harness-asset-manager/harness-asset-manager.");
   }
   fs.chmodSync(binaryPath, 0o755);
 }

@@ -128,7 +128,7 @@ describe("MarketplacePage", () => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.includes("/api/marketplace/popular?limit=20&offset=0")) {
         return errorJson(
-          "Marketplace is temporarily unavailable. Check your network connection or reinstall skill-manager if the problem persists.",
+          "Marketplace is temporarily unavailable. Check your network connection or reinstall harness-asset-manager if the problem persists.",
           { status: 503, statusText: "Service Unavailable", field: "error" },
         );
       }
@@ -140,7 +140,7 @@ describe("MarketplacePage", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Marketplace is temporarily unavailable. Check your network connection or reinstall skill-manager if the problem persists.",
+          "Marketplace is temporarily unavailable. Check your network connection or reinstall harness-asset-manager if the problem persists.",
         ),
       ).toBeInTheDocument();
     });

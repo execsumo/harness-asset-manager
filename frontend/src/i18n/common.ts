@@ -38,7 +38,7 @@ const englishCommonCopy = {
   },
   productLanguage: {
     inUse: "In use",
-    needsReview: "Needs review",
+    needsReview: "Unmanaged",
     review: "Review",
     discover: "Discover",
   },
@@ -108,7 +108,7 @@ export const commonCopy = {
     },
     productLanguage: {
       inUse: "使用中",
-      needsReview: "待确认",
+      needsReview: "未托管",
       review: "确认",
       discover: "发现",
     },

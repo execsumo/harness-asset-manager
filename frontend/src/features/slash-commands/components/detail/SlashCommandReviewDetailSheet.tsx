@@ -41,7 +41,7 @@ export function SlashCommandReviewDetailSheet({
         >
           <Dialog.Title className="u-visually-hidden">Slash command to review {row.name}</Dialog.Title>
           <Dialog.Description className="u-visually-hidden">
-            Inspect a slash command file found in a harness and choose how Skill Manager should reconcile it.
+            Inspect a slash command file found in a harness and choose how Harness Asset Manager should reconcile it.
           </Dialog.Description>
           <SlashCommandReviewDetailView
             row={row}

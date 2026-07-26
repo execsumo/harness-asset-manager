@@ -4,10 +4,10 @@ const assert = require("node:assert/strict");
 const { artifactName, resolveTarget } = require("../packaging/npm/scripts/release-targets");
 
 const cases = [
-  ["darwin", "arm64", "skill-manager-v1.2.3-darwin-arm64.tar.gz"],
-  ["darwin", "x64", "skill-manager-v1.2.3-darwin-x64.tar.gz"],
-  ["linux", "x64", "skill-manager-v1.2.3-linux-x64.tar.gz"],
-  ["linux", "arm64", "skill-manager-v1.2.3-linux-arm64.tar.gz"],
+  ["darwin", "arm64", "harness-asset-manager-v1.2.3-darwin-arm64.tar.gz"],
+  ["darwin", "x64", "harness-asset-manager-v1.2.3-darwin-x64.tar.gz"],
+  ["linux", "x64", "harness-asset-manager-v1.2.3-linux-x64.tar.gz"],
+  ["linux", "arm64", "harness-asset-manager-v1.2.3-linux-arm64.tar.gz"],
 ];
 
 for (const [platform, arch, expected] of cases) {

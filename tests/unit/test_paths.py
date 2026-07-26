@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from skill_manager.paths import APP_NAME, resolve_app_paths
+from harness_asset_manager.paths import APP_NAME, resolve_app_paths
 
 
 @contextmanager
@@ -34,8 +34,8 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.config_dir, base)
             self.assertEqual(paths.data_dir, base)
             self.assertEqual(paths.state_dir, base)
-            self.assertEqual(paths.skills_store_root, base / "shared")
-            self.assertEqual(paths.skills_store_manifest, base / "manifest.json")
+            self.assertEqual(paths.skills_store_root, base / "skills")
+            self.assertEqual(paths.skills_store_manifest, base / "skills-manifest.json")
             self.assertEqual(paths.marketplace_cache_root, base / "marketplace")
             self.assertEqual(paths.settings_path, base / "settings.json")
             self.assertEqual(paths.slash_command_store_root, base / "slash-commands")
@@ -67,7 +67,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.config_dir, root / "cfg" / APP_NAME)
             self.assertEqual(paths.data_dir, root / "data" / APP_NAME)
             self.assertEqual(paths.state_dir, root / "state" / APP_NAME)
-            self.assertEqual(paths.skills_store_root, root / "data" / APP_NAME / "shared")
+            self.assertEqual(paths.skills_store_root, root / "data" / APP_NAME / "skills")
             self.assertEqual(paths.slash_command_store_root, root / "data" / APP_NAME / "slash-commands")
             self.assertEqual(paths.settings_path, root / "cfg" / APP_NAME / "settings.json")
 

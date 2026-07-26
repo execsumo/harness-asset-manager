@@ -24,12 +24,12 @@ describe("SettingsPage", () => {
         return okJson({
           storage: {
             platform: "linux",
-            configDir: "/tmp/config/skill-manager",
-            dataDir: "/tmp/data/skill-manager",
-            stateDir: "/tmp/state/skill-manager",
-            skillsStorePath: "/tmp/data/skill-manager/shared",
-            marketplaceCachePath: "/tmp/data/skill-manager/marketplace",
-            settingsPath: "/tmp/config/skill-manager/settings.json",
+            configDir: "/tmp/config/harness-asset-manager",
+            dataDir: "/tmp/data/harness-asset-manager",
+            stateDir: "/tmp/state/harness-asset-manager",
+            skillsStorePath: "/tmp/data/harness-asset-manager/shared",
+            marketplaceCachePath: "/tmp/data/harness-asset-manager/marketplace",
+            settingsPath: "/tmp/config/harness-asset-manager/settings.json",
           },
           harnesses: [],
         });
@@ -39,7 +39,7 @@ describe("SettingsPage", () => {
 
     renderWithAppProviders(<SettingsPage />);
 
-    expect(await screen.findByText("/tmp/data/skill-manager/shared")).toBeInTheDocument();
-    expect(screen.getByText("/tmp/data/skill-manager/marketplace")).toBeInTheDocument();
+    expect(await screen.findByText("/tmp/data/harness-asset-manager/shared")).toBeInTheDocument();
+    expect(screen.getByText("/tmp/data/harness-asset-manager/marketplace")).toBeInTheDocument();
   });
 });

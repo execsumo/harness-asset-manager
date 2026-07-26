@@ -6,7 +6,7 @@ const englishSettingsCopy = {
   loading: "Loading settings",
   storage: {
     heading: "Local storage",
-    storeTitle: "Skill Manager store",
+    storeTitle: "Harness Asset Manager store",
     storeSubtitle: "Canonical copies of skills in use live here.",
     cacheTitle: "Marketplace cache",
     cacheSubtitle: "Downloaded previews and install bundles.",
@@ -34,7 +34,7 @@ export const settingsCopy = {
     loading: "正在加载设置",
     storage: {
       heading: "本地存储",
-      storeTitle: "Skill Manager 存储",
+      storeTitle: "Harness Asset Manager 存储",
       storeSubtitle: "使用中的 Skill 会以规范副本保存在这里。",
       cacheTitle: "商城缓存",
       cacheSubtitle: "已下载的预览和安装包。",

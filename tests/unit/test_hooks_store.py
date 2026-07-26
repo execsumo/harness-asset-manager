@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.hooks.store import HookSpec, HookStore
+from harness_asset_manager.application.hooks.store import HookSpec, HookStore
 
 
 def _spec(hook_id: str = "test-hook", **overrides) -> HookSpec:

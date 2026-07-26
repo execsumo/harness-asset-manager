@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from skill_manager.application.skills.manifest import (
+from harness_asset_manager.application.skills.manifest import (
     SkillStoreEntry,
     SkillStoreManifest,
     write_skill_store_manifest,
 )
-from skill_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.application.skills.package import fingerprint_package
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,20 @@ class FakeHomeSpec:
     xdg_state_home: Path
 
     @property
+    def legacy_packages_skills_store_root(self) -> Path:
+        return self.xdg_data_home / "harness-asset-manager" / "packages" / "local" / "skills"
+
+    @property
     def skills_store_root(self) -> Path:
-        return self.xdg_data_home / "skill-manager" / "shared"
+        return self.xdg_data_home / "harness-asset-manager" / "skills"
+
+    @property
+    def agents_root(self) -> Path:
+        return self.xdg_data_home / "harness-asset-manager" / "agents"
+
+    @property
+    def legacy_skills_store_root(self) -> Path:
+        return self.xdg_data_home / "harness-asset-manager" / "shared"
 
     @property
     def codex_root(self) -> Path:
@@ -60,6 +72,18 @@ class FakeHomeSpec:
         return self.home / ".gemini" / "antigravity-cli" / "skills"
 
     @property
+    def hermes_home(self) -> Path:
+        return self.home / ".hermes"
+
+    @property
+    def hermes_skills_root(self) -> Path:
+        return self.hermes_home / "skills"
+
+    @property
+    def hermes_config_path(self) -> Path:
+        return self.hermes_home / "config.yaml"
+
+    @property
     def bin_dir(self) -> Path:
         return self.root / "bin"
 
@@ -83,6 +107,7 @@ def create_fake_home_spec(root: Path, *, seed_openclaw_state: bool = True) -> Fa
     )
     for path in (
         spec.skills_store_root,
+        spec.agents_root,
         spec.codex_root,
         spec.codex_legacy_root,
         spec.claude_root,
@@ -90,12 +115,13 @@ def create_fake_home_spec(root: Path, *, seed_openclaw_state: bool = True) -> Fa
         spec.opencode_root,
         spec.openclaw_managed_root,
         spec.agy_root,
+        spec.hermes_skills_root,
         spec.xdg_state_home,
         spec.bin_dir,
     ):
         path.mkdir(parents=True, exist_ok=True)
 
-    for executable in ("codex", "claude", "cursor-agent", "opencode", "agy"):
+    for executable in ("codex", "claude", "cursor-agent", "opencode", "agy", "hermes"):
         write_cli_stub(spec.bin_dir / executable, executable)
     if seed_openclaw_state:
         write_cli_stub(spec.bin_dir / "openclaw", "openclaw")
@@ -142,7 +168,13 @@ def seed_skill_package(
 
 def seed_store_manifest(spec: FakeHomeSpec, entries: list[SkillStoreEntry]) -> None:
     write_skill_store_manifest(
-        spec.skills_store_root.parent / "manifest.json",
+        spec.skills_store_root.parent / "skills-manifest.json",
+        SkillStoreManifest(entries=tuple(entries)),
+    )
+
+def seed_legacy_store_manifest(spec: FakeHomeSpec, entries: list[SkillStoreEntry]) -> None:
+    write_skill_store_manifest(
+        spec.legacy_skills_store_root.parent / "manifest.json",
         SkillStoreManifest(entries=tuple(entries)),
     )
 

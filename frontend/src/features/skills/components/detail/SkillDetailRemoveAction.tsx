@@ -16,8 +16,8 @@ export function SkillDetailRemoveAction({
   const isBlocked = disabled || status === "disabled_no_enabled";
 
   const copy = status === "disabled_no_enabled"
-    ? "Enable at least one harness before removing this skill from Skill Manager."
-    : "Removes this skill from the Skill Manager store and restores local copies only for the harnesses that are currently enabled.";
+    ? "Enable at least one harness before removing this skill from Harness Asset Manager."
+    : "Removes this skill from the Harness Asset Manager store and restores local copies only for the harnesses that are currently enabled.";
 
   const button = (
     <button
@@ -28,7 +28,7 @@ export function SkillDetailRemoveAction({
         onRequestRemove();
       } : undefined}
     >
-      Remove from Skill Manager
+      Remove from Harness Asset Manager
     </button>
   );
 

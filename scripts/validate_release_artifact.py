@@ -18,12 +18,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from skill_manager.runtime.startup import healthcheck_ready
+from harness_asset_manager.runtime.startup import healthcheck_ready
 from tests.support.marketplace_https_fixture import MarketplaceFixtureServer
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate a packaged skill-manager release artifact.")
+    parser = argparse.ArgumentParser(description="Validate a packaged harness-asset-manager release artifact.")
     parser.add_argument("--artifact", required=True, help="Path to the release tar.gz artifact.")
     parser.add_argument("--version", required=True, help="Expected app version.")
     return parser.parse_args(argv)
@@ -72,13 +72,13 @@ def main(argv: list[str] | None = None) -> int:
     if not artifact.exists():
         raise FileNotFoundError(f"artifact not found: {artifact}")
 
-    with tempfile.TemporaryDirectory(prefix="skill-manager-artifact-") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="harness-asset-manager-artifact-") as tmpdir:
         tmp_path = Path(tmpdir)
         with tarfile.open(artifact, "r:gz") as archive:
             archive.extractall(tmp_path)
 
-        bundle_dir = tmp_path / "skill-manager"
-        binary = bundle_dir / "skill-manager"
+        bundle_dir = tmp_path / "harness-asset-manager"
+        binary = bundle_dir / "harness-asset-manager"
         license_file = bundle_dir / "LICENSE"
         if not binary.exists():
             raise RuntimeError(f"packaged executable missing: {binary}")
@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # Unsigned macOS binaries can pay a heavy first-run verification cost on a fresh path.
         version_output = run([str(binary), "--version"], timeout=120.0).stdout.strip()
-        expected_version = f"skill-manager {args.version}"
+        expected_version = f"harness-asset-manager {args.version}"
         if version_output != expected_version:
             raise RuntimeError(f"unexpected version output: expected {expected_version!r}, got {version_output!r}")
 

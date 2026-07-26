@@ -1,11 +1,11 @@
 {
-  "name": "skill-manager",
+  "name": "harness-asset-manager",
   "private": true,
   "version": "0.3.1",
   "type": "module",
   "scripts": {
     "dev": "VITE_API_BASE=/api vite --host 127.0.0.1 --port 5173",
-    "dev:backend": "./.venv/bin/python -m skill_manager serve --host 127.0.0.1 --port 8000 --no-open-browser",
+    "dev:backend": "./.venv/bin/python -m harness_asset_manager serve --host 127.0.0.1 --port 8000 --no-open-browser",
     "install:dev": "bash scripts/install-dev.sh",
     "start:dev": "bash scripts/start-dev.sh",
     "stop:dev": "bash scripts/stop-dev.sh",
@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "release-targets:check": "node scripts/check_release_targets_js.cjs",
+    "audit:check": "node scripts/audit_gate.cjs",
     "codegen:openapi": "./.venv/bin/python scripts/dump_openapi.py && openapi-typescript frontend/src/api/openapi.json -o frontend/src/api/generated.ts",
     "codegen:check": "npm run codegen:openapi && git diff --exit-code frontend/src/api/openapi.json frontend/src/api/generated.ts"
   },
