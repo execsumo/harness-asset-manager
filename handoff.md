@@ -2,6 +2,32 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-25 — Unforking, Project Rename, Sidebar Simplification & Denylist-ONLY Permission Model
+
+All work landed cleanly on `main` at `execsumo/harness-asset-manager`.
+
+- **Standalone Repository & Renaming**:
+  - Un-forked from `execsumo/skill-manager` into a standalone public repository: [`execsumo/harness-asset-manager`](https://github.com/execsumo/harness-asset-manager).
+  - Renamed Python package directory from `skill_manager` to `harness_asset_manager`.
+  - Updated `pyproject.toml` (`harness-asset-manager`), CLI binary entry points, `package.json`, Homebrew formula template, PyInstaller spec, and all import references across 225 files.
+  - Pushed all branches and release tags (`v0.1.0` through `v0.3.1`).
+- **Branch Cleanup**:
+  - Deleted merged branch `delegate/agy-agents-ui` locally and remotely.
+  - Pruned remote tracking branches `origin/Desktop-app` and `origin/Fix-Scan-Config-page`.
+  - Merged `permissions-ux-redesign` into `main` and deleted the feature branch.
+- **Simplified Single-Link Sidebar Navigation**:
+  - Converted **Permissions** into a direct top-level link in the sidebar (`topLinks`), removing obsolete nested sub-links (`All` / `Needs Review`).
+  - Aligned `.sidebar-top-link` CSS typography (text color `var(--color-text)`, font size `0.92rem`, font weight `600`) to match group headers (*Agents*, *Skills*, *Slash Commands*, *MCP*, *Hooks*, *Marketplace*).
+- **Strict Denylist-ONLY Permission Model**:
+  - Replaced legacy allow/ask harmonization with a strict **Denylist-ONLY model** across Claude Code, Antigravity, and Codex.
+  - `allow` and `ask` decisions are rejected by mappers with `"HAM operates in Denylist ONLY mode"`.
+  - Removed decision filter toggles from `PermissionsPage.tsx`.
+  - `PermissionStore` automatically purges legacy `allow`/`ask` records on load and rewrites `permissions/manifest.json` on disk.
+- **Verification**:
+  - Backend pytest suite: 541 / 541 passed.
+  - Frontend Vitest suite: 265 / 265 passed across 61 test files.
+  - `npm run typecheck` and `npm run build` clean.
+
 ---
 
 ## 2026-07-24 — RECOMMENDATIONS.md Tier 1 shipped
