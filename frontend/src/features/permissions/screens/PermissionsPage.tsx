@@ -23,10 +23,7 @@ import { usePermissionsManagementController } from "../model/use-permissions-man
 
 const DETAIL_PARAM = "permission";
 
-const DECISION_OPTIONS: readonly { value: PermissionsDecisionFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "deny", label: "Deny" },
-];
+
 
 const STATUS_LABELS: Record<PermissionsStatusFilter, string> = {
   all: "All",
@@ -84,15 +81,15 @@ export default function PermissionsPage() {
   );
 
   const entries = useMemo(
-    () => filterPermissions(inventory, { search, decision, status: statusFilter }),
-    [inventory, search, decision, statusFilter],
+    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter }),
+    [inventory, search, statusFilter],
   );
   const summary = useMemo(() => permissionsSummary(inventory), [inventory]);
   const statusCounts = useMemo<Record<PermissionsStatusFilter, number>>(
     () => ({
       all: summary.total,
-      applied: filterPermissions(inventory, { search: "", decision: "all", status: "applied" }).length,
-      "not-applied": filterPermissions(inventory, { search: "", decision: "all", status: "not-applied" }).length,
+      applied: filterPermissions(inventory, { search: "", decision: "deny", status: "applied" }).length,
+      "not-applied": filterPermissions(inventory, { search: "", decision: "deny", status: "not-applied" }).length,
       differs: summary.differs,
       untracked: summary.untracked,
     }),
@@ -101,7 +98,7 @@ export default function PermissionsPage() {
 
   const hasData = summary.total > 0;
   const isReady = status === "ready" && Boolean(inventory);
-  const filtersActive = search !== "" || decision !== "all" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all";
 
   const setDetailId = useCallback(
     (id: string | null) => {
@@ -156,7 +153,6 @@ export default function PermissionsPage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setDecision("all");
     setStatusFilter("all");
   }, []);
 
@@ -165,7 +161,7 @@ export default function PermissionsPage() {
       <div className="page-chrome">
         <PageHeader
           title="Permissions"
-          subtitle="Define a rule once and apply it across your harnesses. Adopt untracked rules and resolve any that differ."
+          subtitle="Define denylist rules to restrict shell commands, file paths, and web domains across your harnesses."
           actions={
             <button
               type="button"
@@ -181,40 +177,20 @@ export default function PermissionsPage() {
           <FilterBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search by pattern, decision or scope..."
+            searchPlaceholder="Search pattern or scope..."
             searchLabel="Search permissions"
             trailing={
-              <>
-                <div
-                  className="view-mode-toggle"
-                  role="group"
-                  aria-label="Filter by decision"
-                >
-                  {DECISION_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className="view-mode-toggle__btn"
-                      data-active={decision === option.value}
-                      aria-pressed={decision === option.value}
-                      onClick={() => setDecision(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <SelectionMenu
-                  value={statusFilter}
-                  options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
-                    value,
-                    label: STATUS_LABELS[value],
-                    meta: statusCounts[value],
-                  }))}
-                  active={statusFilter !== "all"}
-                  ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
-                  onChange={setStatusFilter}
-                />
-              </>
+              <SelectionMenu
+                value={statusFilter}
+                options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
+                  value,
+                  label: STATUS_LABELS[value],
+                  meta: statusCounts[value],
+                }))}
+                active={statusFilter !== "all"}
+                ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
+                onChange={setStatusFilter}
+              />
             }
           />
         ) : null}

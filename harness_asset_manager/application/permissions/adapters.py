@@ -76,6 +76,8 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
             scan_issue = str(error)
 
         for raw in raw_entries:
+            if raw.decision != "deny":
+                continue
             seen_ids.add(raw.id)
             parsed_spec: PermissionSpec | None = None
             parse_issue: str | None = None
