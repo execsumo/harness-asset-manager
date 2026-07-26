@@ -64,15 +64,16 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             home = Path(tmp)
             store = PermissionStore(home / "manifest.json")
-            store.upsert_managed(_spec("perm1"))
+            spec = _spec("perm1", scope="file_write", pattern="~/.zshrc")
+            store.upsert_managed(spec)
             adapter = _adapter("claude", home=home)
-            adapter.config_path.parent.mkdir(parents=True, exist_ok=True)
+            adapter.enable_permission(spec)
             adapter.config_path.write_text(
                 json.dumps(
                     {
                         "permissions": {
-                            "allow": [
-                                "Bash(git push)" # user drifted decision to allow
+                            "deny": [
+                                "Edit(~/.zshrc)"
                             ]
                         }
                     }

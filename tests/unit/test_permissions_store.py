@@ -11,7 +11,7 @@ from harness_asset_manager.application.permissions.store import PermissionSpec, 
 def _spec(perm_id: str = "test-perm", **overrides) -> PermissionSpec:
     base = dict(
         id=perm_id,
-        decision="allow",
+        decision="deny",
         scope="shell",
         pattern="git push",
         description="A test permission",
@@ -97,11 +97,11 @@ class PermissionStoreTests(unittest.TestCase):
                         "permissions": [
                             {
                                 "id": "valid",
-                                "decision": "allow",
+                                "decision": "deny",
                                 "scope": "shell",
                                 "pattern": "git push",
                             },
-                            {"decision": "allow", "scope": "Missing ID"},
+                            {"decision": "deny", "scope": "Missing ID"},
                         ],
                     }
                 ),
