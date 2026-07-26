@@ -18,13 +18,13 @@ describe("SkillDetailRemoveAction", () => {
       </UiTooltipProvider>,
     );
 
-    const button = screen.getByRole("button", { name: "Remove from Skill Manager" });
+    const button = screen.getByRole("button", { name: "Remove from Harness Asset Manager" });
     fireEvent.focus(button);
 
     await waitFor(() => {
       const bubble = document.querySelector(".ui-popup--tooltip");
       expect(bubble).not.toBeNull();
-      expect(bubble).toHaveTextContent("Removes this skill from the Skill Manager store and restores local copies only for the harnesses that are currently enabled.");
+      expect(bubble).toHaveTextContent("Removes this skill from the Harness Asset Manager store and restores local copies only for the harnesses that are currently enabled.");
     });
 
     fireEvent.click(button);
@@ -42,7 +42,7 @@ describe("SkillDetailRemoveAction", () => {
       </UiTooltipProvider>,
     );
 
-    const trigger = screen.getByRole("button", { name: "Remove from Skill Manager" }).closest(".ui-tooltip-trigger");
+    const trigger = screen.getByRole("button", { name: "Remove from Harness Asset Manager" }).closest(".ui-tooltip-trigger");
     expect(trigger).not.toBeNull();
 
     fireEvent.focus(trigger!);
@@ -50,9 +50,9 @@ describe("SkillDetailRemoveAction", () => {
     await waitFor(() => {
       const bubble = document.querySelector(".ui-popup--tooltip");
       expect(bubble).not.toBeNull();
-      expect(bubble).toHaveTextContent("Enable at least one harness before removing this skill from Skill Manager.");
+      expect(bubble).toHaveTextContent("Enable at least one harness before removing this skill from Harness Asset Manager.");
     });
 
-    expect(screen.getByRole("button", { name: "Remove from Skill Manager" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove from Harness Asset Manager" })).toBeDisabled();
   });
 });

@@ -20,7 +20,7 @@ in a given harness. That is the whole model.
 ## Decisions locked in
 
 1. **Agents become a first-class harness family**, not a standalone service.
-   `FamilyKey` (`skill_manager/harness/contracts.py:10`) gains `"agents"`, and harnesses
+   `FamilyKey` (`harness_asset_manager/harness/contracts.py:10`) gains `"agents"`, and harnesses
    that actually support subagent files declare a binding in the catalog.
 
 2. **~~Only two harnesses get an agents column~~ — SUPERSEDED 2026-07-24.**
@@ -73,7 +73,7 @@ in a given harness. That is the whole model.
    2026-07-24.** "Shrinks" was too strong and caused data loss: the writer re-rendered
    files from only those three fields, deleting every other key. See "Amendment:
    frontmatter is preserved, not shrunk" at the foot of this file. What survives from
-   this decision is that Skill Manager *interprets* only those three, and that
+   this decision is that Harness Asset Manager *interprets* only those three, and that
    `capabilities:` / `harnesses:` are dropped on write. Original text:
 
    The parser
@@ -82,7 +82,7 @@ in a given harness. That is the whole model.
 
    Three places emit or rewrite that frontmatter and must shrink with it, or the
    scaffold endpoint and the authoring dialog silently diverge:
-   - `skill_manager/data/templates/agent.md` — ships `capabilities:` + `harnesses:`
+   - `harness_asset_manager/data/templates/agent.md` — ships `capabilities:` + `harnesses:`
    - `application/scaffold.py:55-68` — string-splices `skills`/`mcps` into the template
    - `container.py:_rewrite_agent_local_prefix` (109-140) — strips `local/` prefixes from
      `capabilities.skills` / `.mcps` during the legacy move. Once those keys are gone it
@@ -102,7 +102,7 @@ in a given harness. That is the whole model.
 
 **Delete**
 
-- `skill_manager/application/agents/service.py` — `compile`, `_compile_claude`,
+- `harness_asset_manager/application/agents/service.py` — `compile`, `_compile_claude`,
   `_compile_cursor`, `_compile_codex`, `_resolve_skills`, `write_artifact`,
   `_render_artifact`, `_provenance`, `_strip_frontmatter`, `COMPILE_TARGETS`,
   `GENERATED_MARKER`
@@ -276,7 +276,7 @@ settings, never a list someone has to remember to update.
 
 **A generated marker is back, for Codex only.** Codex needs TOML with different keys,
 so a symlinked `.md` is meaningless. Those files are rendered and marked
-`# skill-manager:generated`; ownership is the marker, not `is_symlink()`. Without this,
+`# harness-asset-manager:generated`; ownership is the marker, not `is_symlink()`. Without this,
 every rendered file would return as an unmanaged Needs Review row forever and `disable`
 would refuse to remove its own output. **Rendered files get no drift detection** —
 re-enabling overwrites local edits. Detecting otherwise means content hashes, which is
@@ -299,7 +299,7 @@ real Claude agents in this workspace carry eight more — `model`, `effort`,
 adopting one and editing its description would have silently destroyed all of it.
 
 The distinction the original decision missed: **interpreting a field and owning it are
-different things.** Skill Manager needs to *understand* only name/description/tools. It
+different things.** Harness Asset Manager needs to *understand* only name/description/tools. It
 has no business *deleting* what it does not understand.
 
 ### Corrected behavior

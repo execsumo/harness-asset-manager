@@ -52,7 +52,7 @@ jobs:
         run: ./.venv/bin/pip install -r requirements-dev.txt
 
       - name: Backend lint
-        run: ./.venv/bin/ruff check skill_manager tests
+        run: ./.venv/bin/ruff check harness_asset_manager tests
 
       - name: Python dependency audit
         run: |
@@ -152,7 +152,7 @@ jobs:
 
       - name: Validate packaged binary
         run: |
-          VERSION="$(cat skill_manager/VERSION)"
+          VERSION="$(cat harness_asset_manager/VERSION)"
           ARTIFACT="$(find .artifacts/release -name '*${{ matrix.target }}.tar.gz' -print -quit)"
           ./.venv/bin/python scripts/validate_release_artifact.py --artifact "$ARTIFACT" --version "$VERSION"
 
@@ -164,7 +164,7 @@ jobs:
       - name: Validate Homebrew formula install smoke
         if: matrix.homebrew
         run: |
-          VERSION="$(cat skill_manager/VERSION)"
+          VERSION="$(cat harness_asset_manager/VERSION)"
           ARTIFACT="$(find .artifacts/release -name '*${{ matrix.target }}.tar.gz' -print -quit)"
           bash scripts/validate_homebrew_formula.sh "$VERSION" "$ARTIFACT"
 

@@ -4,21 +4,21 @@ import unittest
 from pathlib import Path
 from tempfile import mkdtemp
 
-from skill_manager.application.marketplace_cache import MarketplaceCache
-from skill_manager.application.skills.marketplace import MarketplaceCatalog
-from skill_manager.application.skills.marketplace.models import SkillsShSkill
-from skill_manager.application.skills.marketplace.repo_snapshots import (
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog
+from harness_asset_manager.application.skills.marketplace.models import SkillsShSkill
+from harness_asset_manager.application.skills.marketplace.repo_snapshots import (
     GitHubRepoSnapshotService,
 )
-from skill_manager.application.skills.marketplace.resolver import (
+from harness_asset_manager.application.skills.marketplace.resolver import (
     DetailEnrichment,
     GitHubSkillResolver,
 )
-from skill_manager.errors import (
+from harness_asset_manager.errors import (
     MARKETPLACE_UNAVAILABLE_MESSAGE,
     MarketplaceUpstreamError,
 )
-from skill_manager.sources import GitHubRepoMetadata, GitHubRepoMetadataClient
+from harness_asset_manager.sources import GitHubRepoMetadata, GitHubRepoMetadataClient
 from tests.support.marketplace_fixture import create_fixture_marketplace_service
 
 
@@ -27,7 +27,7 @@ def _resolver(
     metadata_fetcher=None,
     cache: MarketplaceCache | None = None,
 ) -> GitHubSkillResolver:
-    snapshot_cache = cache or MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-")))
+    snapshot_cache = cache or MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-")))
     snapshot_service = GitHubRepoSnapshotService(
         cache=snapshot_cache,
         metadata_client=GitHubRepoMetadataClient(metadata_fetcher=metadata_fetcher or (lambda repo: None)),
@@ -116,7 +116,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
                     default_branch="main",
                 ),
             ),
-            cache=MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-"))),
+            cache=MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-"))),
             warm_on_init=False,
         )
 
@@ -127,7 +127,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
 
     def test_popular_page_fetches_real_descriptions_on_cold_cache(self) -> None:
         record = SkillsShSkill(repo="mode-io/skills", skill_id="mode-switch", name="Mode Switch", installs=128)
-        cache = MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-")))
+        cache = MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-")))
         service = MarketplaceCatalog(
             leaderboard_fetcher=lambda: [record],
             search_fetcher=lambda query, limit: [record],
@@ -173,7 +173,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
                 </section>
             """,
             github_resolver=_resolver(),
-            cache=MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-"))),
+            cache=MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-"))),
             warm_on_init=False,
         )
 
@@ -213,7 +213,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
             search_fetcher=lambda query, limit: [good, broken],
             detail_fetcher=detail_fetcher,
             github_resolver=_resolver(),
-            cache=MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-"))),
+            cache=MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-"))),
             warm_on_init=False,
         )
 
@@ -240,7 +240,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
                 </section>
             """,
             github_resolver=_resolver(),
-            cache=MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-"))),
+            cache=MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-"))),
             warm_on_init=False,
         )
         service._resolver.github_folder_url = lambda repo, skill_id, default_branch=None: (_ for _ in ()).throw(ValueError("no path"))  # type: ignore[method-assign]
@@ -265,7 +265,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
                 MarketplaceUpstreamError("bad_status", detail_url, "upstream returned HTTP 404", upstream_status=404)
             ),
             github_resolver=_resolver(),
-            cache=MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-"))),
+            cache=MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-"))),
             warm_on_init=False,
         )
         service._resolver.github_folder_url = lambda repo, skill_id, default_branch=None: None  # type: ignore[method-assign]
@@ -277,7 +277,7 @@ class SkillsMarketplaceCatalogTests(unittest.TestCase):
         self.assertTrue(detail.folder_resolution_complete)
 
     def test_detail_enrichment_fetches_and_caches_on_first_access(self) -> None:
-        cache = MarketplaceCache(Path(mkdtemp(prefix="skill-manager-marketplace-test-cache-")))
+        cache = MarketplaceCache(Path(mkdtemp(prefix="harness-asset-manager-marketplace-test-cache-")))
         record = SkillsShSkill(
             repo="mode-io/skills",
             skill_id="mode-switch",

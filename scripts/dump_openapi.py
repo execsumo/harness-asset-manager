@@ -10,14 +10,14 @@ from tempfile import TemporaryDirectory
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from skill_manager.api.app import create_app  # noqa: E402
-from skill_manager.application import build_backend_container  # noqa: E402
-from skill_manager.application.skills.marketplace import MarketplaceCatalog  # noqa: E402
+from harness_asset_manager.api.app import create_app  # noqa: E402
+from harness_asset_manager.application import build_backend_container  # noqa: E402
+from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog  # noqa: E402
 
 
 def main() -> int:
     catalog = MarketplaceCatalog(warm_on_init=False)
-    with TemporaryDirectory(prefix="skill-manager-openapi-") as tempdir:
+    with TemporaryDirectory(prefix="harness-asset-manager-openapi-") as tempdir:
         env = {
             "HOME": tempdir,
             "XDG_CONFIG_HOME": tempdir,

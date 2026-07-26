@@ -2,8 +2,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.scaffold import ScaffoldRequest, ScaffoldService
-from skill_manager.paths import resolve_app_paths
+from harness_asset_manager.application.scaffold import ScaffoldRequest, ScaffoldService
+from harness_asset_manager.paths import resolve_app_paths
 from tests.unit.test_paths import isolated_env
 
 

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.slash_commands import (
+from harness_asset_manager.application.slash_commands import (
     SlashCommand,
     SlashCommandMutationService,
     SlashCommandPathPolicy,
@@ -19,17 +19,17 @@ from skill_manager.application.slash_commands import (
     migrate_legacy_slash_commands,
     resolve_slash_targets,
 )
-from skill_manager.application.slash_commands.codecs import (
+from harness_asset_manager.application.slash_commands.codecs import (
     parse_slash_command_document,
     render_slash_command,
 )
-from skill_manager.application.slash_commands.sync_state import (
+from harness_asset_manager.application.slash_commands.sync_state import (
     SlashCommandSyncRecord,
     hash_file,
 )
-from skill_manager.errors import MutationError
-from skill_manager.harness import HarnessKernelService, HarnessSupportStore
-from skill_manager.harness.resolution import resolve_context
+from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.harness.resolution import resolve_context
 
 
 def _services(home: Path, root: Path):

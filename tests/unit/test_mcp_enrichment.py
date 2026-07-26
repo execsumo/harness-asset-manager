@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from skill_manager.application.mcp.enrichment import McpEnrichmentService
+from harness_asset_manager.application.mcp.enrichment import McpEnrichmentService
 
 
 def _popular(items: list[dict]) -> dict:

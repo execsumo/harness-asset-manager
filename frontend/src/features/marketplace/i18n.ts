@@ -2,7 +2,7 @@ import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "../../i18n
 
 const englishMarketplaceCopy = {
   title: "Marketplace",
-  previewOnlyNote: "Preview only · Skill Manager does not install or manage CLIs",
+  previewOnlyNote: "Preview only · Harness Asset Manager does not install or manage CLIs",
   typeAria: "Marketplace type",
   loading: {
     marketplace: "Loading marketplace",
@@ -42,7 +42,7 @@ const englishMarketplaceCopy = {
       mcpLabel: "MCP server details",
       mcpDescription: "Preview capabilities and connection details for a marketplace MCP server.",
       cliLabel: "CLI details",
-      cliDescription: "Preview CLI marketplace metadata and links. Skill Manager does not install or manage CLIs.",
+      cliDescription: "Preview CLI marketplace metadata and links. Harness Asset Manager does not install or manage CLIs.",
     },
     skill: {
       closePreview: "Close marketplace preview",
@@ -151,7 +151,7 @@ export const marketplaceCopy = {
   en: englishMarketplaceCopy,
   "zh-CN": {
     title: "商城",
-    previewOnlyNote: "仅预览 · Skill Manager 不会安装或管理 CLI",
+    previewOnlyNote: "仅预览 · Harness Asset Manager 不会安装或管理 CLI",
     typeAria: "商城类型",
     loading: {
       marketplace: "正在加载商城",
@@ -191,7 +191,7 @@ export const marketplaceCopy = {
         mcpLabel: "MCP 服务器详情",
         mcpDescription: "预览商城 MCP 服务器的能力和连接详情。",
         cliLabel: "CLI 详情",
-        cliDescription: "预览 CLI 商城元数据和链接。Skill Manager 不会安装或管理 CLI。",
+        cliDescription: "预览 CLI 商城元数据和链接。Harness Asset Manager 不会安装或管理 CLI。",
       },
       skill: {
         closePreview: "关闭商城预览",

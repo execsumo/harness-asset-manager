@@ -68,4 +68,4 @@ Per page, do exactly this:
 
 7. SCOPE BOUNDARY — stay in your worktree; touch only features/permissions and features/hooks
    (plus their tests). Do NOT edit ViewModeToggle.tsx / usePersistentViewMode.ts / other features /
-   backend. Do NOT push, open PRs, or run any git merge. Make small logical commits on your branch.' '--add-dir' '/Users/hgill/projects/skill-manager-worktrees/agy-perms-hooks' '--dangerously-skip-permissions' '--model' 'gemini-3.1-pro-high'
+   backend. Do NOT push, open PRs, or run any git merge. Make small logical commits on your branch.' '--add-dir' '/Users/hgill/projects/harness-asset-manager-worktrees/agy-perms-hooks' '--dangerously-skip-permissions' '--model' 'gemini-3.1-pro-high'

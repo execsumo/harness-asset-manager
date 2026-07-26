@@ -14,7 +14,7 @@ from tests.support.fake_home import create_fake_home_spec
 
 class CliRuntimeTests(unittest.TestCase):
     def test_start_status_and_stop_manage_one_owned_instance(self) -> None:
-        with TemporaryDirectory(prefix="skill-manager-cli-") as temp_dir:
+        with TemporaryDirectory(prefix="harness-asset-manager-cli-") as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
             state_dir = Path(temp_dir) / "runtime-state"
             env = dict(os.environ)
@@ -24,7 +24,7 @@ class CliRuntimeTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "start",
                     "--host",
                     "127.0.0.1",
@@ -51,7 +51,7 @@ class CliRuntimeTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "status",
                     "--state-dir",
                     str(state_dir),
@@ -70,7 +70,7 @@ class CliRuntimeTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "start",
                     "--host",
                     "127.0.0.1",
@@ -94,7 +94,7 @@ class CliRuntimeTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "stop",
                     "--state-dir",
                     str(state_dir),
@@ -110,7 +110,7 @@ class CliRuntimeTests(unittest.TestCase):
             self.assertFalse((state_dir / "runtime.json").exists())
 
     def test_serve_refuses_non_loopback_host_without_allow_remote(self) -> None:
-        with TemporaryDirectory(prefix="skill-manager-cli-") as temp_dir:
+        with TemporaryDirectory(prefix="harness-asset-manager-cli-") as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
             env = dict(os.environ)
             env.update(spec.env())
@@ -119,7 +119,7 @@ class CliRuntimeTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "serve",
                     "--host",
                     "0.0.0.0",

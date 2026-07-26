@@ -5,12 +5,12 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from skill_manager.application.marketplace_cache import MarketplaceCache
-from skill_manager.application.mcp.marketplace.catalog import (
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.mcp.marketplace.catalog import (
     McpMarketplaceCatalog,
     _flatten_input_schema,
 )
-from skill_manager.errors import MarketplaceUpstreamError
+from harness_asset_manager.errors import MarketplaceUpstreamError
 
 _OFFICIAL_META = "io.modelcontextprotocol.registry/official"
 

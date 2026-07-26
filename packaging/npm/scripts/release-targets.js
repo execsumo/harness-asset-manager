@@ -22,7 +22,7 @@ function resolveTarget({ platform = process.platform, arch = process.arch } = {}
 }
 
 function artifactName(version, target = resolveTarget()) {
-  return `skill-manager-v${version}-${target.id}.tar.gz`;
+  return `harness-asset-manager-v${version}-${target.id}.tar.gz`;
 }
 
 module.exports = {

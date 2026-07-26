@@ -113,8 +113,8 @@ function mcpInventoryPayload() {
 
 function slashCommandsPayload() {
   return {
-    storePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/commands",
-    syncStatePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/sync-state.json",
+    storePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/commands",
+    syncStatePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/sync-state.json",
     targets: [],
     defaultTargets: [],
     commands: [
@@ -212,7 +212,7 @@ describe("OverviewPage", () => {
     await within(stats).findByText("2 skills · 1 command · 2 MCP");
     expect(within(stats).getByText("adoption · config · inventory")).toBeInTheDocument();
     expect(within(stats).getByText("2 observed")).toBeInTheDocument();
-    expect(screen.queryByText(["skill-manager", "status"].join(" "))).not.toBeInTheDocument();
+    expect(screen.queryByText(["harness-asset-manager", "status"].join(" "))).not.toBeInTheDocument();
     for (const copy of removedOverviewCopy()) {
       expect(screen.queryByText(copy, { exact: false })).not.toBeInTheDocument();
     }

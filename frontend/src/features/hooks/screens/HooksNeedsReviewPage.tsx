@@ -123,7 +123,7 @@ export default function HooksNeedsReviewPage() {
       <div className="page-chrome">
         <PageHeader
           title="Hooks to review"
-          subtitle="Hooks found in your harness configs that skill-manager does not yet track. Promote the ones you want to manage globally."
+          subtitle="Hooks found in your harness configs that harness-asset-manager does not yet track. Promote the ones you want to manage globally."
         actions={
             <button
               type="button"
@@ -157,7 +157,7 @@ export default function HooksNeedsReviewPage() {
         <div className="empty-panel">
           <h3 className="empty-panel__title">No hooks need review</h3>
           <p className="empty-panel__body">
-            Your harness configs only reference hooks that skill-manager already tracks.
+            Your harness configs only reference hooks that harness-asset-manager already tracks.
           </p>
           <div className="empty-panel__actions">
             <Link to={hooksRoutes.inUse} className="action-pill action-pill--md action-pill--accent">

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.api.guards import is_loopback_host
+from harness_asset_manager.api.guards import is_loopback_host
 
 
 class IsLoopbackHostTests(unittest.TestCase):

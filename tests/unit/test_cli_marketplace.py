@@ -4,12 +4,12 @@ import json
 import unittest
 from unittest import mock
 
-from skill_manager.application.cli_marketplace.catalog import CliMarketplaceCatalog
-from skill_manager.application.cli_marketplace.client import (
+from harness_asset_manager.application.cli_marketplace.catalog import CliMarketplaceCatalog
+from harness_asset_manager.application.cli_marketplace.client import (
     ClisDevClient,
     configured_clis_dev_base_url,
 )
-from skill_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
 
 _LIST_RESPONSE_SAMPLE: dict[str, object] = {
     "count": 4,
@@ -79,7 +79,7 @@ class ClisDevClientTests(unittest.TestCase):
         response.__enter__ = mock.Mock(return_value=response)
         response.__exit__ = mock.Mock(return_value=None)
 
-        with mock.patch("skill_manager.application.cli_marketplace.client.urlopen", return_value=response) as urlopen:
+        with mock.patch("harness_asset_manager.application.cli_marketplace.client.urlopen", return_value=response) as urlopen:
             client = ClisDevClient(base_url="https://fixture.local", ssl_context=None)
             payload = client.list_clis()
 
@@ -94,7 +94,7 @@ class ClisDevClientTests(unittest.TestCase):
         response.__enter__ = mock.Mock(return_value=response)
         response.__exit__ = mock.Mock(return_value=None)
 
-        with mock.patch("skill_manager.application.cli_marketplace.client.urlopen", return_value=response) as urlopen:
+        with mock.patch("harness_asset_manager.application.cli_marketplace.client.urlopen", return_value=response) as urlopen:
             client = ClisDevClient(base_url="https://fixture.local", ssl_context=None)
             client.search_clis("git ui")
 

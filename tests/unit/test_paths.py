@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from skill_manager.paths import APP_NAME, resolve_app_paths
+from harness_asset_manager.paths import APP_NAME, resolve_app_paths
 
 
 @contextmanager

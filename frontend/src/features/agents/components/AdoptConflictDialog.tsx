@@ -54,7 +54,7 @@ export function AdoptConflictDialog({
           </div>
           <Dialog.Description className="dialog-description confirm-dialog__description">
             <p className="confirm-dialog__lede">
-              An agent with the name <strong>{slug}</strong> already exists in Skill Manager.
+              An agent with the name <strong>{slug}</strong> already exists in Harness Asset Manager.
             </p>
             <p className="confirm-dialog__path">
               <strong>Project version:</strong> <code>{storePath}</code>

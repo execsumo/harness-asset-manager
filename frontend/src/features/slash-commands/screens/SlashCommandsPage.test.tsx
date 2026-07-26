@@ -406,8 +406,8 @@ function slashCommandsPayload({
   }>;
 } = {}) {
   return {
-    storePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/commands",
-    syncStatePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/sync-state.json",
+    storePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/commands",
+    syncStatePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/sync-state.json",
     targets: [
       {
         id: "claude",

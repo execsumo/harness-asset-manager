@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.hooks.mappers import (
+from harness_asset_manager.application.hooks.mappers import (
     AntigravityHooksMapper,
     ClaudeCodeHooksMapper,
     CodexHooksMapper,
     CursorHooksMapper,
     OpenCodeHooksMapper,
 )
-from skill_manager.application.hooks.store import HookSpec
-from skill_manager.errors import MutationError
+from harness_asset_manager.application.hooks.store import HookSpec
+from harness_asset_manager.errors import MutationError
 
 
 class ClaudeCodeHooksMapperTests(unittest.TestCase):

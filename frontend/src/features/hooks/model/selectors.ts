@@ -160,7 +160,7 @@ export function matrixCellFor(
       binding,
       writable,
       pendingKey,
-      tooltip: `Configured outside skill-manager on ${column.label}`,
+      tooltip: `Configured outside harness-asset-manager on ${column.label}`,
       ariaLabel: `Open details for ${baseLabel}`,
       action: "open",
     };

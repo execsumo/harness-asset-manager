@@ -5,16 +5,16 @@ import unittest
 from unittest import mock
 from urllib.error import HTTPError, URLError
 
-from skill_manager.application.skills.marketplace.client import (
+from harness_asset_manager.application.skills.marketplace.client import (
     SkillsShClient,
     configured_marketplace_base_url,
     configured_marketplace_ca_file,
 )
-from skill_manager.application.skills.marketplace.skillssh import (
+from harness_asset_manager.application.skills.marketplace.skillssh import (
     fetch_all_time_leaderboard,
     search_skills,
 )
-from skill_manager.errors import (
+from harness_asset_manager.errors import (
     MARKETPLACE_UNAVAILABLE_MESSAGE,
     MarketplaceUpstreamError,
 )
@@ -34,7 +34,7 @@ class MarketplaceClientConfigTests(unittest.TestCase):
         )
 
     def test_certifi_is_used_when_no_override_exists(self) -> None:
-        with mock.patch("skill_manager.application.marketplace_http.certifi.where", return_value="/tmp/certifi-ca.pem"):
+        with mock.patch("harness_asset_manager.application.marketplace_http.certifi.where", return_value="/tmp/certifi-ca.pem"):
             self.assertEqual(str(configured_marketplace_ca_file({})), "/tmp/certifi-ca.pem")
 
 
@@ -99,7 +99,7 @@ class SkillsShClientErrorTests(unittest.TestCase):
             hdrs=None,
             fp=None,
         )
-        with mock.patch("skill_manager.application.skills.marketplace.client.urlopen", side_effect=http_error):
+        with mock.patch("harness_asset_manager.application.skills.marketplace.client.urlopen", side_effect=http_error):
             with self.assertRaises(MarketplaceUpstreamError) as captured:
                 client.fetch_json("/api/search?q=trace&limit=20")
 
@@ -110,7 +110,7 @@ class SkillsShClientErrorTests(unittest.TestCase):
     def test_fetch_text_maps_timeout_to_upstream_error(self) -> None:
         client = SkillsShClient(base_url="https://fixture.local")
         timeout_error = URLError(socket.timeout("timed out"))
-        with mock.patch("skill_manager.application.skills.marketplace.client.urlopen", side_effect=timeout_error):
+        with mock.patch("harness_asset_manager.application.skills.marketplace.client.urlopen", side_effect=timeout_error):
             with self.assertRaises(MarketplaceUpstreamError) as captured:
                 client.fetch_text("/")
 

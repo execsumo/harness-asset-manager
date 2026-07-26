@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.skills.adapters import build_skills_adapters
-from skill_manager.errors import MutationError
-from skill_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.application.skills.adapters import build_skills_adapters
+from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 from tests.support.fake_home import create_fake_home_spec, seed_skill_package
 
 
@@ -253,7 +253,7 @@ class SkillsAdapterTests(unittest.TestCase):
 
             hermes.enable_shared_package(package)
 
-            link = spec.hermes_skills_root / "skill-manager" / "audit"
+            link = spec.hermes_skills_root / "harness-asset-manager" / "audit"
             self.assertTrue(link.is_symlink())
             self.assertEqual(link.resolve(), package.resolve())
             self.assertTrue(hermes.has_binding("audit"))
@@ -273,7 +273,7 @@ class SkillsAdapterTests(unittest.TestCase):
 
             hermes.enable_shared_package(package)
 
-            link = spec.hermes_skills_root / "skill-manager" / "audit"
+            link = spec.hermes_skills_root / "harness-asset-manager" / "audit"
             self.assertTrue(link.is_symlink())
             self.assertEqual(link.resolve(), package.resolve())
             self.assertTrue((hermes_owned / "SKILL.md").is_file())
@@ -309,7 +309,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             # Create symlink in harness pointing to OLD location
             link = spec.codex_root / "audit"
             link.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "skill-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
 
             # Should heal without raising
             codex.enable_shared_package(new_pkg)
@@ -328,7 +328,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             link = spec.codex_root / "audit"
             link.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "skill-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
 
             codex.enable_shared_package(new_pkg)
 
@@ -346,7 +346,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             link = spec.codex_root / "audit"
             link.symlink_to(foreign_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "skill-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
 
             with self.assertRaises(MutationError) as ctx:
                 codex.enable_shared_package(new_pkg)
@@ -361,7 +361,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             harness_dir = spec.codex_root / "audit"
             harness_dir.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "skill-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
 
             codex.adopt_local_copy(harness_dir, new_pkg)
 

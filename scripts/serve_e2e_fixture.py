@@ -10,15 +10,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from skill_manager.application import build_backend_container
-from skill_manager.runtime.server import serve_foreground
+from harness_asset_manager.application import build_backend_container
+from harness_asset_manager.runtime.server import serve_foreground
 
 from tests.support.fake_home import create_fake_home_spec, seed_mixed_fixture
 from tests.support.marketplace_fixture import create_fixture_marketplace_service
 
 
 def main() -> int:
-    with TemporaryDirectory(prefix="skill-manager-e2e-") as temp_dir:
+    with TemporaryDirectory(prefix="harness-asset-manager-e2e-") as temp_dir:
         spec = create_fake_home_spec(Path(temp_dir))
         seed_mixed_fixture(spec)
         env = dict(os.environ)

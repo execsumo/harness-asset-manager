@@ -47,7 +47,7 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
     <aside className="sidebar ui-scrollbar--thin" aria-label={common.nav.primary}>
       <div className="sidebar__brand">
         <Link to="/overview" className="sidebar__brand-name">
-          skill-manager
+          harness-asset-manager
         </Link>
       </div>
 

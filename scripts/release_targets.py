@@ -53,7 +53,7 @@ def target_by_id(target_id: str, targets: tuple[ReleaseTarget, ...] | None = Non
 
 
 def artifact_name(version: str, target: ReleaseTarget) -> str:
-    return f"skill-manager-v{version}-{target.id}.tar.gz"
+    return f"harness-asset-manager-v{version}-{target.id}.tar.gz"
 
 
 def _target_from_payload(item: Any) -> ReleaseTarget:

@@ -1,6 +1,6 @@
-# Contributing to skill-manager
+# Contributing to harness-asset-manager
 
-Thanks for your interest in improving `skill-manager`.
+Thanks for your interest in improving `harness-asset-manager`.
 
 Issues and pull requests are welcome. For small fixes, docs updates, and focused improvements, feel free to open a PR directly. For larger features, broad refactors, or architecture changes, please open an issue first so we can align on direction before implementation starts.
 

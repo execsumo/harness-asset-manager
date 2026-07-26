@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = REPO_ROOT / "packaging" / "homebrew" / "skill-manager.rb.tmpl"
+TEMPLATE = REPO_ROOT / "packaging" / "homebrew" / "harness-asset-manager.rb.tmpl"
 
 
 def main(argv: list[str] | None = None) -> int:

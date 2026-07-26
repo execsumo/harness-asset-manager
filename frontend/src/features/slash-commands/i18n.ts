@@ -44,7 +44,7 @@ const englishSlashCommandsCopy = {
       if (action === "restore_managed") return "Restore the managed command content to this harness";
       if (action === "adopt_target") return "Use this harness command as the managed command content";
       if (action === "remove_binding") return "Stop tracking this harness command without deleting it";
-      return "Adopt this command into Skill Manager";
+      return "Adopt this command into Harness Asset Manager";
     },
     metaText: (row: SlashCommandReviewDto) => {
       if (row.kind === "drifted") return `Changed in ${row.targetLabel}`;
@@ -91,15 +91,15 @@ const englishSlashCommandsCopy = {
     review: {
       actionsAria: "Slash command review actions",
       conflictNotice:
-        "A managed slash command already uses this name. Adopting the harness command will replace the Skill Manager source.",
+        "A managed slash command already uses this name. Adopting the harness command will replace the Harness Asset Manager source.",
       driftedNotice:
-        "The harness command changed after Skill Manager last synced it. Restore writes the Skill Manager source back to the harness; Adopt updates Skill Manager from this harness command.",
+        "The harness command changed after Harness Asset Manager last synced it. Restore writes the Harness Asset Manager source back to the harness; Adopt updates Harness Asset Manager from this harness command.",
       canonicalGapNotice:
         "The review entry says this command is managed, but the canonical command is not present in the current slash command list.",
       harnessContext: (name: string) => `Harness review context for ${name}`,
       noDescriptionParsed: "No description parsed.",
       noPromptParsed: "No prompt content parsed.",
-      skillManagerSource: "Skill Manager source",
+      skillManagerSource: "Harness Asset Manager source",
       noCanonicalContent: "No canonical command content is available.",
       harnessCommand: "Harness command",
       path: "Path",
@@ -156,7 +156,7 @@ export const slashCommandsCopy = {
         if (action === "restore_managed") return "将托管 command 内容恢复到此 harness";
         if (action === "adopt_target") return "使用此 harness command 作为托管内容";
         if (action === "remove_binding") return "停止跟踪此 harness command，但不删除文件";
-        return "将此 command 采用到 Skill Manager";
+        return "将此 command 采用到 Harness Asset Manager";
       },
       metaText: (row: SlashCommandReviewDto) => {
         if (row.kind === "drifted") return `${row.targetLabel} 中有变更`;
@@ -203,15 +203,15 @@ export const slashCommandsCopy = {
       review: {
         actionsAria: "Slash command 确认操作",
         conflictNotice:
-          "已有托管 Slash command 使用此名称。采用 harness command 会替换 Skill Manager 来源。",
+          "已有托管 Slash command 使用此名称。采用 harness command 会替换 Harness Asset Manager 来源。",
         driftedNotice:
-          "此 harness command 在 Skill Manager 上次同步后发生变化。恢复会把 Skill Manager 来源写回 harness；采用会用此 harness command 更新 Skill Manager。",
+          "此 harness command 在 Harness Asset Manager 上次同步后发生变化。恢复会把 Harness Asset Manager 来源写回 harness；采用会用此 harness command 更新 Harness Asset Manager。",
         canonicalGapNotice:
           "确认条目显示此 command 已托管，但当前 Slash command 列表中没有规范 command。",
         harnessContext: (name: string) => `${name} 的 harness 确认上下文`,
         noDescriptionParsed: "没有解析到描述。",
         noPromptParsed: "没有解析到 prompt 内容。",
-        skillManagerSource: "Skill Manager 来源",
+        skillManagerSource: "Harness Asset Manager 来源",
         noCanonicalContent: "没有可用的规范 command 内容。",
         harnessCommand: "Harness command",
         path: "路径",

@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from skill_manager.application.skills.manifest import (
+from harness_asset_manager.application.skills.manifest import (
     SkillStoreEntry,
     SkillStoreManifest,
     write_skill_store_manifest,
 )
-from skill_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.application.skills.package import fingerprint_package
 
 
 @dataclass(frozen=True)
@@ -21,19 +21,19 @@ class FakeHomeSpec:
 
     @property
     def legacy_packages_skills_store_root(self) -> Path:
-        return self.xdg_data_home / "skill-manager" / "packages" / "local" / "skills"
+        return self.xdg_data_home / "harness-asset-manager" / "packages" / "local" / "skills"
 
     @property
     def skills_store_root(self) -> Path:
-        return self.xdg_data_home / "skill-manager" / "skills"
+        return self.xdg_data_home / "harness-asset-manager" / "skills"
 
     @property
     def agents_root(self) -> Path:
-        return self.xdg_data_home / "skill-manager" / "agents"
+        return self.xdg_data_home / "harness-asset-manager" / "agents"
 
     @property
     def legacy_skills_store_root(self) -> Path:
-        return self.xdg_data_home / "skill-manager" / "shared"
+        return self.xdg_data_home / "harness-asset-manager" / "shared"
 
     @property
     def codex_root(self) -> Path:

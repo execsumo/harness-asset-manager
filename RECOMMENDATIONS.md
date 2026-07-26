@@ -14,10 +14,10 @@
 
 ## Already strong — don't churn these
 
-- Atomic writes + `flock` for file mutations (`skill_manager/atomic_files.py`), with a dedicated
+- Atomic writes + `flock` for file mutations (`harness_asset_manager/atomic_files.py`), with a dedicated
   store-concurrency test.
 - OpenAPI contract discipline: generated TS client committed, `codegen:check` drift gate in CI.
-- One canonical harness catalog (`skill_manager/harness/catalog.py`) that drives every family.
+- One canonical harness catalog (`harness_asset_manager/harness/catalog.py`) that drives every family.
 - Subprocess calls are all list-form (no `shell=True`); marketplace fetchers use a pinned CA
   context with TLS fixtures under test.
 - CI matrix across Python 3.11–3.14 plus a full packaging smoke on four OS/arch targets.
@@ -79,12 +79,12 @@ seven more harnesses on the README roadmap, define a repeatable "new harness ver
 ### 2.1 A mutation audit journal — M–L
 
 A tool whose job is mutating local config has almost no observability: a `grep -rn 'logging'`
-over `skill_manager/` now returns **zero** hits (the last holdout, `db/migrations.py`, was removed
+over `harness_asset_manager/` now returns **zero** hits (the last holdout, `db/migrations.py`, was removed
 in `9f23101`), and uvicorn runs with `access_log=False`. When something goes wrong in a
-user's setup — or a user asks "what did Skill Manager change?" — there is no answer on disk.
+user's setup — or a user asks "what did Harness Asset Manager change?" — there is no answer on disk.
 
 **Action:** append a structured record (JSON Lines) to
-`${XDG_DATA_HOME}/skill-manager/audit.log` for every mutation: timestamp, family, operation,
+`${XDG_DATA_HOME}/harness-asset-manager/audit.log` for every mutation: timestamp, family, operation,
 target paths, outcome. This doubles as product surface later (an activity view) and strengthens
 the trust story that "Needs Review" already builds.
 
@@ -135,7 +135,7 @@ modules).
   re-bind. Two quick starts can collide between the probes. Bind once and keep the socket (the
   code already passes `fd` to uvicorn, so this is mostly deleting the probe). — **S**
 - **Clean local scratch from the repo dir.** Stale `test_scan_*.pyc` and `.pytest_cache` linger
-  in the working tree (untracked, but confusing); and the `skill_manager/db/` directory now
+  in the working tree (untracked, but confusing); and the `harness_asset_manager/db/` directory now
   contains **only** stale `__pycache__/*.pyc` — its source was removed in `9f23101` but the
   compiled cache and the empty package dir were left behind. The project standardizes on
   `unittest`, so either document pytest compatibility or remove the cache dirs / orphaned

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.agents import (
+from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
     AgentHarnessAdapter,
     AgentInventoryService,
@@ -15,7 +15,7 @@ from skill_manager.application.agents import (
     parse_agent_document,
     render_agent_document,
 )
-from skill_manager.errors import MutationError
+from harness_asset_manager.errors import MutationError
 
 AGENT_DOC = """---
 name: Chief of Staff

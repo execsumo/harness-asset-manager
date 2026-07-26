@@ -25,11 +25,11 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(settings["storage"]["skillsStorePath"], str(harness.spec.skills_store_root))
             self.assertEqual(
                 settings["storage"]["marketplaceCachePath"],
-                str(harness.spec.xdg_data_home / "skill-manager" / "marketplace"),
+                str(harness.spec.xdg_data_home / "harness-asset-manager" / "marketplace"),
             )
             self.assertEqual(
                 settings["storage"]["settingsPath"],
-                str(harness.spec.xdg_config_home / "skill-manager" / "settings.json"),
+                str(harness.spec.xdg_config_home / "harness-asset-manager" / "settings.json"),
             )
             self.assertEqual(len(settings["harnesses"]), 7)
             openclaw = next(item for item in settings["harnesses"] if item["harness"] == "openclaw")
@@ -130,16 +130,16 @@ class HttpApiTests(unittest.TestCase):
             self.assertIn("unknown skill ref", payload["error"])
 
     def test_frontend_routes_return_spa_shell_when_dist_is_present(self) -> None:
-        with TemporaryDirectory(prefix="skill-manager-dist-") as tempdir:
+        with TemporaryDirectory(prefix="harness-asset-manager-dist-") as tempdir:
             dist = Path(tempdir)
-            (dist / "index.html").write_text("<!doctype html><html><body><div id='root'>skill-manager</div></body></html>", encoding="utf-8")
+            (dist / "index.html").write_text("<!doctype html><html><body><div id='root'>harness-asset-manager</div></body></html>", encoding="utf-8")
 
             with AppTestHarness(frontend_dist=dist) as harness:
                 for path in ("/", "/skills", "/skills/managed", "/skills/unmanaged", "/marketplace", "/settings"):
                     with urlopen(f"{harness.base_url}{path}") as response:
                         body = response.read().decode("utf-8")
                     self.assertEqual(response.status, 200)
-                    self.assertIn("<div id='root'>skill-manager</div>", body)
+                    self.assertIn("<div id='root'>harness-asset-manager</div>", body)
 
 
 if __name__ == "__main__":

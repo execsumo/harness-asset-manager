@@ -3,8 +3,8 @@ from __future__ import annotations
 import unittest
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.skills.manifest import SkillStoreEntry
-from skill_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.application.skills.manifest import SkillStoreEntry
+from harness_asset_manager.application.skills.package import fingerprint_package
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
     seed_shared_only_fixture,
@@ -241,7 +241,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue((harness.spec.cursor_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.opencode_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.openclaw_managed_root / "policy-kit").is_symlink())
-            self.assertTrue((harness.spec.hermes_skills_root / "skill-manager" / "policy-kit").is_symlink())
+            self.assertTrue((harness.spec.hermes_skills_root / "harness-asset-manager" / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.agy_root / "policy-kit").is_symlink())
 
     def test_manage_records_origin_only(self) -> None:
@@ -390,7 +390,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertFalse((harness.spec.agy_root / "shared-audit").exists())
             # Unavailable harness folders remain untouched.
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
-            self.assertFalse((harness.spec.hermes_skills_root / "skill-manager" / "shared-audit").exists())
+            self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
             self.assertFalse((harness.spec.openclaw_managed_root / "shared-audit").exists())
 
     def test_manage_skill_replaces_found_local_copy_with_managed_links(self) -> None:
@@ -529,7 +529,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertFalse((harness.spec.codex_root / "shared-audit").exists())
             self.assertFalse((harness.spec.claude_root / "shared-audit").exists())
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
-            self.assertFalse((harness.spec.hermes_skills_root / "skill-manager" / "shared-audit").exists())
+            self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
             self.assertFalse((harness.spec.openclaw_managed_root / "shared-audit").exists())
 
             refreshed = harness.get_json("/api/skills")

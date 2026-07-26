@@ -11,8 +11,8 @@ describe("capability overview model", () => {
         rows: [],
       },
       {
-        storePath: "/tmp/skill-manager/slash-commands/commands",
-        syncStatePath: "/tmp/skill-manager/slash-commands/sync-state.json",
+        storePath: "/tmp/harness-asset-manager/slash-commands/commands",
+        syncStatePath: "/tmp/harness-asset-manager/slash-commands/sync-state.json",
         targets: [],
         defaultTargets: [],
         commands: [
@@ -65,7 +65,7 @@ describe("capability overview model", () => {
             availabilityStatus: "unavailable",
             mcpStatus: {
               kind: "connection_issue",
-              reason: "Skill Manager does not have a valid MCP spec for this server.",
+              reason: "Harness Asset Manager does not have a valid MCP spec for this server.",
             },
             installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
             sightings: [],

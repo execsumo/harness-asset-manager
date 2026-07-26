@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.cli_marketplace import CliMarketplaceCatalog
-from skill_manager.application.marketplace_cache import MarketplaceCache
+from harness_asset_manager.application.cli_marketplace import CliMarketplaceCatalog
+from harness_asset_manager.application.marketplace_cache import MarketplaceCache
 from tests.support.app_harness import AppTestHarness
 
 _FIXTURE_CLIS: dict[str, object] = {

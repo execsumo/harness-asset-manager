@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp.install_resolver import (
+from harness_asset_manager.application.mcp.install_resolver import (
     registry_install_config,
     registry_install_option_by_key,
     registry_install_options,
     registry_managed_name,
     resolve_registry_server_spec,
 )
-from skill_manager.errors import MutationError
+from harness_asset_manager.errors import MutationError
 
 
 def _detail(

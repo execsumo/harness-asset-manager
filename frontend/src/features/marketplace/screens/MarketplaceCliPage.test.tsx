@@ -131,7 +131,7 @@ describe("MarketplaceCliPage", () => {
     expect(screen.getByText("brew install ollama")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Install command preview" }).parentElement)
-      .not.toHaveTextContent(/Skill Manager does not install or manage CLIs/);
+      .not.toHaveTextContent(/Harness Asset Manager does not install or manage CLIs/);
     expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
   });
 

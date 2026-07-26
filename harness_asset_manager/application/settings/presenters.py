@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from harness_asset_manager.harness import HarnessStatus
+from harness_asset_manager.paths import AppPaths
+from harness_asset_manager.platform_context import PlatformName
+
+
+def settings_payload(
+    *,
+    paths: AppPaths,
+    platform: PlatformName,
+    harness_statuses: tuple[HarnessStatus, ...],
+    enabled_harnesses: tuple[str, ...],
+) -> dict[str, object]:
+    enabled_set = set(enabled_harnesses)
+
+    return {
+        "storage": storage_payload(paths, platform=platform),
+        "harnesses": [
+            harness_payload(status, support_enabled=status.harness in enabled_set)
+            for status in harness_statuses
+        ],
+    }
+
+
+def storage_payload(paths: AppPaths, *, platform: PlatformName) -> dict[str, object]:
+    return {
+        "platform": platform,
+        "configDir": str(paths.config_dir),
+        "dataDir": str(paths.data_dir),
+        "stateDir": str(paths.state_dir),
+        "skillsStorePath": str(paths.skills_store_root),
+        "marketplaceCachePath": str(paths.marketplace_cache_root),
+        "settingsPath": str(paths.settings_path),
+    }
+
+
+def harness_payload(
+    status: HarnessStatus,
+    *,
+    support_enabled: bool,
+) -> dict[str, object]:
+    return {
+        "harness": status.harness,
+        "label": status.label,
+        "logoKey": status.logo_key,
+        "supportEnabled": support_enabled,
+        "installed": status.installed,
+        "managedLocation": _harness_root_display(status.managed_location),
+    }
+
+
+def _harness_root_display(managed_location: Path | None) -> str | None:
+    """Present the harness root the app writes into, not the skills subtree.
+
+    ``managed_location`` is the managed *skills* root (e.g. ``~/.claude/skills``),
+    but Harness Asset Manager also manages this harness's MCP servers, hooks, and slash
+    commands under the same parent. Show the parent directory so the label reads
+    as a harness root rather than a skills-only path. Home-prefix abbreviation
+    (``~``) is applied on the frontend so every path display shares one rule.
+    """
+    if managed_location is None:
+        return None
+    return str(managed_location.parent)

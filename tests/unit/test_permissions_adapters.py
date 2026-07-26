@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.permissions.adapters import FileBackedPermissionsAdapter
-from skill_manager.application.permissions.store import PermissionSpec, PermissionStore
-from skill_manager.errors import MutationError
-from skill_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.application.permissions.adapters import FileBackedPermissionsAdapter
+from harness_asset_manager.application.permissions.store import PermissionSpec, PermissionStore
+from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 
 
 def _spec(id: str = "test-perm", **overrides) -> PermissionSpec:
@@ -156,7 +156,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
 
             # Seed user profile
             adapter.config_path.write_text(
-                "[permissions.user-profile]\nextends = \":read-only\"\n[permissions.skill-manager.filesystem]\n\"~/.zshrc\" = \"read\"\n",
+                "[permissions.user-profile]\nextends = \":read-only\"\n[permissions.harness-asset-manager.filesystem]\n\"~/.zshrc\" = \"read\"\n",
                 encoding="utf-8"
             )
 
@@ -169,7 +169,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             adapter.enable_permission(spec_file)
             text = adapter.config_path.read_text(encoding="utf-8")
             self.assertIn("[permissions.user-profile]", text)
-            self.assertIn("[permissions.skill-manager.filesystem]", text)
+            self.assertIn("[permissions.harness-asset-manager.filesystem]", text)
 
     def test_pressure_test_malformed_config_and_user_profile(self) -> None:
         """Feed a malformed permission config of each format (JSON + TOML) AND a pre-existing

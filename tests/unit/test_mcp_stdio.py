@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp.stdio import parse_static_stdio_function
+from harness_asset_manager.application.mcp.stdio import parse_static_stdio_function
 
 
 class StaticStdioParserTests(unittest.TestCase):

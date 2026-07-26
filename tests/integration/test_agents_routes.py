@@ -74,7 +74,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertFalse(rendered.is_symlink())
             body = rendered.read_text(encoding="utf-8")
             self.assertIn('name = "pr_reviewer"', body)
-            self.assertIn("skill-manager:generated", body)
+            self.assertIn("harness-asset-manager:generated", body)
 
             # And it must not come back as an unmanaged row.
             refs = [e["ref"] for e in harness.get_json("/api/agents")["entries"]]

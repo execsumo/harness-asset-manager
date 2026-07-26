@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp.mappers import (
+from harness_asset_manager.application.mcp.mappers import (
     AntigravityCliMapper,
     ClaudeCodeMapper,
     CodexMapper,
@@ -12,8 +12,8 @@ from skill_manager.application.mcp.mappers import (
     OpenCodeMapper,
     TransportMapper,
 )
-from skill_manager.application.mcp.store import McpSource
-from skill_manager.application.slash_commands.codecs import (
+from harness_asset_manager.application.mcp.store import McpSource
+from harness_asset_manager.application.slash_commands.codecs import (
     FrontmatterMarkdownCommandCodec,
     PlainMarkdownCommandCodec,
 )

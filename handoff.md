@@ -13,7 +13,7 @@ All four Tier 1 items from `RECOMMENDATIONS.md` landed on `main` in merge `98c34
   `GHSA-qwww-vcr4-c8h2`, which is RSC-mode-only and N/A for this client-only SPA —
   allowlisted with justification in `scripts/audit_gate.cjs`). `npm run audit:check` now
   runs in `frontend-validate`; `pip-audit` runs in `backend-compat`.
-- **Request guards** (`skill_manager/api/guards.py`): ASGI middleware rejects non-loopback
+- **Request guards** (`harness_asset_manager/api/guards.py`): ASGI middleware rejects non-loopback
   `Host` headers (DNS rebinding) and non-loopback `Origin` on mutations (simple-request
   CSRF). Non-browser local clients send no `Origin` and are unaffected. `--host` now
   requires `--allow-remote` for non-loopback binds, with a loud warning; `start` passes it
@@ -21,15 +21,15 @@ All four Tier 1 items from `RECOMMENDATIONS.md` landed on `main` in merge `98c34
   Vite dev flow untouched.
 - **Static serving**: SPA catch-all uses `is_relative_to(dist_root)`; regression test with
   a `dist-secret` decoy sibling (`tests/integration/test_static_frontend.py`).
-- **Deletion pass**: removed the fully-unused `skill_manager/db/` package (was creating and
-  migrating `skill-manager.db` on every launch with zero readers), the removed LLM-scan
+- **Deletion pass**: removed the fully-unused `harness_asset_manager/db/` package (was creating and
+  migrating `harness-asset-manager.db` on every launch with zero readers), the removed LLM-scan
   feature's `scan` extras + `data/prompts/` payloads + PyInstaller spec entry, and the
   duplicate `certifi` pin. Marketplace clients now derive User-Agent from `__version__`.
 
 Validated: typecheck, 349 unit + 155 integration, 263 frontend tests, build,
 `codegen:check`, `audit:check`, version sync — all green.
 
-Note for future sessions: existing user data dirs may still contain a `skill-manager.db`
+Note for future sessions: existing user data dirs may still contain a `harness-asset-manager.db`
 file from before the removal. It is inert; leave it (do not delete user files silently).
 
 ---
@@ -71,7 +71,7 @@ OpenCode, and OpenCode still had a column there despite being switched off in Se
 
 Harness order is **Claude, Codex, Antigravity, Cursor, OpenCode, Hermes, OpenClaw**, and
 it lives in exactly one place: the declaration order of `SUPPORTED_HARNESS_DEFINITIONS`
-in `skill_manager/harness/catalog.py`. Every family reaches it through
+in `harness_asset_manager/harness/catalog.py`. Every family reaches it through
 `bindings_for_family`, and `support_store.enabled_harnesses` preserves that order rather
 than the settings file's — so reordering the catalog reorders Settings, Skills, MCP,
 Hooks, Permissions, Agents, and Slash commands together.
@@ -171,7 +171,7 @@ single-page `/agents` route is gone.
   on write, so **no migration script is needed** and existing files keep working.
   `_rewrite_agent_local_prefix` deleted from `container.py` (the file move stays).
 - **Frontend rebuild — IN FLIGHT** (agy delegate `agy-agents-fe`, worktree
-  `../skill-manager-worktrees/agy-agents-fe`): flat `/agents/use` + `/agents/review`
+  `../harness-asset-manager-worktrees/agy-agents-fe`): flat `/agents/use` + `/agents/review`
   routes, sidebar NavGroup, overview card, `features/agents/public.ts`, and the
   `AdoptConflictDialog`. Structure copies Hooks; look and language copy Skills.
 
@@ -235,18 +235,18 @@ hardcoded model ids, and cross-harness delegation runtime is cut from v1.
   Migration runs in `build_backend_container` (`_migrate_to_packages`); multi-package
   scan honors `active`; immutability guard in `SkillStore`. Known v1 nit: duplicate
   refs between two *non-local* packages are both retained (issue emitted; local-wins
-  works). agy pane `wP:p4` + worktree `../skill-manager-worktrees/agy-package-store`
+  works). agy pane `wP:p4` + worktree `../harness-asset-manager-worktrees/agy-package-store`
   kept alive for Stage 4.
 - **Also on `main`:** upstream mode-io merge `0b54469` (came in mid-session from
   another agent) + `9224d79` fixing its artifacts (duplicate hermes mapper key,
   duplicate README Hermes cell, upstream png). Fork features verified intact.
 - **Stage 2 (agents family + Claude compile) — DONE, merged as `5f8f808`.** Agents
   live in `packages/<slug>/agents/*.md`; `AgentsService` (scan/resolve/compile) in
-  `skill_manager/application/agents/`; `GET /api/agents` +
+  `harness_asset_manager/application/agents/`; `GET /api/agents` +
   `POST /api/agents/{ref}/compile` (`dryRun`, `projectDir`); provenance marker +
   refuse-to-overwrite-foreign-files; OpenAPI regenerated. 11 new unit tests.
 - **Stage 3 (cursor/codex targets + degradation reports) — DONE, merged as `dec09ae`.**
-  Cursor → `<project>/.cursor/rules/skill-manager.<slug>.mdc` (projectDir required);
+  Cursor → `<project>/.cursor/rules/harness-asset-manager.<slug>.mdc` (projectDir required);
   Codex → `~/.codex/prompts/<slug>.md` (custom prompt; reported as degradation).
   Suite at merge: backend 330+133, frontend 269, typecheck, build — all green,
   independently run.
@@ -260,7 +260,7 @@ hardcoded model ids, and cross-harness delegation runtime is cut from v1.
   runs on first container build (moves `data_dir/shared` → `packages/local/`;
   one-way, locked, idempotent).
 - **Not torn down** (left intentionally): agy pane `wP:p4`, worktrees
-  `../skill-manager-worktrees/{agy-package-store,agents-family}`, merged branches
+  `../harness-asset-manager-worktrees/{agy-package-store,agents-family}`, merged branches
   `delegate/agy-package-store`, `delegate/agy-agents-ui`, `feat/agents-family`.
 - **Deferred (v1 cuts + follow-ups):** cross-harness delegation runtime; package
   deps; packages inventory UI view; agent-scoped MCP compilation; non-local vs
@@ -285,7 +285,7 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
   (standalone `HermesMapper`). Adds `ruamel.yaml`; `FileBackedMcpAdapter` mutates in place
   (`_ensure_subtree`) so YAML comments survive — **write path changed for all config-subtree
   MCP harnesses** (claude/cursor/codex/opencode), all re-tested green.
-- **Skills**: categorized `~/.hermes/skills/<category>/<skill>/`, shared under `skill-manager`.
+- **Skills**: categorized `~/.hermes/skills/<category>/<skill>/`, shared under `harness-asset-manager`.
 - **Hub-awareness**: reads `.hub/lock.json` + `.bundled_manifest`; excludes
   official/builtin/optional + self-learned; adopts only external-hub; `origin_harness` provenance
   threaded through the store manifest.
@@ -305,7 +305,7 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
 
 - **Settings "Harness roots" no longer show `/skills`.** The label showed the managed
   *skills* root (e.g. `~/.claude/skills`); it now shows the harness root the app writes into.
-  Done in the backend presenter (`skill_manager/application/settings/presenters.py`,
+  Done in the backend presenter (`harness_asset_manager/application/settings/presenters.py`,
   `_harness_root_display` → `managed_location.parent`). The kernel's real `managed_location`
   is unchanged (the skills adapter and tests depend on it).
   - Note: Codex's skills root is `~/.agents/skills`, so it displays as `~/.agents` (a shared
@@ -317,16 +317,16 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
   absolute (keys, matching, and the MCP config-choice round-trip are unaffected):
   - `frontend/src/lib/paths/` — `formatHomePath()` util (+ test), `useFormatPath()`/`useHomeDir()`,
     `HomeDirContext` + `HomeDirProvider` (mounted in `App.tsx`, inside QueryClientProvider).
-  - Home source: `homeDir` added to `GET /api/health` (`skill_manager/api/routers/health.py`).
+  - Home source: `homeDir` added to `GET /api/health` (`harness_asset_manager/api/routers/health.py`).
   - `useHomeDir` reads context (default `null`), so path-displaying components still render in
     tests without a QueryClient — paths just pass through unabbreviated.
 
-- **Hermes Agent added as a harness** (`skill_manager/harness/catalog.py`), CLI probe `hermes`,
+- **Hermes Agent added as a harness** (`harness_asset_manager/harness/catalog.py`), CLI probe `hermes`,
   root `~/.hermes`. It is **catalog-driven, so it flows app-wide**, not settings-only. Verified
   live: appears in Settings, Skills inventory/detail, MCP inventory columns, and slash targets.
   - Skills: `~/.hermes/skills` (env override `SKILL_MANAGER_HERMES_ROOT`).
   - MCP: `~/.hermes/mcp.json`, subtree `mcpServers`, codec `hermes`
-    (`HermesMapper(_TypedMcpServersMapper)` in `skill_manager/application/mcp/mappers.py`).
+    (`HermesMapper(_TypedMcpServersMapper)` in `harness_asset_manager/application/mcp/mappers.py`).
   - Slash: `~/.hermes/commands`, frontmatter Markdown. **Required extending the closed slash
     allowlist** — `SlashTargetId` Literal (backend `models.py` + `api/schemas/slash_commands.py`,
     frontend `api/types.ts`) and `TARGET_ORDER` in `slash_commands/targets.py`. This gap silently
@@ -344,7 +344,7 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
    harness-specific (each harness has its own event taxonomy + file shape) and Hermes' real
    schema is unknown. Reusing another harness's hook codec would write structurally-wrong config.
    **To finish:** obtain Hermes' actual hooks schema (event names, config file path, JSON/TOML
-   shape), then add a `HookMapper` in `skill_manager/application/hooks/mappers.py` + register it,
+   shape), then add a `HookMapper` in `harness_asset_manager/application/hooks/mappers.py` + register it,
    and add a `hooks` `ConfigSubtreeBindingProfile` to the Hermes entry in `catalog.py`.
 
 2. **Hermes MCP + slash conventions are UNVERIFIED assumptions.** `~/.hermes/mcp.json`

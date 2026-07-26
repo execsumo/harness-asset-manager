@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "skill-manager"
+name = "harness-asset-manager"
 dynamic = ["version"]
-description = "Local app and browser UI for universal skill management across agent harnesses."
+description = "Local app and browser UI for universal asset management across agent harnesses."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -31,24 +31,24 @@ build = [
 ]
 
 [project.scripts]
-skill-manager = "skill_manager.cli:main"
+harness-asset-manager = "harness_asset_manager.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mode-io/skill-manager"
-Repository = "https://github.com/mode-io/skill-manager"
-Issues = "https://github.com/mode-io/skill-manager/issues"
+Homepage = "https://github.com/execsumo/harness-asset-manager"
+Repository = "https://github.com/execsumo/harness-asset-manager"
+Issues = "https://github.com/execsumo/harness-asset-manager/issues"
 
 [tool.setuptools]
 license-files = ["LICENSE"]
 
 [tool.setuptools.dynamic]
-version = { attr = "skill_manager.__version__" }
+version = { attr = "harness_asset_manager.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["skill_manager*"]
+include = ["harness_asset_manager*"]
 
 [tool.setuptools.package-data]
-skill_manager = ["VERSION", "data/templates/*"]
+harness_asset_manager = ["VERSION", "data/templates/*"]
 
 # Static analysis -------------------------------------------------------------
 # Ruff is the backend lint gate (per RECOMMENDATIONS.md §1.2). We adopt the

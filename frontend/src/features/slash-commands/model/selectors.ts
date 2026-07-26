@@ -99,7 +99,7 @@ export function reviewActionTitle(action: SlashReviewAction): string {
   if (action === "restore_managed") return "Restore the managed command content to this harness";
   if (action === "adopt_target") return "Use this harness command as the managed command content";
   if (action === "remove_binding") return "Stop tracking this harness command without deleting it";
-  return "Adopt this command into Skill Manager";
+  return "Adopt this command into Harness Asset Manager";
 }
 
 export function reviewMetaText(row: SlashCommandReviewDto): string {

@@ -56,7 +56,7 @@ jobs:
 
       - name: Validate packaged binary
         run: |
-          VERSION="$(cat skill_manager/VERSION)"
+          VERSION="$(cat harness_asset_manager/VERSION)"
           ARTIFACT="$(find .artifacts/release -name '*${{ matrix.target }}.tar.gz' -print -quit)"
           python scripts/validate_release_artifact.py --artifact "$ARTIFACT" --version "$VERSION"
 
@@ -68,7 +68,7 @@ jobs:
       - name: Validate Homebrew formula install smoke
         if: matrix.homebrew
         run: |
-          VERSION="$(cat skill_manager/VERSION)"
+          VERSION="$(cat harness_asset_manager/VERSION)"
           ARTIFACT="$(find .artifacts/release -name '*${{ matrix.target }}.tar.gz' -print -quit)"
           bash scripts/validate_homebrew_formula.sh "$VERSION" "$ARTIFACT"
 
@@ -161,16 +161,16 @@ jobs:
             --arm64-sha256 "$ARM64_SHA" \
             --x64-url "$X64_URL" \
             --x64-sha256 "$X64_SHA" \
-            --output .artifacts/release/skill-manager.rb
+            --output .artifacts/release/harness-asset-manager.rb
 
       - name: Validate rendered Homebrew formula
-        run: ruby -c .artifacts/release/skill-manager.rb
+        run: ruby -c .artifacts/release/harness-asset-manager.rb
 
       - name: Upload Homebrew formula artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: homebrew-formula
-          path: .artifacts/release/skill-manager.rb
+          path: .artifacts/release/harness-asset-manager.rb
 
       - name: Validate Homebrew tap config
         env:
@@ -188,10 +188,10 @@ jobs:
           HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
         run: |
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" tap-repo
-          cp .artifacts/release/skill-manager.rb tap-repo/Formula/skill-manager.rb
+          cp .artifacts/release/harness-asset-manager.rb tap-repo/Formula/harness-asset-manager.rb
           cd tap-repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/skill-manager.rb
-          git commit -m "Update skill-manager formula for ${GITHUB_REF_NAME}" || exit 0
+          git add Formula/harness-asset-manager.rb
+          git commit -m "Update harness-asset-manager formula for ${GITHUB_REF_NAME}" || exit 0
           git push

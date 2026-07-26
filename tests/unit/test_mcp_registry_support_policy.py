@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp.marketplace.support_policy import (
+from harness_asset_manager.application.mcp.marketplace.support_policy import (
     supported_registry_entry,
 )
 

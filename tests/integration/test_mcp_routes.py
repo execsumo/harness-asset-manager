@@ -4,10 +4,10 @@ import json
 import unittest
 from pathlib import Path
 
-from skill_manager.application.mcp.availability import McpAvailabilityResult
-from skill_manager.application.mcp.stdio import parse_static_stdio_function
-from skill_manager.application.mcp.store import McpServerSpec, McpSource
-from skill_manager.errors import MutationError
+from harness_asset_manager.application.mcp.availability import McpAvailabilityResult
+from harness_asset_manager.application.mcp.stdio import parse_static_stdio_function
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
 
 
@@ -184,7 +184,7 @@ class McpRoutesTests(unittest.TestCase):
             detail = harness.get_json("/api/mcp/servers/exa")
             self.assertEqual(detail["enabledStatus"], "disabled")
 
-            # Installing from the marketplace only updates Skill Manager's manifest.
+            # Installing from the marketplace only updates Harness Asset Manager's manifest.
             self.assertFalse((harness.spec.home / ".cursor" / "mcp.json").exists())
             self.assertFalse((harness.spec.home / ".claude.json").exists())
             self.assertFalse((harness.spec.home / ".codex" / "config.toml").exists())
@@ -1091,7 +1091,7 @@ class McpRoutesTests(unittest.TestCase):
             self.assertEqual(result["server"]["url"], "https://claude.example")
 
     def test_adopt_silently_enriches_when_marketplace_match_exists(self) -> None:
-        from skill_manager.application.mcp.enrichment import MarketplaceLink
+        from harness_asset_manager.application.mcp.enrichment import MarketplaceLink
 
         with AppTestHarness() as harness:
             payload = {"command": "uvx", "args": ["context7-mcp"]}

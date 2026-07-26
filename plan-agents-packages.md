@@ -28,7 +28,7 @@ review of 2026-07-13. Goal: finish and test all stages today, credits permitting
 4. **Compiled artifacts carry provenance.** Every "hire" render embeds a header comment:
    source agent ref + content hash. Enables regeneration, clean removal, and drift
    detection (generalizing the existing "local changes detected" pattern).
-5. **Never overwrite user-owned files.** Cursor gets `.cursor/rules/skill-manager.<agent>.mdc`
+5. **Never overwrite user-owned files.** Cursor gets `.cursor/rules/harness-asset-manager.<agent>.mdc`
    (a dedicated generated file), never `.cursorrules`. Same principle per harness.
 6. **Capability-degradation report.** Compile output lists every constraint that was
    dropped or is advisory-only in the target harness (esp. tool deny-lists — these must be
@@ -68,7 +68,7 @@ Branch `feat/package-store` off `main`.
 
 Branch `feat/agents-family` off `main` (after Stage 1 merges).
 
-- New `FamilyKey` `"agents"` in `skill_manager/harness/contracts.py`; agent definitions
+- New `FamilyKey` `"agents"` in `harness_asset_manager/harness/contracts.py`; agent definitions
   are `agents/<slug>.md` in a package (frontmatter per RFC, minus hardcoded models).
 - Parser + store observations + inventory read model + API router (mirror the skills
   family shape: page response with harness columns/cells).
@@ -82,7 +82,7 @@ Branch `feat/agents-family` off `main` (after Stage 1 merges).
 
 Same branch or `feat/agent-compile-targets`.
 
-- Cursor (`.cursor/rules/skill-manager.<agent>.mdc`) and Codex compile targets.
+- Cursor (`.cursor/rules/harness-asset-manager.<agent>.mdc`) and Codex compile targets.
 - Per-harness capability support matrix; compile result returns the degradation report
   (decision 6); `dry_run` flag on the compile endpoint returning the artifact preview.
 

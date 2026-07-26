@@ -1,6 +1,6 @@
 # Security Policy
 
-`skill-manager` is a local-first tool that can read from and mutate local skill
+`harness-asset-manager` is a local-first tool that can read from and mutate local skill
 directories on your machine. If you believe you have found a security issue in
 the project, please report it privately.
 
@@ -15,7 +15,7 @@ Send reports to:
 When possible, include:
 
 - the affected version
-- how you installed or ran `skill-manager`
+- how you installed or ran `harness-asset-manager`
 - reproduction steps
 - the expected impact
 - logs, screenshots, or proof-of-concept details if relevant
@@ -30,13 +30,13 @@ Examples of issues that are in scope:
 - unintended local file mutation or deletion
 - unsafe path traversal or path resolution
 - install, update, or delete flows that can be abused unexpectedly
-- insecure handling of the local API/server state inside `skill-manager`
+- insecure handling of the local API/server state inside `harness-asset-manager`
 - packaging or release-artifact integrity issues in project-owned artifacts
 
 Examples of issues that are out of scope:
 
 - expected documented behavior of a local file-mutating tool
-- vulnerabilities in third-party harnesses unless `skill-manager` causes or
+- vulnerabilities in third-party harnesses unless `harness-asset-manager` causes or
   amplifies them
 - generic upstream GitHub, npm, or Homebrew issues not caused by this project
 - feature requests or general support questions

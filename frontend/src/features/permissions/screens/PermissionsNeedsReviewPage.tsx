@@ -123,7 +123,7 @@ export default function PermissionsNeedsReviewPage() {
       <div className="page-chrome">
         <PageHeader
           title="Permissions to review"
-          subtitle="Permission rules found in your harness configs that skill-manager does not yet track. Adopt the ones you want to manage centrally."
+          subtitle="Permission rules found in your harness configs that harness-asset-manager does not yet track. Adopt the ones you want to manage centrally."
           actions={
             <button
               type="button"
@@ -157,7 +157,7 @@ export default function PermissionsNeedsReviewPage() {
         <div className="empty-panel">
           <h3 className="empty-panel__title">No permissions need review</h3>
           <p className="empty-panel__body">
-            Your harness configs only reference permissions that skill-manager already tracks.
+            Your harness configs only reference permissions that harness-asset-manager already tracks.
           </p>
           <div className="empty-panel__actions">
             <Link to={permissionsRoutes.inUse} className="action-pill action-pill--md action-pill--accent">

@@ -4,10 +4,10 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from skill_manager.application.skills.manifest import (
+from harness_asset_manager.application.skills.manifest import (
     load_skill_store_manifest as load_manifest,
 )
-from skill_manager.application.skills.store import SkillStore
+from harness_asset_manager.application.skills.store import SkillStore
 from tests.support.fake_home import create_fake_home_spec, seed_skill_package
 
 

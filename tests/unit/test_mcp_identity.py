@@ -3,9 +3,9 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from skill_manager.application.mcp.contracts import McpHarnessScan, McpObservedEntry
-from skill_manager.application.mcp.identity import build_identity_plan
-from skill_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.mcp.contracts import McpHarnessScan, McpObservedEntry
+from harness_asset_manager.application.mcp.identity import build_identity_plan
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
 
 def _http_spec(name: str, url: str) -> McpServerSpec:

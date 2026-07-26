@@ -121,7 +121,7 @@ describe("McpConfigChoiceDialog", () => {
         id: "managed",
         sourceKind: "managed",
         observedHarness: null,
-        label: "Skill Manager Config",
+        label: "Harness Asset Manager Config",
         recommended: false,
       },
     ]);

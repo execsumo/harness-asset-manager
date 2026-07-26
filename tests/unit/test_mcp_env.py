@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from skill_manager.application.mcp.env import annotate_env, is_env_var_reference
+from harness_asset_manager.application.mcp.env import annotate_env, is_env_var_reference
 
 
 class IsEnvVarReferenceTests(unittest.TestCase):

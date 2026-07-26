@@ -18,7 +18,7 @@ def build_dist(root: Path) -> Path:
 
 class StaticFrontendTests(unittest.TestCase):
     def test_serves_index_and_assets_within_dist(self) -> None:
-        with TemporaryDirectory(prefix="skill-manager-static-") as temp_dir:
+        with TemporaryDirectory(prefix="harness-asset-manager-static-") as temp_dir:
             dist = build_dist(Path(temp_dir))
             with AppTestHarness(frontend_dist=dist) as harness:
                 index = urlopen(f"{harness.base_url}/").read().decode("utf-8")
@@ -28,7 +28,7 @@ class StaticFrontendTests(unittest.TestCase):
 
     def test_path_traversal_into_dist_sibling_is_not_served(self) -> None:
         """Regression: a sibling whose name extends ``dist`` passed the old startswith check."""
-        with TemporaryDirectory(prefix="skill-manager-static-") as temp_dir:
+        with TemporaryDirectory(prefix="harness-asset-manager-static-") as temp_dir:
             root = Path(temp_dir)
             dist = build_dist(root)
             secret_dir = root / "dist-secret"

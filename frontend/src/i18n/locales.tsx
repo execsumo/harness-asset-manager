@@ -11,7 +11,7 @@ import {
 export type Locale = "en" | "zh-CN";
 
 export const DEFAULT_LOCALE: Locale = "en";
-export const LOCALE_STORAGE_KEY = "skill-manager:locale";
+export const LOCALE_STORAGE_KEY = "harness-asset-manager:locale";
 
 export const SUPPORTED_LOCALES: readonly { value: Locale; label: string; nativeLabel: string }[] = [
   { value: "en", label: "English", nativeLabel: "English" },

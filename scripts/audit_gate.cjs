@@ -17,7 +17,7 @@ const ALLOWLIST = [
     package: "react-router",
     reason:
       "Affects only the unstable RSC / server-action code paths (patched in 8.3.0). " +
-      "skill-manager is a client-only SPA: react-router-dom in library mode, no SSR, " +
+      "harness-asset-manager is a client-only SPA: react-router-dom in library mode, no SSR, " +
       "no RSC, no framework mode. Re-check if the app adopts SSR/RSC or upgrades " +
       "react-router within the affected range.",
   },

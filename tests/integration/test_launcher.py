@@ -26,7 +26,7 @@ class LauncherTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "skill_manager",
+                    "harness_asset_manager",
                     "--port",
                     str(port),
                     "--no-open-browser",

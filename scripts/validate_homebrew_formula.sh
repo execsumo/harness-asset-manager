@@ -10,7 +10,7 @@ if [[ -z "$VERSION" || -z "$ARTIFACT_PATH" ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP_FORMULA="$(mktemp "${TMPDIR:-/tmp}/skill-manager-formula-XXXXXX.rb")"
+TMP_FORMULA="$(mktemp "${TMPDIR:-/tmp}/harness-asset-manager-formula-XXXXXX.rb")"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 ARTIFACT_PATH="$("$PYTHON_BIN" -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$ARTIFACT_PATH")"
 
@@ -29,9 +29,9 @@ if [[ -z "$BREW_BIN" ]]; then
 fi
 
 BREW_REPO="$("$BREW_BIN" --repository)"
-TAP_NAME="local/skill-manager-smoke"
-TAP_DIR="$BREW_REPO/Library/Taps/local/homebrew-skill-manager-smoke"
-FORMULA_NAME="skill-manager"
+TAP_NAME="local/harness-asset-manager-smoke"
+TAP_DIR="$BREW_REPO/Library/Taps/local/homebrew-harness-asset-manager-smoke"
+FORMULA_NAME="harness-asset-manager"
 OFFICIAL_TAP="mode-io/tap"
 OFFICIAL_TAP_WAS_PRESENT=0
 if "$BREW_BIN" tap | grep -Fxq "$OFFICIAL_TAP"; then
@@ -41,7 +41,7 @@ fi
 cleanup() {
   rm -f "$TMP_FORMULA"
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force "$TAP_NAME/$FORMULA_NAME" >/dev/null 2>&1 || true
-  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force skill-manager >/dev/null 2>&1 || true
+  HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force harness-asset-manager >/dev/null 2>&1 || true
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" untap "$TAP_NAME" >/dev/null 2>&1 || true
   rm -rf "$TAP_DIR"
   if [[ "$OFFICIAL_TAP_WAS_PRESENT" == "1" ]]; then
@@ -60,10 +60,10 @@ trap cleanup EXIT
 
 ruby -c "$TMP_FORMULA" >/dev/null
 grep -q 'license "MIT"' "$TMP_FORMULA"
-grep -q 'staged_root = (buildpath/"skill-manager").directory? ? buildpath/"skill-manager" : buildpath' "$TMP_FORMULA"
-grep -q 'bin.install_symlink libexec/"skill-manager" => "skill-manager"' "$TMP_FORMULA"
+grep -q 'staged_root = (buildpath/"harness-asset-manager").directory? ? buildpath/"harness-asset-manager" : buildpath' "$TMP_FORMULA"
+grep -q 'bin.install_symlink libexec/"harness-asset-manager" => "harness-asset-manager"' "$TMP_FORMULA"
 
-HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force skill-manager >/dev/null 2>&1 || true
+HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force harness-asset-manager >/dev/null 2>&1 || true
 if [[ "$OFFICIAL_TAP_WAS_PRESENT" == "1" ]]; then
   HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" untap "$OFFICIAL_TAP" >/dev/null 2>&1 || true
 fi
@@ -76,12 +76,12 @@ HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" install "$TA
 BREW_PREFIX="$("$BREW_BIN" --prefix)"
 export PATH="$BREW_PREFIX/bin:$PATH"
 INSTALLED_PREFIX="$("$BREW_BIN" --prefix "$FORMULA_NAME")"
-ACTUAL_BIN="$(command -v skill-manager)"
+ACTUAL_BIN="$(command -v harness-asset-manager)"
 
 [[ -n "$ACTUAL_BIN" ]]
-[[ "$ACTUAL_BIN" == "$BREW_PREFIX/bin/skill-manager" ]]
-[[ -x "$INSTALLED_PREFIX/bin/skill-manager" ]]
-[[ -x "$INSTALLED_PREFIX/libexec/skill-manager" ]]
+[[ "$ACTUAL_BIN" == "$BREW_PREFIX/bin/harness-asset-manager" ]]
+[[ -x "$INSTALLED_PREFIX/bin/harness-asset-manager" ]]
+[[ -x "$INSTALLED_PREFIX/libexec/harness-asset-manager" ]]
 
-VERSION_OUTPUT="$("$INSTALLED_PREFIX/bin/skill-manager" --version)"
-[[ "$VERSION_OUTPUT" == "skill-manager $VERSION" ]]
+VERSION_OUTPUT="$("$INSTALLED_PREFIX/bin/harness-asset-manager" --version)"
+[[ "$VERSION_OUTPUT" == "harness-asset-manager $VERSION" ]]

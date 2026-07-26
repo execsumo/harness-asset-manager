@@ -225,10 +225,10 @@ describe("SlashCommandsReviewPage", () => {
     expectLegacyTargetLanguageAbsent(dialog);
     expect(within(dialog).queryByText("Parsed command")).not.toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Locations" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Skill Manager source" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Harness Asset Manager source" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Harness command" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Harnesses" })).toBeInTheDocument();
-    expectHeadingOrder(dialog, "Skill Manager source", "Harnesses");
+    expectHeadingOrder(dialog, "Harness Asset Manager source", "Harnesses");
     expectHeadingOrder(dialog, "Harness command", "Harnesses");
     expectHeadingOrder(dialog, "Harnesses", "Locations");
     const harnesses = getDetailSection(dialog, "Harnesses");
@@ -289,9 +289,9 @@ describe("SlashCommandsReviewPage", () => {
     expectLegacyTargetLanguageAbsent(dialog);
     expect(within(dialog).queryByText("Parsed command")).not.toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Locations" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Skill Manager source" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Harness Asset Manager source" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Harnesses" })).toBeInTheDocument();
-    expectHeadingOrder(dialog, "Skill Manager source", "Harnesses");
+    expectHeadingOrder(dialog, "Harness Asset Manager source", "Harnesses");
     expectHeadingOrder(dialog, "Harnesses", "Locations");
     const harnesses = getDetailSection(dialog, "Harnesses");
     expect(within(harnesses).getByText("Missing from harness")).toBeInTheDocument();
@@ -346,11 +346,11 @@ describe("SlashCommandsReviewPage", () => {
     expect(within(dialog).getByText(/already uses this name/i)).toBeInTheDocument();
     expectLegacyTargetLanguageAbsent(dialog);
     expect(within(dialog).queryByText("Parsed command")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Skill Manager source" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Harness Asset Manager source" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Harness command" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Locations" })).toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Harnesses" })).toBeInTheDocument();
-    expectHeadingOrder(dialog, "Skill Manager source", "Harnesses");
+    expectHeadingOrder(dialog, "Harness Asset Manager source", "Harnesses");
     expectHeadingOrder(dialog, "Harness command", "Harnesses");
     expectHeadingOrder(dialog, "Harnesses", "Locations");
     const harnesses = getDetailSection(dialog, "Harnesses");
@@ -421,8 +421,8 @@ function slashCommandsPayload({
   }>;
 } = {}) {
   return {
-    storePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/commands",
-    syncStatePath: "/tmp/home/Library/Application Support/skill-manager/slash-commands/sync-state.json",
+    storePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/commands",
+    syncStatePath: "/tmp/home/Library/Application Support/harness-asset-manager/slash-commands/sync-state.json",
     targets,
     defaultTargets: [],
     commands,

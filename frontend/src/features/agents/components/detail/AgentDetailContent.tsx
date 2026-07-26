@@ -114,7 +114,7 @@ export function AgentDetailContent({
 
           {detail.configuration.length > 0 ? (
             <DetailSection heading="Configuration">
-              {/* Frontmatter Skill Manager does not interpret, shown verbatim so a
+              {/* Frontmatter Harness Asset Manager does not interpret, shown verbatim so a
                   harness's own settings are visible rather than invisible-and-fragile. */}
               <dl className="agent-detail__config">
                 {detail.configuration.map(({ key, value }) => (
@@ -187,7 +187,7 @@ export function AgentDetailContent({
             <div className="skill-detail__locations">
               <article className="skill-detail__location">
                 <div className="skill-detail__location-header">
-                  <strong>Skill Manager's copy</strong>
+                  <strong>Harness Asset Manager's copy</strong>
                 </div>
                 <p className="skill-detail__location-path">{formatPath(detail.storePath)}</p>
               </article>

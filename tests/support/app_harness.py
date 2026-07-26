@@ -9,13 +9,13 @@ from tempfile import TemporaryDirectory
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from skill_manager.application import build_backend_container
-from skill_manager.application.cli_marketplace import CliMarketplaceCatalog
-from skill_manager.application.mcp.availability import McpAvailabilityResult
-from skill_manager.application.mcp.marketplace import McpMarketplaceCatalog
-from skill_manager.application.skills.marketplace import MarketplaceCatalog
-from skill_manager.application.skills.source_fetch import SourceFetchService
-from skill_manager.runtime.server import serve_in_thread
+from harness_asset_manager.application import build_backend_container
+from harness_asset_manager.application.cli_marketplace import CliMarketplaceCatalog
+from harness_asset_manager.application.mcp.availability import McpAvailabilityResult
+from harness_asset_manager.application.mcp.marketplace import McpMarketplaceCatalog
+from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog
+from harness_asset_manager.application.skills.source_fetch import SourceFetchService
+from harness_asset_manager.runtime.server import serve_in_thread
 
 from .fake_home import FakeHomeSpec, create_fake_home_spec, seed_mixed_fixture
 
@@ -71,7 +71,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         source_fetcher: SourceFetchService | None = None,
         allow_remote: bool = False,
     ) -> None:
-        self._tempdir = TemporaryDirectory(prefix="skill-manager-tests-")
+        self._tempdir = TemporaryDirectory(prefix="harness-asset-manager-tests-")
         self.spec = create_fake_home_spec(Path(self._tempdir.name), seed_openclaw_state=seed_openclaw)
         if mixed and fixture_factory is not None:
             raise ValueError("pass either mixed=True or fixture_factory, not both")

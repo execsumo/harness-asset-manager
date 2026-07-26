@@ -292,7 +292,7 @@ export default function SkillsNeedsReviewPage() {
                         disabled={actionDisabled}
                         title={
                           row.actions.canManage
-                            ? "Add this skill to Skill Manager"
+                            ? "Add this skill to Harness Asset Manager"
                             : "This skill cannot be adopted automatically"
                         }
                         onClick={() => void onManageSkill(row.skillRef)}
