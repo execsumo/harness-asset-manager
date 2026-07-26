@@ -5,8 +5,13 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harness_asset_manager.application.permissions.adapters import FileBackedPermissionsAdapter
-from harness_asset_manager.application.permissions.store import PermissionSpec, PermissionStore
+from harness_asset_manager.application.permissions.adapters import (
+    FileBackedPermissionsAdapter,
+)
+from harness_asset_manager.application.permissions.store import (
+    PermissionSpec,
+    PermissionStore,
+)
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 

@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from harness_asset_manager.harness.contracts import CommandFileRenderFormat, CommandFileScope
+from harness_asset_manager.harness.contracts import (
+    CommandFileRenderFormat,
+    CommandFileScope,
+)
 
 SlashTargetId = Literal["claude", "codex", "cursor", "opencode", "hermes"]
 SlashSyncStatus = Literal[

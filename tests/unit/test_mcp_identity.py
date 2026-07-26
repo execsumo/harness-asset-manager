@@ -3,7 +3,10 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from harness_asset_manager.application.mcp.contracts import McpHarnessScan, McpObservedEntry
+from harness_asset_manager.application.mcp.contracts import (
+    McpHarnessScan,
+    McpObservedEntry,
+)
 from harness_asset_manager.application.mcp.identity import build_identity_plan
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
