@@ -2,6 +2,30 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-25 — Plan: User-Level Native Config Snapshot Service
+
+**Goal**: Implement a snapshot & backup service for user-level native harness configuration files, storing canonical copies and backups under `~/.harness-asset-manager/configs/<harness_id>/`.
+
+- **Storage Location**: `~/.harness-asset-manager/configs/<harness_id>/`
+- **Target Harness Config Matrix**:
+  - `claude`: `~/.claude.json`, `~/.claude/settings.json`
+  - `codex`: `~/.codex/config.toml`
+  - `agy`: `~/.gemini/antigravity-cli/settings.json`, `~/.gemini/antigravity-cli/mcp_config.json`, `~/.gemini/config/mcp_config.json`, `~/.gemini/config/hooks.json`
+  - `cursor`: `~/.cursor/mcp.json`, `~/.cursor/hooks.json`
+  - `opencode`: `~/.opencode/opencode.jsonc` (or `~/.config/opencode/opencode.json`)
+  - `hermes`: `~/.hermes/config.yaml`
+  - `openclaw`: `~/.openclaw/openclaw.json`
+- **Triggers**:
+  1. *Pre-Write / Pre-Sync*: Automatically take a snapshot immediately before HAM mutates a harness config.
+  2. *Webapp Launch / Inventory Scan*: Hash-check existing native files vs latest snapshot; capture if external edits occurred.
+  3. *On-Demand*: CLI (`ham snapshot`) or Web GUI manual trigger.
+- **Safety & Storage Policy**:
+  - SHA-256 hash deduplication (prevent duplicate snapshot writes).
+  - Secret redaction pipeline (redacting API keys, bearer tokens, OAuth secrets prior to export/backup).
+  - Preserves real files in harness home folders to avoid atomic `rename()` symlink severing.
+
+---
+
 ## 2026-07-25 — Unforking, Project Rename, Sidebar Simplification & Denylist-ONLY Permission Model
 
 All work landed cleanly on `main` at `execsumo/harness-asset-manager`.

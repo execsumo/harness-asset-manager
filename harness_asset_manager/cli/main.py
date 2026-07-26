@@ -27,7 +27,7 @@ from harness_asset_manager.runtime.state import (
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-COMMANDS = {"serve", "start", "stop", "status"}
+COMMANDS = {"serve", "start", "stop", "status", "snapshot"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,6 +49,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     status_parser = subparsers.add_parser("status", help="Show status for the managed background instance.")
     status_parser.add_argument("--state-dir", help="Override the runtime state directory.")
+
+    snapshot_parser = subparsers.add_parser("snapshot", help="Capture snapshots of all user-level native harness configs.")
 
     return parser
 
@@ -96,7 +98,28 @@ def main(argv: list[str] | None = None) -> int:
         return stop_command(args)
     if args.command == "status":
         return status_command(args)
+    if args.command == "snapshot":
+        return snapshot_command(args)
     return serve_command(args)
+
+
+def snapshot_command(args: argparse.Namespace) -> int:
+    from harness_asset_manager.application.container import build_backend_container
+    from harness_asset_manager.paths import resolve_app_paths
+
+    paths = resolve_app_paths()
+    container = build_backend_container()
+    targets = container.config_snapshots.resolve_target_configs()
+    captured = []
+    for target in targets:
+        s = container.config_snapshots.capture_snapshot(target, trigger="manual", force=True)
+        if s:
+            captured.append(s)
+
+    print(f"Captured {len(captured)} harness config snapshots under {paths.configs_dir}:")
+    for s in captured:
+        print(f"  - [{s.harness}] {s.config_name} -> {s.snapshot_path.name}")
+    return 0
 
 
 def guard_remote_host(args: argparse.Namespace) -> int | None:
