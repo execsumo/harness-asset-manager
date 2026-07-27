@@ -105,6 +105,14 @@ HAM uses local-first package-based storage:
 ```
 ~/.harness-asset-manager/ (macOS) or $XDG_DATA_HOME/harness-asset-manager/ (Linux)
 ├── settings.json                       # Global settings & enabled harness toggles
+├── configs/                            # Canonical native harness config baselines & snapshots
+│   ├── claude/                         # .claude.json, settings.json
+│   ├── codex/                          # config.toml
+│   ├── agy/                            # mcp_config.json, settings.json, hooks.json
+│   ├── cursor/                         # mcp.json, hooks.json
+│   ├── opencode/                       # opencode.jsonc
+│   ├── hermes/                         # config.yaml
+│   └── openclaw/                       # openclaw.json
 ├── permissions/
 │   └── manifest.json                   # Denylist permissions manifest
 ├── mcp/
@@ -120,6 +128,12 @@ HAM uses local-first package-based storage:
         ├── skills/                     # Local skills store
         └── agents/                     # Local agent markdown definitions
 ```
+
+### Native Config Snapshot Service
+HAM captures canonical baselines and timestamped snapshots of user-level native harness config files under `configs/<harness_id>/`.
+- **Triggers**: Pre-write (prior to HAM edits), External drift (detected via SHA-256 hash checks on startup), and Manual (`ham snapshot` CLI / Web UI).
+- **Safety**: SHA-256 deduplication avoids storage bloat; automatic secret redaction masks API keys and tokens prior to export.
+- **Atomic-Save Immunity**: Real files in native harness homes are preserved to prevent atomic `rename()` operations from severing file symlinks.
 
 All file mutations use atomic writes (`atomic_write_text`) with flock file locks to ensure zero data corruption during concurrent operations.
 

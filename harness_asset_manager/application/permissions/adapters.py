@@ -207,7 +207,9 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
     def has_binding(self, id: str) -> bool:
         specs = ()
         try:
-            from harness_asset_manager.application.permissions.store import PermissionStore
+            from harness_asset_manager.application.permissions.store import (
+                PermissionStore,
+            )
             from harness_asset_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = PermissionStore(app_paths.permissions_store_manifest)
@@ -282,7 +284,9 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
 
     def _get_managed_pattern(self, id: str) -> str | None:
         try:
-            from harness_asset_manager.application.permissions.store import PermissionStore
+            from harness_asset_manager.application.permissions.store import (
+                PermissionStore,
+            )
             from harness_asset_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = PermissionStore(app_paths.permissions_store_manifest)
