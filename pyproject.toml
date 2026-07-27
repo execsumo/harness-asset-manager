@@ -22,7 +22,7 @@ dependencies = [
   "tomli-w>=1.2,<2",
   "ruamel.yaml>=0.18,<0.19",
   "uvicorn>=0.44,<0.45",
-  "certifi>=2024.8.30,<2026",
+  "certifi>=2024.8.30,<2027",
 ]
 
 [project.optional-dependencies]
