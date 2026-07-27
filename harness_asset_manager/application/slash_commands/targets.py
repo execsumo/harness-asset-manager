@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import cast
 
-from harness_asset_manager.harness import CommandFileBindingProfile, HarnessKernelService
+from harness_asset_manager.harness import (
+    CommandFileBindingProfile,
+    HarnessKernelService,
+)
 
 from .models import SlashTarget, SlashTargetId
 

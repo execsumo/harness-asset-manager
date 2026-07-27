@@ -9,7 +9,11 @@ from tempfile import TemporaryDirectory
 from ruamel.yaml import YAML
 
 from harness_asset_manager.application.mcp import FileBackedMcpAdapter
-from harness_asset_manager.application.mcp.store import McpServerSpec, McpServerStore, McpSource
+from harness_asset_manager.application.mcp.store import (
+    McpServerSpec,
+    McpServerStore,
+    McpSource,
+)
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 

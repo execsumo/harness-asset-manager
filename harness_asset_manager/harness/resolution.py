@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness_asset_manager.platform_context import PlatformName, resolve_platform_context
+from harness_asset_manager.platform_context import (
+    PlatformName,
+    resolve_platform_context,
+)
 
 
 @dataclass(frozen=True)

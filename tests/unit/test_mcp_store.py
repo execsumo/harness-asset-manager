@@ -9,7 +9,11 @@ from harness_asset_manager.application.mcp.install_intent import (
     ManagedMcpRecord,
     RegistryInstallIntent,
 )
-from harness_asset_manager.application.mcp.store import McpServerSpec, McpServerStore, McpSource
+from harness_asset_manager.application.mcp.store import (
+    McpServerSpec,
+    McpServerStore,
+    McpSource,
+)
 
 
 def _spec(name: str = "exa", **overrides) -> McpServerSpec:

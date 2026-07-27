@@ -17,6 +17,7 @@ from .agents import (
     resolve_agent_targets,
 )
 from .cli_marketplace import CliMarketplaceCatalog
+from .config_snapshots import ConfigSnapshotService
 from .hooks import (
     HooksMutationService,
     HooksQueryService,
@@ -105,6 +106,7 @@ class BackendContainer:
     agents_store: AgentStore
     agents_inventory: AgentInventoryService
     agents_mutations: AgentMutationService
+    config_snapshots: ConfigSnapshotService
     app_home: Path
 
 
@@ -303,6 +305,9 @@ def build_backend_container(
     agents_inventory = AgentInventoryService(agents_store, resolve_agents_snapshot)
     agents_mutations = AgentMutationService(agents_store, resolve_agents_snapshot)
 
+    config_snapshots = ConfigSnapshotService(paths)
+    config_snapshots.capture_all_external_changes()
+
     return BackendContainer(
         paths=paths,
         harness_kernel=harness_kernel,
@@ -342,5 +347,6 @@ def build_backend_container(
         agents_store=agents_store,
         agents_inventory=agents_inventory,
         agents_mutations=agents_mutations,
+        config_snapshots=config_snapshots,
         app_home=app_home,
     )

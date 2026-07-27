@@ -6,13 +6,6 @@ import type {
 } from "../api/management-types";
 import { permissionsCopy, type PermissionsCopy } from "../i18n";
 
-export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted";
-
-export interface PermissionsInUseFilters {
-  search: string;
-  pill: InUsePillValue;
-}
-
 export type PermissionsMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
 
 export interface PermissionsMatrixCellModel {
@@ -59,62 +52,71 @@ function matchesSearch(entry: PermissionInventoryEntryDto, query: string): boole
   return false;
 }
 
-export function filterPermissionsInUse(
+export type PermissionsDecisionFilter = "all" | "allow" | "ask" | "deny";
+export type PermissionsStatusFilter = "all" | "applied" | "not-applied" | "differs" | "untracked";
+
+export interface PermissionsFilters {
+  search: string;
+  decision: PermissionsDecisionFilter;
+  status: PermissionsStatusFilter;
+}
+
+function matchesStatus(
+  entry: PermissionInventoryEntryDto,
+  status: PermissionsStatusFilter,
+  addressable: ReadonlySet<string>,
+): boolean {
+  if (status === "untracked") return entry.kind === "unmanaged";
+  if (status === "all") return true;
+  // Remaining statuses describe managed (tracked) rules only.
+  if (entry.kind !== "managed") return false;
+  const enabledCount = inUseBindingCount(entry, addressable);
+  const drift = hasDrift(entry, addressable);
+  switch (status) {
+    case "applied":
+      return enabledCount > 0;
+    case "not-applied":
+      return enabledCount === 0 && !drift;
+    case "differs":
+      return drift;
+    default:
+      return true;
+  }
+}
+
+/** Unified inventory filter: managed and unmanaged rules in one list. */
+export function filterPermissions(
   inventory: PermissionInventoryDto | null,
-  filters: PermissionsInUseFilters,
+  filters: PermissionsFilters,
 ): PermissionInventoryEntryDto[] {
   if (!inventory) return [];
   const addressable = addressableHarnesses(inventory);
-  const harnessCount = addressable.size;
+  const needle = filters.search.trim();
   return inventory.entries.filter((entry) => {
-    if (entry.kind !== "managed") return false;
-    if (!matchesSearch(entry, filters.search.trim())) return false;
-    const enabledCount = inUseBindingCount(entry, addressable);
-    switch (filters.pill) {
-      case "all":
-        return true;
-      case "enabled":
-        return enabledCount > 0;
-      case "all-harnesses":
-        return harnessCount > 0 && enabledCount === harnessCount;
-      case "unbound":
-        return enabledCount === 0 && !hasDrift(entry, addressable);
-      case "drifted":
-        return hasDrift(entry, addressable);
-      default:
-        return true;
-    }
+    if (!matchesSearch(entry, needle)) return false;
+    if (filters.decision !== "all" && entry.spec?.decision !== filters.decision) return false;
+    if (!matchesStatus(entry, filters.status, addressable)) return false;
+    return true;
   });
 }
 
-export function filterPermissionsNeedsReview(
-  inventory: PermissionInventoryDto | null,
-  search = "",
-): PermissionInventoryEntryDto[] {
-  if (!inventory) return [];
-  const needle = search.trim();
-  return inventory.entries.filter(
-    (entry) => entry.kind === "unmanaged" && matchesSearch(entry, needle),
-  );
+export interface PermissionsInventorySummary {
+  total: number;
+  tracked: number;
+  untracked: number;
+  differs: number;
 }
 
-export function pillCounts(inventory: PermissionInventoryDto | null): Record<InUsePillValue, number> {
-  if (!inventory) {
-    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0 };
-  }
+/** Counts for the page header / sidebar badge. "Attention" = untracked + drifted. */
+export function permissionsSummary(inventory: PermissionInventoryDto | null): PermissionsInventorySummary {
+  if (!inventory) return { total: 0, tracked: 0, untracked: 0, differs: 0 };
   const addressable = addressableHarnesses(inventory);
-  const harnessCount = addressable.size;
-  const inUseEntries = inventory.entries.filter((e) => e.kind === "managed");
+  const tracked = inventory.entries.filter((e) => e.kind === "managed");
   return {
-    all: inUseEntries.length,
-    enabled: inUseEntries.filter((e) => inUseBindingCount(e, addressable) > 0).length,
-    "all-harnesses": inUseEntries.filter(
-      (e) => harnessCount > 0 && inUseBindingCount(e, addressable) === harnessCount,
-    ).length,
-    unbound: inUseEntries.filter(
-      (e) => inUseBindingCount(e, addressable) === 0 && !hasDrift(e, addressable),
-    ).length,
-    drifted: inUseEntries.filter((entry) => hasDrift(entry, addressable)).length,
+    total: inventory.entries.length,
+    tracked: tracked.length,
+    untracked: inventory.entries.filter((e) => e.kind === "unmanaged").length,
+    differs: tracked.filter((e) => hasDrift(e, addressable)).length,
   };
 }
 
