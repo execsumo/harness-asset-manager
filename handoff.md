@@ -2,6 +2,60 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-26 — TODO: retire the `~/.skill-manager` data dir (stale slug, and it is unversioned)
+
+**Not started.** Filed from a vibebox session that tripped over the live symlink chain. Nothing
+here has been changed — this is a note, not a shipped change.
+
+The project rename to `harness-asset-manager` landed in the code (`APP_NAME` in
+`harness_asset_manager/paths.py`, `pyproject.toml`, package dir), but the on-disk state did not
+follow it cleanly. There are now **two data dirs**, and the one the code resolves to is not the
+one that is actually being loaded:
+
+| Path | State |
+|---|---|
+| `~/.harness-asset-manager/` | What `_base_dirs()` resolves to today (macOS: `~/.{APP_NAME}`, since no `~/Library/Application Support/harness-asset-manager` exists). `skills/` is **empty**. |
+| `~/.skill-manager/` | Legacy dir. Holds the skills that are actually live, in the pre-package `shared/` layout, plus a partial `skills/` migration and a stale `.migration.lock` (2026-07-24). |
+
+The live chain, which is what makes this load-bearing:
+
+```
+~/.claude/skills  ->  ~/.dotfiles/.claude/skills/   (real dir, tracked in the dotfiles repo)
+    compress-text, delegate, distill-decision  ->  ~/.skill-manager/shared/<name>
+    distill-function, dossier-delegate, herdr-orchestration, seen   (still real dirs)
+```
+
+So Claude Code loads three skills out of `~/.skill-manager/shared/`, which the renamed code no
+longer points at.
+
+**Two problems, in priority order.**
+
+1. **`~/.skill-manager/` is not a git repo and has no remote.** It is the only copy of those three
+   skills. Worse, because the dotfiles repo tracked them as regular files before they were
+   replaced by symlinks, both `~/.dotfiles` and `~/.claude` currently show them as *deleted* — so
+   a routine "commit and push my config" would record their deletion and propagate it to every
+   other machine, where the symlink targets do not exist. Get the dot folder under version
+   control before anything else.
+
+2. **The slug is stale.** `~/.skill-manager` should be `~/.harness-asset-manager`. Note the env
+   var names are stale in the same way and were missed by the rename:
+   `SKILL_MANAGER_SETTINGS_PATH` and `SKILL_MANAGER_STATE_DIR` (`paths.py:11-12`), plus
+   `skill-manager.db*` inside the legacy dir.
+
+**Suggested order when picking this up:**
+
+1. Put `~/.skill-manager/` under git (or copy it somewhere backed up) — it is the single point of
+   failure and everything below can destroy it.
+2. Decide which dir wins. `~/.harness-asset-manager/` matches the code but is empty;
+   `~/.skill-manager/` has the data in a legacy layout. Migrating the data across, then letting
+   `container.py`'s `shared/` → `skills/` migration run, is likelier to be right than repointing
+   the code backwards.
+3. Clear the stale `.migration.lock` in whichever dir survives — it has been sitting since
+   2026-07-24 and will suppress the migration path in `container.py`.
+4. Rename the `SKILL_MANAGER_*` env vars, keeping the old names as fallbacks for one release.
+5. Only then resolve the dotfiles/`~/.claude` git state, so the deletions get recorded
+   deliberately (as a move to symlinks) rather than as data loss.
+
 ## 2026-07-25 — User-Level Native Config Snapshot Service & Web UI Controls
 
 **Shipped on `main`**. All backend services, CLI commands, Web UI controls, unit/integration tests, and documentation are complete.
