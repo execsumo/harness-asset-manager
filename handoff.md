@@ -2,6 +2,58 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-27 — TODO: two dependabot PRs blocked, need real fixes (#11, #14)
+
+**Not started.** Filed after a session that synced/merged 15 of 17 open dependabot PRs into
+`main`. These 2 are the ones deliberately left open — both need a person (or a dedicated session)
+to actually fix something, not just a rebase.
+
+### #11 — testing group bump breaks a real test
+
+<https://github.com/execsumo/harness-asset-manager/pull/11> bumps `@testing-library/jest-dom`
+6.9.1→7.0.0, `jsdom`, and `vitest` together. `frontend-validate` fails on a genuine assertion, not
+an install/environment error:
+
+```
+TestingLibraryElementError: Unable to find role="button" and name "Skills 13"
+```
+in `frontend/src/App.test.tsx`. 264/265 other frontend tests still pass, so this is narrow.
+
+Prime suspect: jest-dom 7.0.0's release notes list a breaking change —
+`@testing-library/dom` is now a **required peer dependency** (previously transitive/optional).
+If it's missing or resolves to a mismatched version after the bump, matcher/query behavior can
+shift. Check `package.json`/`package-lock.json` for `@testing-library/dom`'s resolved version
+after this bump lands, and check whether "Skills 13" (a count-suffixed button label) is coming
+from a selector that jsdom/vitest's updated timing now races.
+
+**Next steps:** `npm install` this branch locally, run `npm test -- App.test.tsx` and read the
+actual DOM dump in the failure output (truncated in the CI log this session used) to see what's
+rendered instead of "Skills 13". Don't merge until the assertion passes for a real reason, not a
+loosened selector.
+
+### #14 — typescript major bump blocked by a peer dependency
+
+<https://github.com/execsumo/harness-asset-manager/pull/14> bumps `typescript` 5.9.3→7.0.2
+(skips 6 entirely). `npm ci` fails outright:
+
+```
+npm error ERESOLVE could not resolve
+npm error While resolving: openapi-typescript@7.13.0
+npm error Found: typescript@7.0.2
+npm error peer typescript@"^5.x" from openapi-typescript@7.13.0
+```
+
+`openapi-typescript` (used by `npm run codegen:openapi` to generate `frontend/src/api/generated.ts`
+from the backend's OpenAPI schema) hasn't declared TS7 support yet. Two ways forward:
+
+1. Check if `openapi-typescript` has shipped a newer release with a `typescript@^7` peer range by
+   the time this is picked up — if so, bump that dependency first, then retry #14.
+2. If not, this stays blocked upstream; don't force it with `--legacy-peer-deps` or similar, since
+   that risks silently broken codegen rather than a loud install failure.
+
+**Next steps:** check `npm view openapi-typescript versions` / its changelog for TS7 support
+before touching this PR again.
+
 ## 2026-07-26 — TODO: retire the `~/.skill-manager` data dir (stale slug, and it is unversioned)
 
 **Not started.** Filed from a vibebox session that tripped over the live symlink chain. Nothing
