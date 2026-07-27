@@ -172,6 +172,7 @@ class PermissionStore:
             )
         records = []
         issues: list[PermissionManifestIssue] = []
+        had_legacy_non_deny = False
         for item in raw_entries:
             if not isinstance(item, dict):
                 issues.append(PermissionManifestIssue(name="<unknown>", reason="permission entry must be an object"))
@@ -179,12 +180,23 @@ class PermissionStore:
             id_ = str(item.get("id", "<unknown>"))
             try:
                 record = PermissionSpec.from_dict(item)
-                records.append(record)
+                if record.decision == "deny":
+                    records.append(record)
+                else:
+                    had_legacy_non_deny = True
             except (KeyError, TypeError, ValueError) as error:
                 issues.append(PermissionManifestIssue(name=id_, reason=str(error) or error.__class__.__name__))
                 continue
+
+        manifest = PermissionManagedManifest(entries=tuple(records))
+        if had_legacy_non_deny and self.manifest_path.is_file():
+            try:
+                write_permissions_manifest(self.manifest_path, manifest)
+            except Exception:
+                pass
+
         return _ManifestLoadResult(
-            PermissionManagedManifest(entries=tuple(records)),
+            manifest,
             issues=tuple(issues),
         )
 

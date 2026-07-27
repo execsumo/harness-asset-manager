@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import { queryPolicy } from "../../lib/query";
 import { invalidateMcpQueries } from "../mcp/public";
 import { invalidateSkillsQueries } from "../skills/public";
-import { fetchSettings, updateHarnessSupport } from "./api/client";
+import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
 const SETTINGS_STALE_TIME_MS = 60_000;
@@ -12,6 +12,7 @@ const SETTINGS_GC_TIME_MS = 15 * 60_000;
 export const settingsKeys = {
   all: ["settings"] as const,
   detail: () => ["settings", "detail"] as const,
+  snapshots: (harness?: string) => ["settings", "snapshots", harness ?? "all"] as const,
 };
 
 export function useSettingsQuery() {
@@ -19,6 +20,24 @@ export function useSettingsQuery() {
     queryKey: settingsKeys.detail(),
     queryFn: fetchSettings,
     ...queryPolicy(SETTINGS_STALE_TIME_MS, SETTINGS_GC_TIME_MS),
+  });
+}
+
+export function useConfigSnapshotsQuery(harness?: string) {
+  return useQuery({
+    queryKey: settingsKeys.snapshots(harness),
+    queryFn: () => fetchConfigSnapshots(harness),
+    ...queryPolicy(10_000, 60_000),
+  });
+}
+
+export function useTriggerConfigSnapshotMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: triggerConfigSnapshot,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["settings", "snapshots"] });
+    },
   });
 }
 
