@@ -22,6 +22,8 @@ export type {
 export { isPermissionsHarnessAddressable } from "./model/selectors";
 
 export const permissionsRoutes = {
-  inUse: "/permissions/use",
-  needsReview: "/permissions/review",
+  index: "/permissions",
+  // Legacy paths kept as redirect sources; both now resolve to the unified inventory.
+  inUse: "/permissions",
+  needsReview: "/permissions",
 } as const;

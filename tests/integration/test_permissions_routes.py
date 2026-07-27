@@ -27,7 +27,7 @@ class PermissionRoutesTests(unittest.TestCase):
                 "/api/permissions",
                 {
                     "id": "my-perm",
-                    "decision": "allow",
+                    "decision": "deny",
                     "scope": "shell",
                     "pattern": "git push",
                     "description": "Say hello",
@@ -35,7 +35,7 @@ class PermissionRoutesTests(unittest.TestCase):
             )
             self.assertTrue(response["ok"])
             self.assertEqual(response["permission"]["id"], "my-perm")
-            self.assertEqual(response["permission"]["decision"], "allow")
+            self.assertEqual(response["permission"]["decision"], "deny")
             self.assertEqual(response["permission"]["scope"], "shell")
             self.assertEqual(response["permission"]["pattern"], "git push")
 
@@ -63,10 +63,10 @@ class PermissionRoutesTests(unittest.TestCase):
                 "/api/permissions",
                 {
                     "id": "my-perm",
-                    "decision": "allow",
+                    "decision": "deny",
                     "scope": "shell",
                     "pattern": "git push",
-                    "description": "Allow pushing",
+                    "description": "Block pushing",
                 },
             )
 
@@ -80,7 +80,7 @@ class PermissionRoutesTests(unittest.TestCase):
             settings_path = harness.spec.home / ".claude" / "settings.json"
             self.assertTrue(settings_path.is_file())
             settings = json.loads(settings_path.read_text(encoding="utf-8"))
-            self.assertIn("Bash(git push)", settings["permissions"]["allow"])
+            self.assertIn("Bash(git push)", settings["permissions"]["deny"])
 
             # 2. Enable on Antigravity
             enabled_agy = harness.post_json(
@@ -92,17 +92,17 @@ class PermissionRoutesTests(unittest.TestCase):
             agy_path = harness.spec.home / ".gemini" / "antigravity-cli" / "settings.json"
             self.assertTrue(agy_path.is_file())
             agy_settings = json.loads(agy_path.read_text(encoding="utf-8"))
-            self.assertIn("command(git push)", agy_settings["permissions"]["allow"])
+            self.assertIn("command(git push)", agy_settings["permissions"]["deny"])
 
             # Create filesystem permission for Codex
             harness.post_json(
                 "/api/permissions",
                 {
                     "id": "my-file-perm",
-                    "decision": "allow",
+                    "decision": "deny",
                     "scope": "file_read",
                     "pattern": "~/.zshrc",
-                    "description": "Read zshrc",
+                    "description": "Block zshrc read",
                 },
             )
 
@@ -117,7 +117,7 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(codex_path.is_file())
             with open(codex_path, "rb") as f:
                 codex_cfg = tomllib.load(f)
-            self.assertEqual(codex_cfg["permissions"]["harness-asset-manager"]["filesystem"]["~/.zshrc"], "read")
+            self.assertEqual(codex_cfg["permissions"]["harness-asset-manager"]["filesystem"]["~/.zshrc"], "deny")
 
             # Disable on all three
             self.assertTrue(harness.post_json("/api/permissions/my-perm/disable", {"harness": "claude"})["ok"])
@@ -138,7 +138,7 @@ class PermissionRoutesTests(unittest.TestCase):
             claude_path = harness.spec.home / ".claude" / "settings.json"
             claude_path.parent.mkdir(parents=True, exist_ok=True)
             claude_path.write_text(
-                json.dumps({"permissions": {"allow": ["Bash(git status)"]}}),
+                json.dumps({"permissions": {"deny": ["Bash(git status)"]}}),
                 encoding="utf-8",
             )
 
@@ -147,10 +147,8 @@ class PermissionRoutesTests(unittest.TestCase):
                 e for e in payload["entries"]
                 if e.get("spec") and e["spec"].get("pattern") == "git status"
             )
-            # Bug regression: unmanaged entries must carry a parsed spec and a
-            # human-readable name, not a bare "manual:<hash>" id.
             self.assertEqual(entry["kind"], "unmanaged")
-            self.assertEqual(entry["spec"]["decision"], "allow")
+            self.assertEqual(entry["spec"]["decision"], "deny")
             self.assertEqual(entry["spec"]["scope"], "shell")
             self.assertNotEqual(entry["displayName"], entry["id"])
             self.assertIn("git status", entry["displayName"])

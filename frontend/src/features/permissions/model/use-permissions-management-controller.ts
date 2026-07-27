@@ -6,6 +6,7 @@ import {
   useDisablePermissionMutation,
   useEnablePermissionMutation,
   usePermissionsInventoryQuery,
+  usePromotePermissionMutation,
   useReconcilePermissionMutation,
   useSetPermissionHarnessesMutation,
   useUninstallPermissionMutation,
@@ -21,6 +22,7 @@ export function usePermissionsManagementController() {
   const enableMutation = useEnablePermissionMutation();
   const disableMutation = useDisablePermissionMutation();
   const createMutation = useCreatePermissionMutation();
+  const promoteMutation = usePromotePermissionMutation();
 
   const pendingPermissionRegistry = usePendingRegistry<string>();
   const pendingPerHarnessRegistry = usePendingRegistry<string>(); // key: id:harness
@@ -121,6 +123,19 @@ export function usePermissionsManagementController() {
     [pendingPermissionRegistry, reconcileMutation],
   );
 
+  const handlePromotePermission = useCallback(
+    async (id: string, observedHarness?: string | null): Promise<void> => {
+      try {
+        await pendingPermissionRegistry.run(id, async () => {
+          await promoteMutation.mutateAsync({ id, observedHarness: observedHarness ?? null });
+        });
+      } catch (error) {
+        setActionErrorMessage(error instanceof Error ? error.message : "Could not adopt permission");
+      }
+    },
+    [pendingPermissionRegistry, promoteMutation],
+  );
+
   const handleCreatePermission = useCallback(
     async (permission: {
       id: string;
@@ -159,6 +174,7 @@ export function usePermissionsManagementController() {
     handleToggleHarness,
     handleReconcilePermission,
     handleCreatePermission,
+    handlePromotePermission,
   };
 }
 export type PermissionsManagementController = ReturnType<typeof usePermissionsManagementController>;

@@ -2,6 +2,117 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-26 — TODO: retire the `~/.skill-manager` data dir (stale slug, and it is unversioned)
+
+**Not started.** Filed from a vibebox session that tripped over the live symlink chain. Nothing
+here has been changed — this is a note, not a shipped change.
+
+The project rename to `harness-asset-manager` landed in the code (`APP_NAME` in
+`harness_asset_manager/paths.py`, `pyproject.toml`, package dir), but the on-disk state did not
+follow it cleanly. There are now **two data dirs**, and the one the code resolves to is not the
+one that is actually being loaded:
+
+| Path | State |
+|---|---|
+| `~/.harness-asset-manager/` | What `_base_dirs()` resolves to today (macOS: `~/.{APP_NAME}`, since no `~/Library/Application Support/harness-asset-manager` exists). `skills/` is **empty**. |
+| `~/.skill-manager/` | Legacy dir. Holds the skills that are actually live, in the pre-package `shared/` layout, plus a partial `skills/` migration and a stale `.migration.lock` (2026-07-24). |
+
+The live chain, which is what makes this load-bearing:
+
+```
+~/.claude/skills  ->  ~/.dotfiles/.claude/skills/   (real dir, tracked in the dotfiles repo)
+    compress-text, delegate, distill-decision  ->  ~/.skill-manager/shared/<name>
+    distill-function, dossier-delegate, herdr-orchestration, seen   (still real dirs)
+```
+
+So Claude Code loads three skills out of `~/.skill-manager/shared/`, which the renamed code no
+longer points at.
+
+**Two problems, in priority order.**
+
+1. **`~/.skill-manager/` is not a git repo and has no remote.** It is the only copy of those three
+   skills. Worse, because the dotfiles repo tracked them as regular files before they were
+   replaced by symlinks, both `~/.dotfiles` and `~/.claude` currently show them as *deleted* — so
+   a routine "commit and push my config" would record their deletion and propagate it to every
+   other machine, where the symlink targets do not exist. Get the dot folder under version
+   control before anything else.
+
+2. **The slug is stale.** `~/.skill-manager` should be `~/.harness-asset-manager`. Note the env
+   var names are stale in the same way and were missed by the rename:
+   `SKILL_MANAGER_SETTINGS_PATH` and `SKILL_MANAGER_STATE_DIR` (`paths.py:11-12`), plus
+   `skill-manager.db*` inside the legacy dir.
+
+**Suggested order when picking this up:**
+
+1. Put `~/.skill-manager/` under git (or copy it somewhere backed up) — it is the single point of
+   failure and everything below can destroy it.
+2. Decide which dir wins. `~/.harness-asset-manager/` matches the code but is empty;
+   `~/.skill-manager/` has the data in a legacy layout. Migrating the data across, then letting
+   `container.py`'s `shared/` → `skills/` migration run, is likelier to be right than repointing
+   the code backwards.
+3. Clear the stale `.migration.lock` in whichever dir survives — it has been sitting since
+   2026-07-24 and will suppress the migration path in `container.py`.
+4. Rename the `SKILL_MANAGER_*` env vars, keeping the old names as fallbacks for one release.
+5. Only then resolve the dotfiles/`~/.claude` git state, so the deletions get recorded
+   deliberately (as a move to symlinks) rather than as data loss.
+
+## 2026-07-25 — User-Level Native Config Snapshot Service & Web UI Controls
+
+**Shipped on `main`**. All backend services, CLI commands, Web UI controls, unit/integration tests, and documentation are complete.
+
+- **Storage Location**: Canonical baselines and timestamped snapshots stored under `~/.harness-asset-manager/configs/<harness_id>/`.
+- **Target Harness Config Matrix**:
+  - `claude`: `~/.claude.json`, `~/.claude/settings.json`
+  - `codex`: `~/.codex/config.toml`
+  - `agy`: `~/.gemini/antigravity-cli/settings.json`, `~/.gemini/antigravity-cli/mcp_config.json`, `~/.gemini/config/mcp_config.json`, `~/.gemini/config/hooks.json`
+  - `cursor`: `~/.cursor/mcp.json`, `~/.cursor/hooks.json`
+  - `opencode`: `~/.opencode/opencode.jsonc` (or `~/.config/opencode/opencode.json`)
+  - `hermes`: `~/.hermes/config.yaml`
+  - `openclaw`: `~/.openclaw/openclaw.json`
+- **Triggers**:
+  1. *Pre-Write / Pre-Sync*: Automatically takes a snapshot prior to HAM writes.
+  2. *Webapp Launch / Startup Scan*: Hash-checks existing native files vs latest snapshot; captures external edits automatically.
+  3. *On-Demand*: CLI (`ham snapshot` / `python -m harness_asset_manager snapshot`) or Web UI "Take Snapshot Now" button.
+- **Web UI Component**:
+  - Added `ConfigSnapshotsSection` component to Settings Page ([SettingsPage.tsx](file:///Users/hgill/projects/skill-manager/frontend/src/features/settings/screens/SettingsPage.tsx)).
+  - Shows active snapshot baselines, SHA-256 prefixes, trigger badges (*Manual*, *External*, *Pre-Write*), timestamps, and a 1-click **Take Snapshot Now** button.
+- **Safety & Storage Policy**:
+  - SHA-256 hash deduplication (skips duplicate snapshot creation if content is unchanged).
+  - Secret redaction pipeline (redacting API keys, bearer tokens, OAuth secrets prior to export/backup).
+  - Preserves real files in harness home folders to avoid atomic `rename()` symlink severing.
+- **Verification**:
+  - Backend pytest suite: 543 / 543 passed.
+  - Frontend Vitest suite: 265 / 265 passed across 61 test files.
+  - `npm run typecheck` and `npm run build` clean.
+
+---
+
+## 2026-07-25 — Unforking, Project Rename, Sidebar Simplification & Denylist-ONLY Permission Model
+
+All work landed cleanly on `main` at `execsumo/harness-asset-manager`.
+
+- **Standalone Repository & Renaming**:
+  - Un-forked from `execsumo/skill-manager` into a standalone public repository: [`execsumo/harness-asset-manager`](https://github.com/execsumo/harness-asset-manager).
+  - Renamed Python package directory from `skill_manager` to `harness_asset_manager`.
+  - Updated `pyproject.toml` (`harness-asset-manager`), CLI binary entry points, `package.json`, Homebrew formula template, PyInstaller spec, and all import references across 225 files.
+  - Pushed all branches and release tags (`v0.1.0` through `v0.3.1`).
+- **Branch Cleanup**:
+  - Deleted merged branch `delegate/agy-agents-ui` locally and remotely.
+  - Pruned remote tracking branches `origin/Desktop-app` and `origin/Fix-Scan-Config-page`.
+  - Merged `permissions-ux-redesign` into `main` and deleted the feature branch.
+- **Simplified Single-Link Sidebar Navigation**:
+  - Converted **Permissions** into a direct top-level link in the sidebar (`topLinks`), removing obsolete nested sub-links (`All` / `Needs Review`).
+  - Aligned `.sidebar-top-link` CSS typography (text color `var(--color-text)`, font size `0.92rem`, font weight `600`) to match group headers (*Agents*, *Skills*, *Slash Commands*, *MCP*, *Hooks*, *Marketplace*).
+- **Strict Denylist-ONLY Permission Model**:
+  - Replaced legacy allow/ask harmonization with a strict **Denylist-ONLY model** across Claude Code, Antigravity, and Codex.
+  - `allow` and `ask` decisions are rejected by mappers with `"HAM operates in Denylist ONLY mode"`.
+  - Removed decision filter toggles from `PermissionsPage.tsx`.
+  - `PermissionStore` automatically purges legacy `allow`/`ask` records on load and rewrites `permissions/manifest.json` on disk.
+- **Verification**:
+  - Backend pytest suite: 541 / 541 passed.
+  - Frontend Vitest suite: 265 / 265 passed across 61 test files.
+  - `npm run typecheck` and `npm run build` clean.
+
 ---
 
 ## 2026-07-24 — RECOMMENDATIONS.md Tier 1 shipped
