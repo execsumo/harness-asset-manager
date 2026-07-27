@@ -12,7 +12,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square" /></a>
   <a href="https://github.com/execsumo/harness-asset-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/execsumo/harness-asset-manager?style=flat-square&color=EA580C" /></a>
-  <a href="https://www.npmjs.com/package/harness-asset-manager"><img alt="npm version" src="https://img.shields.io/npm/v/harness-asset-manager?style=flat-square&logo=npm&logoColor=white" /></a>
+  <a href="https://www.npmjs.com/package/@execsumo/harness-asset-manager"><img alt="npm version" src="https://img.shields.io/npm/v/@execsumo/harness-asset-manager?style=flat-square&logo=npm&logoColor=white" /></a>
   <a href="#install"><img alt="Install with Homebrew" src="https://img.shields.io/badge/install-homebrew-FBBF24?style=flat-square&logo=homebrew&logoColor=111827" /></a>
   <a href="#install"><img alt="macOS ARM64/x64 and Linux x64/ARM64" src="https://img.shields.io/badge/platform-macOS%20ARM64%2Fx64%20%2B%20Linux%20x64%2FARM64-111827?style=flat-square&logo=linux&logoColor=white" /></a>
   <a href="#local-first-safety"><img alt="Local-first" src="https://img.shields.io/badge/data-local--first-0F766E?style=flat-square" /></a>
@@ -125,7 +125,7 @@ harness-asset-manager start
 ### npm (macOS ARM64/x64 and Linux x64/ARM64)
 
 ```bash
-npm install -g @mode-io/harness-asset-manager
+npm install -g @execsumo/harness-asset-manager
 harness-asset-manager start
 ```
 
@@ -408,7 +408,7 @@ npm run build
 ## Troubleshooting
 
 - If Marketplace requests fail with `Marketplace is temporarily unavailable`, verify your network connection and try again.
-- On macOS, if `npm install -g @mode-io/harness-asset-manager` reports that Homebrew already owns `harness-asset-manager`, uninstall the Homebrew formula first. The inverse also applies: uninstall the npm package before switching back to Homebrew.
+- On macOS, if `npm install -g @execsumo/harness-asset-manager` reports that Homebrew already owns `harness-asset-manager`, uninstall the Homebrew formula first. The inverse also applies: uninstall the npm package before switching back to Homebrew.
 - If an MCP harness is shown as unavailable, Harness Asset Manager has detected that the local client is missing or does not support the required config surface.
 
 ## More to come

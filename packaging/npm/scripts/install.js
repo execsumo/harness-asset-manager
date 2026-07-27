@@ -12,7 +12,7 @@ const { assertNoHomebrewConflict, isGlobalNpmInstall } = require("./channel-owne
 const { artifactName } = require("./release-targets");
 
 function releaseBaseUrl(version) {
-  return process.env.SKILL_MANAGER_RELEASE_BASE_URL || `https://github.com/mode-io/harness-asset-manager/releases/download/v${version}`;
+  return process.env.SKILL_MANAGER_RELEASE_BASE_URL || `https://github.com/execsumo/harness-asset-manager/releases/download/v${version}`;
 }
 
 function copyFile(source, destination) {

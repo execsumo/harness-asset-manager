@@ -1,7 +1,7 @@
 {
-  "name": "@mode-io/harness-asset-manager",
+  "name": "@execsumo/harness-asset-manager",
   "version": "0.3.1",
-  "description": "Public macOS/Linux installer wrapper for the Mode IO harness-asset-manager native release artifact.",
+  "description": "Public macOS/Linux installer wrapper for the harness-asset-manager native release artifact.",
   "license": "MIT",
   "private": false,
   "bin": {
@@ -19,14 +19,14 @@
     "bin",
     "scripts"
   ],
-  "homepage": "https://github.com/mode-io/harness-asset-manager",
+  "homepage": "https://github.com/execsumo/harness-asset-manager",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mode-io/harness-asset-manager.git",
+    "url": "git+https://github.com/execsumo/harness-asset-manager.git",
     "directory": "packaging/npm"
   },
   "bugs": {
-    "url": "https://github.com/mode-io/harness-asset-manager/issues"
+    "url": "https://github.com/execsumo/harness-asset-manager/issues"
   },
   "os": [
     "darwin",

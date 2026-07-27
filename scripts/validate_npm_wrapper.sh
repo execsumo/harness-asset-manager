@@ -178,18 +178,18 @@ EOF
     PATH="$FAKE_BIN_DIR:$PATH" \
     npm install --global --prefix "$TMP_DIR/global-prefix" "./$PACK_FILE" 2>&1 || true
   )"
-  if [[ "$CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @mode-io/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
+  if [[ "$CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @execsumo/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
     echo "Global npm conflict check did not emit the expected remediation message." >&2
     echo "$CONFLICT_OUTPUT" >&2
     exit 1
   fi
 
-  ln -sf "$TMP_DIR/node_modules/@mode-io/harness-asset-manager/bin/harness-asset-manager.js" "$TMP_DIR/global-harness-asset-manager"
+  ln -sf "$TMP_DIR/node_modules/@execsumo/harness-asset-manager/bin/harness-asset-manager.js" "$TMP_DIR/global-harness-asset-manager"
   RUNTIME_CONFLICT_OUTPUT="$(
     PATH="$FAKE_BIN_DIR:$PATH" \
     "$TMP_DIR/global-harness-asset-manager" --version 2>&1 || true
   )"
-  if [[ "$RUNTIME_CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @mode-io/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
+  if [[ "$RUNTIME_CONFLICT_OUTPUT" != *"harness-asset-manager is already installed via Homebrew. Run 'brew uninstall harness-asset-manager' before 'npm install -g @execsumo/harness-asset-manager', or keep using the Homebrew installation."* ]]; then
     echo "Runtime conflict check did not emit the expected remediation message." >&2
     echo "$RUNTIME_CONFLICT_OUTPUT" >&2
     exit 1
