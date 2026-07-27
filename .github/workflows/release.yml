@@ -96,38 +96,6 @@ jobs:
         with:
           files: .artifacts/release/*
 
-  publish-npm:
-    needs: publish-release
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          # Publishing tooling stays pinned even though runtime compatibility is validated in CI.
-          python-version: "3.11"
-
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Validate npm publish secret
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN}" ]; then
-            echo "NPM_TOKEN is required for tagged releases." >&2
-            exit 1
-          fi
-
-      - name: Publish npm wrapper
-        working-directory: packaging/npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
   render-homebrew-formula:
     needs: publish-release
     runs-on: ubuntu-latest
