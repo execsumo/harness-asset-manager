@@ -7,7 +7,10 @@ from harness_asset_manager.application.mcp.config_choice import (
     config_choices_payload,
     recommended_observed_harness,
 )
-from harness_asset_manager.application.mcp.contracts import McpHarnessScan, McpObservedEntry
+from harness_asset_manager.application.mcp.contracts import (
+    McpHarnessScan,
+    McpObservedEntry,
+)
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
 
