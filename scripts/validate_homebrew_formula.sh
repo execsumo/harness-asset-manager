@@ -32,7 +32,7 @@ BREW_REPO="$("$BREW_BIN" --repository)"
 TAP_NAME="local/harness-asset-manager-smoke"
 TAP_DIR="$BREW_REPO/Library/Taps/local/homebrew-harness-asset-manager-smoke"
 FORMULA_NAME="harness-asset-manager"
-OFFICIAL_TAP="mode-io/tap"
+OFFICIAL_TAP="execsumo/tap"
 OFFICIAL_TAP_WAS_PRESENT=0
 if "$BREW_BIN" tap | grep -Fxq "$OFFICIAL_TAP"; then
   OFFICIAL_TAP_WAS_PRESENT=1

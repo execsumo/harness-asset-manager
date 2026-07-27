@@ -115,10 +115,12 @@ Marketplace is the discovery surface:
 ### Homebrew (macOS recommended)
 
 ```bash
-brew tap mode-io/tap
+brew tap execsumo/tap
 brew install harness-asset-manager
 harness-asset-manager start
 ```
+
+`harnessAM` is a short alias for the same formula (`brew install harnessAM`).
 
 ### npm (macOS ARM64/x64 and Linux x64/ARM64)
 

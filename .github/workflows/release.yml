@@ -189,9 +189,11 @@ jobs:
         run: |
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" tap-repo
           cp .artifacts/release/harness-asset-manager.rb tap-repo/Formula/harness-asset-manager.rb
+          mkdir -p tap-repo/Aliases
+          ln -sf ../Formula/harness-asset-manager.rb tap-repo/Aliases/harnessam
           cd tap-repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/harness-asset-manager.rb
+          git add Formula/harness-asset-manager.rb Aliases/harnessam
           git commit -m "Update harness-asset-manager formula for ${GITHUB_REF_NAME}" || exit 0
           git push
