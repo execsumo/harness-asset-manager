@@ -6,7 +6,9 @@ from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog
 from harness_asset_manager.application.skills.marketplace.client import SkillsShClient
-from harness_asset_manager.application.skills.marketplace.models import RepoDisplayMetadata
+from harness_asset_manager.application.skills.marketplace.models import (
+    RepoDisplayMetadata,
+)
 from harness_asset_manager.application.skills.marketplace.skillssh import (
     fetch_all_time_leaderboard,
     fetch_detail_page,

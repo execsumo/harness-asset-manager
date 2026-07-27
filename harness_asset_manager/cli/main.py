@@ -9,8 +9,14 @@ import time
 from harness_asset_manager import __version__
 from harness_asset_manager.paths import STATE_DIR_ENV
 from harness_asset_manager.runtime.browser import maybe_open_browser
-from harness_asset_manager.runtime.process import is_owned_runtime_process, terminate_process
-from harness_asset_manager.runtime.startup import startup_timeout_seconds, wait_for_health
+from harness_asset_manager.runtime.process import (
+    is_owned_runtime_process,
+    terminate_process,
+)
+from harness_asset_manager.runtime.startup import (
+    startup_timeout_seconds,
+    wait_for_health,
+)
 from harness_asset_manager.runtime.state import (
     RuntimeState,
     clear_runtime_state,
