@@ -11,6 +11,7 @@ from .errors import install_error_handlers
 from .guards import LoopbackOnlyMiddleware
 from .routers import (
     agents,
+    config_snapshots,
     health,
     hooks,
     marketplace,
@@ -44,6 +45,7 @@ def create_app(
     app.include_router(permissions.router)
     app.include_router(scaffold.router)
     app.include_router(agents.router)
+    app.include_router(config_snapshots.router)
 
     @app.get("/{full_path:path}", include_in_schema=False, response_model=None)
     def serve_frontend(full_path: str):

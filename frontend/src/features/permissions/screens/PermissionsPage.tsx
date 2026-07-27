@@ -7,28 +7,37 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import { useCommonCopy } from "../../../i18n";
 import { usePermissionsCopy } from "../i18n";
 import { PermissionsMatrixView } from "../components/PermissionsMatrixView";
 import { PermissionDetailSheet } from "../components/detail/PermissionDetailSheet";
 import { PermissionFormDialog } from "../components/edit/PermissionFormDialog";
-import { PermissionsFilterMenu } from "../components/PermissionsFilterMenu";
 import {
-  filterPermissionsInUse,
-  pillCounts,
-  type InUsePillValue,
+  filterPermissions,
+  permissionsSummary,
+  type PermissionsDecisionFilter,
+  type PermissionsStatusFilter,
 } from "../model/selectors";
 import { usePermissionsManagementController } from "../model/use-permissions-management-controller";
 
 const DETAIL_PARAM = "permission";
 
-export default function PermissionsInUsePage() {
+
+
+const STATUS_LABELS: Record<PermissionsStatusFilter, string> = {
+  all: "All",
+  applied: "Applied",
+  "not-applied": "Not applied",
+  differs: "Differs",
+  untracked: "Untracked",
+};
+
+export default function PermissionsPage() {
   const {
     status,
     inventory,
     isInitialLoading,
-    selectedPermissionId,
-    setSelectedPermissionId,
     pendingPermissionKeys,
     pendingPerHarnessKeys,
     queryErrorMessage,
@@ -38,6 +47,7 @@ export default function PermissionsInUsePage() {
     handleToggleHarness,
     handleReconcilePermission,
     handleCreatePermission,
+    handlePromotePermission,
   } = usePermissionsManagementController();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,17 +57,48 @@ export default function PermissionsInUsePage() {
   const [addPending, setAddPending] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [pill, setPill] = useState<InUsePillValue>("all");
+  const [decision, setDecision] = useState<PermissionsDecisionFilter>("all");
   const copy = usePermissionsCopy();
   const common = useCommonCopy();
 
-  const entries = useMemo(
-    () => filterPermissionsInUse(inventory, { search, pill }),
-    [inventory, search, pill],
+  // Status filter lives in the URL so sidebar deep-links (?status=untracked) work.
+  const statusParam = searchParams.get("status");
+  const statusFilter: PermissionsStatusFilter =
+    statusParam && statusParam in STATUS_LABELS
+      ? (statusParam as PermissionsStatusFilter)
+      : "all";
+  const setStatusFilter = useCallback(
+    (next: PermissionsStatusFilter) => {
+      const params = new URLSearchParams(searchParams);
+      if (next === "all") {
+        params.delete("status");
+      } else {
+        params.set("status", next);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
   );
-  const counts = useMemo(() => pillCounts(inventory), [inventory]);
-  const totalInUse = inventory?.entries.filter((e) => e.kind === "managed").length ?? 0;
+
+  const entries = useMemo(
+    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter }),
+    [inventory, search, statusFilter],
+  );
+  const summary = useMemo(() => permissionsSummary(inventory), [inventory]);
+  const statusCounts = useMemo<Record<PermissionsStatusFilter, number>>(
+    () => ({
+      all: summary.total,
+      applied: filterPermissions(inventory, { search: "", decision: "deny", status: "applied" }).length,
+      "not-applied": filterPermissions(inventory, { search: "", decision: "deny", status: "not-applied" }).length,
+      differs: summary.differs,
+      untracked: summary.untracked,
+    }),
+    [inventory, summary],
+  );
+
+  const hasData = summary.total > 0;
   const isReady = status === "ready" && Boolean(inventory);
+  const filtersActive = search !== "" || statusFilter !== "all";
 
   const setDetailId = useCallback(
     (id: string | null) => {
@@ -82,10 +123,7 @@ export default function PermissionsInUsePage() {
     return result;
   }, [pendingPerHarnessKeys, selectedId]);
 
-  const isUninstallingSelected =
-    selectedId !== null && pendingPermissionKeys.has(selectedId);
-  const isPermissionPendingSelected =
-    selectedId !== null && pendingPermissionKeys.has(selectedId);
+  const isPermissionPendingSelected = selectedId !== null && pendingPermissionKeys.has(selectedId);
 
   const handleCreatePermissionSubmit = async (value: {
     id: string;
@@ -113,12 +151,17 @@ export default function PermissionsInUsePage() {
     }
   }, [confirmUninstallId, handleUninstallPermission, selectedId, setDetailId]);
 
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setStatusFilter("all");
+  }, []);
+
   return (
     <>
       <div className="page-chrome">
         <PageHeader
-          title={copy.inUse.title}
-          subtitle={copy.inUse.subtitle}
+          title="Permissions"
+          subtitle="Define denylist rules to restrict shell commands, file paths, and web domains across your harnesses."
           actions={
             <button
               type="button"
@@ -130,13 +173,25 @@ export default function PermissionsInUsePage() {
             </button>
           }
         />
-        {totalInUse > 0 ? (
+        {hasData ? (
           <FilterBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder={copy.inUse.searchPlaceholder}
-            searchLabel={copy.inUse.searchLabel}
-            trailing={<PermissionsFilterMenu pill={pill} counts={counts} onChange={setPill} />}
+            searchPlaceholder="Search pattern or scope..."
+            searchLabel="Search permissions"
+            trailing={
+              <SelectionMenu
+                value={statusFilter}
+                options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
+                  value,
+                  label: STATUS_LABELS[value],
+                  meta: statusCounts[value],
+                }))}
+                active={statusFilter !== "all"}
+                ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
+                onChange={setStatusFilter}
+              />
+            }
           />
         ) : null}
       </div>
@@ -165,22 +220,16 @@ export default function PermissionsInUsePage() {
             onDisableHarness={(id, harness) => {
               void handleToggleHarness(id, harness, true);
             }}
+            onAdopt={(id) => {
+              void handlePromotePermission(id);
+            }}
           />
-        ) : totalInUse > 0 ? (
+        ) : hasData ? (
           <div className="empty-panel">
             <h3 className="empty-panel__title">{common.status.noMatches}</h3>
-            <p className="empty-panel__body">
-              {copy.inUse.noMatchesBody}
-            </p>
+            <p className="empty-panel__body">{copy.inUse.noMatchesBody}</p>
             <div className="empty-panel__actions">
-              <button
-                type="button"
-                className="action-pill action-pill--md"
-                onClick={() => {
-                  setSearch("");
-                  setPill("all");
-                }}
-              >
+              <button type="button" className="action-pill action-pill--md" onClick={clearFilters} disabled={!filtersActive}>
                 {common.actions.clearFilters}
               </button>
             </div>
@@ -188,9 +237,7 @@ export default function PermissionsInUsePage() {
         ) : (
           <div className="empty-panel">
             <h3 className="empty-panel__title">{copy.inUse.emptyTitle}</h3>
-            <p className="empty-panel__body">
-              {copy.inUse.emptyBody}
-            </p>
+            <p className="empty-panel__body">{copy.inUse.emptyBody}</p>
             <div className="empty-panel__actions">
               <button
                 type="button"
@@ -210,7 +257,7 @@ export default function PermissionsInUsePage() {
           columns={inventory.columns}
           pendingPerHarness={pendingForSelected}
           isServerPending={isPermissionPendingSelected}
-          isUninstalling={isUninstallingSelected}
+          isUninstalling={isPermissionPendingSelected}
           onClose={() => setDetailId(null)}
           onEnableHarness={(harness) => {
             if (selectedId) void handleToggleHarness(selectedId, harness, false);
