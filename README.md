@@ -11,8 +11,8 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-111827?style=flat-square" /></a>
-  <a href="https://github.com/mode-io/harness-asset-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mode-io/harness-asset-manager?style=flat-square&color=EA580C" /></a>
-  <a href="https://www.npmjs.com/package/@mode-io/harness-asset-manager"><img alt="npm version" src="https://img.shields.io/npm/v/%40mode-io%2Fharness-asset-manager?style=flat-square&logo=npm&logoColor=white" /></a>
+  <a href="https://github.com/execsumo/harness-asset-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/execsumo/harness-asset-manager?style=flat-square&color=EA580C" /></a>
+  <a href="https://www.npmjs.com/package/harness-asset-manager"><img alt="npm version" src="https://img.shields.io/npm/v/harness-asset-manager?style=flat-square&logo=npm&logoColor=white" /></a>
   <a href="#install"><img alt="Install with Homebrew" src="https://img.shields.io/badge/install-homebrew-FBBF24?style=flat-square&logo=homebrew&logoColor=111827" /></a>
   <a href="#install"><img alt="macOS ARM64/x64 and Linux x64/ARM64" src="https://img.shields.io/badge/platform-macOS%20ARM64%2Fx64%20%2B%20Linux%20x64%2FARM64-111827?style=flat-square&logo=linux&logoColor=white" /></a>
   <a href="#local-first-safety"><img alt="Local-first" src="https://img.shields.io/badge/data-local--first-0F766E?style=flat-square" /></a>
@@ -38,6 +38,8 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Manage reusable slash commands once, then sync them to supported harnesses.
 - Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
 - Manage Agents — agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
+- Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
+- Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `ham snapshot` CLI support.
 - Keep everything in portable packages: the default `local` package holds your own resources, and additional packages can be dropped in (or deactivated) as a unit.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 
@@ -176,15 +178,15 @@ matrix. The order is declared once, in `SUPPORTED_HARNESS_DEFINITIONS`
 is no per-page ordering to keep in sync. A harness switched off in Settings is dropped
 from every matrix rather than shown as an inert column.
 
-| Harness | Skills | MCP servers | Slash commands | Hooks |
-|---|---:|---:|---:|---:|
-| Codex CLI | Yes | Yes | Yes | Yes |
-| Claude Code | Yes | Yes | Yes | Yes |
-| Cursor | Yes | Yes | Yes | Yes |
-| OpenCode | Yes | Yes | Yes | Partial |
-| Hermes Agent | Yes | Yes | Yes* | Not Yet |
-| OpenClaw | Yes | Not Yet | Not Yet | Not Yet |
-| Antigravity (agy) | Yes | Yes | Not Yet | Partial |
+| Harness | Skills | MCP servers | Slash commands | Hooks | Permissions |
+|---|---:|---:|---:|---:|---:|
+| Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Claude Code | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Cursor | Yes | Yes | Yes | Yes | No |
+| OpenCode | Yes | Yes | Yes | Partial | No |
+| Hermes Agent | Yes | Yes | Yes* | Not Yet | No |
+| OpenClaw | Yes | Not Yet | Not Yet | Not Yet | No |
+| Antigravity (agy) | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
 
 <sub>\* Hermes Agent slash-command support is provisional. Its slash-command directory (`~/.hermes/commands`, frontmatter Markdown) follows common conventions but is **not yet verified against a shipping Hermes build**; hooks are not yet mapped. See `handoff.md`.</sub>
 

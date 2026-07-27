@@ -43,9 +43,9 @@ class ClaudeCodePermissionsMapper:
     """Mapper for Claude Code permissions under ~/.claude/settings.json."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        supported_decisions = {"allow", "deny", "ask"}
+        supported_decisions = {"deny"}
         if spec.decision not in supported_decisions:
-            return False, f"Decision '{spec.decision}' is not supported by Claude Code", None
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"shell", "file_read", "file_write", "web", "mcp"}
         if spec.scope not in supported_scopes:
@@ -98,7 +98,7 @@ class ClaudeCodePermissionsMapper:
         entries: list[RawPermissionEntry] = []
         specs_list = list(specs)
 
-        for decision in ("allow", "deny", "ask"):
+        for decision in ("deny",):
             rules_list = permissions_subtree.get(decision, [])
             if not isinstance(rules_list, list):
                 continue
@@ -259,9 +259,9 @@ class AntigravityPermissionsMapper:
     """Mapper for Antigravity permissions under ~/.gemini/antigravity-cli/settings.json."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        supported_decisions = {"allow", "deny", "ask"}
+        supported_decisions = {"deny"}
         if spec.decision not in supported_decisions:
-            return False, f"Decision '{spec.decision}' is not supported by Antigravity", None
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"shell", "mcp"}
         if spec.scope not in supported_scopes:
@@ -298,7 +298,7 @@ class AntigravityPermissionsMapper:
         entries: list[RawPermissionEntry] = []
         specs_list = list(specs)
 
-        for decision in ("allow", "deny", "ask"):
+        for decision in ("deny",):
             rules_list = permissions_subtree.get(decision, [])
             if not isinstance(rules_list, list):
                 continue
@@ -433,8 +433,8 @@ class CodexPermissionsMapper:
     """Mapper for OpenAI Codex permissions under ~/.codex/config.toml."""
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
-        if spec.decision == "ask":
-            return False, "Codex does not support ask decision for rules", None
+        if spec.decision != "deny":
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
 
         supported_scopes = {"file_read", "file_write", "web"}
         if spec.scope not in supported_scopes:
@@ -488,42 +488,10 @@ class CodexPermissionsMapper:
         entries: list[RawPermissionEntry] = []
         specs_list = list(specs)
 
-        # Process filesystem rules
+        # Process filesystem rules (deny only)
         if isinstance(filesystem, dict):
             for pat, val in filesystem.items():
-                if val == "read":
-                    matched_id = None
-                    for spec in specs_list:
-                        if spec.scope == "file_read" and spec.pattern == pat and spec.decision == "allow":
-                            matched_id = spec.id
-                            break
-                    id_ = matched_id if matched_id else f"manual:fs_read:{pat}"
-                    entries.append(
-                        RawPermissionEntry(
-                            id=id_,
-                            decision="allow",
-                            scope="file_read",
-                            pattern=pat,
-                            payload={"type": "filesystem", "pattern": pat, "value": "read"},
-                        )
-                    )
-                elif val == "write":
-                    matched_id = None
-                    for spec in specs_list:
-                        if spec.scope == "file_write" and spec.pattern == pat and spec.decision == "allow":
-                            matched_id = spec.id
-                            break
-                    id_ = matched_id if matched_id else f"manual:fs_write:{pat}"
-                    entries.append(
-                        RawPermissionEntry(
-                            id=id_,
-                            decision="allow",
-                            scope="file_write",
-                            pattern=pat,
-                            payload={"type": "filesystem", "pattern": pat, "value": "write"},
-                        )
-                    )
-                elif val == "deny":
+                if val == "deny":
                     matched_specs = [
                         spec for spec in specs_list
                         if spec.scope in ("file_read", "file_write") and spec.pattern == pat and spec.decision == "deny"
@@ -550,25 +518,25 @@ class CodexPermissionsMapper:
                             )
                         )
 
-        # Process network domains
+        # Process network domains (deny only)
         if isinstance(domains, dict):
             for pat, val in domains.items():
-                decision = "allow" if val == "allow" else "deny"
-                matched_id = None
-                for spec in specs_list:
-                    if spec.scope == "web" and spec.pattern == pat and spec.decision == decision:
-                        matched_id = spec.id
-                        break
-                id_ = matched_id if matched_id else f"manual:net_{decision}:{pat}"
-                entries.append(
-                    RawPermissionEntry(
-                        id=id_,
-                        decision=decision,
-                        scope="web",
-                        pattern=pat,
-                        payload={"type": "network", "pattern": pat, "value": val},
+                if val == "deny":
+                    matched_id = None
+                    for spec in specs_list:
+                        if spec.scope == "web" and spec.pattern == pat and spec.decision == "deny":
+                            matched_id = spec.id
+                            break
+                    id_ = matched_id if matched_id else f"manual:net_deny:{pat}"
+                    entries.append(
+                        RawPermissionEntry(
+                            id=id_,
+                            decision="deny",
+                            scope="web",
+                            pattern=pat,
+                            payload={"type": "network", "pattern": pat, "value": "deny"},
+                        )
                     )
-                )
 
         return entries
 

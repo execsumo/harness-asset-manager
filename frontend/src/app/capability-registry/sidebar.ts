@@ -62,7 +62,13 @@ export function useSidebarModel(): SidebarModel {
           label: common.nav.overview,
           iconKey: "overview",
         },
-        
+        {
+          key: "permissions",
+          to: permissionsRoutes.index,
+          label: common.nav.permissions || "Permissions",
+          iconKey: "permissions",
+          count: permissionsCounts.total,
+        },
       ],
       groups: [
         {
@@ -142,21 +148,6 @@ export function useSidebarModel(): SidebarModel {
               to: hooksRoutes.needsReview,
               label: common.productLanguage.needsReview,
               count: hooksCounts.needsReview,
-            },
-          ],
-        },
-        {
-          key: "permissions",
-          label: common.nav.permissions || "Permissions",
-          iconKey: "permissions",
-          count: permissionsCounts.total,
-          links: [
-            { key: "permissions-use", to: permissionsRoutes.inUse, label: common.productLanguage.inUse, count: permissionsCounts.inUse },
-            {
-              key: "permissions-review",
-              to: permissionsRoutes.needsReview,
-              label: common.productLanguage.needsReview,
-              count: permissionsCounts.needsReview,
             },
           ],
         },
