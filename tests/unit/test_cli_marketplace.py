@@ -4,7 +4,9 @@ import json
 import unittest
 from unittest import mock
 
-from harness_asset_manager.application.cli_marketplace.catalog import CliMarketplaceCatalog
+from harness_asset_manager.application.cli_marketplace.catalog import (
+    CliMarketplaceCatalog,
+)
 from harness_asset_manager.application.cli_marketplace.client import (
     ClisDevClient,
     configured_clis_dev_base_url,

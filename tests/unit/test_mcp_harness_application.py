@@ -3,7 +3,9 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from harness_asset_manager.application.mcp.harness_application import McpHarnessApplication
+from harness_asset_manager.application.mcp.harness_application import (
+    McpHarnessApplication,
+)
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 
 
