@@ -23,6 +23,7 @@ import {
   Terminal,
   Webhook,
   Bot,
+  Shield,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
@@ -58,6 +59,7 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
             to={link.to}
             label={link.label}
             icon={sidebarIcon(link.iconKey)}
+            count={link.count}
           />
         ))}
 
@@ -179,6 +181,7 @@ function sidebarIcon(iconKey: SidebarIconKey): ReactNode {
   if (iconKey === "hooks") return <Webhook size={16} />;
   if (iconKey === "marketplace") return <Store size={16} />;
   if (iconKey === "agents") return <Bot size={16} />;
+  if (iconKey === "permissions") return <Shield size={16} />;
   return <LayoutDashboard size={16} />;
 }
 
@@ -340,15 +343,18 @@ function SidebarTopLink({
   to,
   label,
   icon,
+  count,
 }: {
   to: string;
   label: string;
   icon: ReactNode;
+  count?: number | null;
 }) {
   return (
     <NavLink to={to} className={({ isActive }) => `sidebar-top-link${isActive ? " is-active" : ""}`}>
       {icon}
       <span>{label}</span>
+      {count != null ? <span className="sidebar-group__count" style={{ marginLeft: "auto" }}>{count}</span> : null}
     </NavLink>
   );
 }
