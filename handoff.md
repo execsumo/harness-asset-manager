@@ -47,7 +47,27 @@ It is a deliberate Stage 4 placeholder (the `DEFAULTS` docstring says skills is
 unimplemented because adopting a skill means `shutil.rmtree` on a real directory of the
 user's). The fix is to refuse it until Stage 4 actually lands, not to delete the key.
 
-**Being fixed now** — see the entry that follows once it merges.
+**Being fixed now** (delegated: enabling `skills` → 400, distinct from the 404 unknown
+families get; disabling stays 200 so full-object syncs do not break).
+
+### `plan-auto-adoption.md` updated as a result
+
+Stages after 3 were **renumbered**, and the reasoning is recorded inline as amendments:
+
+- **Stage 4 is now slash commands**, not skills. Same mechanism as Stage 3 against a
+  family that already has the ledger, the classification, and the review UI — it needs
+  one extra hash (the store-side baseline) and can then reuse `classify_drift()`
+  verbatim, since that is a pure function and family-agnostic.
+- **Stage 5 is skills**, demoted. §12 already established that skills *cannot be
+  clobbered*, so skills auto-adopt is a convenience feature, not the continuation of
+  this plan. Its worst case is `shutil.rmtree` on a real user directory, versus slash
+  commands rewriting a file HAM itself authored. Wrong thing to do next on every axis.
+- **Stage 6 is Codex**, unchanged, still gated on a lossless TOML round-trip.
+- §12's slash-commands verdict was softened from "already has it" — written before Stage
+  3 existed and read as "nothing to do" — to "has the ledger and the diagnosis, not the
+  repair."
+- New rule recorded: **wire the consumer and add the settings key in the same change.**
+  That is exactly how `autoAdopt.skills` became a persisted no-op.
 
 ## 2026-07-27 — Settings row layout fixed; ARCHITECTURE.md caught up
 
@@ -226,8 +246,9 @@ accurate this time, but were re-run independently anyway.
 
 ## 2026-07-27 (later) — Stage 3 shipped: drifted agent bindings now repair themselves
 
-Merged to `main`. `plan-auto-adoption.md` Stages 1–3 are all done; **Stage 4 (skills
-auto-adopt) and Stage 5 (Codex) are not started.** The entry below covers 1+2 and is
+Merged to `main`. `plan-auto-adoption.md` Stages 1–3 are all done. (The stages after 3 were
+renumbered on 2026-07-27: slash commands is now Stage 4, skills Stage 5, Codex
+Stage 6. None are started.) The entry below covers 1+2 and is
 still accurate; this covers what changed on top.
 
 ### What it does now

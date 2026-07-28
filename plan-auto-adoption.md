@@ -240,6 +240,11 @@ existing `unmanaged_paths()` walk and need no hashing at all.
 
 ## 7. Skills — auto-adopt new local directories
 
+**Stage 5, not Stage 4** — reordered 2026-07-27 behind slash commands (see §9). This is
+a *different* mechanism from the rest of this plan: it is not clobber repair, because
+skills cannot be clobbered (§12). Treat it as an optional convenience feature, and do it
+only if it is wanted for its own sake.
+
 Separate mechanism, separate setting, **default off**, because
 `adopt_local_copy()` calls `shutil.rmtree(existing_dir)` on the user's real
 directory.
@@ -293,10 +298,42 @@ Each stage ships independently and leaves the tree working.
    *notice* drift.
 3. **✅ SHIPPED — Auto-repair the provable cases.** Rows 2 and 3 only, behind
    `auto_adopt.agents` (default on). Rows 1 and 4 keep prompting.
-4. **Skills auto-adopt**, behind `auto_adopt.skills` (default off).
-5. **Deferred:** Codex, gated on a lossless TOML round-trip.
+4. **Slash commands — add the store-side baseline.** See §12. This is the *same*
+   mechanism as Stage 3 against a family that already has the ledger, the
+   classification, and the review UI. Reordered ahead of skills on 2026-07-27,
+   deliberately — see below.
+5. **Skills auto-adopt**, behind `auto_adopt.skills` (default off). A *different*
+   mechanism (§7), not clobber repair.
+6. **Deferred:** Codex, gated on a lossless TOML round-trip.
 
 Stage 2 is the highest value-per-risk. If the work stalls, stall it there.
+
+### AMENDED 2026-07-27 — why slash commands now comes before skills
+
+The original order put skills next simply because §7 was written first. After Stage 3
+shipped, that is the wrong order on every axis that matters:
+
+| | slash commands (new Stage 4) | skills (now Stage 5) |
+|---|---|---|
+| Mechanism | same as Stage 3, already proven | new one, unproven |
+| Worst case | rewrites a file **HAM authored** | `shutil.rmtree` on a **user's real directory** |
+| Missing piece | one extra hash | ingest + verify + rmtree + symlink ordering |
+| Problem solved | drift users hit today | drift that **cannot happen** (§12: `ENOTDIR`) |
+
+Skills auto-adopt is a convenience feature wearing this plan's clothes. Slash commands
+is the actual continuation of it. Do skills only if it is wanted for its own sake.
+
+### AMENDED 2026-07-27 — do not ship the setting before the mechanism
+
+Stage 3 added `"skills": False` to `DEFAULTS` in `auto_adopt.py` for a Stage 4 that had
+not been built. Because `set_enabled` accepts any key in `DEFAULTS`, `PUT
+/api/settings/auto-adopt/skills {"enabled": true}` returned **200 and persisted**, while
+`container.py` reads only `is_enabled("agents")` — a setting that silently did nothing.
+Unknown families correctly 404'd; the half-declared one was the only dishonest case.
+
+Now refused with a 400 until the mechanism lands. **When adding Stage 4 or 5, wire the
+consumer and flip the guard in the same change** — a declared-but-unread preference key
+is worse than an absent one, because it reads as a working feature.
 
 ---
 
@@ -328,13 +365,15 @@ Stage 2 is the highest value-per-risk. If the work stalls, stall it there.
 
 ## 12. Does this pattern belong in the other asset families? — verdict
 
-Asked and answered 2026-07-27, from the code. **No further family needs this built.**
-There are six families and they fall into four groups, decided by binding shape.
+Asked and answered 2026-07-27, from the code, and **re-audited later the same day** after
+Stage 3 shipped. There are six families and they fall into four groups, decided by
+binding shape. The re-audit changed one verdict: slash commands is no longer "done", it
+is **Stage 4** (below).
 
 | Family | Binding shape | Verdict |
 |---|---|---|
 | **agents** | `AgentFileBindingProfile` — file symlink | **Needs it.** Built here. |
-| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Already has it.** |
+| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Has the ledger and the diagnosis, not the repair.** Now Stage 4. |
 | **skills** | `FileTreeBindingProfile` — directory symlink | **Structurally immune.** |
 | **mcp / hooks / permissions** | `ConfigSubtreeBindingProfile` | **Wrong shape; does not transfer.** |
 
@@ -348,11 +387,35 @@ lives in `read_models.py` (`_sync_entries`, `_tracked_review_rows`) and produces
 `hash_file` is now shared from `harness_asset_manager/hashing.py` so the two cannot
 drift apart in format.
 
-Its one gap is worth knowing but is **not** this work: it records a single hash (what
-HAM wrote) with no store-side baseline, so it can prove *that* a file changed but not
-that the change is one-sided. `adopt_target` therefore stays a user decision. Giving
-it §4's second hash would let it auto-resolve the provable case the same way — a
-follow-on if Stage 3 proves the pattern out, not a prerequisite.
+Its one gap: it records a single hash (what HAM wrote) with no store-side baseline, so
+it can prove *that* a file changed but not that the change is one-sided. `adopt_target`
+therefore stays a user decision.
+
+**AMENDED 2026-07-27 — this is now Stage 4, and the verdict above is softened.** The
+original wording ("already has it") was written before Stage 3 existed and reads as
+"nothing to do." Re-audited from the code today: slash commands **detect** drift and
+surface it for review, but every repair is user-initiated (`import_unmanaged_command`,
+`_adopt_target`). No slash-command binding is ever repaired automatically. That is not
+the same as having this pattern — it is Stage 2 without Stage 3.
+
+The follow-on was gated on "if Stage 3 proves the pattern out." Stage 3 shipped and
+held. So it is unblocked, and it is the cheapest remaining work in this plan:
+
+- Record a second hash — the store-side content at write time — alongside the existing
+  `contentHash`, in the same `sync-state.json` record.
+- Feed both into `classify_drift()`. It is already a **pure function** over
+  `(ledger_record, harness_hash, store_hash)` and is family-agnostic; reuse it rather
+  than writing a second decision table. The four rows carry over unchanged.
+- Rows 2 and 3 auto-repair; rows 1 and 4 keep prompting, exactly as agents does.
+- Gate it behind a new `auto_adopt.slash_commands` key, **added in the same change as
+  its consumer** (see §9's amendment on not shipping the setting early).
+- Every §8 invariant applies unchanged, including the audit log — the existing "Recent
+  automatic repairs" surface should grow a family column rather than gain a sibling.
+
+Cheaper than agents was: the ledger, the classification inputs, the review rows, and the
+UI all exist. The reason to do it is that slash commands is the one remaining family
+where the drift is **real and reachable today** — unlike skills, which cannot be
+clobbered at all.
 
 **Skills cannot be clobbered.** A skill binds as a *directory* symlink, and
 `rename(dir, dir-symlink)` fails `ENOTDIR` at the kernel — verified empirically (see
