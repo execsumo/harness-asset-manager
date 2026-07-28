@@ -32,7 +32,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_runtime_state_roundtrip_uses_override_directory(self) -> None:
         with TemporaryDirectory() as temp_dir:
-            env = {"SKILL_MANAGER_STATE_DIR": temp_dir}
+            env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
             state = RuntimeState(
                 pid=1234,
                 host="127.0.0.1",

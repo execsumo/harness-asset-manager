@@ -68,11 +68,51 @@ _LIST_RESPONSE_SAMPLE: dict[str, object] = {
 }
 
 
+from harness_asset_manager.env_names import (
+    CLIS_DEV_BASE_URL_ENV,
+    legacy_name,
+)
+
+
 class ClisDevClientTests(unittest.TestCase):
     def test_base_url_override_is_normalized(self) -> None:
         self.assertEqual(
-            configured_clis_dev_base_url({"SKILL_MANAGER_CLIS_DEV_BASE_URL": "https://fixture.local/"}),
+            configured_clis_dev_base_url({"HARNESS_ASSET_MANAGER_CLIS_DEV_BASE_URL": "https://fixture.local/"}),
             "https://fixture.local",
+        )
+
+    def test_clis_dev_base_url_fallback_precedence_and_empty_string(self) -> None:
+        new_url = "https://clis-new.fixture.local/"
+        legacy_url = "https://clis-legacy.fixture.local/"
+        new_key = CLIS_DEV_BASE_URL_ENV
+        legacy_key = legacy_name(new_key)
+
+        # Case 1: new name alone -> honored
+        self.assertEqual(
+            configured_clis_dev_base_url({new_key: new_url}),
+            "https://clis-new.fixture.local",
+        )
+
+        # Case 2: legacy name alone -> honored
+        self.assertEqual(
+            configured_clis_dev_base_url({legacy_key: legacy_url}),
+            "https://clis-legacy.fixture.local",
+        )
+
+        # Case 3: both set -> new name wins
+        self.assertEqual(
+            configured_clis_dev_base_url({new_key: new_url, legacy_key: legacy_url}),
+            "https://clis-new.fixture.local",
+        )
+
+        # Case 4: empty string -> falls back to default
+        self.assertEqual(
+            configured_clis_dev_base_url({new_key: ""}),
+            "https://clis.dev",
+        )
+        self.assertEqual(
+            configured_clis_dev_base_url({legacy_key: "   "}),
+            "https://clis.dev",
         )
 
     def test_fetches_list_endpoint(self) -> None:

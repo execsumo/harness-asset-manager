@@ -4,12 +4,12 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .env_names import SETTINGS_PATH_ENV, STATE_DIR_ENV, env_get
 from .platform_context import PlatformContext, resolve_platform_context
 
 APP_NAME = "harness-asset-manager"
 
-SETTINGS_PATH_ENV = "SKILL_MANAGER_SETTINGS_PATH"
-STATE_DIR_ENV = "SKILL_MANAGER_STATE_DIR"
+__all__ = ["APP_NAME", "SETTINGS_PATH_ENV", "STATE_DIR_ENV", "AppPaths", "resolve_app_paths"]
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
     active_env = _active_env(env)
     context = resolve_platform_context(active_env)
     config_dir, data_dir, state_dir = _base_dirs(context)
-    settings_override = active_env.get(SETTINGS_PATH_ENV)
+    settings_override = env_get(active_env, SETTINGS_PATH_ENV)
     settings_path = Path(settings_override) if settings_override else config_dir / "settings.json"
     return AppPaths(
         config_dir=config_dir,
@@ -73,7 +73,7 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
 
 
 def _base_dirs(context: PlatformContext) -> tuple[Path, Path, Path]:
-    state_override = context.env.get(STATE_DIR_ENV)
+    state_override = env_get(context.env, STATE_DIR_ENV)
 
     if context.platform == "macos":
         legacy_dir = context.home / "Library" / "Application Support" / APP_NAME

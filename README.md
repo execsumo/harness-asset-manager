@@ -348,15 +348,17 @@ Most users do not need to change these locations. If you manage skills in a cust
 
 | Harness | Env var | Default Harness Asset Manager skill root |
 |---|---|---|
-| Codex | `SKILL_MANAGER_CODEX_ROOT` | `~/.agents/skills` |
-| Claude | `SKILL_MANAGER_CLAUDE_ROOT` | `~/.claude/skills` |
-| Cursor | `SKILL_MANAGER_CURSOR_ROOT` | `~/.cursor/skills` |
-| OpenCode | `SKILL_MANAGER_OPENCODE_ROOT` | `~/.config/opencode/skills` |
-| Hermes Agent | `SKILL_MANAGER_HERMES_ROOT` | `${HERMES_HOME:-~/.hermes}/skills` |
+| Codex | `HARNESS_ASSET_MANAGER_CODEX_ROOT` | `~/.agents/skills` |
+| Claude | `HARNESS_ASSET_MANAGER_CLAUDE_ROOT` | `~/.claude/skills` |
+| Cursor | `HARNESS_ASSET_MANAGER_CURSOR_ROOT` | `~/.cursor/skills` |
+| OpenCode | `HARNESS_ASSET_MANAGER_OPENCODE_ROOT` | `~/.config/opencode/skills` |
+| Hermes Agent | `HARNESS_ASSET_MANAGER_HERMES_ROOT` | `${HERMES_HOME:-~/.hermes}/skills` |
 | OpenClaw | `n/a` | `~/.openclaw/skills` |
-| Antigravity (agy) | `SKILL_MANAGER_AGY_ROOT` | `~/.gemini/antigravity-cli/skills` |
+| Antigravity (agy) | `HARNESS_ASSET_MANAGER_AGY_ROOT` | `~/.gemini/antigravity-cli/skills` |
 
-MCP config locations are harness-owned. Harness Asset Manager writes only to verified config paths and skips unsupported harness writes. Hermes Agent config discovery honors `SKILL_MANAGER_HERMES_HOME` first, then `HERMES_HOME`, then `~/.hermes`.
+Note: Legacy `SKILL_MANAGER_*` env var spellings are still read as fallbacks but are deprecated, to be removed after one release.
+
+MCP config locations are harness-owned. Harness Asset Manager writes only to verified config paths and skips unsupported harness writes. Hermes Agent config discovery honors `HARNESS_ASSET_MANAGER_HERMES_HOME` first, then legacy `SKILL_MANAGER_HERMES_HOME`, then Hermes' own `HERMES_HOME`, and finally `~/.hermes`.
 
 ## From source
 
