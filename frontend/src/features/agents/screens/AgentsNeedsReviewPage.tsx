@@ -171,6 +171,20 @@ export default function AgentsNeedsReviewPage() {
 
       {errorMessage ? <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} /> : null}
 
+      {inventory?.issues?.length ? (
+        <div className="agent-issues">
+          <h3 className="agent-issues__title">Bindings that need attention</h3>
+          <ul className="agent-issues__list">
+            {inventory.issues.map((issue, index) => (
+              <li key={`${issue.name}:${index}`} className="agent-issues__item">
+                <span className="agent-issues__name">{issue.name}</span>
+                <p className="agent-issues__reason">{issue.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {isInitialLoading ? (
         <div className="panel-state">
           <LoadingSpinner size="md" label="Loading agents" />

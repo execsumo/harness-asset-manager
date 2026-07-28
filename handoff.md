@@ -2,6 +2,187 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-27 — Auto-adoption Stages 1+2 shipped; defect #1 fixed; other families assessed
+
+Branch `feat/agent-binding-ledger` off `main` (not merged yet). Implements
+`plan-auto-adoption.md` Stages 1 and 2, and fixes defect #1 from the entry below.
+**Stage 3 is not started and should not be started as a continuation** — it is the
+first stage that can destroy content, and it needs a deliberate go-ahead.
+
+### What shipped
+
+- **`application/agents/ledger.py`** — `bindings.json` in the data dir (resolved via
+  `AppPaths.bindings_ledger_path`, so it moves with the pending `~/.skill-manager`
+  retirement rather than needing a second migration). Modelled on
+  `SlashCommandSyncStateStore`, which had already solved this for slash commands.
+  Every read path is total: missing / truncated / malformed → "no record" → the
+  pre-ledger prompt-the-user behaviour. Never a destructive default.
+- **`classify_drift()`** — §4's decision table as a pure function, one unit test per
+  row. Stage 2 *names* drift and takes no action; the inventory reports
+  clean-clobber / one-sided / two-sided in the binding cell and as an issue.
+- **Codex** gets detection without automation (§5): `rendered_sha256` recorded at
+  write time, local edits reported, never adopted.
+- **Defect #1 fixed.** `atomic_write_text` now refuses a symlink destination
+  (`os.replace` onto one destroys the link — the same mechanism that breaks our
+  bindings, aimed inward). Forecloses the class permanently for any future caller.
+
+### The two design rules that are NOT in the original plan — read before Stage 3
+
+Both are amended into `plan-auto-adoption.md` inline, marked **AMENDED**.
+
+1. **Rebaseline only *live* bindings.** Plan §3 said "store content changing for a
+   slug → refresh `store_sha256` for all its harnesses." Taken literally that loses
+   data: link (baseline A) → harness clobbers and edits → user edits in the HAM UI
+   (store → B) → a blanket refresh makes `hash(store) == ledger` true again, row 3
+   fires, and the auto-adopt discards the UI edit. Restricting the refresh to
+   bindings that are still symlinks makes that case fall to row 4 and prompt.
+   `test_store_edit_does_not_rebaseline_a_clobbered_binding` proves it.
+2. **One owner for the baseline.** The routers call `agents_store.create/update`
+   *directly*, bypassing `AgentMutationService`, so the refresh hangs off
+   `AgentStore(on_store_write=…)` and is wired once in `container.py`. Binding
+   records themselves are written in the mutation service — the adapters are shared
+   with the read-only inventory, so they are the wrong place.
+
+### Behaviour change outside the agents family — flagged deliberately
+
+The symlink guard needed an opt-in for the legitimate case, and the config writers
+(mcp / hooks / permissions / slash / codex) now pass `follow_symlinks=True`: they
+resolve the link and replace the real file behind it. **This is a real improvement
+for this machine specifically** — `~/.claude` is symlinked into `~/.dotfiles`, and
+the old behaviour silently replaced such a symlink with a regular file. Covered by
+`test_a_symlinked_config_is_written_through_not_replaced` (verified meaningful: it
+fails without the opt-in). Everything HAM writes into its *own* data dir keeps the
+strict default.
+
+One known limit, not worth fixing now: `_lock_path()` still derives from the link
+path, so two different symlinks pointing at the same real config would not serialize
+against each other. Exotic; previously impossible only because each link got its own
+materialized file.
+
+### Other asset families — assessed, verdict is "nothing more to build"
+
+Full reasoning in the new `plan-auto-adoption.md` §12. Summary: **agents** needed it
+(built); **slash commands** already have it (`sync_state.json` + the drifted/missing/
+unmanaged review rows — its only gap is a single hash with no store-side baseline, so
+`adopt_target` stays a user decision); **skills** are structurally immune (directory
+symlinks fail `rename()` with `ENOTDIR`); **mcp / hooks / permissions** are
+config-subtree — HAM writes *into* a file it does not own, so there is no binding to
+clobber and no whole-file hash that means anything. External-edit detection for those
+is already the config-snapshots service's job. Do not build a second one.
+
+`hash_file` moved to `harness_asset_manager/hashing.py` and is now shared between the
+slash sync state and the agents ledger, so the two on-disk hash formats cannot drift.
+
+### Frontend
+
+`GET /api/agents` has always returned `issues[]`, and **nothing rendered it** — the
+array was typed in `api/types.ts` and dropped on the floor. Stage 2's whole value is
+the user not having to *notice* drift, so it is now surfaced: a compact count banner
+on In Use, and the full verbatim reasons on "Agents to review". No API or schema
+change (`codegen:check` clean). Delegated to a Sonnet subagent against the MCP
+precedent; independently re-verified here, and its banner copy was corrected to match
+the real page title rather than the sidebar label.
+
+### Validation at completion, run independently
+
+`npm run typecheck` clean · backend 422 unit + 158 integration · frontend 269 across
+61 files · `npm run build` clean · `npm run codegen:check` no drift · `ruff check`
+clean.
+
+## 2026-07-27 — Symlink-durability audit: 3 defects to fix, 1 plan written
+
+Came out of a filesystem-durability review of how bindings survive harnesses
+writing their own config. Nothing here is broken *right now* — all three are
+latent, and all three were verified in code, not inferred. **No code was changed.**
+
+New: **`plan-auto-adoption.md`** — automatic re-adoption of drifted bindings, so a
+harness editing an asset does not require a manual re-adopt. Read it before
+touching anything in `application/agents/` or `application/skills/`.
+
+### The mechanism everything below turns on
+
+A tool that rewrites its own config writes to a temp file then `rename()`s onto the
+target. `rename()` replaces the **symlink itself** with a regular file. Verified
+empirically:
+
+- `rename(file, file-symlink)` → symlink destroyed, target orphaned.
+- `rename(dir, dir-symlink)` → fails `ENOTDIR` (errno 20). Directory symlinks are
+  structurally immune.
+- `rename(file, dir-symlink/file)` → resolves through the link, lands in the target.
+
+So **skills (directory bindings) are safe and agents (file bindings) are not.**
+`AgentHarnessAdapter.enable()` does `path.symlink_to(target)` where `binding_path()`
+is `<output_dir>/<slug>.md` — a file symlink, for Claude/Cursor/AGY/OpenCode.
+
+The damage is currently *safe and visible*, which is worth preserving: `owns()` →
+`is_symlink()` → `is_enabled()` derives from the filesystem, so it cannot go stale;
+a clobbered agent reads as disabled and appears in `unmanaged_paths()`. And
+`enable()` already refuses with `real file exists at {path}; will not overwrite`
+rather than blowing through it. **Do not "simplify" the derived-state model or those
+refusals** — they are the reason this is an inconvenience instead of data loss.
+
+### 1. `atomic_files.py:20` is the same clobber mechanism, aimed inward
+
+`atomic_write_text()` ends in `os.replace(tmp_path, path)`. That is precisely the
+operation that destroys a symlink.
+
+Safe **today** purely by where it is pointed: rendered Codex files (real files by
+design) and store files. It is one refactor from being pointed at a *binding* path
+— someone adds "edit agent from the UI" and reaches for the obvious helper — at
+which point HAM silently converts its own symlink into a real file and orphans the
+store entry, with no error.
+
+**Fix:** guard inside `atomic_write_text` — refuse when the destination is a
+symlink, or require the caller to opt into resolving through it. A few lines, and it
+forecloses the entire class permanently for agents and any future file-shaped asset.
+Cheaper than any structural alternative. Do this one first; it is independent of
+`plan-auto-adoption.md`.
+
+### 2. `agents/adapters.py:20-24` docstring encodes an assumption that is false
+
+The `AgentHarnessAdapter` docstring says, of the symlink model:
+
+> the harness reads the same markdown+frontmatter the store holds … editing the
+> store file updates every harness at once.
+
+True as written, and the inverse is what people will assume: that editing *through
+a harness* writes into the store. That only holds for a harness that writes **in
+place**. Any harness whose editor writes atomically destroys the binding instead —
+Claude Code's `/agents` editor is the concrete candidate.
+
+**Fix:** state the inverse risk in the docstring. The assumption is load-bearing and
+currently invisible to the next reader.
+
+**Untested assumption worth one experiment:** nobody has confirmed whether Claude
+Code's `/agents` editor writes atomically. Right now `~/.skill-manager/agents` holds
+one agent (`red-team.md`) with **zero bindings in any harness dir**, so nothing is
+exposed. When the first agent is bound: link it, edit via `/agents`, then check
+whether `~/.claude/agents/<slug>.md` is still a symlink. That single test decides
+whether this is operational or theoretical.
+
+### 3. Codex agent round-trip is lossy
+
+`adopt()` for a `renders` harness goes `parse_codex_agent()` →
+`render_agent_document()`, which preserves only `name`, `description`, `prompt`.
+Any other TOML the user added is dropped. Combined with the already-documented
+*"**No drift detection**: re-enabling overwrites local edits to a rendered file"*,
+this makes Codex unsafe to include in any automatic adoption — it is explicitly
+scoped out of `plan-auto-adoption.md` v1 for this reason.
+
+**Fix (prerequisite for Codex automation):** preserve unknown TOML keys through
+parse/render, with a property test asserting `render(parse(x)) == x`.
+
+### 4. Store path name discrepancy — three names in play
+
+Live install writes `~/.skill-manager/` (`shared/`, `agents/`, `manifest.json`);
+`ARCHITECTURE.md` §1 and §2 say `~/.harness-asset-manager/packages/`; the user
+refers to it as `~/.harnessAM/`. There is a `.migration.lock` in the live dir.
+
+Already tracked — see the **2026-07-26** entry on retiring the `~/.skill-manager`
+data dir. Flagging it again only because `plan-auto-adoption.md` adds a new file
+(`bindings.json`) to that directory: **resolve it through whatever resolves the data
+dir, do not hardcode**, and land it after the rename or it will need moving twice.
+
 ## 2026-07-28 — #11 fixed and merged; #14 confirmed still blocked
 
 ### #11 — DONE. Merged to `main` at `cab72ae`.

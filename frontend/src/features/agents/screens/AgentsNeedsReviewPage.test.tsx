@@ -67,6 +67,45 @@ describe("AgentsNeedsReviewPage", () => {
     expect(screen.getByText("OK Agent")).toBeInTheDocument();
   });
 
+  it("renders each issue's name and reason verbatim when issues are present", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) {
+        return okJson({
+          ...unmanagedAgentsFixture(),
+          issues: [
+            {
+              name: "auditor",
+              reason: "Claude replaced the link at /Users/x/.claude/agents/auditor.md with an edited copy.",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("OK Agent")).toBeInTheDocument());
+    expect(screen.getByText("auditor")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Claude replaced the link at /Users/x/.claude/agents/auditor.md with an edited copy.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no issues section when issues is empty", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("OK Agent")).toBeInTheDocument());
+    expect(screen.queryByText("Bindings that need attention")).not.toBeInTheDocument();
+  });
+
   it("handles 409 conflict and resolves with keep_store", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();

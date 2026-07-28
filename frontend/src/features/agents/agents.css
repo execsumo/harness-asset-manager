@@ -93,3 +93,47 @@
   padding: 24px 0;
   color: var(--color-text-muted);
 }
+
+/* Per-agent diagnostics surfaced from the inventory `issues` array. */
+.agent-issues {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.agent-issues__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.agent-issues__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agent-issues__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-issues__name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.agent-issues__reason {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
