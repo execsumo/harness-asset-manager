@@ -1,6 +1,13 @@
 # Plan — Automatic re-adoption of drifted bindings
 
-**Status:** not started. Written 2026-07-27 from a code read, no implementation yet.
+**Status: Stages 1 and 2 shipped 2026-07-27** (branch `feat/agent-binding-ledger`).
+Stages 3–5 not started, and Stage 3 is the first that can destroy content — it needs
+a deliberate decision, not a continuation. Two amendments to this document came out of
+building it; both are marked **AMENDED** inline (§3's rebaseline rule, §5's exclusion
+from it). Read those before building Stage 3, because the literal wording of §3 loses
+data and there is a test proving it.
+
+Written 2026-07-27 from a code read.
 **Goal:** stop requiring a manual re-adopt every time a harness edits an asset out
 from under HAM. Edits should flow back into the store and out to the other
 harnesses without the user driving it, in whichever direction they happen.
@@ -111,6 +118,30 @@ becomes a normal conflict prompt), never to data loss. State a test for this.
 - `disable()` succeeding → delete record
 - store content changing for a slug → refresh `store_sha256` for all its harnesses
 
+### AMENDED (shipped) — where the writes actually live, and the rebaseline rule
+
+Two corrections from implementation. Both are load-bearing; do not "restore" the
+original wording.
+
+1. **The writes live in `AgentMutationService`, not in the adapter.** The adapters are
+   shared with the read-only inventory; the mutation service is the only write funnel,
+   so one place records and one place forgets. `AgentStore` gained an `on_store_write`
+   callback because the routers call `store.create` / `store.update` *directly*,
+   bypassing the service — that callback is the single owner of the store baseline.
+
+2. **Refresh only bindings that are still live symlinks.** The bullet above, taken
+   literally, loses data. Timeline: we link (baseline A) → a harness clobbers the link
+   and edits its copy → the user edits the agent in the HAM UI (store becomes B). If
+   the write refreshed *all* harnesses, the ledger would now say B, `hash(store) == B`
+   would match, and row 3 would fire — auto-adopting the harness copy and discarding
+   the UI edit. Restricting the refresh to live bindings makes that case fall to row 4
+   (two-sided) and prompt, which is correct: the two edits really are independent.
+   Proven by `test_store_edit_does_not_rebaseline_a_clobbered_binding`.
+
+   The rule reads: a live binding is a symlink, so the harness is *already* reading
+   what we just wrote; re-baselining keeps a later clobber classifiable as one-sided.
+   A broken binding is measured against the content it actually derived from.
+
 ---
 
 ## 4. The decision table
@@ -168,6 +199,12 @@ be treated like the others:
 do the cheap useful half — store `rendered_sha256` at write time, compare on
 reconcile, and when it differs surface *"Codex's copy was edited locally"* as an
 issue with the existing manual adopt action. Detection without automation.
+
+**AMENDED (shipped):** Codex is also excluded from the store-write **rebaseline**, for
+the mirror-image reason. A store write reaches a symlinked harness automatically; it
+does not reach a rendered file at all. Re-baselining Codex would record "the harness
+has this content" about a copy that just went stale. Its `rendered_sha256` is recorded
+at write time and only ever compared, never refreshed from the store side.
 
 Automating Codex needs a lossless round-trip first (preserve unknown TOML keys
 through parse/render, with a property test proving `render(parse(x)) == x`). That
@@ -232,9 +269,9 @@ Every one of these deserves a test that proves the *unsafe* path is still refuse
 
 Each stage ships independently and leaves the tree working.
 
-1. **Ledger, write-only.** Record on `enable()`/`disable()`. No reads, no
+1. **✅ SHIPPED — Ledger, write-only.** Record on `enable()`/`disable()`. No reads, no
    behaviour change. Ship it, let records accumulate.
-2. **Classification, read-only.** Implement §4 as a pure function over
+2. **✅ SHIPPED — Classification, read-only.** Implement §4 as a pure function over
    `(ledger_record, harness_hash, store_hash)`. Surface `clobbered` as a distinct
    issue kind in the inventory, separate from `unmanaged`. Still no automatic
    action — this alone removes most of the pain, because the user stops having to
@@ -271,3 +308,48 @@ Stage 2 is the highest value-per-risk. If the work stalls, stall it there.
 - No automatic Codex adoption (§5).
 - No change to the derived-state model. `is_enabled()` must keep deriving from the
   filesystem — the ledger is strictly additional evidence, never the authority.
+
+---
+
+## 12. Does this pattern belong in the other asset families? — verdict
+
+Asked and answered 2026-07-27, from the code. **No further family needs this built.**
+There are six families and they fall into four groups, decided by binding shape.
+
+| Family | Binding shape | Verdict |
+|---|---|---|
+| **agents** | `AgentFileBindingProfile` — file symlink | **Needs it.** Built here. |
+| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Already has it.** |
+| **skills** | `FileTreeBindingProfile` — directory symlink | **Structurally immune.** |
+| **mcp / hooks / permissions** | `ConfigSubtreeBindingProfile` | **Wrong shape; does not transfer.** |
+
+**Slash commands already shipped this pattern, before the agents ledger existed.**
+`SlashCommandSyncStateStore` (`slash_commands/sync_state.py`) is the same ledger —
+`{name: {target: {path, contentHash, renderFormat}}}`, versioned, `atomic_write_text`
++ `file_lock`, dropping malformed records on read rather than raising. Classification
+lives in `read_models.py` (`_sync_entries`, `_tracked_review_rows`) and produces
+`drifted` / `missing` / `unmanaged` rows with `restore_managed` / `adopt_target` /
+`remove_binding` actions. The agents ledger was modelled on it deliberately, and
+`hash_file` is now shared from `harness_asset_manager/hashing.py` so the two cannot
+drift apart in format.
+
+Its one gap is worth knowing but is **not** this work: it records a single hash (what
+HAM wrote) with no store-side baseline, so it can prove *that* a file changed but not
+that the change is one-sided. `adopt_target` therefore stays a user decision. Giving
+it §4's second hash would let it auto-resolve the provable case the same way — a
+follow-on if Stage 3 proves the pattern out, not a prerequisite.
+
+**Skills cannot be clobbered.** A skill binds as a *directory* symlink, and
+`rename(dir, dir-symlink)` fails `ENOTDIR` at the kernel — verified empirically (see
+the 2026-07-27 handoff entry). A harness writing into the directory resolves *through*
+the link into the store, which is the behaviour we want. §7's skills work is a
+genuinely different mechanism (auto-adopt *new* local directories, `rmtree`-adjacent,
+default off) and must not be folded into the agents one.
+
+**Config-subtree families do not have a binding to clobber.** MCP, hooks, and
+permissions write *into* a config file the harness owns (`~/.claude.json`,
+`~/.cursor/hooks.json`, …). There is no symlink, and no whole-file hash means anything
+because the harness legitimately rewrites the rest of the file at will. The right
+mechanism for external edits there already exists and is a different one: the config
+snapshots service (2026-07-25 handoff) hashes those files, captures external changes
+at startup, and keeps timestamped baselines. Do not build a second one.
