@@ -69,7 +69,7 @@ class AgentHarnessAdapter:
                     f"a file we do not manage exists at {path}; will not overwrite"
                 )
             path.parent.mkdir(parents=True, exist_ok=True)
-            atomic_write_text(path, render_codex_agent(agent))
+            atomic_write_text(path, render_codex_agent(agent), follow_symlinks=True)
             return
 
         target = agent.path.resolve()

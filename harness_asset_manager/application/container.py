@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from harness_asset_manager.atomic_files import file_lock
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 from harness_asset_manager.harness.resolution import resolve_context
+from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
 from .agents import (
+    AgentBindingLedger,
     AgentHarnessAdapter,
     AgentInventoryService,
     AgentMutationService,
@@ -293,7 +295,7 @@ def build_backend_container(
     )
 
     scaffold_service = ScaffoldService(paths)
-    agents_store = AgentStore(paths.agents_root)
+    agent_bindings = AgentBindingLedger(paths.bindings_ledger_path)
 
     def resolve_agents_snapshot():
         # Re-resolved per call so toggling a harness in Settings takes effect at once.
@@ -302,8 +304,36 @@ def build_backend_container(
             target.id: AgentHarnessAdapter(target, paths.agents_root) for target in targets
         }
 
-    agents_inventory = AgentInventoryService(agents_store, resolve_agents_snapshot)
-    agents_mutations = AgentMutationService(agents_store, resolve_agents_snapshot)
+    def rebaseline_agent_bindings(slug: str) -> None:
+        """After we write a store file, re-record the baseline for **live** bindings.
+
+        A live binding is a symlink, so the harness is already reading what we just
+        wrote; re-baselining keeps a later clobber classifiable as one-sided. Bindings
+        that are already broken are deliberately left alone — re-baselining one would
+        make an independent store edit look like "the store never moved" and turn a
+        genuine two-sided conflict into an automatic adopt that discards this edit.
+
+        Rendered harnesses (Codex) are excluded for the same reason inverted: a store
+        write does not reach them at all, so their copy is now stale, not current.
+        """
+        store_path = agents_store.path_for(slug)
+        if not store_path.is_file():
+            return
+        _targets, adapters = resolve_agents_snapshot()
+        live = tuple(
+            harness
+            for harness, adapter in adapters.items()
+            if not adapter.renders and adapter.is_enabled(slug)
+        )
+        agent_bindings.rebaseline(slug, live, hash_file(store_path))
+
+    agents_store = AgentStore(paths.agents_root, rebaseline_agent_bindings)
+    agents_inventory = AgentInventoryService(
+        agents_store, resolve_agents_snapshot, agent_bindings
+    )
+    agents_mutations = AgentMutationService(
+        agents_store, resolve_agents_snapshot, agent_bindings
+    )
 
     config_snapshots = ConfigSnapshotService(paths)
     config_snapshots.capture_all_external_changes()

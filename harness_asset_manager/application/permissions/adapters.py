@@ -227,7 +227,7 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
             self._mapper.enable_permission(document, spec)
-            atomic_write_text(self.config_path, self._dump_document(document))
+            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def disable_permission(self, id: str) -> None:
         if not self.config_path.is_file():
@@ -236,7 +236,7 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
             document = self._load_document(self.config_path)
             pattern = self._get_managed_pattern(id)
             self._mapper.disable_permission(document, id, pattern)
-            atomic_write_text(self.config_path, self._dump_document(document))
+            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def invalidate(self) -> None:
         return None

@@ -20,6 +20,7 @@ class AppPaths:
     skills_store_root: Path
     skills_store_manifest: Path
     agents_root: Path
+    bindings_ledger_path: Path
     marketplace_cache_root: Path
     mcp_store_manifest: Path
     hooks_store_manifest: Path
@@ -46,6 +47,9 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
         skills_store_root=data_dir / "skills",
         skills_store_manifest=data_dir / "skills-manifest.json",
         agents_root=data_dir / "agents",
+        # Resolved from data_dir rather than hardcoded, so it moves with the pending
+        # ~/.skill-manager retirement instead of needing a second migration.
+        bindings_ledger_path=data_dir / "bindings.json",
         marketplace_cache_root=data_dir / "marketplace",
         mcp_store_manifest=data_dir / "mcp" / "manifest.json",
         hooks_store_manifest=data_dir / "hooks" / "manifest.json",

@@ -32,6 +32,7 @@ class ConfigSnapshotServiceTests(unittest.TestCase):
                 skills_store_root=tmp_path / "data" / "skills",
                 skills_store_manifest=tmp_path / "data" / "skills-manifest.json",
                 agents_root=tmp_path / "data" / "agents",
+                bindings_ledger_path=tmp_path / "data" / "bindings.json",
                 marketplace_cache_root=tmp_path / "data" / "marketplace",
                 mcp_store_manifest=tmp_path / "data" / "mcp" / "manifest.json",
                 hooks_store_manifest=tmp_path / "data" / "hooks" / "manifest.json",

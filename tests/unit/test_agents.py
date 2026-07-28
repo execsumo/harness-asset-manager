@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
+    AgentBindingLedger,
     AgentHarnessAdapter,
     AgentInventoryService,
     AgentMutationService,
@@ -190,8 +191,9 @@ class AgentsFixture(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         self.adapters = {"claude": self.adapter}
         snapshot = lambda: ((self.target,), self.adapters)
-        self.inventory = AgentInventoryService(self.store, snapshot)
-        self.mutations = AgentMutationService(self.store, snapshot)
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
+        self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
     def entry(self, ref: str):
         return next(e for e in self.inventory.build().entries if e.ref == ref)
@@ -224,8 +226,9 @@ class CodexAgentTests(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         adapters = {"codex": self.adapter}
         snapshot = lambda: ((self.target,), adapters)
-        self.inventory = AgentInventoryService(self.store, snapshot)
-        self.mutations = AgentMutationService(self.store, snapshot)
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
+        self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
     def test_enable_renders_toml_with_underscored_name(self) -> None:
         self.store.create(name="PR Reviewer", description="reviews", prompt="Be strict.")
@@ -331,8 +334,9 @@ class UnsupportedHarnessTests(unittest.TestCase):
         self.store = AgentStore(self.store_root)
         adapters = {"hermes": AgentHarnessAdapter(self.target, self.store_root)}
         snapshot = lambda: ((self.target,), adapters)
-        self.inventory = AgentInventoryService(self.store, snapshot)
-        self.mutations = AgentMutationService(self.store, snapshot)
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
+        self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
     def test_column_is_present_but_every_cell_is_unsupported(self) -> None:
         self.store.create(name="Red Team", description="d", prompt="p")

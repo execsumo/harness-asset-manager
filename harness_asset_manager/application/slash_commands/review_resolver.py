@@ -81,7 +81,7 @@ class SlashCommandReviewResolver:
         path = self.path_policy.tracked_path(target, previous.path)
         rendered = render_slash_command(command, target.render_format)
         path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(path, rendered)
+        atomic_write_text(path, rendered, follow_symlinks=True)
         record = SlashCommandSyncRecord(
             target=target.id,
             path=path,

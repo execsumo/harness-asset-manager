@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.harness.contracts import CommandFileRenderFormat
+from harness_asset_manager.hashing import hash_file
 
 from .models import SlashTargetId
 
@@ -111,11 +111,6 @@ class SlashCommandSyncStateStore:
             records = state.pop(name, {})
             self.write(state)
         return records
-
-
-def hash_file(path: Path) -> str:
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return f"sha256:{digest}"
 
 
 def _parse_record(target_id: str, raw_record: object) -> SlashCommandSyncRecord | None:

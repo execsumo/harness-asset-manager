@@ -37,7 +37,7 @@ class SlashCommandSyncExecutor:
                 path = write.path
                 rendered = render_slash_command(command, write.target.render_format)
                 path.parent.mkdir(parents=True, exist_ok=True)
-                atomic_write_text(path, rendered)
+                atomic_write_text(path, rendered, follow_symlinks=True)
                 next_records[write.target.id] = SlashCommandSyncRecord(
                     target=write.target.id,
                     path=path,
