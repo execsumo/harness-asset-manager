@@ -9,6 +9,7 @@ from harness_asset_manager.errors import MutationError
 
 from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
+from .ledger import AgentBindingLedger, build_record
 from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
 from .parser import render_agent_document
 from .store import AgentStore
@@ -27,11 +28,21 @@ class AgentMutationService:
 
     Like the inventory service, targets are resolved per call so a harness the user
     just enabled or disabled in Settings takes effect without a restart.
+
+    Every successful binding change is recorded in the ledger here rather than inside
+    ``AgentHarnessAdapter``: this service is the only write funnel (the adapters are
+    also used by the read-only inventory), so one place records and one place forgets.
     """
 
-    def __init__(self, store: AgentStore, resolve: TargetResolver) -> None:
+    def __init__(
+        self,
+        store: AgentStore,
+        resolve: TargetResolver,
+        ledger: AgentBindingLedger,
+    ) -> None:
         self.store = store
         self._resolve = resolve
+        self.ledger = ledger
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -45,11 +56,11 @@ class AgentMutationService:
 
     def enable(self, slug: str, harness: str) -> None:
         agent = self._require_agent(slug)
-        self._adapter(harness).enable(agent)
+        self._enable(self._adapter(harness), harness, agent)
 
     def disable(self, slug: str, harness: str) -> None:
         self._require_agent(slug)
-        self._adapter(harness).disable(slug)
+        self._disable(self._adapter(harness), harness, slug)
 
     def set_harnesses(self, slug: str, harnesses: list[str]) -> tuple[list[str], list[tuple[str, str]]]:
         agent = self._require_agent(slug)
@@ -65,9 +76,9 @@ class AgentMutationService:
             adapter = self.adapters[target.id]
             try:
                 if target.id in wanted:
-                    adapter.enable(agent)
+                    self._enable(adapter, target.id, agent)
                 else:
-                    adapter.disable(slug)
+                    self._disable(adapter, target.id, slug)
                 succeeded.append(target.id)
             except MutationError as error:
                 failed.append((target.id, str(error)))
@@ -108,7 +119,10 @@ class AgentMutationService:
             self.store.agents_root.mkdir(parents=True, exist_ok=True)
             shutil.move(str(harness_path), str(store_path))
 
-        adapter.enable(self._require_agent(slug))
+        # Re-links and re-records in one step: the fresh record's store hash is taken
+        # from the file we just wrote, so a later clobber is measured against the
+        # content this harness actually received.
+        self._enable(adapter, harness, self._require_agent(slug))
         return slug
 
     @staticmethod
@@ -141,8 +155,28 @@ class AgentMutationService:
         self._require_agent(slug)
         for target in self.targets:
             if target.supports_agents:
-                self.adapters[target.id].disable(slug)
+                self._disable(self.adapters[target.id], target.id, slug)
         self.store.delete(slug)
+        # Covers harnesses the user has since disabled in Settings, which are not in
+        # `targets` and so were never asked to unbind.
+        self.ledger.forget_slug(slug)
+
+    # -- ledger -------------------------------------------------------------
+
+    def _enable(self, adapter: AgentHarnessAdapter, harness: str, agent: AgentDefinition) -> None:
+        adapter.enable(agent)
+        self.ledger.upsert(
+            agent.slug,
+            build_record(
+                harness=harness,
+                store_path=agent.path,
+                rendered_path=adapter.binding_path(agent.slug) if adapter.renders else None,
+            ),
+        )
+
+    def _disable(self, adapter: AgentHarnessAdapter, harness: str, slug: str) -> None:
+        adapter.disable(slug)
+        self.ledger.forget(slug, harness)
 
     # -- helpers ------------------------------------------------------------
 

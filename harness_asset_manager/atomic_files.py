@@ -8,7 +8,27 @@ from pathlib import Path
 from typing import Iterator
 
 
-def atomic_write_text(path: Path, content: str) -> None:
+def atomic_write_text(path: Path, content: str, *, follow_symlinks: bool = False) -> None:
+    """Write ``content`` to ``path`` via a temp file and ``os.replace``.
+
+    ``os.replace`` onto a symlink **destroys the symlink** and leaves a regular file
+    in its place — the same mechanism by which a harness's own atomic editor breaks a
+    binding we created. So the default refuses a symlink destination outright: any
+    future caller pointed at a binding path fails loudly instead of silently orphaning
+    the store entry.
+
+    ``follow_symlinks=True`` is the opt-in for the legitimate case — writing a
+    harness-owned config file that the *user* has symlinked into a dotfiles repo. There
+    we resolve the link and replace the real file behind it, so their symlink survives.
+    """
+    if path.is_symlink():
+        if not follow_symlinks:
+            raise ValueError(
+                f"refusing to atomically write over the symlink at {path}: "
+                "os.replace would destroy the link. Pass follow_symlinks=True to "
+                "write through it instead."
+            )
+        path = Path(os.path.realpath(path))
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     tmp_path = Path(tmp_name)

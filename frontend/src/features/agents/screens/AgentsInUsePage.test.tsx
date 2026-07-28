@@ -99,6 +99,43 @@ describe("AgentsInUsePage", () => {
     expect(screen.getByText("Test Agent")).toBeInTheDocument();
   });
 
+  it("renders a compact issue count banner pointing at Needs Review when issues are present", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) {
+        return okJson({
+          ...agentsInUseFixture(),
+          issues: [
+            { name: "auditor", reason: "Claude replaced the link at /Users/x/.claude/agents/auditor.md with an edited copy." },
+          ],
+        });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
+    expect(
+      screen.getByText(/1 agent binding needs attention\. See "Agents to review"\./i),
+    ).toBeInTheDocument();
+    // The banner is a compact count only — it must not echo the raw reason text.
+    expect(
+      screen.queryByText(/Claude replaced the link/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders no issue banner when issues is empty", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(agentsInUseFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
+    expect(screen.queryByText(/agent issue/i)).not.toBeInTheDocument();
+  });
+
   it("toggles a harness cell", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();

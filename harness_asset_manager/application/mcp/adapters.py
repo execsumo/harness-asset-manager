@@ -189,7 +189,7 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
             for subtree_path in self._read_subtree_paths:
                 if subtree_path != self._write_subtree_path:
                     self._remove_from_subtree(document, subtree_path, spec.name)
-            atomic_write_text(self.config_path, self._dump_document(document))
+            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
         self._remove_from_noncanonical_config_paths(spec.name)
 
     def disable_server(self, name: str) -> None:
@@ -203,7 +203,7 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
                     removed = self._remove_from_subtree(document, subtree_path, name) or removed
                 if not removed:
                     continue
-                atomic_write_text(config_path, self._dump_document(document))
+                atomic_write_text(config_path, self._dump_document(document), follow_symlinks=True)
 
     def _remove_from_noncanonical_config_paths(self, name: str) -> None:
         for config_path in self._discovery_config_paths:
@@ -215,7 +215,7 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
                 for subtree_path in self._read_subtree_paths:
                     removed = self._remove_from_subtree(document, subtree_path, name) or removed
                 if removed:
-                    atomic_write_text(config_path, self._dump_document(document))
+                    atomic_write_text(config_path, self._dump_document(document), follow_symlinks=True)
 
     def _require_mcp_writable(self) -> None:
         status = self.status()

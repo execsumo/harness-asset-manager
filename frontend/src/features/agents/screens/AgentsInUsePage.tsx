@@ -53,6 +53,10 @@ export default function AgentsInUsePage() {
   const totalInUse = inventory?.entries.filter((e) => e.kind === "managed").length ?? 0;
   const isReady = status === "success" && Boolean(inventory);
   const columns = inventory?.columns ?? [];
+  const issueCount = inventory?.issues?.length ?? 0;
+  const inventoryIssueMessage = issueCount
+    ? `${issueCount} agent binding${issueCount === 1 ? "" : "s"} need${issueCount === 1 ? "s" : ""} attention. See "Agents to review".`
+    : "";
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailRef, setDetailRef] = useState<string | null>(null);
@@ -108,6 +112,7 @@ export default function AgentsInUsePage() {
       {actionErrorMessage ? (
         <ErrorBanner message={actionErrorMessage} onDismiss={clearActionError} />
       ) : null}
+      {inventoryIssueMessage ? <ErrorBanner message={inventoryIssueMessage} /> : null}
 
       {isInitialLoading ? (
         <div className="panel-state">

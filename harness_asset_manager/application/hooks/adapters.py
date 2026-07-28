@@ -222,7 +222,7 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
             self._mapper.enable_hook(document, spec)
-            atomic_write_text(self.config_path, self._dump_document(document))
+            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def disable_hook(self, id: str) -> None:
         if not self.config_path.is_file():
@@ -231,7 +231,7 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
             document = self._load_document(self.config_path)
             command = self._get_managed_command(id)
             self._mapper.disable_hook(document, id, command)
-            atomic_write_text(self.config_path, self._dump_document(document))
+            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def invalidate(self) -> None:
         return None

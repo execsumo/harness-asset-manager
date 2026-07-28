@@ -41,6 +41,47 @@ class AtomicWriteTextTests(unittest.TestCase):
             self.assertEqual(tmp_files, [])
 
 
+class AtomicWriteSymlinkGuardTests(unittest.TestCase):
+    """`os.replace` onto a symlink destroys the link — the same mechanism by which a
+    harness's atomic editor breaks a binding we created. Aimed at one of our own
+    binding paths it would silently orphan a store entry, so it must be refused."""
+
+    def test_refuses_to_write_over_a_symlink_by_default(self) -> None:
+        with TemporaryDirectory() as temp:
+            real = Path(temp) / "real.md"
+            real.write_text("store content", encoding="utf-8")
+            link = Path(temp) / "binding.md"
+            link.symlink_to(real)
+
+            with self.assertRaises(ValueError):
+                atomic_write_text(link, "clobber")
+
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(real.read_text(encoding="utf-8"), "store content")
+
+    def test_follow_symlinks_writes_through_and_keeps_the_link(self) -> None:
+        """The opt-in case: a harness config file the user symlinked into dotfiles."""
+        with TemporaryDirectory() as temp:
+            real = Path(temp) / "dotfiles" / "settings.json"
+            real.parent.mkdir()
+            real.write_text("{}", encoding="utf-8")
+            link = Path(temp) / "settings.json"
+            link.symlink_to(real)
+
+            atomic_write_text(link, '{"ok": true}', follow_symlinks=True)
+
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(real.read_text(encoding="utf-8"), '{"ok": true}')
+
+    def test_a_dangling_symlink_is_refused_rather_than_materialised(self) -> None:
+        with TemporaryDirectory() as temp:
+            link = Path(temp) / "binding.md"
+            link.symlink_to(Path(temp) / "missing.md")
+            with self.assertRaises(ValueError):
+                atomic_write_text(link, "x")
+            self.assertTrue(link.is_symlink())
+
+
 class FileLockTests(unittest.TestCase):
     def test_serializes_concurrent_critical_sections(self) -> None:
         with TemporaryDirectory() as temp:

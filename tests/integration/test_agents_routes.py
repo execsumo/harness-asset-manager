@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 
@@ -352,6 +353,54 @@ class AgentRoutesTests(unittest.TestCase):
                 "/api/agents/red-team/enable", {"harness": "nope"}, expected_status=409
             )
             self.assertIn("nope", payload["error"])
+
+    def test_binding_ledger_lands_in_the_data_dir_and_follows_the_binding(self) -> None:
+        """Proves the container wiring, not just the service: the ledger path is
+        resolved from the data dir (so it moves with the pending rename) and the
+        routers' mutations reach it."""
+        with AppTestHarness() as harness:
+            ledger_path = harness.container.paths.bindings_ledger_path
+            self.assertEqual(ledger_path.parent, harness.container.paths.data_dir)
+
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+            self.assertIn(
+                "claude", json.loads(ledger_path.read_text("utf-8"))["agents"]["red-team"]
+            )
+
+            harness.post_json("/api/agents/red-team/disable", {"harness": "claude"})
+            self.assertEqual(json.loads(ledger_path.read_text("utf-8"))["agents"], {})
+
+    def test_a_clobbered_binding_is_diagnosed_over_the_api(self) -> None:
+        """The end-to-end case the whole ledger exists for: a harness replaces our
+        symlink with its own edited copy, exactly as an atomic editor would."""
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            self.assertTrue(binding.is_symlink())
+            binding.unlink()
+            binding.write_text(
+                "---\nname: Red Team\ndescription: d\n---\nedited by the harness\n",
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/agents")
+            entry = next(e for e in payload["entries"] if e["ref"] == "red-team")
+            claude = next(b for b in entry["bindings"] if b["harness"] == "claude")
+            self.assertEqual(claude["state"], "disabled")
+            self.assertEqual(claude["detail"], "the link was replaced by an edited file")
+            self.assertTrue(
+                any("only edit" in issue["reason"] for issue in payload["issues"]),
+                payload["issues"],
+            )
+            # Read-only: the harness's copy is still exactly where it was.
+            self.assertIn("edited by the harness", binding.read_text(encoding="utf-8"))
 
     def _entry(self, harness: AppTestHarness, ref: str) -> dict:
         payload = harness.get_json("/api/agents")

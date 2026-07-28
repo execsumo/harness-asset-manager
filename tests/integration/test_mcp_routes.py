@@ -259,6 +259,29 @@ class McpRoutesTests(unittest.TestCase):
             self.assertEqual(entry["enabledStatus"], "disabled")
             self.assertEqual(entry["mcpStatus"]["kind"], "unchecked")
 
+    def test_a_symlinked_config_is_written_through_not_replaced(self) -> None:
+        """Users symlink harness config into a dotfiles repo. `os.replace` onto a
+        symlink destroys it, so the config writers resolve the link and replace the
+        real file behind it — the symlink, and the dotfiles repo, survive."""
+        with AppTestHarness() as harness:
+            config_path = harness.spec.home / ".cursor" / "mcp.json"
+            real_path = harness.spec.home / "dotfiles" / "cursor-mcp.json"
+            real_path.parent.mkdir(parents=True, exist_ok=True)
+            real_path.write_text("{}\n", encoding="utf-8")
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            config_path.unlink(missing_ok=True)
+            config_path.symlink_to(real_path)
+
+            _seed_manual_remote(harness, name="remote")
+            harness.post_json("/api/mcp/servers/remote/enable", {"harness": "cursor"})
+
+            self.assertTrue(config_path.is_symlink())
+            self.assertIn("remote", real_path.read_text(encoding="utf-8"))
+
+            harness.post_json("/api/mcp/servers/remote/disable", {"harness": "cursor"})
+            self.assertTrue(config_path.is_symlink())
+            self.assertNotIn("remote", real_path.read_text(encoding="utf-8"))
+
     def test_availability_check_updates_runtime_status(self) -> None:
         with AppTestHarness() as harness:
             probe = FakeMcpAvailabilityProbe(status="available")

@@ -6,6 +6,14 @@ from .adapters import (
     render_codex_agent,
 )
 from .inventory import AgentInventoryService
+from .ledger import (
+    LEDGER_VERSION,
+    AgentBindingLedger,
+    AgentBindingRecord,
+    DriftKind,
+    build_record,
+    classify_drift,
+)
 from .model import (
     AgentAdoptConflict,
     AgentBinding,
@@ -26,6 +34,8 @@ from .targets import resolve_agent_targets, target_by_id
 __all__ = [
     "AgentAdoptConflict",
     "AgentBinding",
+    "AgentBindingLedger",
+    "AgentBindingRecord",
     "AgentDetail",
     "AgentHarnessDetail",
     "AgentDefinition",
@@ -41,6 +51,10 @@ __all__ = [
     "AgentTarget",
     "BulkAdoptResult",
     "ConflictResolution",
+    "DriftKind",
+    "LEDGER_VERSION",
+    "build_record",
+    "classify_drift",
     "codex_agent_name",
     "parse_agent_document",
     "parse_agent_file",

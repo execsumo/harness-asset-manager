@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Callable
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -22,8 +23,15 @@ def slugify(name: str) -> str:
 class AgentStore:
     """The agents Harness Asset Manager owns: flat ``<slug>.md`` files under ``agents_root``."""
 
-    def __init__(self, agents_root: Path) -> None:
+    def __init__(
+        self, agents_root: Path, on_store_write: Callable[[str], None] | None = None
+    ) -> None:
         self.agents_root = agents_root
+        # One notification point for "the store file for this slug changed", so the
+        # binding ledger has a single owner for its store baseline. Routers call
+        # `create`/`update` directly, bypassing the mutation service, which is exactly
+        # why this hangs off the store rather than off the service.
+        self._on_store_write = on_store_write
 
     def path_for(self, slug: str) -> Path:
         if slug != Path(slug).name or slug in {"", ".", ".."}:
@@ -68,6 +76,7 @@ class AgentStore:
                 name=name, description=description, prompt=prompt, tools=tools
             ),
         )
+        self._notify_write(slug)
         return parse_agent_file(path)
 
     def update(
@@ -94,12 +103,14 @@ class AgentStore:
                 base_metadata=current.metadata,
             ),
         )
+        self._notify_write(slug)
         return parse_agent_file(current.path)
 
     def write_raw(self, slug: str, document: str) -> None:
         """Adopt path: keep the harness file's bytes verbatim rather than re-rendering."""
         self.agents_root.mkdir(parents=True, exist_ok=True)
         atomic_write_text(self.path_for(slug), document)
+        self._notify_write(slug)
 
     def delete(self, slug: str) -> None:
         path = self.path_for(slug)
@@ -108,6 +119,10 @@ class AgentStore:
         if path.is_symlink():
             raise MutationError(f"refusing to delete a symlink in the store: {path}")
         path.unlink()
+
+    def _notify_write(self, slug: str) -> None:
+        if self._on_store_write is not None:
+            self._on_store_write(slug)
 
 
 __all__ = ["AgentStore", "slugify"]
