@@ -142,5 +142,37 @@ class HttpApiTests(unittest.TestCase):
                     self.assertIn("<div id='root'>harness-asset-manager</div>", body)
 
 
+    def test_auto_adopt_enable_skills_returns_400(self) -> None:
+        with AppTestHarness() as harness:
+            res = harness.put_json("/api/settings/auto-adopt/skills", {"enabled": True}, expected_status=400)
+            self.assertIn("auto-adopt for 'skills' is not implemented yet", res["error"])
+
+    def test_auto_adopt_disable_skills_returns_200(self) -> None:
+        with AppTestHarness() as harness:
+            res = harness.put_json("/api/settings/auto-adopt/skills", {"enabled": False}, expected_status=200)
+            self.assertTrue(res["ok"])
+            self.assertEqual(res["autoAdopt"], {"agents": True, "skills": False})
+
+    def test_auto_adopt_agents_toggles_successfully(self) -> None:
+        with AppTestHarness() as harness:
+            res_off = harness.put_json("/api/settings/auto-adopt/agents", {"enabled": False}, expected_status=200)
+            self.assertTrue(res_off["ok"])
+            self.assertEqual(res_off["autoAdopt"], {"agents": False, "skills": False})
+
+            res_on = harness.put_json("/api/settings/auto-adopt/agents", {"enabled": True}, expected_status=200)
+            self.assertTrue(res_on["ok"])
+            self.assertEqual(res_on["autoAdopt"], {"agents": True, "skills": False})
+
+    def test_auto_adopt_unknown_family_returns_404(self) -> None:
+        with AppTestHarness() as harness:
+            res = harness.put_json("/api/settings/auto-adopt/slash_commands", {"enabled": True}, expected_status=404)
+            self.assertIn("unknown asset family", res["error"])
+
+    def test_get_settings_retains_both_auto_adopt_keys(self) -> None:
+        with AppTestHarness() as harness:
+            settings = harness.get_json("/api/settings")
+            self.assertEqual(settings["autoAdopt"], {"agents": True, "skills": False})
+
+
 if __name__ == "__main__":
     unittest.main()
