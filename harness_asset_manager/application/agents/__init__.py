@@ -5,6 +5,7 @@ from .adapters import (
     parse_codex_agent,
     render_codex_agent,
 )
+from .audit import AgentAuditLog, AuditAction, AuditEntry
 from .inventory import AgentInventoryService
 from .ledger import (
     LEDGER_VERSION,
@@ -28,11 +29,13 @@ from .model import (
 )
 from .mutations import AgentMutationService, BulkAdoptResult, ConflictResolution
 from .parser import parse_agent_document, parse_agent_file, render_agent_document
+from .reconcile import AgentReconcileService, ReconcileOutcome
 from .store import AgentStore, slugify
 from .targets import resolve_agent_targets, target_by_id
 
 __all__ = [
     "AgentAdoptConflict",
+    "AgentAuditLog",
     "AgentBinding",
     "AgentBindingLedger",
     "AgentBindingRecord",
@@ -47,12 +50,16 @@ __all__ = [
     "AgentIssue",
     "AgentMutationService",
     "AgentParseError",
+    "AgentReconcileService",
     "AgentStore",
     "AgentTarget",
+    "AuditAction",
+    "AuditEntry",
     "BulkAdoptResult",
     "ConflictResolution",
     "DriftKind",
     "LEDGER_VERSION",
+    "ReconcileOutcome",
     "build_record",
     "classify_drift",
     "codex_agent_name",
