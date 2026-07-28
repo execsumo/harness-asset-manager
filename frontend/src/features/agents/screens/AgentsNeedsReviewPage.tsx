@@ -185,6 +185,25 @@ export default function AgentsNeedsReviewPage() {
         </div>
       ) : null}
 
+      {inventory?.recentRepairs?.length ? (
+        <div className="agent-issues agent-repairs">
+          <h3 className="agent-issues__title">Recent automatic repairs</h3>
+          <ul className="agent-issues__list">
+            {inventory.recentRepairs.slice(0, 10).map((repair, index) => (
+              <li key={`${repair.ref}:${repair.harness}:${repair.at}:${index}`} className="agent-issues__item">
+                <div className="agent-repairs__header">
+                  <span className="agent-issues__name">
+                    {repair.ref}{repair.harness ? ` (${repair.harness})` : ""}
+                  </span>
+                  <span className="agent-repairs__time">{new Date(repair.at * 1000).toLocaleString()}</span>
+                </div>
+                <p className="agent-issues__reason">{repair.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {isInitialLoading ? (
         <div className="panel-state">
           <LoadingSpinner size="md" label="Loading agents" />

@@ -106,6 +106,52 @@ describe("AgentsNeedsReviewPage", () => {
     expect(screen.queryByText("Bindings that need attention")).not.toBeInTheDocument();
   });
 
+  it("renders recent automatic repairs when present", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) {
+        return okJson({
+          ...unmanagedAgentsFixture(),
+          recentRepairs: [
+            {
+              at: 1783997184.96,
+              ref: "red-team",
+              harness: "claude",
+              action: "adopted",
+              detail: "adopted edited harness copy into store and restored link",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Recent automatic repairs")).toBeInTheDocument());
+    expect(
+      screen.getByText("adopted edited harness copy into store and restored link"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/red-team/)).toBeInTheDocument();
+    expect(screen.queryByText(/1970/)).not.toBeInTheDocument();
+  });
+
+  it("renders no repairs section when recentRepairs is empty or absent", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) {
+        return okJson({
+          ...unmanagedAgentsFixture(),
+          recentRepairs: [],
+        });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("OK Agent")).toBeInTheDocument());
+    expect(screen.queryByText("Recent automatic repairs")).not.toBeInTheDocument();
+  });
+
   it("handles 409 conflict and resolves with keep_store", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();

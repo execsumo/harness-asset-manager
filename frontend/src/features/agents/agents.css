@@ -137,3 +137,21 @@
   word-break: break-word;
   white-space: pre-wrap;
 }
+
+/* Recent automatic repairs surfaced from inventory `recentRepairs`. */
+.agent-repairs {
+  margin-bottom: var(--space-4);
+}
+
+.agent-repairs__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.agent-repairs__time {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+}
+

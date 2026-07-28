@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { queryPolicy } from "../../lib/query";
+import { invalidateAgentsQueries } from "../agents/public";
 import { invalidateMcpQueries } from "../mcp/public";
 import { invalidateSkillsQueries } from "../skills/public";
-import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateHarnessSupport } from "./api/client";
+import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateAutoAdopt, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
 const SETTINGS_STALE_TIME_MS = 60_000;
@@ -79,6 +80,42 @@ export function useHarnessSupportMutation() {
         invalidateSkillsQueries(queryClient),
         invalidateMcpQueries(queryClient),
         invalidateSettingsQueries(queryClient),
+      ]);
+    },
+  });
+}
+
+export function useAutoAdoptMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ family, enabled }: { family: string; enabled: boolean }) =>
+      updateAutoAdopt(family, enabled),
+    onMutate: async ({ family, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: settingsKeys.detail() });
+      const previousSettings = queryClient.getQueryData<SettingsData>(settingsKeys.detail());
+      if (previousSettings) {
+        queryClient.setQueryData<SettingsData>(settingsKeys.detail(), {
+          ...previousSettings,
+          autoAdopt: {
+            ...previousSettings.autoAdopt,
+            [family]: enabled,
+          },
+        });
+      }
+      return { previousSettings };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSettings) {
+        queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateSkillsQueries(queryClient),
+        invalidateMcpQueries(queryClient),
+        invalidateSettingsQueries(queryClient),
+        invalidateAgentsQueries(queryClient),
       ]);
     },
   });
