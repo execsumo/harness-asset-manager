@@ -210,7 +210,12 @@ function NavGroup({
       >
         {icon}
         <span>{label}</span>
-        {count != null ? <span className="sidebar-group__count">{count}</span> : null}
+        {count != null ? (
+          <>
+            {" "}
+            <span className="sidebar-group__count">{count}</span>
+          </>
+        ) : null}
         <ChevronDown className="sidebar-group__chevron" size={14} aria-hidden="true" />
       </button>
       {!collapsed ? (
@@ -354,7 +359,12 @@ function SidebarTopLink({
     <NavLink to={to} className={({ isActive }) => `sidebar-top-link${isActive ? " is-active" : ""}`}>
       {icon}
       <span>{label}</span>
-      {count != null ? <span className="sidebar-group__count" style={{ marginLeft: "auto" }}>{count}</span> : null}
+      {count != null ? (
+        <>
+          {" "}
+          <span className="sidebar-group__count" style={{ marginLeft: "auto" }}>{count}</span>
+        </>
+      ) : null}
     </NavLink>
   );
 }
@@ -372,7 +382,12 @@ function SidebarLink({
     <NavLink to={to} className={({ isActive }) => `sidebar-link${isActive ? " is-active" : ""}`}>
       <span className="sidebar-link__dot" aria-hidden="true" />
       <span>{label}</span>
-      {count != null ? <span className="sidebar-link__count">{count}</span> : null}
+      {count != null ? (
+        <>
+          {" "}
+          <span className="sidebar-link__count">{count}</span>
+        </>
+      ) : null}
     </NavLink>
   );
 }
