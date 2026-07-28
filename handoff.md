@@ -2,7 +2,40 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-07-27 (latest) — Data dir converged on `~/.harness-asset-manager`
+## 2026-07-27 (latest) — Settings row layout fixed; ARCHITECTURE.md caught up
+
+Merged to `main`. Two small things, both fallout from earlier work.
+
+### The auto-adopt row collapsed its own grid
+
+`.settings-row` is `grid-template-columns: 28px minmax(0, 1fr) auto` — icon, body,
+trailing control. The Stage 3 auto-adopt row rendered **two** children, not three. A
+missing child does not shift the rest left: `__body` landed in the fixed 28px icon
+track, and since text cannot shrink below its longest word, the label overflowed a
+column it could never fill — wrapping one word per line — while the toggle, laid out in
+the 1fr track, was drawn across it.
+
+Every other `.settings-row` (both storage rows, and `SettingsHarnessCard`) already
+passed all three children. Fixed by conforming to the contract — the row gets a `Wrench`
+icon like its neighbours — not by special-casing it. The contract is now stated on the
+CSS rule itself, and pinned by a test that walks every rendered `.settings-row` and
+asserts child count and order; verified it fails `2 != 3` with the icon removed.
+
+**Worth knowing:** a row that genuinely wants no icon must still render an empty
+`<span class="settings-row__icon" />`. Dropping the child silently reproduces this bug.
+
+### ARCHITECTURE.md still described the retired packages model
+
+§1, §2 and §4 documented `~/.harness-asset-manager/packages/<name>/{skills,agents}`,
+which was retired in the **2026-07-24** agents rebuild. README had already been
+corrected (`232c154`); ARCHITECTURE.md had not. §4 now documents the flat layout that
+actually exists, including the Stage 1–3 additions (`bindings.json`, `agents-audit.json`,
+`agents/conflicts/`) and which directories are safe to delete (only `marketplace/`).
+
+Validation: typecheck clean · backend 451 + 162 · frontend **274** across 61 files ·
+build clean · `ruff check harness_asset_manager tests` clean · `codegen:check` no drift.
+
+## 2026-07-27 — Data dir converged on `~/.harness-asset-manager`
 
 **No code changed.** This is an on-disk data migration plus corrections to the
 2026-07-26 entry below, which was wrong in three load-bearing ways. The legacy dir is
