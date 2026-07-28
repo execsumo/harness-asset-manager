@@ -24,9 +24,27 @@ class SettingsHarnessResponse(BaseModel):
     managedLocation: str | None
 
 
+class SettingsAutoAdoptResponse(BaseModel):
+    """Whether Harness Asset Manager may repair drifted bindings without being asked."""
+
+    agents: bool
+    skills: bool
+
+
 class SettingsResponse(BaseModel):
     storage: SettingsStorageResponse
     harnesses: list[SettingsHarnessResponse]
+    autoAdopt: SettingsAutoAdoptResponse
 
 
-__all__ = ["SettingsHarnessResponse", "SettingsResponse", "SettingsStorageResponse"]
+class SetAutoAdoptRequest(BaseModel):
+    enabled: bool
+
+
+__all__ = [
+    "SetAutoAdoptRequest",
+    "SettingsAutoAdoptResponse",
+    "SettingsHarnessResponse",
+    "SettingsResponse",
+    "SettingsStorageResponse",
+]

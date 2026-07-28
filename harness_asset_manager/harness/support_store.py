@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.settings_file import (
+    load_settings_document,
+    update_settings_document,
+)
 
 
 @dataclass(frozen=True)
@@ -19,9 +21,7 @@ class HarnessSupportStore:
         self.path = path
 
     def load(self) -> HarnessSupportPreferences:
-        if not self.path.is_file():
-            return HarnessSupportPreferences()
-        payload = json.loads(self.path.read_text(encoding="utf-8"))
+        payload = load_settings_document(self.path)
         disabled = payload.get("disabledHarnesses", [])
         if not isinstance(disabled, list):
             return HarnessSupportPreferences()
@@ -29,22 +29,23 @@ class HarnessSupportStore:
         return HarnessSupportPreferences(disabled_harnesses=values)
 
     def set_enabled(self, harness: str, enabled: bool) -> HarnessSupportPreferences:
-        with file_lock(self.path.with_suffix(".lock")):
-            current = set(self.load().disabled_harnesses)
-            if enabled:
-                current.discard(harness)
-            else:
-                current.add(harness)
-            next_preferences = HarnessSupportPreferences(disabled_harnesses=tuple(sorted(current)))
-            self._write(next_preferences)
-            return next_preferences
+        current = set(self.load().disabled_harnesses)
+        if enabled:
+            current.discard(harness)
+        else:
+            current.add(harness)
+        next_preferences = HarnessSupportPreferences(disabled_harnesses=tuple(sorted(current)))
+        # Merge, rather than serialising this store's view of the file: settings.json
+        # is shared, and rewriting it from one store's keys deletes every other
+        # store's. The read-modify-write happens under the shared settings lock.
+        update_settings_document(
+            self.path,
+            lambda document: document.update(
+                {"disabledHarnesses": list(next_preferences.disabled_harnesses)}
+            ),
+        )
+        return next_preferences
 
     def enabled_harnesses(self, supported_harnesses: tuple[str, ...]) -> tuple[str, ...]:
         preferences = self.load()
         return tuple(harness for harness in supported_harnesses if preferences.is_enabled(harness))
-
-    def _write(self, preferences: HarnessSupportPreferences) -> None:
-        atomic_write_text(
-            self.path,
-            json.dumps({"disabledHarnesses": list(preferences.disabled_harnesses)}, indent=2, sort_keys=True) + "\n",
-        )

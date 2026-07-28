@@ -795,6 +795,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/auto-adopt/{family}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Auto Adopt */
+        put: operations["set_auto_adopt_api_settings_auto_adopt__family__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/harnesses/{harness}/support": {
         parameters: {
             query?: never;
@@ -2431,6 +2448,11 @@ export interface components {
             /** Succeeded */
             succeeded: string[];
         };
+        /** SetAutoAdoptRequest */
+        SetAutoAdoptRequest: {
+            /** Enabled */
+            enabled: boolean;
+        };
         /** SetHarnessSupportRequest */
         SetHarnessSupportRequest: {
             /** Enabled */
@@ -2489,6 +2511,16 @@ export interface components {
             /** Succeeded */
             succeeded: string[];
         };
+        /**
+         * SettingsAutoAdoptResponse
+         * @description Whether Harness Asset Manager may repair drifted bindings without being asked.
+         */
+        SettingsAutoAdoptResponse: {
+            /** Agents */
+            agents: boolean;
+            /** Skills */
+            skills: boolean;
+        };
         /** SettingsHarnessResponse */
         SettingsHarnessResponse: {
             /** Harness */
@@ -2506,6 +2538,7 @@ export interface components {
         };
         /** SettingsResponse */
         SettingsResponse: {
+            autoAdopt: components["schemas"]["SettingsAutoAdoptResponse"];
             /** Harnesses */
             harnesses: components["schemas"]["SettingsHarnessResponse"][];
             storage: components["schemas"]["SettingsStorageResponse"];
@@ -4579,6 +4612,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+        };
+    };
+    set_auto_adopt_api_settings_auto_adopt__family__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAutoAdoptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

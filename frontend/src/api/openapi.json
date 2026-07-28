@@ -4075,6 +4075,19 @@
         "title": "SetAgentHarnessesResultResponse",
         "type": "object"
       },
+      "SetAutoAdoptRequest": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SetAutoAdoptRequest",
+        "type": "object"
+      },
       "SetHarnessSupportRequest": {
         "properties": {
           "enabled": {
@@ -4216,6 +4229,25 @@
         "title": "SetSkillHarnessesResultResponse",
         "type": "object"
       },
+      "SettingsAutoAdoptResponse": {
+        "description": "Whether Harness Asset Manager may repair drifted bindings without being asked.",
+        "properties": {
+          "agents": {
+            "title": "Agents",
+            "type": "boolean"
+          },
+          "skills": {
+            "title": "Skills",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agents",
+          "skills"
+        ],
+        "title": "SettingsAutoAdoptResponse",
+        "type": "object"
+      },
       "SettingsHarnessResponse": {
         "properties": {
           "harness": {
@@ -4269,6 +4301,9 @@
       },
       "SettingsResponse": {
         "properties": {
+          "autoAdopt": {
+            "$ref": "#/components/schemas/SettingsAutoAdoptResponse"
+          },
           "harnesses": {
             "items": {
               "$ref": "#/components/schemas/SettingsHarnessResponse"
@@ -4282,7 +4317,8 @@
         },
         "required": [
           "storage",
-          "harnesses"
+          "harnesses",
+          "autoAdopt"
         ],
         "title": "SettingsResponse",
         "type": "object"
@@ -7742,6 +7778,57 @@
           }
         },
         "summary": "Settings"
+      }
+    },
+    "/api/settings/auto-adopt/{family}": {
+      "put": {
+        "operationId": "set_auto_adopt_api_settings_auto_adopt__family__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "family",
+            "required": true,
+            "schema": {
+              "title": "Family",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAutoAdoptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Auto Adopt Api Settings Auto Adopt  Family  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Auto Adopt"
       }
     },
     "/api/settings/harnesses/{harness}/support": {

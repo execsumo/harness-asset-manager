@@ -13,6 +13,7 @@ def settings_payload(
     platform: PlatformName,
     harness_statuses: tuple[HarnessStatus, ...],
     enabled_harnesses: tuple[str, ...],
+    auto_adopt: dict[str, bool],
 ) -> dict[str, object]:
     enabled_set = set(enabled_harnesses)
 
@@ -22,6 +23,7 @@ def settings_payload(
             harness_payload(status, support_enabled=status.harness in enabled_set)
             for status in harness_statuses
         ],
+        "autoAdopt": dict(auto_adopt),
     }
 
 

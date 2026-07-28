@@ -81,7 +81,13 @@ from .permissions import (
     ReconcilePermissionRequest,
     SetPermissionHarnessesRequest,
 )
-from .settings import SettingsHarnessResponse, SettingsResponse, SettingsStorageResponse
+from .settings import (
+    SetAutoAdoptRequest,
+    SettingsAutoAdoptResponse,
+    SettingsHarnessResponse,
+    SettingsResponse,
+    SettingsStorageResponse,
+)
 from .skills import (
     BulkManageFailureResponse,
     BulkManageResultResponse,
@@ -175,7 +181,9 @@ __all__ = [
     "McpUnmanagedHarnessResponse",
     "OkResponse",
     "ReconcileMcpServerRequest",
+    "SetAutoAdoptRequest",
     "SetHarnessSupportRequest",
+    "SettingsAutoAdoptResponse",
     "SettingsHarnessResponse",
     "SettingsResponse",
     "SettingsStorageResponse",

@@ -43,7 +43,7 @@ from .permissions import (
     PermissionStore,
 )
 from .scaffold import ScaffoldService
-from .settings import SettingsMutationService, SettingsQueryService
+from .settings import AutoAdoptStore, SettingsMutationService, SettingsQueryService
 from .skills import SkillsMutationService, SkillsQueryService
 from .skills.marketplace import (
     MarketplaceCatalog,
@@ -193,7 +193,8 @@ def build_backend_container(
     active_source_fetcher = source_fetcher or SourceFetchService()
     skills_queries = SkillsQueryService(skills_read_models, active_source_fetcher)
     skills_mutations = SkillsMutationService(skills_read_models, skills_queries, active_source_fetcher)
-    settings_queries = SettingsQueryService(harness_kernel, paths)
+    auto_adopt_store = AutoAdoptStore(paths.settings_path)
+    settings_queries = SettingsQueryService(harness_kernel, paths, auto_adopt_store)
     slash_targets = resolve_slash_targets(harness_kernel)
     slash_command_store = SlashCommandStore(
         SlashCommandStorePaths(
@@ -248,7 +249,9 @@ def build_backend_container(
     mcp_store = McpServerStore(paths.mcp_store_manifest)
     mcp_read_models = McpReadModelService.from_kernel(store=mcp_store, kernel=harness_kernel)
     invalidation.register(mcp_read_models)
-    settings_mutations = SettingsMutationService(harness_kernel, support_store, invalidation)
+    settings_mutations = SettingsMutationService(
+        harness_kernel, support_store, invalidation, auto_adopt_store
+    )
 
     mcp_catalog = mcp_marketplace_catalog or McpMarketplaceCatalog.from_environment(
         active_env,
