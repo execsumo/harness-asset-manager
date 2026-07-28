@@ -26,8 +26,8 @@ Harness Asset Manager is a local-first control center for AI developer extension
                                        |
                  +---------------------+---------------------+
                  |                                           |
-      Package & Manifest Storage                 Harness Adapters & Mappers
-   (~/.harness-asset-manager/packages/)        (Claude, Codex, AGY, Cursor, etc.)
+        Store & Manifest Storage                 Harness Adapters & Mappers
+     (~/.harness-asset-manager/)              (Claude, Codex, AGY, Cursor, etc.)
                  |                                           |
     Atomic File Writes & Locks                    Harness Native Config Files
 ```
@@ -39,7 +39,7 @@ Harness Asset Manager is a local-first control center for AI developer extension
 Harness Asset Manager manages six core extension families:
 
 ### 1. Skills
-- **Storage**: Portable Markdown skill folders (`SKILL.md` + scripts/resources) under `packages/<package>/skills/`.
+- **Storage**: Portable Markdown skill folders (`SKILL.md` + scripts/resources) under `skills/<package>/`, with source and revision tracked in `skills-manifest.json`.
 - **Harness Integration**: Installed via local filesystem links (`symlink`) into each harness's skills directory (`~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, etc.).
 - **Hermes Support**: Categorized under `~/.hermes/skills/harness-asset-manager/`. Hub-installed skills are tracked while local/learned skills remain untouched.
 
@@ -66,7 +66,7 @@ Harness Asset Manager manages six core extension families:
 - **Harness Sync**: Translated to native event structures in `settings.json` (Claude), `config.toml` (Codex), `hooks.json` (Cursor/AGY), or `opencode.jsonc` (OpenCode).
 
 ### 5. Subagents
-- **Storage**: Markdown files with YAML frontmatter (`name`, `description`, system prompt body) under `packages/<package>/agents/`.
+- **Storage**: Markdown files with YAML frontmatter (`name`, `description`, system prompt body) under `agents/`. Unrecognized frontmatter keys are preserved byte-for-byte on edit.
 - **Harness Integration**:
   - **Claude, Cursor, AGY, OpenCode**: Installed via direct symlinks. Unrecognized frontmatter keys (`model`, `permissionMode`, `hooks`) are preserved on write.
   - **Codex**: Rendered into TOML agent files (`.codex/agents/*.toml`) carrying a `# harness-asset-manager:generated` header.
@@ -98,13 +98,16 @@ Every resource family resolves enabled harnesses dynamically from `catalog.py` a
 
 ---
 
-## 4. Storage & Package Layout
+## 4. Storage Layout
 
-HAM uses local-first package-based storage:
+HAM uses a local-first flat store. Each family owns a top-level directory; there is no
+package layer (the `packages/<name>/` model was retired with the 2026-07-24 agents
+rebuild, and `container.py` migrates any surviving `shared/` or `packages/local/`
+directory into this shape on startup).
 
 ```
 ~/.harness-asset-manager/ (macOS) or $XDG_DATA_HOME/harness-asset-manager/ (Linux)
-├── settings.json                       # Global settings & enabled harness toggles
+├── settings.json                       # Global settings, harness toggles, autoAdopt
 ├── configs/                            # Canonical native harness config baselines & snapshots
 │   ├── claude/                         # .claude.json, settings.json
 │   ├── codex/                          # config.toml
@@ -122,12 +125,17 @@ HAM uses local-first package-based storage:
 ├── slash-commands/
 │   ├── commands/                       # Slash command prompt files
 │   └── sync-state.json                 # Target hash sync tracking
-└── packages/
-    └── local/                          # Default mutable package
-        ├── package.json
-        ├── skills/                     # Local skills store
-        └── agents/                     # Local agent markdown definitions
+├── skills/                             # Skill packages, one directory each
+├── skills-manifest.json                # Source & revision per skill package
+├── agents/                             # Agent markdown definitions
+│   └── conflicts/                      # Preserved copies when two harnesses diverge
+├── bindings.json                       # Agent binding ledger (store/harness hashes)
+├── agents-audit.json                   # Every automatic binding repair, for review
+└── marketplace/                        # HTTP response cache (disposable)
 ```
+
+Everything above is resolved from `data_dir` in `paths.py` — nothing hardcodes the
+directory name. Only `marketplace/` is safe to delete; it is a cache and rebuilds.
 
 ### Native Config Snapshot Service
 HAM captures canonical baselines and timestamped snapshots of user-level native harness config files under `configs/<harness_id>/`.
