@@ -2,57 +2,60 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-07-27 — TODO: two dependabot PRs blocked, need real fixes (#11, #14)
+## 2026-07-28 — #11 fixed and merged; #14 confirmed still blocked
 
-**Not started.** Filed after a session that synced/merged 15 of 17 open dependabot PRs into
-`main`. These 2 are the ones deliberately left open — both need a person (or a dedicated session)
-to actually fix something, not just a rebase.
+### #11 — DONE. Merged to `main` at `cab72ae`.
 
-### #11 — testing group bump breaks a real test
+Root cause found, not worked around: jsdom 30 now correctly computes `display: inline` for
+unstyled `<span>` elements (jsdom 26 returned `""`, empty string). `dom-accessibility-api`'s
+accessible-name separator logic only inserts a space between adjacent elements when
+`display !== "inline"` (`accessible-name-and-description.js:252-253`), so the jsdom fix exposed
+that the sidebar's label/count spans (`<span>Skills</span><span>13</span>`) have **never** had a
+real space between them in the accessible name — screen readers have always announced "Skills13",
+not "Skills 13". The old jsdom bug was accidentally masking a real, pre-existing a11y gap; this
+was a correctness improvement in jsdom, not a regression the app introduced.
 
-<https://github.com/execsumo/harness-asset-manager/pull/11> bumps `@testing-library/jest-dom`
-6.9.1→7.0.0, `jsdom`, and `vitest` together. `frontend-validate` fails on a genuine assertion, not
-an install/environment error:
+Fixed by inserting an explicit space text node between label and count in
+`frontend/src/components/Sidebar.tsx` (`NavGroup`, `SidebarTopLink`, `SidebarLink`). Two things
+worth knowing if this pattern comes up again:
+- A **leading space inside the count `<span>`** (`{" "}{count}`) does *not* work — the accname
+  algorithm trims/normalizes whitespace per-subtree before concatenating, so it gets silently
+  dropped. The fix has to be a **separate sibling text node** between the two spans (a `<>{" "}
+  <span>…</span></>` fragment).
+- Verified in a real browser (Playwright/Chromium against the built app, not just jsdom) that the
+  whitespace-only sibling text node doesn't get promoted to a CSS Grid item — per spec, text runs
+  that are entirely whitespace aren't wrapped into an anonymous grid item, so `.sidebar-group__header`'s
+  `display: grid` 4-column layout is unaffected. Screenshot-verified: chevrons and counts still
+  align correctly.
 
-```
-TestingLibraryElementError: Unable to find role="button" and name "Skills 13"
-```
-in `frontend/src/App.test.tsx`. 264/265 other frontend tests still pass, so this is narrow.
+Rebased the dependabot branch onto `main` (it predated the react-query 5.101.4 and
+npm-distribution-channel-removal commits), landed the fix on top, then merged. Full suite green
+independently: `npm ci`, `audit:check`, `codegen:check`, `typecheck`, 265 frontend tests, 387+155
+backend tests, build. PR #11 closed with the root-cause explanation; dependabot branch deleted.
+**Same run-together-accessible-name pattern likely exists elsewhere** (matrix cells, badges) —
+not swept, since no other test happens to assert a spaced name on adjacent inline elements. Not
+in scope for #11; flag if it comes up again.
 
-Prime suspect: jest-dom 7.0.0's release notes list a breaking change —
-`@testing-library/dom` is now a **required peer dependency** (previously transitive/optional).
-If it's missing or resolves to a mismatched version after the bump, matcher/query behavior can
-shift. Check `package.json`/`package-lock.json` for `@testing-library/dom`'s resolved version
-after this bump lands, and check whether "Skills 13" (a count-suffixed button label) is coming
-from a selector that jsdom/vitest's updated timing now races.
+### #14 — still blocked upstream, confirmed with fresh evidence, PR left open
 
-**Next steps:** `npm install` this branch locally, run `npm test -- App.test.tsx` and read the
-actual DOM dump in the failure output (truncated in the CI log this session used) to see what's
-rendered instead of "Skills 13". Don't merge until the assertion passes for a real reason, not a
-loosened selector.
+Re-checked today: `npm view openapi-typescript versions` shows `7.13.0` is still the latest
+(unchanged since #14 was filed), and `npm view openapi-typescript@latest peerDependencies` still
+shows `{ typescript: '^5.x' }`. `npm ci` on the branch fails with a single ERESOLVE — confirmed no
+other dependency in the project (`vite@8.1.5`, `vitest@3.2.4`, `@vitejs/plugin-react@6.0.4`) pins
+a `typescript` peer range, so `openapi-typescript` is the sole blocker, not one of several.
 
-### #14 — typescript major bump blocked by a peer dependency
+Went further than an install check: installed the branch with `--legacy-peer-deps` in a
+throwaway worktree (not landed) to see what forcing it would actually do. `npm run typecheck`
+fails hard across 30+ files under real TS 7.0.2 — `TS2305: Module '"@testing-library/react"' has
+no exported member 'screen'` (and `fireEvent`/`waitFor`/`within`), plus new implicit-`any` errors.
+`npm run build` "succeeds" anyway because Vite/esbuild strips types without checking them — so
+`npm run typecheck` is the only gate that would catch this, and forcing the install would have
+shipped it broken. This confirms the prior handoff's "don't force it" instinct with hard evidence
+rather than leaving it as a guess.
 
-<https://github.com/execsumo/harness-asset-manager/pull/14> bumps `typescript` 5.9.3→7.0.2
-(skips 6 entirely). `npm ci` fails outright:
-
-```
-npm error ERESOLVE could not resolve
-npm error While resolving: openapi-typescript@7.13.0
-npm error Found: typescript@7.0.2
-npm error peer typescript@"^5.x" from openapi-typescript@7.13.0
-```
-
-`openapi-typescript` (used by `npm run codegen:openapi` to generate `frontend/src/api/generated.ts`
-from the backend's OpenAPI schema) hasn't declared TS7 support yet. Two ways forward:
-
-1. Check if `openapi-typescript` has shipped a newer release with a `typescript@^7` peer range by
-   the time this is picked up — if so, bump that dependency first, then retry #14.
-2. If not, this stays blocked upstream; don't force it with `--legacy-peer-deps` or similar, since
-   that risks silently broken codegen rather than a loud install failure.
-
-**Next steps:** check `npm view openapi-typescript versions` / its changelog for TS7 support
-before touching this PR again.
+**Next steps:** re-run `npm view openapi-typescript versions` next time this is picked up. Stays
+blocked until it (or whatever is causing the `@testing-library/react` type-resolution break under
+TS7) ships support. PR #14 left open with findings commented; branch untouched.
 
 ## 2026-07-26 — TODO: retire the `~/.skill-manager` data dir (stale slug, and it is unversioned)
 
