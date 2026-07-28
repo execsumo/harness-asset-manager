@@ -5,6 +5,9 @@ import unittest
 from unittest import mock
 from urllib.error import HTTPError, URLError
 
+from harness_asset_manager.application.mcp.marketplace.client import (
+    configured_mcp_registry_base_url,
+)
 from harness_asset_manager.application.skills.marketplace.client import (
     SkillsShClient,
     configured_marketplace_base_url,
@@ -13,6 +16,11 @@ from harness_asset_manager.application.skills.marketplace.client import (
 from harness_asset_manager.application.skills.marketplace.skillssh import (
     fetch_all_time_leaderboard,
     search_skills,
+)
+from harness_asset_manager.env_names import (
+    MARKETPLACE_BASE_URL_ENV,
+    MCP_REGISTRY_BASE_URL_ENV,
+    legacy_name,
 )
 from harness_asset_manager.errors import (
     MARKETPLACE_UNAVAILABLE_MESSAGE,
@@ -25,6 +33,74 @@ class MarketplaceClientConfigTests(unittest.TestCase):
         self.assertEqual(
             configured_marketplace_base_url({"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": "https://fixture.local/"}),
             "https://fixture.local",
+        )
+
+    def test_marketplace_base_url_fallback_precedence_and_empty_string(self) -> None:
+        new_url = "https://new.fixture.local/"
+        legacy_url = "https://legacy.fixture.local/"
+        new_key = MARKETPLACE_BASE_URL_ENV
+        legacy_key = legacy_name(new_key)
+
+        # Case 1: new name alone -> honored
+        self.assertEqual(
+            configured_marketplace_base_url({new_key: new_url}),
+            "https://new.fixture.local",
+        )
+
+        # Case 2: legacy name alone -> honored
+        self.assertEqual(
+            configured_marketplace_base_url({legacy_key: legacy_url}),
+            "https://legacy.fixture.local",
+        )
+
+        # Case 3: both set -> new name wins
+        self.assertEqual(
+            configured_marketplace_base_url({new_key: new_url, legacy_key: legacy_url}),
+            "https://new.fixture.local",
+        )
+
+        # Case 4: empty string -> falls back to default
+        self.assertEqual(
+            configured_marketplace_base_url({new_key: "   "}),
+            "https://skills.sh",
+        )
+        self.assertEqual(
+            configured_marketplace_base_url({legacy_key: ""}),
+            "https://skills.sh",
+        )
+
+    def test_mcp_registry_base_url_fallback_precedence_and_empty_string(self) -> None:
+        new_url = "https://mcp-new.fixture.local/"
+        legacy_url = "https://mcp-legacy.fixture.local/"
+        new_key = MCP_REGISTRY_BASE_URL_ENV
+        legacy_key = legacy_name(new_key)
+
+        # Case 1: new name alone -> honored
+        self.assertEqual(
+            configured_mcp_registry_base_url({new_key: new_url}),
+            "https://mcp-new.fixture.local",
+        )
+
+        # Case 2: legacy name alone -> honored
+        self.assertEqual(
+            configured_mcp_registry_base_url({legacy_key: legacy_url}),
+            "https://mcp-legacy.fixture.local",
+        )
+
+        # Case 3: both set -> new name wins
+        self.assertEqual(
+            configured_mcp_registry_base_url({new_key: new_url, legacy_key: legacy_url}),
+            "https://mcp-new.fixture.local",
+        )
+
+        # Case 4: empty string -> falls back to default
+        self.assertEqual(
+            configured_mcp_registry_base_url({new_key: ""}),
+            "https://registry.modelcontextprotocol.io",
+        )
+        self.assertEqual(
+            configured_mcp_registry_base_url({legacy_key: "  "}),
+            "https://registry.modelcontextprotocol.io",
         )
 
     def test_ssl_cert_override_takes_precedence(self) -> None:
