@@ -208,6 +208,25 @@ class AgentReconcileService:
                         # Step 4: unlink each harness copy and recreate symlink; upsert fresh ledger record
                         now = time.time()
                         for item in drifted:
+                            # Re-verify immediately before deleting, exactly as the
+                            # all-clean path does. Between classification and here a
+                            # harness may have written again, and that later edit was
+                            # never weighed by the decision above — deleting it would
+                            # discard content nothing has seen.
+                            if _safe_hash(item.binding_path) != item.harness_sha256:
+                                actions.append(
+                                    AuditEntry(
+                                        at=now,
+                                        ref=slug,
+                                        harness=item.harness_id,
+                                        action="refused",
+                                        detail=(
+                                            "harness file changed again while adopting; "
+                                            "left it in place"
+                                        ),
+                                    )
+                                )
+                                continue
                             item.binding_path.unlink()
                             item.binding_path.symlink_to(item.store_path.resolve())
                             self.ledger.upsert(

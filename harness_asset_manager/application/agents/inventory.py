@@ -5,7 +5,6 @@ from typing import Callable
 
 from .adapters import AgentHarnessAdapter, TargetResolver, parse_codex_agent
 from .ledger import AgentBindingLedger, AgentBindingRecord, classify_drift, hash_file
-from .reconcile import ReconcileOutcome
 from .model import (
     AgentBinding,
     AgentDetail,
@@ -17,6 +16,7 @@ from .model import (
     AgentTarget,
 )
 from .parser import parse_agent_file
+from .reconcile import ReconcileOutcome
 from .store import AgentStore
 
 
