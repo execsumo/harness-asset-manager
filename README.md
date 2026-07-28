@@ -36,10 +36,9 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Install or adopt MCP server configs, resolve differences, and enable them where supported.
 - Manage reusable slash commands once, then sync them to supported harnesses.
 - Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
-- Manage Agents — agents are markdown files in the store that get symlinked into each harness's agents directory, with In Use and Needs Review views like every other family.
+- Manage Agents — markdown files in the store, symlinked into each harness's agents directory, with In Use and Needs Review views like every other family. If a harness overwrites a link with its own copy, provably-safe edits are folded back in automatically and conflicting ones are left for you.
 - Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
 - Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `ham snapshot` CLI support.
-- Keep everything in portable packages: the default `local` package holds your own resources, and additional packages can be dropped in (or deactivated) as a unit.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 
 ## Product tour
@@ -98,6 +97,8 @@ Typical flow:
 1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
 2. Turn it on for the harnesses that should have it.
 3. Review agents discovered in harness directories and adopt the ones worth keeping.
+
+If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
 
 ### Marketplace
 
@@ -197,18 +198,19 @@ Actions that can change local state include:
 - creating, updating, syncing, importing, or deleting a slash command
 - creating, enabling, disabling, resolving, or deleting a hook binding
 - changing harness support settings
+- repairing a drifted agent binding, which can move an edit out of a harness file and into the store
+
+That last one is the only action Harness Asset Manager takes without being asked. It is limited to cases where no content can be lost — either the two copies are identical, or the harness copy is provably the only edit that exists — and it is recorded in an audit log surfaced in the app. Turn it off in Settings under **Repair drifted agent bindings automatically**.
 
 App-owned files live under `~/.harness-asset-manager` on macOS (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists) and XDG base directories on Linux.
 
 ## How it works
 
-### Packages
+### Store layout
 
-All Harness Asset Manager resources live inside packages under the app's `packages/` directory. Each package carries a `package.json` (`slug`, `name`, `version`, `mutable`, `active`) plus per-family content (`skills/`, `agents/`, and a skills `manifest.json`). There is always a default `local` package — the mutable workspace where your own resources live. Additional packages are just directories: drop one in to install it, set `active: false` to disable it, and mark it `mutable: false` to protect shared content from accidental edits (the API rejects writes into immutable packages).
+Harness Asset Manager keeps a flat store under its data directory: `skills/` holds one directory per skill, `agents/` holds one `<slug>.md` per agent, and each family's manifests sit alongside. Every binding into a harness points back here, so a resource is edited once and every harness that has it enabled follows.
 
-Resource identity stays stable (content-derived refs), while `<package>/<resource>` aliases give human-readable references; agent compilation resolves aliases and pins them. If two packages provide the same resource, the `local` package wins and the collision is reported as an inventory issue.
-
-On first start after upgrading, the legacy shared store (`shared/` + top-level `manifest.json`) is migrated one-time into `packages/local/` — the migration is locked, idempotent, and skipped when the new layout already exists.
+Two earlier layouts are migrated one-time on first start — the pre-package `shared/` directory and the later `packages/local/` structure both fold into `skills/` and `agents/`. The migration is locked, idempotent, and skipped once the flat layout exists.
 
 ### Skills
 
@@ -283,9 +285,29 @@ The agents matrix shows the same harnesses as every other family — whichever y
 | Codex | `~/.codex/agents/` | rendered TOML |
 | Hermes | — | not installable |
 
-Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Rendered files carry no drift detection — re-enabling overwrites local edits to them. **Hermes** keeps a column for consistency but spawns subagents dynamically and has no agent-definition file to install into, so its cells say so rather than offering a toggle that cannot work.
+Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** keeps a column for consistency but spawns subagents dynamically and has no agent-definition file to install into, so its cells say so rather than offering a toggle that cannot work.
 
 Harness Asset Manager only ever removes files it owns — a symlink into its store, or a file carrying its generated marker. Anything else in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store (converting Codex TOML to Markdown) and installs it back. If the name is already taken in the store, Harness Asset Manager refuses to guess and asks which version to keep.
+
+#### When a harness breaks the link
+
+Some editors save a file by writing a temporary file and renaming it over the target. Renaming over a symlink **replaces the symlink** with a regular file, so a harness that edits an agent through its own UI can silently turn a binding into an ordinary copy — and from then on the two versions drift apart. (Skills are immune to this: they bind as directory symlinks, and renaming a directory over one fails at the kernel.)
+
+Harness Asset Manager records every binding it makes in `bindings.json`: which agent went to which harness, and what the store held at that moment. That record is what makes the difference between "a harness broke our link" and "an unrelated file happens to share this name" decidable — without it, the two are the same observation. The record is a cache, never a source of truth; if it disagrees with the filesystem, the filesystem wins. Deleting it costs you the automation, never your content.
+
+On the next inventory load, each broken binding is classified and handled:
+
+| What is found | What happens |
+|---|---|
+| The copy is identical to the store | The link is restored. There is no content decision to make. |
+| The copy was edited, and the store has not changed since it was linked | That copy holds the only edit in existence, so it is adopted into the store and every binding for that agent is restored. |
+| The copy was edited **and** the store changed too | Nothing. Both sides hold work; choosing either discards the other. Reported for you to resolve. |
+| Several harnesses were edited differently | Nothing is adopted and nothing is deleted. Each version is preserved under `agents/conflicts/`, with one issue naming every side. |
+| There is no record of a binding here | Nothing. This is an ordinary name collision, and you are asked, as before. |
+
+Newest-file-wins is deliberately **not** a rule here — it silently discards the other harness's work, which is the exact failure this exists to prevent. Codex is excluded from automatic adoption entirely, because converting its TOML back to Markdown drops keys Harness Asset Manager does not model.
+
+Every automatic action is appended to an audit log and shown as **Recent automatic repairs** on the agents review page: repair you cannot see is nearly as bad as breakage you cannot see. The whole behaviour is off with one switch in Settings, and turning it off takes effect on the next load, not the next restart.
 
 ### CLIs
 
@@ -297,22 +319,24 @@ On macOS, app-owned files live under `~/.harness-asset-manager` (with a legacy f
 
 Useful macOS paths:
 
-- packages root: `~/.harness-asset-manager/packages` (default package: `packages/local`)
-- shared skills store: `~/.harness-asset-manager/packages/local/skills` (migrated from the legacy `~/.harness-asset-manager/shared` on first start)
-- agents: `~/.harness-asset-manager/packages/<package>/agents`
+- skills store: `~/.harness-asset-manager/skills` (migrated from the legacy `shared/` and `packages/local/skills` layouts on first start)
+- agents store: `~/.harness-asset-manager/agents`
+- agent binding ledger: `~/.harness-asset-manager/bindings.json`
+- agent repair audit log: `~/.harness-asset-manager/agents-audit.json`
+- preserved conflicting agent copies: `~/.harness-asset-manager/agents/conflicts`
 - MCP manifest: `~/.harness-asset-manager/mcp/manifest.json`
 - hooks manifest: `~/.harness-asset-manager/hooks/manifest.json`
 - slash command library: `~/.harness-asset-manager/slash-commands/commands`
 - slash command sync state: `~/.harness-asset-manager/slash-commands/sync-state.json`
 - marketplace cache: `~/.harness-asset-manager/marketplace`
-- app database: `~/.harness-asset-manager/harness-asset-manager.db`
-- app settings: `~/.harness-asset-manager/settings.json`
+- app settings: `~/.harness-asset-manager/settings.json` (harness on/off, plus `autoAdopt`)
 
 Useful Linux paths:
 
-- packages root: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/packages`
-- shared skills store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/packages/local/skills`
-- agents: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/packages/<package>/agents`
+- skills store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/skills`
+- agents store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents`
+- agent binding ledger: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/bindings.json`
+- agent repair audit log: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents-audit.json`
 - MCP manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/mcp/manifest.json`
 - hooks manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/hooks/manifest.json`
 - slash command library: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/slash-commands/commands`
