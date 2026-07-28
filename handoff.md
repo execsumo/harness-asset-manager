@@ -2,7 +2,54 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-07-27 (latest) — Settings row layout fixed; ARCHITECTURE.md caught up
+## 2026-07-27 (latest) — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
+
+Audit only, no behaviour changed. **The agents path is fine** — this entry is not about a
+defect in it.
+
+### Coverage, verified in code and against the live API
+
+`container.py:347` is the **only** consumer of the kill switch, hardcoded
+`auto_adopt_store.is_enabled("agents")`. Nothing else reads it.
+
+| Family | Auto-repair | Why |
+|---|---|---|
+| agents | **yes** | Stages 1–3; the only wired path |
+| skills | **no** | setting exists, zero consumers — see below |
+| slash commands | **no** | drift *is* detected (`sync-state.json`, drifted/missing/unmanaged rows) but adoption is user-initiated: `import_unmanaged_command` / `_adopt_target` |
+| mcp / hooks / permissions | **n/a** | config-subtree — HAM writes *into* a file it does not own, so there is no binding to clobber |
+
+Two easy misreads, both checked rather than assumed:
+
+- **`reconcile_server` (mcp) and `reconcile_hook` (hooks) are not drift repair.** They are
+  user-initiated mutation methods that happen to share the word.
+- **Skills are structurally immune to the bug that motivated all of this.** `rename()`
+  onto a *directory* symlink fails `ENOTDIR`, so a harness cannot silently clobber a
+  skill binding the way it can an agent's `.md`. Skills auto-adopt would be solving a
+  different problem, not the same one.
+
+### The defect: `autoAdopt.skills` persists and does nothing
+
+`DEFAULTS` in `auto_adopt.py` declares `{"agents": True, "skills": False}`, and
+`set_enabled` accepts any key in `DEFAULTS`. So:
+
+```
+PUT /api/settings/auto-adopt/skills {"enabled": true}   -> 200, persists to settings.json
+PUT /api/settings/auto-adopt/slash_commands             -> 404 (honest)
+```
+
+`skills` is the only family that accepts a write it cannot honour. Verified live: it
+round-trips through `GET /api/settings` as `{"agents": true, "skills": true}` while no
+code path reads it. The frontend never renders that toggle, so this is API surface only
+— but a persisted setting that silently does nothing is worse than a 404.
+
+It is a deliberate Stage 4 placeholder (the `DEFAULTS` docstring says skills is
+unimplemented because adopting a skill means `shutil.rmtree` on a real directory of the
+user's). The fix is to refuse it until Stage 4 actually lands, not to delete the key.
+
+**Being fixed now** — see the entry that follows once it merges.
+
+## 2026-07-27 — Settings row layout fixed; ARCHITECTURE.md caught up
 
 Merged to `main`. Two small things, both fallout from earlier work.
 
