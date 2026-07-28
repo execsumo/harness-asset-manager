@@ -2,6 +2,92 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-27 (later) — Stage 3 shipped: drifted agent bindings now repair themselves
+
+Merged to `main`. `plan-auto-adoption.md` Stages 1–3 are all done; **Stage 4 (skills
+auto-adopt) and Stage 5 (Codex) are not started.** The entry below covers 1+2 and is
+still accurate; this covers what changed on top.
+
+### What it does now
+
+A harness replaces a managed agent symlink with its own copy. On the next list
+request, reconcile classifies it and — only where the outcome is provable — repairs it:
+
+- **Identical copy** → relink. There is no content decision to get wrong.
+- **Edited copy, store untouched since we linked** → adopt the edit into the store,
+  relink every binding for that slug. That copy is the only edit in existence.
+- **Both sides edited** → nothing. Ever. Stage 2's diagnosis is what the user sees.
+- **Several harnesses, differing edits** → nothing adopted, nothing deleted; each
+  divergent copy is *copied* to `<agents_root>/conflicts/<slug>.<harness>.md` and one
+  issue names every side. "Newest wins" is explicitly rejected.
+- **Codex** is excluded outright — the TOML round-trip is lossy (invariant 3).
+
+Kill switch: `autoAdopt.agents` in `settings.json`, default **on**, read per call so
+turning it off stops the *next* reconcile rather than the next restart. Toggle is in
+Settings. Every automatic action lands in `<data_dir>/agents-audit.json` and is
+surfaced as "Recent automatic repairs" on the agents review page — invariant 5, the
+user must be able to see that we moved their content.
+
+### Traps worth knowing before touching this
+
+- **`file_lock` is not re-entrant.** It is `fcntl.flock(LOCK_EX)` on a freshly opened
+  fd, so taking it twice in one process on the same path deadlocks. Every ledger and
+  audit mutation takes its own lock internally, so reconcile holds a *separate*
+  reconcile lock and never holds theirs. Do not "simplify" these into one lock.
+- **`TargetResolver` moved to `adapters.py`** — reconcile needs it too, and importing
+  it from `inventory.py` made the two modules circular.
+- **Conflict copies live in a subdirectory on purpose.** `AgentStore.scan()` globs
+  `agents_root.glob("*.md")`, top level only; a preserved copy written next to the
+  store entries would be read back as an agent named `<slug>.<harness>.conflict`.
+- **Reconcile ordering inside the store-write callback.** `store.write_raw()` during
+  adopt fires the Stage-1 rebaseline callback *while reconcile holds its lock*. It is
+  a no-op there because the bindings are still clobbered (not live) at that moment,
+  and the fresh records are upserted after relinking. Different lock paths, so no
+  deadlock — but it is the sharpest edge in this code, and only the integration tests
+  reach it (the unit tests build an `AgentStore` without the callback).
+
+### Delegation notes — agy did the engine, I did the wiring and the adversarial tests
+
+Split deliberately: agy got `reconcile.py` + `audit.py` + unit tests against a written
+interface, with an explicit off-limits list (`container.py`, `paths.py`, `api/`,
+`frontend/`, the plan and this file). It respected the boundary exactly — the branch
+touched only the four files it was allowed. It then did the frontend half against a
+contract I had implemented and regenerated **first**, which is the ordering that stops
+the invented-endpoint failures recorded further down this file. Its client test asserts
+the fully composed URL (`toBe("/api/settings/auto-adopt/agents")`), not `.includes`.
+
+Two things I changed after review, neither reported by agy:
+
+1. **The mixed adopt path deleted clean harness copies without re-verifying them.**
+   The all-clean path re-hashes immediately before unlinking; the adopt path did not,
+   so a harness writing again between classification and deletion would have its edit
+   discarded unweighed. It now refuses and leaves the file.
+2. Banner/section copy corrected to match the real page titles.
+
+The integration tests are mine, and cover what agy's unit tests structurally could
+not: the store-write callback firing inside the reconcile lock, two harnesses with
+differing edits over the real API, the kill switch, and idempotence across repeated
+list requests. **Do not take a delegate's pass counts on faith** — agy reported 158
+integration tests, which was its worktree's stale count; `main` had 162.
+
+### Also fixed here: settings writers were clobbering each other
+
+Adding a second key to `settings.json` exposed it. `HarnessSupportStore._write`
+serialised **only** `disabledHarnesses`, so any other key was deleted on the next
+harness toggle. Both writers now go through `settings_file.update_settings_document`,
+which read-modify-writes under the shared lock and preserves keys it does not own —
+the same "unknown keys survive" rule the agent frontmatter writer had to learn twice.
+This was latent before today; nothing else was writing that file.
+
+### Validation at completion, run independently
+
+typecheck clean · backend 445 unit + 162 integration · frontend 273 across 61 files ·
+build clean · `codegen:check` no drift · `ruff check` clean.
+
+**Not torn down:** agy pane `wX:p3`, worktree
+`../harness-asset-manager-worktrees/agy-agents-reconcile`, branch
+`delegate/agy-agents-reconcile` (merged).
+
 ## 2026-07-27 — Auto-adoption Stages 1+2 shipped; defect #1 fixed; other families assessed
 
 Branch `feat/agent-binding-ledger` off `main` (not merged yet). Implements

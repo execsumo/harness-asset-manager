@@ -1,11 +1,10 @@
 # Plan — Automatic re-adoption of drifted bindings
 
-**Status: Stages 1 and 2 shipped 2026-07-27** (branch `feat/agent-binding-ledger`).
-Stages 3–5 not started, and Stage 3 is the first that can destroy content — it needs
-a deliberate decision, not a continuation. Two amendments to this document came out of
-building it; both are marked **AMENDED** inline (§3's rebaseline rule, §5's exclusion
-from it). Read those before building Stage 3, because the literal wording of §3 loses
-data and there is a test proving it.
+**Status: Stages 1, 2 and 3 shipped 2026-07-27.** Stages 4 (skills auto-adopt) and 5
+(Codex) are not started. Amendments made while building are marked **AMENDED** inline:
+§3's rebaseline rule, §5's exclusion from it, and §4's conflict-file location. Read
+those before extending this — the literal wording of §3 loses data and there is a test
+proving it.
 
 Written 2026-07-27 from a code read.
 **Goal:** stop requiring a manual re-adopt every time a harness edits an asset out
@@ -53,8 +52,14 @@ this is being built before it bites, not after.
   atomic-write storms, cross-platform behaviour), and it would still need exactly
   the reconcile logic below underneath it. It buys latency, which nobody asked for.
 
-Reconcile runs at the top of inventory build, under the existing `file_lock`, and
-must be idempotent and cheap — see §6 for the cost rule.
+Reconcile runs at the top of inventory build, and must be idempotent and cheap — see
+§6 for the cost rule.
+
+**AMENDED (shipped):** it takes a **dedicated reconcile lock**, not the ledger's.
+`file_lock` is `fcntl.flock(LOCK_EX)` on a freshly opened fd, so taking it twice in one
+process on the same path deadlocks — and every ledger mutation takes the ledger lock
+internally. Reconcile must never hold the ledger lock while calling ledger methods.
+The same applies to the audit log's lock.
 
 ---
 
@@ -174,6 +179,16 @@ decide once.
   as-is, preserve each divergent copy as `<store>/<slug>.<harness>.conflict.md`,
   and surface one issue naming every side. The user picks.
 
+**AMENDED (shipped):** the preserved copies go in `<agents_root>/conflicts/<slug>.<harness>.md`,
+a **subdirectory**, not alongside the store files. `AgentStore.scan()` globs
+`agents_root.glob("*.md")` — top level only — so a file written next to the store
+entries would be read back as an agent named `<slug>.<harness>.conflict`. The
+subdirectory makes that structurally impossible rather than relying on a filter.
+
+Also shipped: the divergent harness copies are **left exactly where they are**. The
+preserved copies are copies, not moves. Nothing is deleted in the case we cannot
+decide.
+
 "Newest mtime wins" is explicitly rejected for the differing-content case: it
 silently discards the other harness's edit, which is the exact failure this whole
 plan exists to prevent.
@@ -276,7 +291,7 @@ Each stage ships independently and leaves the tree working.
    issue kind in the inventory, separate from `unmanaged`. Still no automatic
    action — this alone removes most of the pain, because the user stops having to
    *notice* drift.
-3. **Auto-repair the provable cases.** Rows 2 and 3 only, behind
+3. **✅ SHIPPED — Auto-repair the provable cases.** Rows 2 and 3 only, behind
    `auto_adopt.agents` (default on). Rows 1 and 4 keep prompting.
 4. **Skills auto-adopt**, behind `auto_adopt.skills` (default off).
 5. **Deferred:** Codex, gated on a lossless TOML round-trip.
