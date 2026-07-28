@@ -7,19 +7,28 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
+from harness_asset_manager.env_names import (
+    ALL_ENV_NAMES,
+    SETTINGS_PATH_ENV,
+    STATE_DIR_ENV,
+)
 from harness_asset_manager.paths import APP_NAME, resolve_app_paths
 
 
 @contextmanager
 def isolated_env(platform: str):
-    """Pin sys.platform and clear inherited XDG/HOME so tests fully control env."""
+    """Pin sys.platform and clear inherited XDG/HOME so tests fully control env.
+
+    Clears **both** spellings of every name we own: while the legacy SKILL_MANAGER_*
+    fallback exists, clearing only the new name would let an inherited legacy var leak
+    into a test that means to assert the default.
+    """
     cleared = {key: "" for key in (
         "XDG_CONFIG_HOME",
         "XDG_DATA_HOME",
         "XDG_STATE_HOME",
         "HOME",
-        "SKILL_MANAGER_SETTINGS_PATH",
-        "SKILL_MANAGER_STATE_DIR",
+        *ALL_ENV_NAMES,
     )}
     with mock.patch.object(sys, "platform", platform), mock.patch.dict("os.environ", cleared, clear=False):
         yield
@@ -76,7 +85,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             custom = Path(temp) / "elsewhere" / "settings.json"
             env = {
                 "HOME": str(Path(temp) / "home"),
-                "SKILL_MANAGER_SETTINGS_PATH": str(custom),
+                SETTINGS_PATH_ENV: str(custom),
             }
             paths = resolve_app_paths(env)
             self.assertEqual(paths.settings_path, custom)
@@ -86,7 +95,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             custom_state = Path(temp) / "runtime"
             env = {
                 "HOME": str(Path(temp) / "home"),
-                "SKILL_MANAGER_STATE_DIR": str(custom_state),
+                STATE_DIR_ENV: str(custom_state),
             }
             paths = resolve_app_paths(env)
             self.assertEqual(paths.state_dir, custom_state)

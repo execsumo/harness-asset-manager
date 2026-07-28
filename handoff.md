@@ -2,6 +2,99 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-07-27 (latest) — Data dir converged on `~/.harness-asset-manager`
+
+**No code changed.** This is an on-disk data migration plus corrections to the
+2026-07-26 entry below, which was wrong in three load-bearing ways. The legacy dir is
+migrated and verified but **not yet deleted** — see "Remaining" at the end.
+
+### What moved into `~/.harness-asset-manager`
+
+Written directly in the **final flat shape**, never as a legacy shape. This matters:
+`_migrate_legacy_layouts` runs on *every* `build_backend_container`, and its trigger is
+`any(skills_store_root.iterdir())`. Creating a `shared/` or `packages/local/` under the
+new data dir would make the next start `shutil.move` those dirs into `skills/` and leave
+every symlink pointing at them dangling. Writing straight to `skills/` disarms it.
+
+| Item | Source | Note |
+|---|---|---|
+| `skills/{compress-text,delegate,distill-decision}` | legacy `shared/` | the live symlink targets |
+| `skills/ogulcancelik--herdr` | legacy `skills/` | full git clone, carried as-is |
+| `skills-manifest.json` | merged | 3 entries from legacy `manifest.json` + herdr from legacy `skills-manifest.json` |
+| `agents/red-team.md` | legacy `agents/` | |
+| `mcp/manifest.json` | legacy `mcp/` | the `codegraph` server |
+| `hooks/manifest.json` | legacy `hooks/` | empty (`{"version":1,"hooks":[]}`) |
+| `settings.json` | merged | `disabledHarnesses` merged **into** the existing `autoAdopt` via `update_settings_document` |
+
+All three `shared/` skills fingerprinted **exactly equal** to their recorded revisions, so
+the manifest carried over verbatim with no drift. `ogulcancelik--herdr` was already
+drifted before this migration (recorded `f0df1f93…`, actual `5a95e2b4…`); the recorded
+value was preserved rather than silently recomputed, so the app reports it honestly.
+
+**Deliberately not migrated:** the legacy `permissions/manifest.json` held 4 `allow`
+rules (`npm run`, `go test ./internal/tui/...`, `git fetch`, `mkdir`). HAM is
+denylist-ONLY and `PermissionStore` purges `allow`/`ask` on load, so migrating them
+would look like data loss when they vanished on first read. Also dropped: the 44 MB
+`marketplace/` HTTP cache (regenerates), `skill-manager.db*` (inert, per 2026-07-24),
+`server.log`, `runtime.json`, `.DS_Store`, lock files, and the empty `packages/local/`.
+
+The two duplicate `compress-text` copies were resolved to the `shared/` one — it is what
+`~/.claude/skills/compress-text` actually pointed at, and it is the copy whose fingerprint
+matches its manifest entry.
+
+### Three corrections to the 2026-07-26 entry
+
+1. **`.migration.lock` does NOT suppress migration.** It is a plain `fcntl.flock` file
+   (`atomic_files.py:47`), created fresh on every run. The old entry's step 3 ("clear
+   the stale lock or it will suppress the migration path") describes a sentinel that
+   does not exist. Nothing needs clearing.
+2. **The dotfiles hazard is already dead.** `~/.dotfiles/.claude/` is **empty** —
+   commit `a636574` removed `.claude/skills` from that repo. `~/.claude` is a **real
+   directory**, not a symlink into dotfiles.
+3. **`~/.skill-manager` was never the only copy.** `~/.claude` is itself a git repo, and
+   its HEAD still holds the pre-symlink blobs of all three skills. `delegate` and
+   `distill-decision` matched HEAD byte-for-byte; only `compress-text` differed.
+
+### Symlinks repointed
+
+`~/.claude/skills/{compress-text,delegate,distill-decision}` now point at
+`~/.harness-asset-manager/skills/<name>`, matching what `FileTreeSkillsAdapter`
+(`enable_shared_package` → `managed_root/<name>` → `store/<name>`) builds itself. Verified
+the app **claims** them rather than merely tolerating them: `/api/skills` reports
+`displayStatus: "Managed"` with `claude: "enabled"`, not unmanaged.
+
+### Verification after restart, before anything was deleted
+
+`/api/skills` 8 rows (4 managed = the migrated store, 4 unmanaged = the real dirs in
+`~/.claude/skills`) · `/api/agents` 1 entry (Red-Team) · `/api/mcp/servers` includes
+`codegraph` · `/api/settings` has **both** `autoAdopt` and `disabledHarnesses`, with
+`opencode`/`openclaw` showing `supportEnabled: false` and dropping out of every family's
+columns · no `shared/` or `packages/` reappeared under the data dir.
+
+Confirmed nothing else on the machine referenced the legacy dir: no symlink under any
+harness root pointed into it. `~/.claude.json` and `~/.gemini/antigravity-cli/settings.json`
+do contain the string `skill-manager`, but every hit is the stale *project checkout* path
+`~/projects/skill-manager` or the old `mode-io/skill-manager` repo name — none is the data dir.
+
+### Remaining
+
+- **`~/.skill-manager` still exists.** Backup at `~/.skill-manager-backup-20260727.tgz`
+  (20.7 MB, 2177 entries, verified to contain all three `shared/` skills and every
+  manifest). Migration is complete and verified, so removing it is the last step.
+- **`~/.claude`'s own git repo is dirty** — 31 entries, including `D` on the three skills
+  it tracked before they became symlinks. Left alone deliberately: committing there is the
+  user's config-sync decision, not this task's.
+- **Env var rename not started.** The surface is much larger than the two vars the
+  2026-07-26 entry named: besides `SKILL_MANAGER_SETTINGS_PATH` / `SKILL_MANAGER_STATE_DIR`,
+  there are the per-harness roots (`SKILL_MANAGER_{CLAUDE,CODEX,CURSOR,OPENCODE,HERMES,AGY}_ROOT`),
+  `SKILL_MANAGER_HERMES_HOME`, the marketplace/clis.dev base URLs, and three
+  `SKILL_MANAGER_*` vars in `packaging/npm/scripts/install.js`. Touching all of them also
+  means `README.md`, `catalog.py`, and ~8 test files.
+- **Cosmetic, in user content:** `skills/compress-text/SKILL.md:93` tells the reader to run
+  `python3 ~/.hermes/skills/compress-text/compress_stats.py`. That path does resolve (the
+  Hermes copy exists) but it is harness-specific inside a store copy shared by every
+  harness, and it points away from the `compress_stats.py` sitting next to it. Not changed.
+
 ## 2026-07-27 (later) — Stage 3 shipped: drifted agent bindings now repair themselves
 
 Merged to `main`. `plan-auto-adoption.md` Stages 1–3 are all done; **Stage 4 (skills

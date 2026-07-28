@@ -115,14 +115,14 @@ class SkillsMarketplaceApiTests(unittest.TestCase):
 
     def test_marketplace_popular_returns_503_when_fixture_is_untrusted(self) -> None:
         with MarketplaceFixtureServer() as fixture:
-            with AppTestHarness(env_overrides={"SKILL_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
+            with AppTestHarness(env_overrides={"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
                 payload = harness.get_json("/api/marketplace/popular", expected_status=503)
 
         self.assertEqual(payload["error"], MARKETPLACE_UNAVAILABLE_MESSAGE)
 
     def test_marketplace_search_returns_503_when_fixture_is_untrusted(self) -> None:
         with MarketplaceFixtureServer() as fixture:
-            with AppTestHarness(env_overrides={"SKILL_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
+            with AppTestHarness(env_overrides={"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
                 payload = harness.get_json("/api/marketplace/search?q=trace", expected_status=503)
 
         self.assertEqual(payload["error"], MARKETPLACE_UNAVAILABLE_MESSAGE)
@@ -151,7 +151,7 @@ class SkillsMarketplaceApiTests(unittest.TestCase):
 
     def test_marketplace_detail_returns_503_when_fixture_is_untrusted(self) -> None:
         with MarketplaceFixtureServer() as fixture:
-            with AppTestHarness(env_overrides={"SKILL_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
+            with AppTestHarness(env_overrides={"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
                 payload = harness.get_json("/api/marketplace/items/skillssh%3Amode-io%2Fskills%3Amode-switch", expected_status=503)
 
         self.assertEqual(payload["error"], MARKETPLACE_UNAVAILABLE_MESSAGE)
@@ -194,7 +194,7 @@ class SkillsMarketplaceApiTests(unittest.TestCase):
 
     def test_marketplace_document_returns_503_when_fixture_is_untrusted(self) -> None:
         with MarketplaceFixtureServer() as fixture:
-            with AppTestHarness(env_overrides={"SKILL_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
+            with AppTestHarness(env_overrides={"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": fixture.base_url}) as harness:
                 payload = harness.get_json(
                     "/api/marketplace/items/skillssh%3Amode-io%2Fskills%3Amode-switch/document",
                     expected_status=503,

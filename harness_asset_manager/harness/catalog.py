@@ -2,6 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from harness_asset_manager.env_names import (
+    AGY_ROOT_ENV,
+    CLAUDE_ROOT_ENV,
+    CODEX_ROOT_ENV,
+    CURSOR_ROOT_ENV,
+    HERMES_HOME_ENV,
+    HERMES_ROOT_ENV,
+    OPENCODE_ROOT_ENV,
+    env_get,
+)
+
 from .contracts import (
     AgentFileBindingProfile,
     CommandFileBindingProfile,
@@ -14,7 +25,9 @@ from .contracts import (
 
 
 def _hermes_home(context) -> Path:
-    override = context.env.get("SKILL_MANAGER_HERMES_HOME") or context.env.get("HERMES_HOME")
+    # Three-way, in order: our own var (with its legacy spelling), then Hermes' own
+    # HERMES_HOME, which we do not own and therefore never rename.
+    override = env_get(context.env, HERMES_HOME_ENV) or context.env.get("HERMES_HOME")
     return Path(override) if override else context.home / ".hermes"
 
 
@@ -48,7 +61,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="claude",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_CLAUDE_ROOT",
+                managed_env=CLAUDE_ROOT_ENV,
                 managed_default=lambda context: context.home / ".claude" / "skills",
             ),
             "mcp": ConfigSubtreeBindingProfile(
@@ -98,7 +111,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="codex",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_CODEX_ROOT",
+                managed_env=CODEX_ROOT_ENV,
                 managed_default=lambda context: context.home / ".agents" / "skills",
                 discovery_roots=(
                     FileTreeDiscoveryRoot(
@@ -160,7 +173,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="agy",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_AGY_ROOT",
+                managed_env=AGY_ROOT_ENV,
                 managed_default=lambda context: context.home / ".gemini" / "antigravity-cli" / "skills",
                 discovery_roots=(
                     FileTreeDiscoveryRoot(
@@ -218,7 +231,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="cursor-agent",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_CURSOR_ROOT",
+                managed_env=CURSOR_ROOT_ENV,
                 managed_default=lambda context: context.home / ".cursor" / "skills",
                 availability="cli_or_app",
                 app_probe_paths=(
@@ -264,7 +277,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="opencode",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_OPENCODE_ROOT",
+                managed_env=OPENCODE_ROOT_ENV,
                 managed_default=lambda context: context.xdg_config_home / "opencode" / "skills",
                 availability="cli",
                 discovery_roots=(
@@ -327,7 +340,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="hermes",
         bindings={
             "skills": FileTreeBindingProfile(
-                managed_env="SKILL_MANAGER_HERMES_ROOT",
+                managed_env=HERMES_ROOT_ENV,
                 managed_default=_hermes_skills_root,
                 layout="categorized",
                 default_category="harness-asset-manager",

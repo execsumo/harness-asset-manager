@@ -23,7 +23,7 @@ from harness_asset_manager.errors import (
 class MarketplaceClientConfigTests(unittest.TestCase):
     def test_base_url_override_is_normalized(self) -> None:
         self.assertEqual(
-            configured_marketplace_base_url({"SKILL_MANAGER_MARKETPLACE_BASE_URL": "https://fixture.local/"}),
+            configured_marketplace_base_url({"HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": "https://fixture.local/"}),
             "https://fixture.local",
         )
 

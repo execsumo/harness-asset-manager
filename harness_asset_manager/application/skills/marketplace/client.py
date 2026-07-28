@@ -10,6 +10,7 @@ from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
 from harness_asset_manager import __version__
+from harness_asset_manager import env_names as _shared
 from harness_asset_manager.application.marketplace_http import (
     configured_marketplace_ca_file,
     marketplace_ssl_context,
@@ -17,14 +18,14 @@ from harness_asset_manager.application.marketplace_http import (
 from harness_asset_manager.errors import MarketplaceUpstreamError
 
 DEFAULT_SKILLS_SH_BASE_URL = "https://skills.sh"
-MARKETPLACE_BASE_URL_ENV = "SKILL_MANAGER_MARKETPLACE_BASE_URL"
+MARKETPLACE_BASE_URL_ENV = _shared.MARKETPLACE_BASE_URL_ENV
 _TIMEOUT_SECONDS = 15
 _USER_AGENT = f"harness-asset-manager/{__version__}"
 
 
 def configured_marketplace_base_url(env: dict[str, str] | None = None) -> str:
     active_env = os.environ if env is None else env
-    configured = active_env.get(MARKETPLACE_BASE_URL_ENV, DEFAULT_SKILLS_SH_BASE_URL).strip()
+    configured = (_shared.env_get(active_env, MARKETPLACE_BASE_URL_ENV) or DEFAULT_SKILLS_SH_BASE_URL).strip()
     return (configured or DEFAULT_SKILLS_SH_BASE_URL).rstrip("/")
 
 

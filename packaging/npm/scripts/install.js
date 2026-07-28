@@ -11,8 +11,15 @@ const packageJson = require("../package.json");
 const { assertNoHomebrewConflict, isGlobalNpmInstall } = require("./channel-ownership");
 const { artifactName } = require("./release-targets");
 
+// Read the HARNESS_ASSET_MANAGER_* name first, then the SKILL_MANAGER_* spelling it
+// replaced. The legacy names are supported for one release so an existing CI job that
+// exports one does not silently lose its override.
+function envOverride(name) {
+  return process.env[`HARNESS_ASSET_MANAGER_${name}`] || process.env[`SKILL_MANAGER_${name}`];
+}
+
 function releaseBaseUrl(version) {
-  return process.env.SKILL_MANAGER_RELEASE_BASE_URL || `https://github.com/execsumo/harness-asset-manager/releases/download/v${version}`;
+  return envOverride("RELEASE_BASE_URL") || `https://github.com/execsumo/harness-asset-manager/releases/download/v${version}`;
 }
 
 function copyFile(source, destination) {
@@ -71,14 +78,14 @@ async function main() {
   const artifactPath = path.join(tempDir, artifact);
   const checksumPath = `${artifactPath}.sha256`;
   const vendorDir = path.resolve(__dirname, "..", "vendor");
-  const localArtifactPath = process.env.SKILL_MANAGER_LOCAL_ARTIFACT_PATH;
+  const localArtifactPath = envOverride("LOCAL_ARTIFACT_PATH");
 
   if (localArtifactPath) {
     copyFile(localArtifactPath, artifactPath);
     copyFile(`${localArtifactPath}.sha256`, checksumPath);
   } else {
     const baseUrl = releaseBaseUrl(version);
-    const artifactUrl = process.env.SKILL_MANAGER_LOCAL_ARTIFACT_URL || `${baseUrl}/${artifact}`;
+    const artifactUrl = envOverride("LOCAL_ARTIFACT_URL") || `${baseUrl}/${artifact}`;
     const checksumUrl = `${artifactUrl}.sha256`;
     await downloadToFile(artifactUrl, artifactPath);
     await downloadToFile(checksumUrl, checksumPath);

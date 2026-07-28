@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal, Mapping, TypeAlias
 
+from harness_asset_manager.env_names import env_get
+
 from .resolution import ResolutionContext
 
 FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents"]
@@ -40,7 +42,7 @@ class FileTreeBindingProfile:
         if self.managed_default is None:
             raise ValueError("file-tree binding profile is missing a managed_default resolver")
         if self.managed_env:
-            override = context.env.get(self.managed_env)
+            override = env_get(context.env, self.managed_env)
             if override:
                 return Path(override)
         return self.managed_default(context)

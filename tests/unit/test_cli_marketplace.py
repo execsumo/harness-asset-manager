@@ -71,7 +71,7 @@ _LIST_RESPONSE_SAMPLE: dict[str, object] = {
 class ClisDevClientTests(unittest.TestCase):
     def test_base_url_override_is_normalized(self) -> None:
         self.assertEqual(
-            configured_clis_dev_base_url({"SKILL_MANAGER_CLIS_DEV_BASE_URL": "https://fixture.local/"}),
+            configured_clis_dev_base_url({"HARNESS_ASSET_MANAGER_CLIS_DEV_BASE_URL": "https://fixture.local/"}),
             "https://fixture.local",
         )
 

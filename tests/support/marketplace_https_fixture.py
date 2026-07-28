@@ -37,7 +37,7 @@ class MarketplaceFixtureServer(AbstractContextManager["MarketplaceFixtureServer"
 
     def env(self) -> dict[str, str]:
         return {
-            "SKILL_MANAGER_MARKETPLACE_BASE_URL": self.base_url,
+            "HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL": self.base_url,
             "SSL_CERT_FILE": str(self.ca_cert_path),
         }
 

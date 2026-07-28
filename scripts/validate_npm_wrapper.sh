@@ -94,11 +94,11 @@ if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
   exit 1
 fi
 
-export SKILL_MANAGER_MARKETPLACE_BASE_URL
-SKILL_MANAGER_MARKETPLACE_BASE_URL="$("$PYTHON_BIN" -c 'import json, sys; print(json.load(open(sys.argv[1]))["baseUrl"])' "$FIXTURE_MANIFEST")"
+export HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL
+HARNESS_ASSET_MANAGER_MARKETPLACE_BASE_URL="$("$PYTHON_BIN" -c 'import json, sys; print(json.load(open(sys.argv[1]))["baseUrl"])' "$FIXTURE_MANIFEST")"
 export SSL_CERT_FILE
 SSL_CERT_FILE="$("$PYTHON_BIN" -c 'import json, sys; print(json.load(open(sys.argv[1]))["caCertPath"])' "$FIXTURE_MANIFEST")"
-export SKILL_MANAGER_LOCAL_ARTIFACT_PATH="$ARTIFACT_PATH"
+export HARNESS_ASSET_MANAGER_LOCAL_ARTIFACT_PATH="$ARTIFACT_PATH"
 npm install --no-package-lock "./$PACK_FILE" >/dev/null
 
 VERSION_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" --version)"

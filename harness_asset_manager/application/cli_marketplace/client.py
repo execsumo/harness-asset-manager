@@ -9,6 +9,7 @@ from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
 
 from harness_asset_manager import __version__
+from harness_asset_manager import env_names as _shared
 from harness_asset_manager.application.marketplace_http import (
     configured_marketplace_ca_file,
     marketplace_ssl_context,
@@ -16,14 +17,14 @@ from harness_asset_manager.application.marketplace_http import (
 from harness_asset_manager.errors import MarketplaceUpstreamError
 
 DEFAULT_CLIS_DEV_BASE_URL = "https://clis.dev"
-CLIS_DEV_BASE_URL_ENV = "SKILL_MANAGER_CLIS_DEV_BASE_URL"
+CLIS_DEV_BASE_URL_ENV = _shared.CLIS_DEV_BASE_URL_ENV
 _TIMEOUT_SECONDS = 15
 _USER_AGENT = f"harness-asset-manager/{__version__}"
 
 
 def configured_clis_dev_base_url(env: dict[str, str] | None = None) -> str:
     active_env = os.environ if env is None else env
-    configured = active_env.get(CLIS_DEV_BASE_URL_ENV, DEFAULT_CLIS_DEV_BASE_URL).strip()
+    configured = (_shared.env_get(active_env, CLIS_DEV_BASE_URL_ENV) or DEFAULT_CLIS_DEV_BASE_URL).strip()
     return (configured or DEFAULT_CLIS_DEV_BASE_URL).rstrip("/")
 
 
