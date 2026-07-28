@@ -84,16 +84,65 @@ do contain the string `skill-manager`, but every hit is the stale *project check
 - **`~/.claude`'s own git repo is dirty** — 31 entries, including `D` on the three skills
   it tracked before they became symlinks. Left alone deliberately: committing there is the
   user's config-sync decision, not this task's.
-- **Env var rename not started.** The surface is much larger than the two vars the
-  2026-07-26 entry named: besides `SKILL_MANAGER_SETTINGS_PATH` / `SKILL_MANAGER_STATE_DIR`,
-  there are the per-harness roots (`SKILL_MANAGER_{CLAUDE,CODEX,CURSOR,OPENCODE,HERMES,AGY}_ROOT`),
-  `SKILL_MANAGER_HERMES_HOME`, the marketplace/clis.dev base URLs, and three
-  `SKILL_MANAGER_*` vars in `packaging/npm/scripts/install.js`. Touching all of them also
-  means `README.md`, `catalog.py`, and ~8 test files.
+- **Env var rename — DONE, on branch `chore/env-var-rename`, not merged.** See the
+  section below.
 - **Cosmetic, in user content:** `skills/compress-text/SKILL.md:93` tells the reader to run
   `python3 ~/.hermes/skills/compress-text/compress_stats.py`. That path does resolve (the
   Hermes copy exists) but it is harness-specific inside a store copy shared by every
   harness, and it points away from the `compress_stats.py` sitting next to it. Not changed.
+
+### Env vars renamed — branch `chore/env-var-rename`, awaiting merge
+
+All 15 `SKILL_MANAGER_*` vars are now `HARNESS_ASSET_MANAGER_*`, **with the old names
+still read as a fallback** for one release. Renaming outright would have silently broken
+any machine already exporting one: the old name would simply stop being read, with no
+error, so the override would look like it had never been set.
+
+`harness_asset_manager/env_names.py` owns every name and derives each legacy spelling
+from the new one via `legacy_name()`, so the pairing cannot drift into a second list that
+someone forgets to update. `env_get()` reads new-first, legacy-second and mirrors
+`dict.get` exactly — **including returning an explicitly-set empty string** rather than
+the default, because the marketplace clients normalize empty values themselves.
+
+Two non-obvious things this surfaced, both now pinned by tests:
+
+1. **An explicit `--state-dir` flag beats both spellings**, because `cli/main.py`
+   `runtime_env()` injects the flag *as the new env name*. This makes the obvious
+   pressure test ("export the legacy var and pass `--state-dir`") prove nothing —
+   whichever wins, it cannot be attributed to the variable. The real test exports the
+   var and passes no flag.
+2. **Clearing an env var by setting it to `""` does not work here.** `env_get` tests
+   membership, so an empty-string *new* name shadows a real *legacy* value and defeats
+   the fallback. `isolated_env` pops the keys instead.
+
+`resolve_platform_context` **merges** `os.environ` with the dict it is handed, so tests
+that assert a default must clear the environment, not just pass an empty dict. Caught by
+reproducing it: with `HERMES_HOME=/opt/hermes` exported, the Hermes default case failed
+— on precisely the machines that run Hermes. Hermes' own `HERMES_HOME` is deliberately
+**not** renamed; we do not own that name, and it sits last in the three-way precedence.
+
+Verified the fallback suite is not decorative: deleting the legacy branch of `env_get`
+fails all 7 of its tests, and restoring it passes them.
+
+**Validation, run independently of the delegate:** typecheck clean · backend 451 unit +
+162 integration · frontend 273 across 61 files · build clean · `ruff check
+harness_asset_manager tests` clean. Note `ruff check .` reports 9 pre-existing I001
+errors in `scripts/*.py` — outside CI's scope (`ci.yml` runs `ruff check
+harness_asset_manager tests`), and not introduced here.
+
+End-to-end pressure test reproduced directly, not taken on faith: legacy var alone →
+`runtime.json`/`server.log` land in the legacy-named dir; both spellings set → the new
+one wins and the legacy dir is never created.
+
+**Delegation note:** agy did the fallback tests + README against the mechanism I had
+already landed and pushed, and stayed inside its boundary exactly (tests + README only).
+Two things worth recording: my brief contained the wrong pressure test (the `--state-dir`
+trap above) and agy did **not** flag it — it was corrected mid-flight. And its new test
+files were not hermetic; that was fixed here, not by agy. Its reported test counts were
+accurate this time, but were re-run independently anyway.
+
+**Not torn down:** agy pane `wX:p6`, worktree
+`../harness-asset-manager-worktrees/agy-env-rename`, branch `agy-worktree-env-rename`.
 
 ## 2026-07-27 (later) — Stage 3 shipped: drifted agent bindings now repair themselves
 
