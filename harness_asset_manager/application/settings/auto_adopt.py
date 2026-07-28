@@ -16,6 +16,7 @@ AutoAdoptFamily = Literal["agents", "skills"]
 # directory means `shutil.rmtree` on a real directory of the user's, which is a
 # different class of operation and is not implemented here yet.
 DEFAULTS: Mapping[str, bool] = {"agents": True, "skills": False}
+IMPLEMENTED: set[str] = {"agents"}
 
 SETTINGS_KEY = "autoAdopt"
 
@@ -47,6 +48,8 @@ class AutoAdoptStore:
     def set_enabled(self, family: str, enabled: bool) -> dict[str, bool]:
         if family not in DEFAULTS:
             raise KeyError(family)
+        if family not in IMPLEMENTED and enabled:
+            raise ValueError(f"auto-adopt for '{family}' is not implemented yet")
         values = self.preferences()
         values[family] = enabled
         update_settings_document(
@@ -55,4 +58,4 @@ class AutoAdoptStore:
         return values
 
 
-__all__ = ["DEFAULTS", "SETTINGS_KEY", "AutoAdoptFamily", "AutoAdoptStore"]
+__all__ = ["DEFAULTS", "IMPLEMENTED", "SETTINGS_KEY", "AutoAdoptFamily", "AutoAdoptStore"]

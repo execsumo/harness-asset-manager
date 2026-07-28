@@ -4,11 +4,16 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock
 
 from harness_asset_manager.application.settings.auto_adopt import (
     DEFAULTS,
     AutoAdoptStore,
 )
+from harness_asset_manager.application.settings.mutations import (
+    SettingsMutationService,
+)
+from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.support_store import HarnessSupportStore
 from harness_asset_manager.settings_file import (
     load_settings_document,
@@ -57,10 +62,10 @@ class SharedSettingsFileTests(unittest.TestCase):
 
     def test_toggling_auto_adopt_does_not_wipe_disabled_harnesses(self) -> None:
         self.support.set_enabled("cursor", False)
-        self.auto_adopt.set_enabled("skills", True)
+        self.auto_adopt.set_enabled("skills", False)
 
         self.assertEqual(self.support.load().disabled_harnesses, ("cursor",))
-        self.assertTrue(self.auto_adopt.is_enabled("skills"))
+        self.assertFalse(self.auto_adopt.is_enabled("skills"))
 
     def test_unrelated_keys_survive_both_writers(self) -> None:
         self.path.write_text(json.dumps({"userTheme": "light"}), encoding="utf-8")
@@ -87,6 +92,21 @@ class AutoAdoptStoreTests(unittest.TestCase):
         self.store.set_enabled("agents", False)
         self.assertFalse(AutoAdoptStore(self.path).is_enabled("agents"))
 
+    def test_enabling_unimplemented_family_raises_value_error(self) -> None:
+        with self.assertRaises(ValueError) as ctx:
+            self.store.set_enabled("skills", True)
+        self.assertIn("not implemented yet", str(ctx.exception))
+
+    def test_disabling_unimplemented_family_succeeds(self) -> None:
+        prefs = self.store.set_enabled("skills", False)
+        self.assertFalse(prefs["skills"])
+
+    def test_agents_unaffected_both_ways(self) -> None:
+        prefs_off = self.store.set_enabled("agents", False)
+        self.assertFalse(prefs_off["agents"])
+        prefs_on = self.store.set_enabled("agents", True)
+        self.assertTrue(prefs_on["agents"])
+
     def test_an_unreadable_settings_file_falls_back_to_defaults(self) -> None:
         """The kill switch must never fail *open* because of a broken file — but it
         must not fail closed on a typo either. Declared defaults win."""
@@ -106,6 +126,47 @@ class AutoAdoptStoreTests(unittest.TestCase):
     def test_an_unknown_family_is_refused(self) -> None:
         with self.assertRaises(KeyError):
             self.store.set_enabled("mcp", True)
+
+
+class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.path = Path(self._tmp.name) / "settings.json"
+        self.auto_adopt_store = AutoAdoptStore(self.path)
+        self.support_store = HarnessSupportStore(self.path)
+        self.service = SettingsMutationService(
+            harness_kernel=MagicMock(),
+            support_store=self.support_store,
+            invalidation=MagicMock(),
+            auto_adopt_store=self.auto_adopt_store,
+        )
+
+    def test_enabling_skills_raises_mutation_error_400(self) -> None:
+        with self.assertRaises(MutationError) as ctx:
+            self.service.set_auto_adopt("skills", True)
+        self.assertEqual(ctx.exception.status, 400)
+        self.assertIn("not implemented yet", str(ctx.exception))
+
+    def test_disabling_skills_succeeds(self) -> None:
+        result = self.service.set_auto_adopt("skills", False)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["autoAdopt"], {"agents": True, "skills": False})
+
+    def test_agents_unaffected_both_ways(self) -> None:
+        res_off = self.service.set_auto_adopt("agents", False)
+        self.assertTrue(res_off["ok"])
+        self.assertEqual(res_off["autoAdopt"], {"agents": False, "skills": False})
+
+        res_on = self.service.set_auto_adopt("agents", True)
+        self.assertTrue(res_on["ok"])
+        self.assertEqual(res_on["autoAdopt"], {"agents": True, "skills": False})
+
+    def test_unknown_family_raises_mutation_error_404(self) -> None:
+        with self.assertRaises(MutationError) as ctx:
+            self.service.set_auto_adopt("slash_commands", True)
+        self.assertEqual(ctx.exception.status, 404)
+        self.assertIn("unknown asset family", str(ctx.exception))
 
 
 if __name__ == "__main__":

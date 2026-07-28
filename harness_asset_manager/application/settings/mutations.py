@@ -32,5 +32,7 @@ class SettingsMutationService:
             preferences = self.auto_adopt_store.set_enabled(family, enabled)
         except KeyError:
             raise MutationError(f"unknown asset family: {family}", status=404) from None
+        except ValueError as error:
+            raise MutationError(str(error), status=400) from error
         self.invalidation.invalidate_all()
         return {"ok": True, "autoAdopt": preferences}
