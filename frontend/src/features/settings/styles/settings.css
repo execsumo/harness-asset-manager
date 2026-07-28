@@ -24,6 +24,12 @@
   gap: var(--space-3);
 }
 
+/* Expects exactly three children, in order: __icon, __body, then a trailing
+   element (.settings-path or .settings-row__controls). Omitting the icon does not
+   shift the rest left — it drops __body into the fixed 28px track, where the text
+   overflows a column it can never fill and the trailing control lands underneath it.
+   If a row genuinely has no icon, render an empty <span class="settings-row__icon" />
+   rather than dropping the child. */
 .settings-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;

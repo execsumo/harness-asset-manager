@@ -98,4 +98,42 @@ describe("SettingsPage", () => {
       expect(JSON.parse(String(call[1]?.body))).toEqual({ enabled: false });
     });
   });
+
+  it("gives every settings row all three grid children", async () => {
+    // .settings-row is `grid-template-columns: 28px minmax(0, 1fr) auto`. A row that
+    // omits its icon does not shift left: __body drops into the fixed 28px track and
+    // its text overflows a column it can never fill, with the trailing control laid
+    // out underneath. That is exactly how the auto-adopt row shipped, so pin the
+    // contract rather than the symptom.
+    vi.mocked(global.fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/settings") {
+        return okJson({
+          storage: {
+            platform: "linux",
+            configDir: "/tmp/config/harness-asset-manager",
+            dataDir: "/tmp/data/harness-asset-manager",
+            stateDir: "/tmp/state/harness-asset-manager",
+            skillsStorePath: "/tmp/data/harness-asset-manager/skills",
+            marketplaceCachePath: "/tmp/data/harness-asset-manager/marketplace",
+            settingsPath: "/tmp/config/harness-asset-manager/settings.json",
+          },
+          harnesses: [],
+          autoAdopt: { agents: true, skills: false },
+        });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    const { container } = renderWithAppProviders(<SettingsPage />);
+    await screen.findByRole("switch", { name: "Repair drifted agent bindings automatically" });
+
+    const rows = container.querySelectorAll(".settings-row");
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.children).toHaveLength(3);
+      expect(row.children[0]).toHaveClass("settings-row__icon");
+      expect(row.children[1]).toHaveClass("settings-row__body");
+    });
+  });
 });

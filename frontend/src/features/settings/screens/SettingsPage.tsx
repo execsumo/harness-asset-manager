@@ -1,4 +1,4 @@
-import { Archive, Database } from "lucide-react";
+import { Archive, Database, Wrench } from "lucide-react";
 
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
@@ -80,6 +80,9 @@ export default function SettingsPage() {
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
             <div className="settings-row">
+              <span className="settings-row__icon">
+                <Wrench size={15} />
+              </span>
               <div className="settings-row__body">
                 <p className="settings-row__title">{copy.autoAdopt.label}</p>
                 <p className="settings-row__sub">{copy.autoAdopt.sub}</p>
