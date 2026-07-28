@@ -1,7 +1,16 @@
+export interface AgentRepairDto {
+  at: number;
+  ref: string;
+  harness: string;
+  action: "relinked" | "adopted" | "conflict_preserved" | "refused";
+  detail: string;
+}
+
 export interface AgentInventoryDto {
   columns: Array<{ harness: string; label: string; logoKey: string | null; installed: boolean }>;
   entries: AgentInventoryEntryDto[];
   issues: Array<{ name: string; reason: string }>;
+  recentRepairs?: AgentRepairDto[];
 }
 
 export interface AgentInventoryEntryDto {

@@ -18,6 +18,11 @@ const englishSettingsCopy = {
     enableSupport: (label: string) => `Enable ${label} support`,
     saving: "Saving...",
   },
+  autoAdopt: {
+    heading: "Automatic maintenance",
+    label: "Repair drifted agent bindings automatically",
+    sub: "When a harness replaces a managed agent link with its own copy, fold that copy back in — but only when it is provably the only edit. Conflicting edits are always left for you.",
+  },
   errors: {
     unableToLoad: "Unable to load settings.",
     unableToUpdateHarnessSupport: "Unable to update harness support.",
@@ -45,6 +50,11 @@ export const settingsCopy = {
       notDetected: "未在这台机器上检测到",
       enableSupport: (label: string) => `启用 ${label} 支持`,
       saving: "保存中...",
+    },
+    autoAdopt: {
+      heading: "自动维护",
+      label: "自动修复偏离的 Agent 绑定",
+      sub: "当 harness 用自己的副本替换托管的 Agent 链接时，将其折叠回存储中——但仅当其被证明是唯一的编辑时。冲突的编辑始终由您处理。",
     },
     errors: {
       unableToLoad: "无法加载设置。",

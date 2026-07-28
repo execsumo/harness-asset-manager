@@ -13,6 +13,17 @@ export async function updateHarnessSupport(harness: string, enabled: boolean): P
   );
 }
 
+export async function updateAutoAdopt(
+  family: string,
+  enabled: boolean,
+): Promise<{ ok: boolean; autoAdopt: { agents: boolean; skills: boolean } }> {
+  const body = { enabled };
+  return putJson<{ ok: boolean; autoAdopt: { agents: boolean; skills: boolean } }>(
+    `/settings/auto-adopt/${encodeURIComponent(family)}`,
+    body,
+  );
+}
+
 export async function fetchConfigSnapshots(harness?: string): Promise<ConfigSnapshotsResponse> {
   const url = harness ? `/config-snapshots?harness=${encodeURIComponent(harness)}` : "/config-snapshots";
   return fetchJson<ConfigSnapshotsResponse>(url);

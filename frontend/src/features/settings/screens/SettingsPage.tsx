@@ -3,6 +3,7 @@ import { Archive, Database } from "lucide-react";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { ToggleSwitch } from "../../../components/ToggleSwitch";
 import { useFormatPath } from "../../../lib/paths";
 import { ConfigSnapshotsSection } from "../components/ConfigSnapshotsSection";
 import { SettingsHarnessCard } from "../components/SettingsHarnessCard";
@@ -74,6 +75,25 @@ export default function SettingsPage() {
                 onToggle={controller.handleSupportToggle}
               />
             ))}
+          </section>
+
+          <section className="settings-section">
+            <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
+            <div className="settings-row">
+              <div className="settings-row__body">
+                <p className="settings-row__title">{copy.autoAdopt.label}</p>
+                <p className="settings-row__sub">{copy.autoAdopt.sub}</p>
+              </div>
+              <div className="settings-row__controls">
+                <ToggleSwitch
+                  checked={controller.data.autoAdopt?.agents ?? true}
+                  disabled={controller.isAutoAdoptPending("agents")}
+                  label=""
+                  ariaLabel={copy.autoAdopt.label}
+                  onCheckedChange={(checked) => controller.handleAutoAdoptToggle("agents", checked)}
+                />
+              </div>
+            </div>
           </section>
 
           <ConfigSnapshotsSection />

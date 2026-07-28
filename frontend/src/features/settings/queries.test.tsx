@@ -5,7 +5,7 @@ import { mcpManagementKeys } from "../mcp/public";
 import { skillsKeys } from "../skills/public";
 import { okJson } from "../../test/fetch";
 import { renderWithAppProviders } from "../../test/render";
-import { settingsKeys, useHarnessSupportMutation } from "./queries";
+import { settingsKeys, useAutoAdoptMutation, useHarnessSupportMutation } from "./queries";
 
 const fetchMock = vi.fn();
 
@@ -76,5 +76,43 @@ describe("settings queries", () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: skillsKeys.list() });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: skillsKeys.detailPrefix() });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: skillsKeys.sourceStatusPrefix() });
+  });
+
+  it("calls exact URL /api/settings/auto-adopt/agents when mutating auto-adopt", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/settings/auto-adopt/agents") {
+        expect(init?.method).toBe("PUT");
+        expect(JSON.parse(String(init?.body))).toEqual({ enabled: false });
+        return okJson({ ok: true, autoAdopt: { agents: false, skills: false } });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    function AutoAdoptProbe() {
+      const mutation = useAutoAdoptMutation();
+      return (
+        <button
+          type="button"
+          onClick={() => mutation.mutate({ family: "agents", enabled: false })}
+        >
+          Toggle auto-adopt agents
+        </button>
+      );
+    }
+
+    renderWithAppProviders(<AutoAdoptProbe />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle auto-adopt agents" }));
+
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find((c) => {
+        const u = typeof c[0] === "string" ? c[0] : c[0].toString();
+        return u === "/api/settings/auto-adopt/agents";
+      });
+      expect(call).toBeDefined();
+      if (!call) return;
+      expect(typeof call[0] === "string" ? call[0] : call[0].toString()).toBe("/api/settings/auto-adopt/agents");
+    });
   });
 });
