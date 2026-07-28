@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Callable
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -200,8 +201,14 @@ def _has_marker(path: Path) -> bool:
         return False
 
 
+# Lives here rather than in inventory.py: the reconcile service needs it too, and
+# importing it from the inventory would make the two modules circular.
+TargetResolver = Callable[[], tuple[tuple[AgentTarget, ...], dict[str, "AgentHarnessAdapter"]]]
+
+
 __all__ = [
     "AgentHarnessAdapter",
+    "TargetResolver",
     "GENERATED_MARKER",
     "codex_agent_name",
     "parse_codex_agent",

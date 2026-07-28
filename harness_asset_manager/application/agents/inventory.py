@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
-from .adapters import AgentHarnessAdapter, parse_codex_agent
+from .adapters import AgentHarnessAdapter, TargetResolver, parse_codex_agent
 from .ledger import AgentBindingLedger, AgentBindingRecord, classify_drift, hash_file
+from .reconcile import ReconcileOutcome
 from .model import (
     AgentBinding,
     AgentDetail,
@@ -18,8 +19,6 @@ from .model import (
 from .parser import parse_agent_file
 from .store import AgentStore
 
-TargetResolver = Callable[[], tuple[tuple[AgentTarget, ...], dict[str, AgentHarnessAdapter]]]
-
 
 class AgentInventoryService:
     """Reads the agents inventory.
@@ -28,8 +27,11 @@ class AgentInventoryService:
     enable or disable a harness in Settings at any time, and the matrix has to follow
     immediately, exactly as the skills read model does.
 
-    This is also where binding drift is *named*. It is strictly read-only: the
-    inventory says what happened to a binding, it never repairs one.
+    This is also where binding drift is *named*, and — via ``reconcile`` — where it
+    is repaired. Reconcile runs here rather than on a filesystem watcher because this
+    already runs on every list request, which is the natural reconcile point and needs
+    no background infrastructure (plan §2). The naming half stays strictly read-only;
+    only the injected reconcile callable ever writes.
     """
 
     def __init__(
@@ -37,10 +39,12 @@ class AgentInventoryService:
         store: AgentStore,
         resolve: TargetResolver,
         ledger: AgentBindingLedger,
+        reconcile: Callable[[], ReconcileOutcome] | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
         self.ledger = ledger
+        self._reconcile = reconcile
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -51,9 +55,17 @@ class AgentInventoryService:
         return self._resolve()[1]
 
     def build(self) -> AgentInventory:
+        # Repair first, then report: otherwise the matrix describes a state that is
+        # already stale by the time it reaches the client. Reconcile is a no-op when
+        # the setting is off or the ledger holds nothing.
+        reconcile_issues: tuple[tuple[str, str], ...] = ()
+        if self._reconcile is not None:
+            reconcile_issues = self._reconcile().issues
+
         targets, adapters = self._resolve()
         managed, issues = self.store.scan()
         issue_list = list(issues)
+        issue_list.extend(AgentIssue(name=name, reason=reason) for name, reason in reconcile_issues)
         # Read once per build, not per binding: the ledger is a single small file and
         # this runs on every list request.
         ledger_state = self.ledger.load()
@@ -359,4 +371,4 @@ def _format_config_value(value: object) -> str:
     return str(value)
 
 
-__all__ = ["AgentInventoryService"]
+__all__ = ["AgentInventoryService", "TargetResolver"]

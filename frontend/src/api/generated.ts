@@ -1304,6 +1304,8 @@ export interface components {
             entries: components["schemas"]["AgentEntryResponse"][];
             /** Issues */
             issues?: components["schemas"]["AgentIssueResponse"][];
+            /** Recentrepairs */
+            recentRepairs?: components["schemas"]["AgentRepairResponse"][];
         };
         /** AgentIssueResponse */
         AgentIssueResponse: {
@@ -1318,6 +1320,28 @@ export interface components {
             error: string;
             /** Harness */
             harness: string;
+        };
+        /**
+         * AgentRepairResponse
+         * @description One automatic binding repair, newest first.
+         *
+         *     Surfaced because silent repair is nearly as bad as silent breakage: the user has
+         *     to be able to see that Harness Asset Manager moved their content, and what it decided.
+         */
+        AgentRepairResponse: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "relinked" | "adopted" | "conflict_preserved" | "refused";
+            /** At */
+            at: number;
+            /** Detail */
+            detail: string;
+            /** Harness */
+            harness: string;
+            /** Ref */
+            ref: string;
         };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {

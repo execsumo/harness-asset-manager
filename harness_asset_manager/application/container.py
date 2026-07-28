@@ -11,10 +11,12 @@ from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
 from .agents import (
+    AgentAuditLog,
     AgentBindingLedger,
     AgentHarnessAdapter,
     AgentInventoryService,
     AgentMutationService,
+    AgentReconcileService,
     AgentStore,
     resolve_agent_targets,
 )
@@ -108,6 +110,8 @@ class BackendContainer:
     agents_store: AgentStore
     agents_inventory: AgentInventoryService
     agents_mutations: AgentMutationService
+    agents_audit: AgentAuditLog
+    agents_reconcile: AgentReconcileService
     config_snapshots: ConfigSnapshotService
     app_home: Path
 
@@ -331,8 +335,20 @@ def build_backend_container(
         agent_bindings.rebaseline(slug, live, hash_file(store_path))
 
     agents_store = AgentStore(paths.agents_root, rebaseline_agent_bindings)
+    agents_audit = AgentAuditLog(paths.agents_audit_path)
+    agents_reconcile = AgentReconcileService(
+        store=agents_store,
+        resolve=resolve_agents_snapshot,
+        ledger=agent_bindings,
+        audit=agents_audit,
+        conflicts_root=paths.agents_conflicts_root,
+        # Read per call, not captured: switching auto-adopt off in Settings must stop
+        # the next reconcile, not the next restart.
+        is_enabled=lambda: auto_adopt_store.is_enabled("agents"),
+        lock_path=paths.agents_reconcile_lock_path,
+    )
     agents_inventory = AgentInventoryService(
-        agents_store, resolve_agents_snapshot, agent_bindings
+        agents_store, resolve_agents_snapshot, agent_bindings, agents_reconcile.reconcile
     )
     agents_mutations = AgentMutationService(
         agents_store, resolve_agents_snapshot, agent_bindings
@@ -380,6 +396,8 @@ def build_backend_container(
         agents_store=agents_store,
         agents_inventory=agents_inventory,
         agents_mutations=agents_mutations,
+        agents_audit=agents_audit,
+        agents_reconcile=agents_reconcile,
         config_snapshots=config_snapshots,
         app_home=app_home,
     )

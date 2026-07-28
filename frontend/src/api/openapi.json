@@ -570,6 +570,13 @@
             },
             "title": "Issues",
             "type": "array"
+          },
+          "recentRepairs": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRepairResponse"
+            },
+            "title": "Recentrepairs",
+            "type": "array"
           }
         },
         "required": [
@@ -613,6 +620,46 @@
           "error"
         ],
         "title": "AgentMutationFailureResponse",
+        "type": "object"
+      },
+      "AgentRepairResponse": {
+        "description": "One automatic binding repair, newest first.\n\nSurfaced because silent repair is nearly as bad as silent breakage: the user has\nto be able to see that Harness Asset Manager moved their content, and what it decided.",
+        "properties": {
+          "action": {
+            "enum": [
+              "relinked",
+              "adopted",
+              "conflict_preserved",
+              "refused"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "title": "At",
+            "type": "number"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "ref",
+          "harness",
+          "action",
+          "detail"
+        ],
+        "title": "AgentRepairResponse",
         "type": "object"
       },
       "BulkManageFailureResponse": {

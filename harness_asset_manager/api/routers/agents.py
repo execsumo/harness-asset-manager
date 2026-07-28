@@ -21,6 +21,7 @@ from harness_asset_manager.api.schemas.agents import (
     AgentInventoryResponse,
     AgentIssueResponse,
     AgentMutationFailureResponse,
+    AgentRepairResponse,
     CreateAgentRequest,
     SetAgentHarnessesRequest,
     SetAgentHarnessesResultResponse,
@@ -68,6 +69,16 @@ def list_agents(container: BackendContainer = Depends(get_container)) -> AgentIn
         ],
         issues=[
             AgentIssueResponse(name=issue.name, reason=issue.reason) for issue in inventory.issues
+        ],
+        recentRepairs=[
+            AgentRepairResponse(
+                at=repair.at,
+                ref=repair.ref,
+                harness=repair.harness,
+                action=repair.action,
+                detail=repair.detail,
+            )
+            for repair in container.agents_audit.recent()
         ],
     )
 

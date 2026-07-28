@@ -8,9 +8,8 @@ from typing import Callable
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.hashing import hash_file
 
-from .adapters import AgentHarnessAdapter
+from .adapters import AgentHarnessAdapter, TargetResolver
 from .audit import AgentAuditLog, AuditEntry
-from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, AgentBindingRecord, build_record, classify_drift
 from .store import AgentStore
 

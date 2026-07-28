@@ -38,10 +38,25 @@ class AgentIssueResponse(BaseModel):
     reason: str
 
 
+class AgentRepairResponse(BaseModel):
+    """One automatic binding repair, newest first.
+
+    Surfaced because silent repair is nearly as bad as silent breakage: the user has
+    to be able to see that Harness Asset Manager moved their content, and what it decided.
+    """
+
+    at: float
+    ref: str
+    harness: str
+    action: Literal["relinked", "adopted", "conflict_preserved", "refused"]
+    detail: str
+
+
 class AgentInventoryResponse(BaseModel):
     columns: list[AgentColumnResponse]
     entries: list[AgentEntryResponse]
     issues: list[AgentIssueResponse] = Field(default_factory=list)
+    recentRepairs: list[AgentRepairResponse] = Field(default_factory=list)
 
 
 class AgentHarnessRequest(BaseModel):
@@ -152,6 +167,7 @@ __all__ = [
     "AgentHarnessDetailResponse",
     "AgentHarnessRequest",
     "AgentInventoryResponse",
+    "AgentRepairResponse",
     "AgentIssueResponse",
     "AgentMutationFailureResponse",
     "CreateAgentRequest",

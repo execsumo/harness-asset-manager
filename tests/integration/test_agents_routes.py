@@ -373,9 +373,11 @@ class AgentRoutesTests(unittest.TestCase):
             harness.post_json("/api/agents/red-team/disable", {"harness": "claude"})
             self.assertEqual(json.loads(ledger_path.read_text("utf-8"))["agents"], {})
 
-    def test_a_clobbered_binding_is_diagnosed_over_the_api(self) -> None:
+    def test_a_one_sided_clobber_is_repaired_automatically(self) -> None:
         """The end-to-end case the whole ledger exists for: a harness replaces our
-        symlink with its own edited copy, exactly as an atomic editor would."""
+        symlink with its own edited copy, exactly as an atomic editor would. The store
+        has not moved since we linked, so that copy holds the only edit — folding it
+        back in discards nothing, and Stage 3 does it without asking."""
         with AppTestHarness() as harness:
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
@@ -393,14 +395,140 @@ class AgentRoutesTests(unittest.TestCase):
             payload = harness.get_json("/api/agents")
             entry = next(e for e in payload["entries"] if e["ref"] == "red-team")
             claude = next(b for b in entry["bindings"] if b["harness"] == "claude")
+            self.assertEqual(claude["state"], "enabled")
+            self.assertTrue(binding.is_symlink())
+
+            store_file = harness.spec.agents_root / "red-team.md"
+            self.assertIn("edited by the harness", store_file.read_text(encoding="utf-8"))
+
+            # Invariant 5: nothing is repaired silently.
+            actions = harness.container.agents_audit.recent()
+            self.assertEqual([a.action for a in actions], ["adopted"])
+            self.assertEqual(actions[0].ref, "red-team")
+
+    def test_auto_adopt_off_leaves_the_drift_diagnosed_but_untouched(self) -> None:
+        """The kill switch, over the wire. Stage 2's diagnosis is what remains."""
+        with AppTestHarness() as harness:
+            harness.put_json("/api/settings/auto-adopt/agents", {"enabled": False})
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            binding.unlink()
+            binding.write_text(
+                "---\nname: Red Team\ndescription: d\n---\nedited by the harness\n",
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/agents")
+            entry = next(e for e in payload["entries"] if e["ref"] == "red-team")
+            claude = next(b for b in entry["bindings"] if b["harness"] == "claude")
             self.assertEqual(claude["state"], "disabled")
             self.assertEqual(claude["detail"], "the link was replaced by an edited file")
-            self.assertTrue(
-                any("only edit" in issue["reason"] for issue in payload["issues"]),
-                payload["issues"],
+            self.assertFalse(binding.is_symlink())
+            self.assertEqual(harness.container.agents_audit.recent(), ())
+
+    def test_a_two_sided_conflict_is_never_resolved_automatically(self) -> None:
+        """Both sides hold edits, so no choice can be made without discarding one."""
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
-            # Read-only: the harness's copy is still exactly where it was.
-            self.assertIn("edited by the harness", binding.read_text(encoding="utf-8"))
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            binding.unlink()
+            binding.write_text(
+                "---\nname: Red Team\ndescription: d\n---\nharness edit\n",
+                encoding="utf-8",
+            )
+            harness.put_json("/api/agents/red-team", {"prompt": "store edit"})
+
+            payload = harness.get_json("/api/agents")
+            entry = next(e for e in payload["entries"] if e["ref"] == "red-team")
+            claude = next(b for b in entry["bindings"] if b["harness"] == "claude")
+            self.assertEqual(claude["state"], "disabled")
+            self.assertEqual(
+                claude["detail"], "the link was replaced and both copies have changed"
+            )
+            # Neither side moved, and nothing was recorded as done.
+            self.assertIn("harness edit", binding.read_text(encoding="utf-8"))
+            self.assertIn("store edit", (harness.spec.agents_root / "red-team.md").read_text("utf-8"))
+            self.assertEqual(harness.container.agents_audit.recent(), ())
+
+    def test_two_harnesses_with_differing_edits_are_preserved_not_merged(self) -> None:
+        """§4's multi-harness rule, the case that must never be guessed. Two harnesses
+        each clobbered the link and each made a *different* edit. Picking either one
+        discards the other's work, so nothing is adopted, nothing is deleted, and each
+        divergent copy is preserved for the user to choose from."""
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            for target in ("claude", "cursor"):
+                harness.post_json("/api/agents/red-team/enable", {"harness": target})
+
+            bindings = {
+                "claude": harness.spec.home / ".claude" / "agents" / "red-team.md",
+                "cursor": harness.spec.home / ".cursor" / "agents" / "red-team.md",
+            }
+            for target, path in bindings.items():
+                self.assertTrue(path.is_symlink(), f"{target} was not linked")
+                path.unlink()
+                path.write_text(
+                    f"---\nname: Red Team\ndescription: d\n---\n{target} made this edit\n",
+                    encoding="utf-8",
+                )
+
+            store_file = harness.spec.agents_root / "red-team.md"
+            store_before = store_file.read_text(encoding="utf-8")
+
+            payload = harness.get_json("/api/agents")
+
+            # Nothing adopted: the store is byte-for-byte what it was.
+            self.assertEqual(store_file.read_text(encoding="utf-8"), store_before)
+            # Nothing deleted: both harness copies are still exactly where they were.
+            for target, path in bindings.items():
+                self.assertFalse(path.is_symlink())
+                self.assertIn(f"{target} made this edit", path.read_text(encoding="utf-8"))
+            # Both sides preserved where the user can find them.
+            conflicts = harness.container.paths.agents_conflicts_root
+            for target in bindings:
+                preserved = conflicts / f"red-team.{target}.md"
+                self.assertTrue(preserved.is_file(), f"missing {preserved}")
+                self.assertIn(f"{target} made this edit", preserved.read_text(encoding="utf-8"))
+            # And the user is told, once, naming every side.
+            reasons = [i["reason"] for i in payload["issues"] if "conflicting edits" in i["reason"]]
+            self.assertEqual(len(reasons), 1, payload["issues"])
+            self.assertIn("claude", reasons[0])
+            self.assertIn("cursor", reasons[0])
+            # A preserved copy must never be readable back as an agent.
+            self.assertNotIn("red-team.claude", [e["ref"] for e in payload["entries"]])
+
+    def test_reconcile_is_idempotent_across_list_requests(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            binding.unlink()
+            binding.write_text(
+                "---\nname: Red Team\ndescription: d\n---\nedited\n", encoding="utf-8"
+            )
+
+            harness.get_json("/api/agents")
+            after_first = (harness.spec.agents_root / "red-team.md").read_text("utf-8")
+            actions_first = len(harness.container.agents_audit.recent())
+
+            harness.get_json("/api/agents")
+            harness.get_json("/api/agents")
+            self.assertEqual(
+                (harness.spec.agents_root / "red-team.md").read_text("utf-8"), after_first
+            )
+            self.assertEqual(len(harness.container.agents_audit.recent()), actions_first)
 
     def _entry(self, harness: AppTestHarness, ref: str) -> dict:
         payload = harness.get_json("/api/agents")
