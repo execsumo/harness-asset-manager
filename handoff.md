@@ -47,8 +47,16 @@ It is a deliberate Stage 4 placeholder (the `DEFAULTS` docstring says skills is
 unimplemented because adopting a skill means `shutil.rmtree` on a real directory of the
 user's). The fix is to refuse it until Stage 4 actually lands, not to delete the key.
 
-**Being fixed now** (delegated: enabling `skills` → 400, distinct from the 404 unknown
-families get; disabling stays 200 so full-object syncs do not break).
+**FIXED and merged.** `IMPLEMENTED = {"agents"}` now sits beside `DEFAULTS` in
+`auto_adopt.py`, so "is a real family" and "we can act on it" are declared in one file
+and cannot drift apart. `set_enabled` raises `ValueError` when enabling an unimplemented
+family; `SettingsMutationService` maps it to **400**, leaving the existing `KeyError` →
+**404** for genuinely unknown families untouched. Disabling stays **200** so a client
+syncing the whole settings object does not break, and `GET /api/settings` still returns
+both keys. When Stage 5 lands, the change is one entry in `IMPLEMENTED`.
+
+Verified live, all four cases: enable-skills 400 · disable-skills 200 · enable-agents
+200 · unknown-family 404. Backend 458 unit + 167 integration.
 
 ### `plan-auto-adoption.md` updated as a result
 
