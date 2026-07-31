@@ -62,6 +62,7 @@ ruby -c "$TMP_FORMULA" >/dev/null
 grep -q 'license "MIT"' "$TMP_FORMULA"
 grep -q 'staged_root = (buildpath/"harness-asset-manager").directory? ? buildpath/"harness-asset-manager" : buildpath' "$TMP_FORMULA"
 grep -q 'bin.install_symlink libexec/"harness-asset-manager" => "harness-asset-manager"' "$TMP_FORMULA"
+grep -q 'bin.install_symlink libexec/"harness-asset-manager" => "harnessam"' "$TMP_FORMULA"
 
 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 "$BREW_BIN" uninstall --force harness-asset-manager >/dev/null 2>&1 || true
 if [[ "$OFFICIAL_TAP_WAS_PRESENT" == "1" ]]; then
@@ -77,11 +78,19 @@ BREW_PREFIX="$("$BREW_BIN" --prefix)"
 export PATH="$BREW_PREFIX/bin:$PATH"
 INSTALLED_PREFIX="$("$BREW_BIN" --prefix "$FORMULA_NAME")"
 ACTUAL_BIN="$(command -v harness-asset-manager)"
+ACTUAL_SHORT_BIN="$(command -v harnessam)"
 
 [[ -n "$ACTUAL_BIN" ]]
 [[ "$ACTUAL_BIN" == "$BREW_PREFIX/bin/harness-asset-manager" ]]
 [[ -x "$INSTALLED_PREFIX/bin/harness-asset-manager" ]]
 [[ -x "$INSTALLED_PREFIX/libexec/harness-asset-manager" ]]
 
+[[ -n "$ACTUAL_SHORT_BIN" ]]
+[[ "$ACTUAL_SHORT_BIN" == "$BREW_PREFIX/bin/harnessam" ]]
+[[ -x "$INSTALLED_PREFIX/bin/harnessam" ]]
+
 VERSION_OUTPUT="$("$INSTALLED_PREFIX/bin/harness-asset-manager" --version)"
 [[ "$VERSION_OUTPUT" == "harness-asset-manager $VERSION" ]]
+
+SHORT_VERSION_OUTPUT="$("$INSTALLED_PREFIX/bin/harnessam" --version)"
+[[ "$SHORT_VERSION_OUTPUT" == "harness-asset-manager $VERSION" ]]

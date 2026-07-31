@@ -117,10 +117,12 @@ Marketplace is the discovery surface:
 ```bash
 brew tap execsumo/tap
 brew install harness-asset-manager
-harness-asset-manager start
+harnessam start
 ```
 
-`harnessAM` is a short alias for the same formula (`brew install harnessAM`).
+`harnessam` is the short command (`harness-asset-manager` still works too). `brew install harnessam` is also a valid formula alias for the same package.
+
+If `harnessam: command not found` right after installing, Homebrew's bin directory isn't on your `PATH` yet — run `eval "$(brew shellenv)"` and add that line to your shell profile (`~/.zprofile` or `~/.bash_profile`) so it persists across new terminals.
 
 ## Supported harnesses
 
