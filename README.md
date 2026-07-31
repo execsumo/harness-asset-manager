@@ -60,7 +60,7 @@ Typical flow:
 3. Enable it only where it should be available.
 4. Update, remove, or delete it from one place.
 
-![skill-market-skill-matrxi](./assets/harness-asset-manager-skill-matrix.png)
+![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
 
 ### MCP servers
 
@@ -73,7 +73,7 @@ Typical flow:
 3. Enable it where the server should be available.
 4. Resolve config differences, disable harness bindings, or uninstall it from one place.
 
-![skill-market-skill-matrxi](./assets/harness-asset-manager-mcp-matrix.png)
+![mcp-matrix](./assets/harness-asset-manager-mcp-matrix.png)
 
 ### Slash commands
 
@@ -108,7 +108,7 @@ Marketplace is the discovery surface:
 - **MCP Marketplace**: browse and install MCP servers.
 - **CLI Marketplace**: preview external CLI tools from CLIs.dev. This is display-only; Harness Asset Manager does not install or manage CLIs.
 
-![skill-market-skill-matrxi](./assets/harness-asset-manager-marketplace.png)
+![marketplace](./assets/harness-asset-manager-marketplace.png)
 
 ## Install
 
