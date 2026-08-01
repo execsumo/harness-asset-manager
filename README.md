@@ -38,7 +38,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
 - Manage Agents — markdown files in the store, symlinked into each harness's agents directory, with In Use and Needs Review views like every other family. If a harness overwrites a link with its own copy, provably-safe edits are folded back in automatically and conflicting ones are left for you.
 - Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
-- Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `ham snapshot` CLI support.
+- Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 
 ## Product tour
@@ -120,7 +120,7 @@ brew install harness-asset-manager
 harnessam start
 ```
 
-`harnessam` is the short command (`harness-asset-manager` still works too). `brew install harnessam` is also a valid formula alias for the same package.
+`brew install harnessam` also works as an alias for the same formula.
 
 If `harnessam: command not found` right after installing, Homebrew's bin directory isn't on your `PATH` yet — run `eval "$(brew shellenv)"` and add that line to your shell profile (`~/.zprofile` or `~/.bash_profile`) so it persists across new terminals.
 
@@ -409,7 +409,7 @@ Binding a non-loopback address requires an explicit opt-in, and is discouraged b
 has no authentication:
 
 ```bash
-harness-asset-manager serve --host 0.0.0.0 --allow-remote
+harnessam serve --host 0.0.0.0 --allow-remote
 ```
 
 Validation:

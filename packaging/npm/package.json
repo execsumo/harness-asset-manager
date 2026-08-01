@@ -5,7 +5,6 @@
   "license": "MIT",
   "private": false,
   "bin": {
-    "harness-asset-manager": "bin/harness-asset-manager.js",
     "harnessam": "bin/harness-asset-manager.js"
   },
   "scripts": {
