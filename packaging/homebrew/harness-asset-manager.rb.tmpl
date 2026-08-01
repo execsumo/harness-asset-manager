@@ -18,11 +18,19 @@ class HarnessAssetManager < Formula
   def install
     staged_root = (buildpath/"harness-asset-manager").directory? ? buildpath/"harness-asset-manager" : buildpath
     libexec.install staged_root.children
-    bin.install_symlink libexec/"harness-asset-manager" => "harness-asset-manager"
+    bin.install_symlink libexec/"harness-asset-manager" => "harnessam"
+  end
+
+  def caveats
+    <<~EOS
+      If `harnessam: command not found`, Homebrew's bin directory isn't on your PATH yet:
+        eval "$(brew shellenv)"
+      Add that line to your shell profile (~/.zprofile or ~/.bash_profile) to make it permanent.
+    EOS
   end
 
   test do
-    output = shell_output("#{bin}/harness-asset-manager --version")
+    output = shell_output("#{bin}/harnessam --version")
     assert_match "__VERSION__", output
   end
 end
