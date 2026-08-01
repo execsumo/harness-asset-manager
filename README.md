@@ -40,6 +40,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
 - Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
+- Drive all of the above **headlessly** from the [CLI](#headless-and-cli) — every family has `list`/`show`/`enable`/`disable` commands with `--json` output, so a VPS or Linux sandbox needs no browser.
 
 ## Product tour
 
@@ -123,6 +124,66 @@ harnessam start
 `brew install harnessam` also works as an alias for the same formula.
 
 If `harnessam: command not found` right after installing, Homebrew's bin directory isn't on your `PATH` yet — run `eval "$(brew shellenv)"` and add that line to your shell profile (`~/.zprofile` or `~/.bash_profile`) so it persists across new terminals.
+
+## Headless and CLI
+
+Every asset family the web UI manages is also a command. Nothing needs to be running
+first: the CLI builds the same backend the server does and talks to the same stores, so
+it works on a VPS, in a container, or in a Linux sandbox with no browser and no daemon.
+
+```bash
+harnessam skills list                      # the skills × harness matrix
+harnessam agents enable release-bot --harness claude
+harnessam mcp install exa                  # install from the marketplace
+harnessam hooks set-harnesses lint-gate --target enabled
+harnessam permissions create --id no-force-push \
+    --decision deny --scope shell --pattern 'git push --force'
+harnessam commands sync deploy --target claude --target codex
+harnessam settings show
+```
+
+Groups: `skills`, `agents`, `mcp`, `hooks`, `permissions`, `commands` (slash commands),
+`settings`, `snapshots`, plus `health`. Run `harnessam <group> --help` for the verbs;
+they mirror the HTTP routes one-for-one.
+
+> Installed from source or PyPI the binary is `harness-asset-manager`; the Homebrew
+> formula also symlinks it as `harnessam`. Both accept the same commands, and
+> `python -m harness_asset_manager` works anywhere the package is importable.
+
+### Scripting
+
+- `--json` on any command prints the same payload the matching API route returns —
+  stdout stays clean for `jq`, and errors go to stderr.
+- Exit codes: `0` success, `1` a refused or partly-applied mutation, `2` bad usage.
+  A fan-out like `set-harnesses` exits `1` when any harness rejected the change, so
+  check `succeeded`/`failed` in the JSON when partial application is acceptable.
+- Destructive commands (`delete`, `uninstall`) prompt when stdin is a terminal and
+  refuse otherwise — pass `--yes` in scripts.
+- `--state-dir` isolates a run, which is how you keep CI or a throwaway sandbox from
+  touching the real store.
+
+```bash
+harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'
+harnessam agents set-harnesses release-bot --harness claude --harness codex --json | jq .failed
+```
+
+Running the CLI while the app is serving is safe — the stores serialize writes with
+`flock`, and the server's read models refresh within a second, so the open UI catches up
+on its own.
+
+### Running the server headlessly
+
+`serve` runs in the foreground (systemd, Docker, `tmux`); `start` daemonizes and records
+a pid that `status` and `stop` read back.
+
+```bash
+harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
+```
+
+A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is
+a placeholder. Binding a non-loopback address needs `--allow-remote`; see
+[Local-first safety](#local-first-safety) before you do, because the API has no
+authentication.
 
 ## Supported harnesses
 
