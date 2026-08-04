@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import TYPE_CHECKING, Callable
 
 from harness_asset_manager import __version__
 from harness_asset_manager.paths import STATE_DIR_ENV
@@ -25,15 +26,28 @@ from harness_asset_manager.runtime.state import (
     write_runtime_state,
 )
 
+from . import commands
+from .commands import snapshots
+from .support import CliError, asset_flags
+
+if TYPE_CHECKING:
+    from harness_asset_manager.application import BackendContainer
+
+AssetHandler = Callable[["BackendContainer", argparse.Namespace], int]
+
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-COMMANDS = {"serve", "start", "stop", "status", "snapshot"}
+RUNTIME_COMMANDS = {"serve", "start", "stop", "status", "snapshot"}
+COMMANDS = RUNTIME_COMMANDS | commands.GROUP_NAMES
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="harness-asset-manager",
-        description="Launch and manage the local harness-asset-manager app.",
+        description=(
+            "Run the local harness-asset-manager app, or manage harness assets headlessly "
+            "from the command line."
+        ),
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command")
@@ -50,7 +64,16 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status", help="Show status for the managed background instance.")
     status_parser.add_argument("--state-dir", help="Override the runtime state directory.")
 
-    snapshot_parser = subparsers.add_parser("snapshot", help="Capture snapshots of all user-level native harness configs.")
+    common = asset_flags()
+
+    snapshot_parser = subparsers.add_parser(
+        "snapshot",
+        parents=[common],
+        help="Capture snapshots of all user-level native harness configs.",
+    )
+    snapshot_parser.set_defaults(handler=snapshots.capture_snapshots)
+
+    commands.register(subparsers, common)
 
     return parser
 
@@ -92,34 +115,51 @@ def normalize_argv(argv: list[str] | None) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(normalize_argv(argv))
+    handler = getattr(args, "handler", None)
+    if handler is not None:
+        return run_asset_command(handler, args)
     if args.command == "start":
         return start_command(args)
     if args.command == "stop":
         return stop_command(args)
     if args.command == "status":
         return status_command(args)
-    if args.command == "snapshot":
-        return snapshot_command(args)
     return serve_command(args)
 
 
-def snapshot_command(args: argparse.Namespace) -> int:
-    from harness_asset_manager.application.container import build_backend_container
-    from harness_asset_manager.paths import resolve_app_paths
+def run_asset_command(handler: AssetHandler, args: argparse.Namespace) -> int:
+    """Run one asset command against a freshly built backend container.
 
-    paths = resolve_app_paths()
-    container = build_backend_container()
-    targets = container.config_snapshots.resolve_target_configs()
-    captured = []
-    for target in targets:
-        s = container.config_snapshots.capture_snapshot(target, trigger="manual", force=True)
-        if s:
-            captured.append(s)
+    The container is built here rather than in each handler so every command gets the
+    same store migrations, harness resolution and ``--state-dir`` handling the server
+    gets. Stores serialize their own writes with ``flock``, so this is safe to run
+    while the app is serving; the server's read models carry a one-second TTL and pick
+    the change up on their next request.
+    """
+    from harness_asset_manager.application import build_backend_container
+    from harness_asset_manager.errors import MarketplaceUpstreamError, MutationError
 
-    print(f"Captured {len(captured)} harness config snapshots under {paths.configs_dir}:")
-    for s in captured:
-        print(f"  - [{s.harness}] {s.config_name} -> {s.snapshot_path.name}")
-    return 0
+    env = runtime_env(getattr(args, "state_dir", None))
+    try:
+        container = build_backend_container(env)
+    except (CliError, MutationError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    try:
+        return handler(container, args)
+    except (CliError, MutationError, MarketplaceUpstreamError, ValueError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    except (BrokenPipeError, KeyboardInterrupt):
+        # `harnessam skills list | head` and Ctrl-C are both ordinary, not crashes.
+        return 130
+    finally:
+        # Marketplace metadata refreshes run on a thread pool; without this the process
+        # waits on them at exit even though nothing is going to read the result.
+        try:
+            container.skills_marketplace_catalog.close()
+        except Exception:  # pragma: no cover - shutdown is best-effort
+            pass
 
 
 def guard_remote_host(args: argparse.Namespace) -> int | None:

@@ -16,12 +16,14 @@ Harness Asset Manager is a local-first control center for AI developer extension
                                        |
                               HTTP / REST API
                                        |
-+---------------------------------------------------------------------------------+
-|                             FastAPI / Uvicorn Server                            |
-|             Loopback Bind (127.0.0.1) + Loopback Host/Origin Guards            |
-+---------------------------------------------------------------------------------+
-                                       |
-                               Domain Services
++---------------------------------------------------------------------------------+       +--------------------------------+
+|                             FastAPI / Uvicorn Server                            |       |     Headless CLI (argparse)    |
+|             Loopback Bind (127.0.0.1) + Loopback Host/Origin Guards            |       | harnessam skills|agents|mcp|…  |
++---------------------------------------------------------------------------------+       +--------------------------------+
+                                       |                                                                  |
+                                       +--------------------------+---------------------------------------+
+                                                                  |
+                                                          Domain Services
   (SkillsService, McpService, SlashCommandsService, HooksService, AgentsService, PermissionsService)
                                        |
                  +---------------------+---------------------+
@@ -31,6 +33,11 @@ Harness Asset Manager is a local-first control center for AI developer extension
                  |                                           |
     Atomic File Writes & Locks                    Harness Native Config Files
 ```
+
+Both entry points build the **same** `BackendContainer` and call the same domain
+services; the CLI does not proxy through HTTP, so it needs no running server. Stores
+serialize concurrent writes with `flock`, which is what makes it safe to run the CLI
+while the server is up.
 
 ---
 
