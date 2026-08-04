@@ -142,13 +142,119 @@ harnessam commands sync deploy --target claude --target codex
 harnessam settings show
 ```
 
-Groups: `skills`, `agents`, `mcp`, `hooks`, `permissions`, `commands` (slash commands),
-`settings`, `snapshots`, plus `health`. Run `harnessam <group> --help` for the verbs;
-they mirror the HTTP routes one-for-one.
-
 > Installed from source or PyPI the binary is `harness-asset-manager`; the Homebrew
 > formula also symlinks it as `harnessam`. Both accept the same commands, and
 > `python -m harness_asset_manager` works anywhere the package is importable.
+
+### Command reference
+
+Every command takes `--json` and `--state-dir`. `--harness` names a harness id
+(`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `openclaw`), and
+`set-harnesses --target enabled|disabled` applies one state to every interactive cell
+in that row. Run `harnessam <group> <verb> --help` for the full flag list.
+
+**`skills`** — Skills inventory and the skills marketplace.
+
+| Command | What it does |
+| --- | --- |
+| `skills list` | The skills × harness matrix, plus a managed/unmanaged count |
+| `skills show <ref>` | Detail: status, per-harness cells, on-disk locations |
+| `skills enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
+| `skills set-harnesses <ref> --target <state>` | Apply one state everywhere |
+| `skills manage <ref>` / `skills manage-all` | Take unmanaged skills into the store |
+| `skills unmanage <ref>` | Stop managing, leaving the files in place |
+| `skills update <ref>` | Re-fetch a managed skill from its source |
+| `skills delete <ref> --yes` | Delete a managed skill and its bindings |
+| `skills search <query>` / `skills popular` | Browse the marketplace; prints install tokens |
+| `skills install <install-token>` | Install a marketplace skill |
+
+**`agents`** — subagents stored as markdown and symlinked into each harness.
+
+| Command | What it does |
+| --- | --- |
+| `agents list` | The agents × harness matrix, including unmanaged harness copies |
+| `agents show <ref>` | Detail: prompt, tools, per-harness path and install method |
+| `agents create --name --description --prompt\|--prompt-file [--tool …]` | Create an agent in the store |
+| `agents update <ref> [--name] [--description] [--prompt] [--tool …]` | Change one or more fields |
+| `agents enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
+| `agents set-harnesses <ref> [--harness <h> …]` | Bind to exactly this set; omit all to unbind everywhere |
+| `agents adopt <ref> [--on-conflict keep_store\|replace_store]` | Take a harness-owned agent into the store |
+| `agents adopt-all` | Adopt every unmanaged agent |
+| `agents delete <ref> --yes` | Delete an agent and its bindings |
+
+**`mcp`** — MCP servers and the MCP marketplace.
+
+| Command | What it does |
+| --- | --- |
+| `mcp list` | The servers × harness matrix |
+| `mcp show <name>` | Detail: transport, command/url, per-harness state |
+| `mcp install <qualified-name>` | Install from the marketplace |
+| `mcp uninstall <name> --yes` | Remove a managed server and its bindings |
+| `mcp enable\|disable <name> --harness <h> [--config <json>]` | Bind or unbind one harness |
+| `mcp set-harnesses <name> --target <state> [--config <json>]` | Apply one state everywhere |
+| `mcp check <name>` | Probe availability; exits `1` when unavailable |
+| `mcp unmanaged` | Servers found in harness configs that we do not own |
+| `mcp adopt <name> [--observed-harness <h>] [--harness <h> …]` | Take an unmanaged server into the store |
+| `mcp search <query>` / `mcp popular` | Browse the marketplace |
+
+`--config` takes a JSON object, or `@file` / `@-` to read one from a file or stdin.
+
+**`hooks`** — normalized hook records synced into harness settings.
+
+| Command | What it does |
+| --- | --- |
+| `hooks list` | The hooks × harness matrix |
+| `hooks show <id>` | Detail: event, command, match, per-harness state and drift |
+| `hooks create --id --event --command [--match] [--timeout] [--description]` | Create a managed hook |
+| `hooks enable\|disable <id> --harness <h>` | Bind or unbind one harness |
+| `hooks set-harnesses <id> --target <state>` | Apply one state everywhere |
+| `hooks promote <id> [--observed-harness <h>]` | Take a harness-owned hook into the store |
+| `hooks delete <id> --yes` | Delete a hook and its bindings |
+
+`--event` is one of `pre_tool_use`, `post_tool_use`, `user_prompt_submit`,
+`session_start`, `stop`, `pre_compact`. `--match` is a tool *category* —
+`any`, `shell`, `file_read`, `file_write`, `mcp`, `web` — not a harness tool name;
+each harness maps the category to its own matcher.
+
+**`permissions`** — denylist rules across supported harnesses.
+
+| Command | What it does |
+| --- | --- |
+| `permissions list` | The rules × harness matrix |
+| `permissions show <id>` | Detail: decision, scope, pattern, per-harness state |
+| `permissions create --id --decision --scope [--pattern] [--description]` | Create a managed rule |
+| `permissions enable\|disable <id> --harness <h>` | Bind or unbind one harness |
+| `permissions set-harnesses <id> --target <state>` | Apply one state everywhere |
+| `permissions promote <id> [--observed-harness <h>]` | Take a harness-owned rule into the store |
+| `permissions delete <id> --yes` | Delete a rule and its bindings |
+
+`--scope` is one of `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and
+`--pattern` is read according to it (`shell` → `git push`, `file_*` → `~/.zshrc`,
+`web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to
+harnesses today — Harness Asset Manager is denylist-only.
+
+**`commands`** — slash commands and their per-target renders.
+
+| Command | What it does |
+| --- | --- |
+| `commands list` | Commands with their synced targets, plus anything needing review |
+| `commands targets` | The available targets and whether each is enabled and available |
+| `commands show <name>` | Detail: per-target sync status, path, and the prompt body |
+| `commands create --name --description --prompt\|--prompt-file [--target …]` | Create and sync |
+| `commands update <name> --description --prompt\|--prompt-file [--target …]` | Update and re-sync |
+| `commands sync <name> [--target …]` | Re-render into the selected targets |
+| `commands delete <name> --yes` | Delete the command and its renders |
+
+**`settings`, `snapshots`, `health`**
+
+| Command | What it does |
+| --- | --- |
+| `settings show` | Storage paths, per-harness support and install state, auto-adopt |
+| `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
+| `settings auto-adopt <agents\|skills> --enable\|--disable` | Control automatic repair of drifted bindings |
+| `snapshots list [--harness <h>]` | Captured native config snapshots |
+| `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
+| `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
 
 ### Scripting
 
