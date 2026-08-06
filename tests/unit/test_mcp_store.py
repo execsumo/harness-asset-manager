@@ -94,7 +94,7 @@ class McpServerStoreTests(unittest.TestCase):
 
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-            self.assertEqual(payload["version"], 6)
+            self.assertEqual(payload["version"], 7)
             self.assertEqual(len(payload["servers"]), 1)
             self.assertEqual(payload["servers"][0]["name"], "exa")
 
@@ -116,6 +116,21 @@ class McpServerStoreTests(unittest.TestCase):
             payload = json.loads((Path(tmp) / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(payload["servers"][0]["installIntent"]["kind"], "registry")
             self.assertEqual(payload["servers"][0]["installIntent"]["values"]["CUEAPI_API_KEY"], "secret")
+
+    def test_round_trip_preserves_unmodeled_harness_entry_fields(self) -> None:
+        with TemporaryDirectory() as tmp:
+            store = McpServerStore(Path(tmp) / "manifest.json")
+            store.upsert_from_spec(
+                _spec("exa", extras=(("disabled", True), ("autoApprove", ["read"])))
+            )
+
+            loaded = store.get_binding_spec("exa")
+
+            assert loaded is not None
+            self.assertEqual(
+                loaded.extras_dict(),
+                {"disabled": True, "autoApprove": ["read"]},
+            )
 
     def test_round_trip_http_spec_preserves_headers_cleartext(self) -> None:
         with TemporaryDirectory() as tmp:

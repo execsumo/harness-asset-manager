@@ -64,12 +64,18 @@ class SlashCommandStore:
 
     def update_command(self, name: str, *, description: str, prompt: str) -> SlashCommand:
         validate_command_name(name)
-        command = SlashCommand(name=name, description=description, prompt=prompt)
-        validate_command(command)
         with file_lock(self.lock_path):
             path = self.command_path(name)
             if not path.is_file():
                 raise MutationError(f"unknown slash command: {name}", status=404)
+            existing = self._read_command_path(path)
+            command = SlashCommand(
+                name=name,
+                description=description,
+                prompt=prompt,
+                frontmatter=existing.frontmatter,
+            )
+            validate_command(command)
             self._write_command_path(path, command)
         return command
 
@@ -93,6 +99,7 @@ class SlashCommandStore:
             name=_string_field(payload, "name"),
             description=_string_field(payload, "description"),
             prompt=_string_field(payload, "prompt"),
+            frontmatter=_string_tuple_field(payload, "frontmatter"),
         )
         try:
             validate_command(command)
@@ -107,13 +114,14 @@ class SlashCommandStore:
 
     def _write_command_path(self, path: Path, command: SlashCommand) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        payload = tomli_w.dumps(
-            {
-                "name": command.name,
-                "description": command.description.strip(),
-                "prompt": command.prompt.rstrip(),
-            }
-        )
+        document: dict[str, object] = {
+            "name": command.name,
+            "description": command.description.strip(),
+            "prompt": command.prompt.rstrip(),
+        }
+        if command.frontmatter:
+            document["frontmatter"] = list(command.frontmatter)
+        payload = tomli_w.dumps(document)
         atomic_write_text(path, payload)
 
 
@@ -136,6 +144,13 @@ def validate_command_name(name: str) -> None:
 def _string_field(payload: dict[str, object], key: str) -> str:
     value = payload.get(key, "")
     return value if isinstance(value, str) else ""
+
+
+def _string_tuple_field(payload: dict[str, object], key: str) -> tuple[str, ...]:
+    value = payload.get(key)
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
 
 
 __all__ = [

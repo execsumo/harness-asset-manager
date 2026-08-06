@@ -109,6 +109,7 @@ def _structural_key(spec: McpServerSpec) -> str:
         "env": dict(spec.env) if spec.env else None,
         "url": spec.url,
         "headers": dict(spec.headers) if spec.headers else None,
+        "extras": dict(spec.extras) if spec.extras else None,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 

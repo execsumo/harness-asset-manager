@@ -76,6 +76,36 @@ class SlashCommandStoreTests(unittest.TestCase):
             self.assertEqual(payload["name"], "code-review")
             self.assertEqual(payload["prompt"], "Review:\n\n$ARGUMENTS")
 
+    def test_update_preserves_imported_frontmatter_lines_in_the_store(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = SlashCommandStore(
+                SlashCommandStorePaths(
+                    root=root / "slash-commands",
+                    commands_dir=root / "slash-commands" / "commands",
+                )
+            )
+            original = SlashCommand(
+                name="code-review",
+                description="Review code",
+                prompt="Review it",
+                frontmatter=(
+                    'description: "Review code"',
+                    "allowed-tools: bash",
+                    "# keep this comment exactly",
+                    "model: big",
+                ),
+            )
+            store.create_command(original)
+
+            store.update_command("code-review", description="Review carefully", prompt="Updated")
+
+            loaded = store.require_command("code-review")
+            self.assertEqual(loaded.frontmatter, original.frontmatter)
+            rendered = render_slash_command(loaded, "frontmatter_markdown")
+            self.assertIn('description: "Review carefully"', rendered)
+            self.assertIn("allowed-tools: bash\n# keep this comment exactly\nmodel: big", rendered)
+
     def test_invalid_command_name_is_rejected(self) -> None:
         with TemporaryDirectory() as tmp:
             store = SlashCommandStore(

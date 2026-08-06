@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .install_intent import ManagedMcpRecord
 
 
-CURRENT_MCP_MANIFEST_VERSION = 6
+CURRENT_MCP_MANIFEST_VERSION = 7
 
 
 @dataclass(frozen=True)
@@ -61,6 +61,9 @@ class McpServerSpec:
     headers: tuple[tuple[str, str], ...] | None = None
     installed_at: str = ""
     revision: str = ""
+    # Harness entry fields HAM does not model. They are persisted in the canonical
+    # manifest and merged back on render so adoption never becomes a lossy rewrite.
+    extras: tuple[tuple[str, object], ...] = ()
 
     def env_dict(self) -> dict[str, str]:
         return dict(self.env) if self.env else {}
@@ -70,6 +73,9 @@ class McpServerSpec:
 
     def args_list(self) -> list[str]:
         return list(self.args) if self.args else []
+
+    def extras_dict(self) -> dict[str, object]:
+        return dict(self.extras)
 
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -90,6 +96,8 @@ class McpServerSpec:
             payload["url"] = self.url
         if self.headers is not None:
             payload["headers"] = dict(self.headers)
+        if self.extras:
+            payload["extras"] = dict(self.extras)
         return payload
 
     @classmethod
@@ -106,6 +114,7 @@ class McpServerSpec:
         env_raw = payload.get("env")
         headers_raw = payload.get("headers")
         args_raw = payload.get("args")
+        extras_raw = payload.get("extras")
         return cls(
             name=str(payload["name"]),
             display_name=str(payload.get("displayName", payload["name"])),
@@ -118,6 +127,11 @@ class McpServerSpec:
             headers=tuple((str(k), str(v)) for k, v in headers_raw.items()) if isinstance(headers_raw, Mapping) else None,
             installed_at=str(payload.get("installedAt", "")),
             revision=str(payload.get("revision", "")),
+            extras=(
+                tuple((str(k), v) for k, v in extras_raw.items())
+                if isinstance(extras_raw, Mapping)
+                else ()
+            ),
         )
 
 
@@ -153,6 +167,7 @@ def compute_revision(spec: McpServerSpec) -> str:
         "env": dict(spec.env) if spec.env else None,
         "url": spec.url,
         "headers": dict(spec.headers) if spec.headers else None,
+        "extras": dict(spec.extras) if spec.extras else None,
     }
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
     return digest[:16]

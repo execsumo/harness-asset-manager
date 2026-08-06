@@ -14,11 +14,14 @@ _SECRET_KEY_RE = re.compile(r"(authorization|api[-_]?key|token|secret|password)"
 
 
 def redact_spec(spec: McpServerSpec) -> McpServerSpec:
+    extras = redact_payload(spec.extras_dict())
+    assert isinstance(extras, Mapping)
     return replace(
         spec,
         env=_redact_pairs(spec.env),
         headers=_redact_pairs(spec.headers),
         url=redact_url(spec.url),
+        extras=tuple((str(key), value) for key, value in extras.items()),
     )
 
 

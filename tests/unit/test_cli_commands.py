@@ -229,6 +229,36 @@ class McpCommandTests(CliCommandTestCase):
         self.assertEqual(self.run_json("mcp", "list")["entries"], [])
         self.assertEqual(self.run_json("mcp", "unmanaged")["servers"], [])
 
+    def test_adopt_disable_enable_preserves_unknown_entry_fields(self) -> None:
+        config_path = self.spec.home / ".claude.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "mcpServers": {
+                        "exa": {
+                            "type": "stdio",
+                            "command": "npx",
+                            "args": ["-y", "exa-mcp-server"],
+                            "disabled": True,
+                            "autoApprove": ["read"],
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        code, _, err = self.run_cli("mcp", "adopt", "exa", "--observed-harness", "claude")
+        self.assertEqual(code, 0, msg=err)
+        code, _, err = self.run_cli("mcp", "disable", "exa", "--harness", "claude")
+        self.assertEqual(code, 0, msg=err)
+        code, _, err = self.run_cli("mcp", "enable", "exa", "--harness", "claude")
+        self.assertEqual(code, 0, msg=err)
+
+        entry = json.loads(config_path.read_text(encoding="utf-8"))["mcpServers"]["exa"]
+        self.assertIs(entry["disabled"], True)
+        self.assertEqual(entry["autoApprove"], ["read"])
+
 
 if __name__ == "__main__":
     unittest.main()

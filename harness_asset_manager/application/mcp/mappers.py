@@ -36,8 +36,9 @@ class _TypedMcpServersMapper:
     observed_harness: str
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
-            payload: dict[str, object] = {"type": "stdio"}
+            payload["type"] = "stdio"
             if spec.command is not None:
                 payload["command"] = spec.command
             if spec.args:
@@ -46,7 +47,7 @@ class _TypedMcpServersMapper:
                 payload["env"] = dict(spec.env)
             return payload
 
-        payload = {"type": spec.transport}
+        payload["type"] = spec.transport
         if spec.url is not None:
             payload["url"] = spec.url
         if spec.headers:
@@ -66,6 +67,7 @@ class _TypedMcpServersMapper:
                 command=_str_or_none(raw.get("command")),
                 args=_str_tuple(raw.get("args")),
                 env=_str_pairs(raw.get("env")),
+                extras=_extras(raw, {"type", "transport", "command", "args", "env"}),
             )
         if "url" in raw:
             transport = "sse" if type_value == "sse" else "http"
@@ -76,6 +78,7 @@ class _TypedMcpServersMapper:
                 transport=transport,
                 url=_str_or_none(raw.get("url")),
                 headers=_str_pairs(raw.get("headers")),
+                extras=_extras(raw, {"type", "transport", "url", "headers"}),
             )
         raise MutationError(
             f"unsupported {self.observed_harness} mcp entry '{name}': missing 'command' and 'url'",
@@ -101,24 +104,21 @@ class OpenCodeMapper:
     """
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
             command_list: list[str] = []
             if spec.command is not None:
                 command_list.append(spec.command)
             command_list.extend(spec.args_list())
-            payload: dict[str, object] = {
-                "type": "local",
-                "command": command_list,
-                "enabled": True,
-            }
+            payload["type"] = "local"
+            payload["command"] = command_list
+            payload.setdefault("enabled", True)
             if spec.env:
                 payload["environment"] = dict(spec.env)
             return payload
-        payload = {
-            "type": "remote",
-            "url": spec.url,
-            "enabled": True,
-        }
+        payload["type"] = "remote"
+        payload["url"] = spec.url
+        payload.setdefault("enabled", True)
         if spec.headers:
             payload["headers"] = dict(spec.headers)
         return payload
@@ -145,6 +145,7 @@ class OpenCodeMapper:
                 command=command,
                 args=args,
                 env=_str_pairs(raw.get("environment")),
+                extras=_extras(raw, {"type", "command", "environment"}),
             )
         if type_value == "remote":
             return McpServerSpec(
@@ -154,6 +155,7 @@ class OpenCodeMapper:
                 transport="http",
                 url=_str_or_none(raw.get("url")),
                 headers=_str_pairs(raw.get("headers")),
+                extras=_extras(raw, {"type", "url", "headers"}),
             )
         raise MutationError(
             f"unsupported opencode mcp entry '{name}': type must be 'local' or 'remote'",
@@ -172,8 +174,8 @@ class CodexMapper:
     """
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
-            payload: dict[str, object] = {}
             if spec.command is not None:
                 payload["command"] = spec.command
             if spec.args:
@@ -181,7 +183,6 @@ class CodexMapper:
             if spec.env:
                 payload["env"] = dict(spec.env)
             return payload
-        payload = {}
         if spec.url is not None:
             payload["url"] = spec.url
         if spec.headers:
@@ -200,6 +201,7 @@ class CodexMapper:
                 command=_str_or_none(raw.get("command")),
                 args=_str_tuple(raw.get("args")),
                 env=_str_pairs(raw.get("env")),
+                extras=_extras(raw, {"command", "args", "env"}),
             )
         if "url" in raw:
             return McpServerSpec(
@@ -209,6 +211,7 @@ class CodexMapper:
                 transport="http",
                 url=_str_or_none(raw.get("url")),
                 headers=_str_pairs(raw.get("http_headers") or raw.get("headers")),
+                extras=_extras(raw, {"url", "http_headers", "headers"}),
             )
         raise MutationError(
             f"unsupported codex mcp entry '{name}': missing 'command' and 'url'",
@@ -223,8 +226,8 @@ class HermesMapper:
     # stdio: {command, args, env}; http: {url, headers}; sse: {url, transport: sse, headers}
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
-            payload: dict[str, object] = {}
             if spec.command is not None:
                 payload["command"] = spec.command
             if spec.args:
@@ -232,7 +235,6 @@ class HermesMapper:
             if spec.env:
                 payload["env"] = dict(spec.env)
             return payload
-        payload = {}
         if spec.url is not None:
             payload["url"] = spec.url
         if spec.transport == "sse":
@@ -253,6 +255,7 @@ class HermesMapper:
                 command=_str_or_none(raw.get("command")),
                 args=_str_tuple(raw.get("args")),
                 env=_str_pairs(raw.get("env")),
+                extras=_extras(raw, {"command", "args", "env"}),
             )
         if "url" in raw:
             transport_raw = _str_or_none(raw.get("transport"))
@@ -264,6 +267,7 @@ class HermesMapper:
                 transport=transport,
                 url=_str_or_none(raw.get("url")),
                 headers=_str_pairs(raw.get("headers")),
+                extras=_extras(raw, {"url", "transport", "headers"}),
             )
         raise MutationError(
             f"unsupported hermes mcp entry '{name}': missing 'command' and 'url'",
@@ -278,8 +282,8 @@ class OpenClawMapper:
     """OpenClaw MCP config shape, used only when the local CLI supports it."""
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
-            payload: dict[str, object] = {}
             if spec.command is not None:
                 payload["command"] = spec.command
             if spec.args:
@@ -288,10 +292,8 @@ class OpenClawMapper:
                 payload["env"] = dict(spec.env)
             return payload
 
-        payload = {
-            "url": spec.url,
-            "transport": "streamable-http" if spec.transport == "http" else "sse",
-        }
+        payload["url"] = spec.url
+        payload["transport"] = "streamable-http" if spec.transport == "http" else "sse"
         if spec.headers:
             payload["headers"] = dict(spec.headers)
         return payload
@@ -308,6 +310,7 @@ class OpenClawMapper:
                 command=_str_or_none(raw.get("command")),
                 args=_str_tuple(raw.get("args")),
                 env=_str_pairs(raw.get("env")),
+                extras=_extras(raw, {"command", "args", "env"}),
             )
         if "url" in raw:
             transport_raw = _str_or_none(raw.get("transport")) or _str_or_none(raw.get("type"))
@@ -319,6 +322,7 @@ class OpenClawMapper:
                 transport=transport,
                 url=_str_or_none(raw.get("url")),
                 headers=_str_pairs(raw.get("headers")),
+                extras=_extras(raw, {"url", "transport", "type", "headers"}),
             )
         raise MutationError(
             f"unsupported openclaw mcp entry '{name}': missing 'command' and 'url'",
@@ -333,8 +337,8 @@ class AntigravityCliMapper:
     """Used by Antigravity CLI (agy). Uses serverUrl for HTTP, and command/args/env for stdio."""
 
     def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        payload = spec.extras_dict()
         if spec.transport == "stdio":
-            payload: dict[str, object] = {}
             if spec.command is not None:
                 payload["command"] = spec.command
             if spec.args:
@@ -342,7 +346,6 @@ class AntigravityCliMapper:
             if spec.env:
                 payload["env"] = dict(spec.env)
             return payload
-        payload = {}
         if spec.url is not None:
             payload["serverUrl"] = spec.url
         if spec.headers:
@@ -361,6 +364,7 @@ class AntigravityCliMapper:
                 command=_str_or_none(raw.get("command")),
                 args=_str_tuple(raw.get("args")),
                 env=_str_pairs(raw.get("env")),
+                extras=_extras(raw, {"command", "args", "env"}),
             )
         if "serverUrl" in raw or "url" in raw:
             return McpServerSpec(
@@ -370,6 +374,7 @@ class AntigravityCliMapper:
                 transport="http",
                 url=_str_or_none(raw.get("serverUrl") or raw.get("url")),
                 headers=_str_pairs(raw.get("headers")),
+                extras=_extras(raw, {"serverUrl", "url", "headers"}),
             )
         raise MutationError(
             f"unsupported agy mcp entry '{name}': missing 'command' and 'serverUrl'",
@@ -396,6 +401,13 @@ def _str_pairs(value: object) -> tuple[tuple[str, str], ...] | None:
     if isinstance(value, dict) and value:
         return tuple((str(k), str(v)) for k, v in value.items())
     return None
+
+
+def _extras(
+    raw: Mapping[str, object],
+    modeled_keys: set[str],
+) -> tuple[tuple[str, object], ...]:
+    return tuple((str(key), value) for key, value in raw.items() if key not in modeled_keys)
 
 
 _MAPPERS: dict[str, TransportMapper] = {
@@ -426,4 +438,3 @@ __all__ = [
     "TransportMapper",
     "get_mapper",
 ]
-

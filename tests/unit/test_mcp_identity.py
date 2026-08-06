@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from harness_asset_manager.application.mcp.contracts import (
@@ -116,6 +117,31 @@ class BuildIdentityPlanTests(unittest.TestCase):
         self.assertFalse(plan.groups[0].identical)
         self.assertIsNone(plan.groups[0].canonical_spec)
         self.assertEqual(len(plan.groups[0].sightings), 2)
+
+    def test_differing_unmodeled_fields_require_an_explicit_choice(self) -> None:
+        cursor = _http_spec("exa", "https://exa.run")
+        claude = replace(
+            cursor,
+            source=McpSource.adopted("claude", "exa"),
+            extras=(("disabled", True),),
+        )
+        scans = [
+            _scan(
+                "cursor",
+                "Cursor",
+                [McpObservedEntry(name="exa", state="unmanaged", parsed_spec=cursor)],
+            ),
+            _scan(
+                "claude",
+                "Claude",
+                [McpObservedEntry(name="exa", state="unmanaged", parsed_spec=claude)],
+            ),
+        ]
+
+        group = build_identity_plan(scans).groups[0]
+
+        self.assertFalse(group.identical)
+        self.assertIsNone(group.canonical_spec)
 
     def test_excluded_names_are_skipped(self) -> None:
         scans = [

@@ -12,6 +12,7 @@ from harness_asset_manager.application.mcp.mappers import (
     OpenCodeMapper,
     TransportMapper,
 )
+from harness_asset_manager.application.mcp.redaction import redacted_spec_dict
 from harness_asset_manager.application.mcp.store import McpSource
 from harness_asset_manager.application.slash_commands.codecs import (
     FrontmatterMarkdownCommandCodec,
@@ -26,9 +27,8 @@ from harness_asset_manager.application.slash_commands.codecs import (
 #      is the direct detector for the historical bug class ("a component rewrote the
 #      whole artifact on every save and drifted").
 #   2. Owned-field preservation -- the fields the writer models round-trip exactly.
-#   3. Loss-surface characterization -- the unknown fields/comments the writer currently
-#      drops are named and locked, so any future change to preserve them is deliberate
-#      and reviewable (the data-loss surface stops being invisible).
+#   3. Unowned-field preservation -- unknown fields/comments survive the projection,
+#      so HAM never destroys user configuration merely because it does not model it.
 
 
 # ---------------------------------------------------------------------------
@@ -41,8 +41,7 @@ class FrontmatterCodecRoundTripTests(unittest.TestCase):
 
     Real Claude/Codex command files carry extra frontmatter (``allowed-tools``,
     ``model``, comments). The codec must never churn what it rewrites; today it
-    projects down to the owned pair (characterized below) rather than preserving
-    extras.
+    preserves those unowned lines verbatim while updating its owned description.
     """
 
     def setUp(self) -> None:
@@ -71,14 +70,14 @@ class FrontmatterCodecRoundTripTests(unittest.TestCase):
         twice = self.codec.render(self.codec.parse("code-review", once))
         self.assertEqual(once, twice)
 
-    def test_unknown_frontmatter_keys_are_currently_dropped(self) -> None:
+    def test_unknown_frontmatter_keys_are_preserved(self) -> None:
         rendered = self.codec.render(self.codec.parse("code-review", self.fixture))
-        self.assertNotIn("allowed-tools", rendered)
-        self.assertNotIn("model", rendered)
+        self.assertIn("allowed-tools: bash", rendered)
+        self.assertIn("model: big", rendered)
 
-    def test_frontmatter_comments_are_currently_dropped(self) -> None:
+    def test_frontmatter_comments_are_preserved(self) -> None:
         rendered = self.codec.render(self.codec.parse("code-review", self.fixture))
-        self.assertNotIn("a comment the writer does not model", rendered)
+        self.assertIn("# a comment the writer does not model", rendered)
 
 
 class PlainMarkdownCodecRoundTripTests(unittest.TestCase):
@@ -150,10 +149,15 @@ class _StdioHttpMapperRoundTripMixin:
         once = _project(self.mapper, _stdio_raw())
         self.assertEqual(_project(self.mapper, once), once)
 
-    def test_unknown_stdio_fields_are_currently_dropped(self) -> None:
+    def test_unknown_stdio_fields_are_preserved(self) -> None:
         projected = _project(self.mapper, _stdio_raw())
-        self.assertNotIn("disabled", projected)
-        self.assertNotIn("autoApprove", projected)
+        self.assertIs(projected["disabled"], True)
+        self.assertEqual(projected["autoApprove"], ["read"])
+
+    def test_unknown_http_fields_are_preserved(self) -> None:
+        projected = _project(self.mapper, _http_raw())
+        self.assertIs(projected["disabled"], True)
+        self.assertEqual(projected["priority"], 1)
 
 
 class ClaudeCodeMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittest.TestCase):
@@ -189,11 +193,6 @@ class AntigravityCliMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittes
 
 
 class OpenCodeMapperRoundTripTests(unittest.TestCase):
-    """OpenCode's ``enabled`` flag is force-written to ``True``.
-
-    That is a real data-loss vector: a server the user disabled gets re-enabled on
-    the next managed write. It is characterized here so the behavior stays visible.
-    """
 
     mapper = OpenCodeMapper()
 
@@ -213,17 +212,37 @@ class OpenCodeMapperRoundTripTests(unittest.TestCase):
         once = _project(self.mapper, {"type": "local", "command": ["npx", "x"]})
         self.assertEqual(_project(self.mapper, once), once)
 
-    def test_disabled_server_is_re_enabled_on_write(self) -> None:
+    def test_disabled_server_stays_disabled_on_write(self) -> None:
         projected = _project(
             self.mapper, {"type": "local", "command": ["npx", "x"], "enabled": False}
         )
-        self.assertTrue(projected["enabled"])
+        self.assertFalse(projected["enabled"])
 
-    def test_unknown_fields_are_currently_dropped(self) -> None:
+    def test_unknown_fields_are_preserved(self) -> None:
         projected = _project(
             self.mapper, {"type": "local", "command": ["npx", "x"], "autoApprove": True}
         )
-        self.assertNotIn("autoApprove", projected)
+        self.assertIs(projected["autoApprove"], True)
+
+
+class McpExtrasRedactionTests(unittest.TestCase):
+    def test_secret_like_unknown_fields_are_redacted_from_public_payloads(self) -> None:
+        spec = ClaudeCodeMapper().dict_to_spec(
+            "srv",
+            {
+                "command": "npx",
+                "vendorApiKey": "literal-secret",
+                "nested": {"access_token": "nested-secret", "safe": "visible"},
+            },
+            source=McpSource.manual("srv"),
+        )
+
+        payload = redacted_spec_dict(spec)
+
+        extras = payload["extras"]
+        assert isinstance(extras, dict)
+        self.assertEqual(extras["vendorApiKey"], "[redacted]")
+        self.assertEqual(extras["nested"], {"access_token": "[redacted]", "safe": "visible"})
 
 
 if __name__ == "__main__":
