@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 from dataclasses import dataclass
+from pathlib import Path
 
 from harness_asset_manager.atomic_files import file_lock
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
@@ -38,6 +39,11 @@ from .mcp.planner import McpAdoptionPlanner
 from .mcp.query import McpQueryService
 from .mcp.read_models import McpReadModelService
 from .mcp.store import McpServerStore
+from .mutation_audit import (
+    AuditedMutationService,
+    MutationAuditJournal,
+    MutationPathTracker,
+)
 from .permissions import (
     PermissionsMutationService,
     PermissionsQueryService,
@@ -113,6 +119,7 @@ class BackendContainer:
     agents_audit: AgentAuditLog
     agents_reconcile: AgentReconcileService
     config_snapshots: ConfigSnapshotService
+    mutation_audit: MutationAuditJournal
     app_home: Path
 
 
@@ -347,15 +354,153 @@ def build_backend_container(
         is_enabled=lambda: auto_adopt_store.is_enabled("agents"),
         lock_path=paths.agents_reconcile_lock_path,
     )
-    agents_inventory = AgentInventoryService(
-        agents_store, resolve_agents_snapshot, agent_bindings, agents_reconcile.reconcile
-    )
     agents_mutations = AgentMutationService(
         agents_store, resolve_agents_snapshot, agent_bindings
     )
 
     config_snapshots = ConfigSnapshotService(paths)
     config_snapshots.capture_all_external_changes()
+
+    mutation_audit = MutationAuditJournal(paths.mutation_audit_path)
+
+    skills_tracker = MutationPathTracker(
+        lambda: (
+            (paths.skills_store_manifest, False),
+            (paths.skills_store_root, False),
+            *((adapter.managed_root, False) for adapter in skills_read_models.adapters),
+        )
+    )
+    settings_tracker = MutationPathTracker(lambda: ((paths.settings_path, False),))
+    slash_tracker = MutationPathTracker(
+        lambda: (
+            (paths.slash_command_store_root, True),
+            *((target.output_dir, False) for target in resolve_slash_snapshot()),
+        )
+    )
+    mcp_tracker = MutationPathTracker(
+        lambda: (
+            (paths.mcp_store_manifest, False),
+            *(
+                (config_path, False)
+                for adapter in mcp_read_models.adapters
+                for config_path in getattr(adapter, "_discovery_config_paths", (adapter.config_path,))
+            ),
+        )
+    )
+    hooks_tracker = MutationPathTracker(
+        lambda: (
+            (paths.hooks_store_manifest, False),
+            *((adapter.config_path, False) for adapter in hooks_read_models.adapters),
+        )
+    )
+    permissions_tracker = MutationPathTracker(
+        lambda: (
+            (paths.permissions_store_manifest, False),
+            *((adapter.config_path, False) for adapter in permissions_read_models.adapters),
+        )
+    )
+    agents_tracker = MutationPathTracker(
+        lambda: (
+            (paths.agents_root, True),
+            (paths.bindings_ledger_path, False),
+            *((target.output_dir, False) for target in resolve_agents_snapshot()[0]),
+        )
+    )
+    snapshots_tracker = MutationPathTracker(lambda: ((paths.configs_dir, True),))
+    scaffold_tracker = MutationPathTracker(
+        lambda: (
+            (paths.skills_store_root, True),
+            (paths.agents_root, False),
+            (paths.data_dir / "mcp" / "scaffolded", True),
+            (paths.data_dir / "hooks" / "scaffolded", True),
+        )
+    )
+
+    audited_skills_mutations = AuditedMutationService(
+        skills_mutations,
+        family="skills",
+        journal=mutation_audit,
+        path_tracker=skills_tracker,
+    )
+    audited_skills_marketplace_installs = AuditedMutationService(
+        skills_marketplace_installs,
+        family="skills",
+        methods={"install_skill"},
+        journal=mutation_audit,
+        path_tracker=skills_tracker,
+    )
+    audited_settings_mutations = AuditedMutationService(
+        settings_mutations,
+        family="settings",
+        journal=mutation_audit,
+        path_tracker=settings_tracker,
+    )
+    audited_slash_mutations = AuditedMutationService(
+        slash_command_mutations,
+        family="slash_commands",
+        journal=mutation_audit,
+        path_tracker=slash_tracker,
+    )
+    audited_mcp_mutations = AuditedMutationService(
+        mcp_mutations,
+        family="mcp",
+        journal=mutation_audit,
+        path_tracker=mcp_tracker,
+    )
+    audited_hooks_mutations = AuditedMutationService(
+        hooks_mutations,
+        family="hooks",
+        journal=mutation_audit,
+        path_tracker=hooks_tracker,
+    )
+    audited_permissions_mutations = AuditedMutationService(
+        permissions_mutations,
+        family="permissions",
+        journal=mutation_audit,
+        path_tracker=permissions_tracker,
+    )
+    audited_agents_store = AuditedMutationService(
+        agents_store,
+        family="agents",
+        methods={"create", "update"},
+        journal=mutation_audit,
+        path_tracker=agents_tracker,
+    )
+    audited_agents_mutations = AuditedMutationService(
+        agents_mutations,
+        family="agents",
+        journal=mutation_audit,
+        path_tracker=agents_tracker,
+    )
+    audited_agents_reconcile = AuditedMutationService(
+        agents_reconcile,
+        family="agents",
+        methods={"reconcile"},
+        journal=mutation_audit,
+        path_tracker=agents_tracker,
+        record_noop=False,
+    )
+    agents_inventory = AgentInventoryService(
+        agents_store,
+        resolve_agents_snapshot,
+        agent_bindings,
+        audited_agents_reconcile.reconcile,
+    )
+    audited_config_snapshots = AuditedMutationService(
+        config_snapshots,
+        family="config_snapshots",
+        methods={"capture_snapshot"},
+        journal=mutation_audit,
+        path_tracker=snapshots_tracker,
+        record_noop=False,
+    )
+    audited_scaffold = AuditedMutationService(
+        scaffold_service,
+        family="scaffold",
+        methods={"scaffold_asset"},
+        journal=mutation_audit,
+        path_tracker=scaffold_tracker,
+    )
 
     return BackendContainer(
         paths=paths,
@@ -366,38 +511,39 @@ def build_backend_container(
         skills_store=skills_store,
         skills_read_models=skills_read_models,
         skills_queries=skills_queries,
-        skills_mutations=skills_mutations,
+        skills_mutations=audited_skills_mutations,
         settings_queries=settings_queries,
-        settings_mutations=settings_mutations,
+        settings_mutations=audited_settings_mutations,
         slash_command_store=slash_command_store,
         slash_command_sync_state=slash_command_sync_state,
         slash_command_read_models=slash_command_read_models,
         slash_command_queries=slash_command_queries,
-        slash_command_mutations=slash_command_mutations,
+        slash_command_mutations=audited_slash_mutations,
         skills_marketplace_catalog=skills_catalog,
         skills_marketplace_documents=skills_documents,
         skills_marketplace_queries=skills_marketplace_queries,
-        skills_marketplace_installs=skills_marketplace_installs,
+        skills_marketplace_installs=audited_skills_marketplace_installs,
         cli_marketplace_catalog=cli_catalog,
         mcp_marketplace_catalog=mcp_catalog,
         mcp_store=mcp_store,
         mcp_read_models=mcp_read_models,
         mcp_queries=mcp_queries,
-        mcp_mutations=mcp_mutations,
+        mcp_mutations=audited_mcp_mutations,
         hooks_store=hooks_store,
         hooks_read_models=hooks_read_models,
         hooks_queries=hooks_queries,
-        hooks_mutations=hooks_mutations,
+        hooks_mutations=audited_hooks_mutations,
         permissions_store=permissions_store,
         permissions_read_models=permissions_read_models,
         permissions_queries=permissions_queries,
-        permissions_mutations=permissions_mutations,
-        scaffold_service=scaffold_service,
-        agents_store=agents_store,
+        permissions_mutations=audited_permissions_mutations,
+        scaffold_service=audited_scaffold,
+        agents_store=audited_agents_store,
         agents_inventory=agents_inventory,
-        agents_mutations=agents_mutations,
+        agents_mutations=audited_agents_mutations,
         agents_audit=agents_audit,
-        agents_reconcile=agents_reconcile,
-        config_snapshots=config_snapshots,
+        agents_reconcile=audited_agents_reconcile,
+        config_snapshots=audited_config_snapshots,
+        mutation_audit=mutation_audit,
         app_home=app_home,
     )

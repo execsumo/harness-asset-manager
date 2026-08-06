@@ -48,6 +48,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.skills_store_root, base / "skills")
             self.assertEqual(paths.skills_store_manifest, base / "skills-manifest.json")
             self.assertEqual(paths.marketplace_cache_root, base / "marketplace")
+            self.assertEqual(paths.mutation_audit_path, base / "audit.log")
             self.assertEqual(paths.settings_path, base / "settings.json")
             self.assertEqual(paths.slash_command_store_root, base / "slash-commands")
             self.assertEqual(paths.slash_command_commands_dir, base / "slash-commands" / "commands")
@@ -79,6 +80,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.data_dir, root / "data" / APP_NAME)
             self.assertEqual(paths.state_dir, root / "state" / APP_NAME)
             self.assertEqual(paths.skills_store_root, root / "data" / APP_NAME / "skills")
+            self.assertEqual(paths.mutation_audit_path, root / "data" / APP_NAME / "audit.log")
             self.assertEqual(paths.slash_command_store_root, root / "data" / APP_NAME / "slash-commands")
             self.assertEqual(paths.settings_path, root / "cfg" / APP_NAME / "settings.json")
 

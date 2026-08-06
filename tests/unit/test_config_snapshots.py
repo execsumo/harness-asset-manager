@@ -36,6 +36,7 @@ class ConfigSnapshotServiceTests(unittest.TestCase):
                 agents_audit_path=tmp_path / "data" / "agents-audit.json",
                 agents_conflicts_root=tmp_path / "data" / "agents" / "conflicts",
                 agents_reconcile_lock_path=tmp_path / "data" / "agents-reconcile.lock",
+                mutation_audit_path=tmp_path / "data" / "audit.log",
                 marketplace_cache_root=tmp_path / "data" / "marketplace",
                 mcp_store_manifest=tmp_path / "data" / "mcp" / "manifest.json",
                 hooks_store_manifest=tmp_path / "data" / "hooks" / "manifest.json",

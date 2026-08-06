@@ -138,6 +138,7 @@ directory into this shape on startup).
 │   └── conflicts/                      # Preserved copies when two harnesses diverge
 ├── bindings.json                       # Agent binding ledger (store/harness hashes)
 ├── agents-audit.json                   # Every automatic binding repair, for review
+├── audit.log                           # Append-only journal for every mutation entry point
 └── marketplace/                        # HTTP response cache (disposable)
 ```
 
@@ -151,6 +152,20 @@ HAM captures canonical baselines and timestamped snapshots of user-level native 
 - **Atomic-Save Immunity**: Real files in native harness homes are preserved to prevent atomic `rename()` operations from severing file symlinks.
 
 All file mutations use atomic writes (`atomic_write_text`) with flock file locks to ensure zero data corruption during concurrent operations.
+
+### Mutation Audit Journal
+
+The HTTP API and headless CLI share the same audited domain-service wrappers. Each
+mutation appends one JSON Lines event to `audit.log` with a UTC timestamp, family,
+operation, safe identifiers, outcome, and the paths whose filesystem state changed.
+Failed and partially applied operations are recorded as distinct outcomes. The journal
+never serializes prompt bodies, config objects, environment values, or exception
+messages; failures carry only the exception type. Automatic agent reconciliation uses
+the same wrapper when it actually changes a path, while its richer repair detail remains
+in `agents-audit.json`.
+
+The journal is append-serialized with `flock`. An audit-write failure does not turn an
+already-completed config mutation into an apparent failure, which avoids unsafe retries.
 
 ---
 

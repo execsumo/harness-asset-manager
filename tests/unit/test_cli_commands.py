@@ -134,6 +134,28 @@ class AgentCommandTests(CliCommandTestCase):
         # Refusing must not have deleted anything.
         self.assertEqual(self.run_json("agents", "show", "bot")["ref"], "bot")
 
+    def test_create_is_recorded_in_the_shared_mutation_journal(self) -> None:
+        code, _, err = self.run_cli(
+            "agents",
+            "create",
+            "--name",
+            "Audit Bot",
+            "--description",
+            "safe description",
+            "--prompt",
+            "secret prompt that must not be journaled",
+        )
+        self.assertEqual(code, 0, msg=err)
+
+        audit_path = self.spec.xdg_data_home / "harness-asset-manager" / "audit.log"
+        event = json.loads(audit_path.read_text(encoding="utf-8").splitlines()[-1])
+        self.assertEqual(event["family"], "agents")
+        self.assertEqual(event["operation"], "create")
+        self.assertEqual(event["parameters"], {"name": "Audit Bot"})
+        self.assertEqual(event["outcome"], "succeeded")
+        self.assertIn(str(self.spec.agents_root / "audit-bot.md"), event["targetPaths"])
+        self.assertNotIn("secret prompt", json.dumps(event))
+
 
 class HookCommandTests(CliCommandTestCase):
     def test_create_and_fan_out_to_every_harness(self) -> None:
