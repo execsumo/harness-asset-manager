@@ -2,6 +2,43 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-07 (latest) — Headless-safe writers and mutation audit journal are open PRs
+
+The Aug 3 headless CLI work is complete. Two independent pull requests are open against
+`main`; neither has merged yet.
+
+### [PR #30 — preserve unknown writer fields](https://github.com/execsumo/harness-asset-manager/pull/30)
+
+- Branch `fix/preserve-unknown-writer-fields`, commit `707ce89`.
+- Slash-command frontmatter and MCP entry fields that HAM does not model now survive
+  read/write cycles, including OpenCode `enabled: false`; secret-like extras are redacted
+  from public payloads and differing extras participate in identity conflict detection.
+- Local validation passed: 489 unit tests, 167 integration tests, Ruff, OpenAPI codegen
+  drift, frontend typecheck/build, and npm audit. PR CI is green.
+
+### [PR #31 — mutation audit journal](https://github.com/execsumo/harness-asset-manager/pull/31)
+
+- Branch `feat/mutation-audit-journal`, commit `396bcc3` (the current checkout).
+- Adds an append-only, flock-serialized JSONL journal at the configured data directory
+  (`~/.harness-asset-manager/audit.log` by default), with safe parameters, changed target
+  paths, and succeeded/partial/refused/failed outcomes. Failed entries exclude exception
+  text; audit-write failures do not mask a successful mutation.
+- All mutation services, snapshots, scaffolding, marketplace installs, and automatic agent
+  reconciliation are covered. Rich agent repair details remain in `agents-audit.json`.
+- README, architecture, and recommendations documentation are updated. Local validation
+  passed: 483 unit tests, 167 integration tests, Ruff, OpenAPI codegen drift, frontend
+  typecheck/build, and npm audit. PR CI is green.
+
+### Current state and next steps
+
+- The current branch is clean and tracks `origin/feat/mutation-audit-journal`.
+- Review and merge PR #30 and PR #31; they are independent and currently mergeable.
+- After merge, the remaining journal work is the read-only activity view described in
+  `RECOMMENDATIONS.md` §2.1. Stage 4 product work remains slash-command auto-repair;
+  skills auto-adoption is still Stage 5 and default-off, and Codex support is deferred.
+- The opening status sentence in `plan-auto-adoption.md` is stale; its detailed stage table
+  is authoritative (Stage 4 slash commands, Stage 5 skills, Stage 6 Codex).
+
 ## 2026-07-27 (latest) — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
 
 Audit only, no behaviour changed. **The agents path is fine** — this entry is not about a
