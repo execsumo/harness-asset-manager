@@ -177,6 +177,7 @@ def resolve_enable_record(
         display_name=record.spec.display_name,
         source=record.spec.source,
         installed_at=record.spec.installed_at,
+        extras=record.spec.extras,
     )
     return ManagedMcpRecord(spec=spec, install_intent=intent.with_values(values))
 

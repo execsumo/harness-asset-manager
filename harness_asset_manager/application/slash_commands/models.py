@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -29,6 +29,10 @@ class SlashCommand:
     name: str
     description: str
     prompt: str
+    # Original frontmatter lines, including comments and fields HAM does not own.
+    # Frontmatter targets carry these through the canonical store so adopting and
+    # later updating a command never projects the document down to description.
+    frontmatter: tuple[str, ...] = field(default=(), compare=False)
 
 
 @dataclass(frozen=True)

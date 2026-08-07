@@ -18,13 +18,14 @@ class CommandDocumentCodec(Protocol):
 
 @dataclass(frozen=True)
 class FrontmatterMarkdownCommandCodec:
-    """Strict codec for the subset of YAML frontmatter Harness Asset Manager owns."""
+    """Codec that edits ``description`` without discarding unowned frontmatter."""
 
     def render(self, command: SlashCommand) -> str:
+        metadata_lines = _render_frontmatter(command)
         return "\n".join(
             [
                 "---",
-                f"description: {json.dumps(command.description.strip())}",
+                *metadata_lines,
                 "---",
                 "",
                 command.prompt.rstrip(),
@@ -52,7 +53,12 @@ class FrontmatterMarkdownCommandCodec:
         metadata = _parse_frontmatter_metadata(metadata_lines)
         description = metadata.get("description", "").strip() or name
         prompt = "\n".join(lines[body_start:]).strip()
-        return SlashCommand(name=name, description=description, prompt=prompt)
+        return SlashCommand(
+            name=name,
+            description=description,
+            prompt=prompt,
+            frontmatter=tuple(metadata_lines),
+        )
 
 
 @dataclass(frozen=True)
@@ -117,6 +123,26 @@ def _parse_frontmatter_metadata(lines: list[str]) -> dict[str, str]:
             raise MutationError(f"invalid command frontmatter line: {line}", status=400)
         metadata[key] = _parse_scalar(raw_value.strip())
     return metadata
+
+
+def _render_frontmatter(command: SlashCommand) -> list[str]:
+    """Preserve every unowned line verbatim and replace only ``description``."""
+
+    description_line = f"description: {json.dumps(command.description.strip())}"
+    rendered: list[str] = []
+    replaced = False
+    for line in command.frontmatter:
+        stripped = line.strip()
+        key = stripped.split(":", 1)[0].strip() if ":" in stripped else ""
+        if key == "description" and not stripped.startswith("#"):
+            if not replaced:
+                rendered.append(description_line)
+                replaced = True
+            continue
+        rendered.append(line)
+    if not replaced:
+        rendered.insert(0, description_line)
+    return rendered
 
 
 def _parse_scalar(value: str) -> str:
