@@ -26,6 +26,7 @@ const englishCommonCopy = {
     marketplace: "Marketplace",
     clis: "CLIs",
     permissions: "Permissions",
+    activity: "Activity",
     settings: "Settings",
     light: "Light",
     dark: "Dark",
@@ -48,6 +49,7 @@ const englishCommonCopy = {
     marketplace: "Loading marketplace",
     slashCommands: "Loading slash commands",
     settings: "Loading settings",
+    activity: "Loading activity",
     document: "Loading document",
   },
   search: {
@@ -96,6 +98,7 @@ export const commonCopy = {
       marketplace: "商城",
       clis: "CLI",
       permissions: "权限",
+      activity: "活动",
       settings: "设置",
       light: "浅色",
       dark: "深色",
@@ -118,6 +121,7 @@ export const commonCopy = {
       marketplace: "正在加载商城",
       slashCommands: "正在加载 Slash command",
       settings: "正在加载设置",
+      activity: "正在加载活动",
       document: "正在加载文档",
     },
     search: {

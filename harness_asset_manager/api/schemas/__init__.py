@@ -1,3 +1,4 @@
+from .activity import ActivityEventResponse, ActivityResponse
 from .cli_marketplace import (
     CliMarketplaceDetailResponse,
     CliMarketplaceItemResponse,
@@ -130,6 +131,8 @@ from .slash_commands import (
 )
 
 __all__ = [
+    "ActivityEventResponse",
+    "ActivityResponse",
     "AdoptMcpRequest",
     "BulkManageFailureResponse",
     "BulkManageResultResponse",

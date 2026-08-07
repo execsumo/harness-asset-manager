@@ -1,6 +1,114 @@
 {
   "components": {
     "schemas": {
+      "ActivityEventResponse": {
+        "properties": {
+          "errorType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errortype"
+          },
+          "family": {
+            "minLength": 1,
+            "title": "Family",
+            "type": "string"
+          },
+          "operation": {
+            "minLength": 1,
+            "title": "Operation",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "succeeded",
+              "partial",
+              "refused",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Parameters",
+            "type": "object"
+          },
+          "targetPaths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Targetpaths",
+            "type": "array"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "timestamp",
+          "family",
+          "operation",
+          "parameters",
+          "targetPaths",
+          "outcome"
+        ],
+        "title": "ActivityEventResponse",
+        "type": "object"
+      },
+      "ActivityResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "ActivityResponse",
+        "type": "object"
+      },
       "AddHookRequest": {
         "additionalProperties": false,
         "properties": {
@@ -5479,6 +5587,51 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/activity": {
+      "get": {
+        "operationId": "activity_api_activity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
     "/api/agents": {
       "get": {
         "operationId": "list_agents_api_agents_get",

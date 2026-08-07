@@ -22,6 +22,7 @@ function stubEmptyApi() {
         { match: "/api/mcp/servers", response: mcpInventoryPayload() },
         { match: "/api/settings", response: settingsPayload() },
         { match: "/api/slash-commands", response: slashCommandsPayload() },
+        { match: "/api/activity", response: { events: [] } },
         {
           match: (url) =>
             url.startsWith("/api/marketplace/popular") ||
@@ -62,6 +63,7 @@ describe("App shell", () => {
     expect(screen.getByRole("button", { name: /MCP Servers/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Marketplace/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Settings$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Activity$/i })).toBeInTheDocument();
   });
 
   it("renders right-aligned section counts for skills and MCP servers", async () => {
@@ -132,6 +134,7 @@ describe("App shell", () => {
     ["/marketplace/skills", "Marketplace"],
     ["/marketplace/clis", "Marketplace"],
     ["/settings", "Settings"],
+    ["/activity", "Activity"],
   ])("renders the expected page heading for %s", async (route, heading) => {
     renderApp(route);
     await waitFor(() =>

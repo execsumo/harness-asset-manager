@@ -28,6 +28,7 @@ const AgentsNeedsReviewPage = lazy(() => import("./features/agents/screens/Agent
 const HooksInUsePage = lazy(() => import("./features/hooks/screens/HooksInUsePage"));
 const HooksNeedsReviewPage = lazy(() => import("./features/hooks/screens/HooksNeedsReviewPage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
+const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
 export function App() {
   const [queryClient] = useState(
@@ -194,6 +195,15 @@ function AppContent() {
             element={
               <Suspense fallback={<RouteLoadingPanel label={common.loading.slashCommands} />}>
                 <SlashCommandsReviewPage />
+              </Suspense>
+            }
+          />
+
+          <Route
+            path="activity"
+            element={
+              <Suspense fallback={<RouteLoadingPanel label={common.loading.activity} />}>
+                <ActivityPage />
               </Suspense>
             }
           />

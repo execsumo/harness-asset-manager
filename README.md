@@ -281,7 +281,8 @@ on its own.
 Every CLI mutation is also appended to the shared `audit.log`. Events include only safe
 identifiers such as asset name and harness, plus the filesystem paths that actually
 changed. Prompt bodies, config objects, environment values, and exception messages are
-never serialized into the journal.
+never serialized into the journal. The app's **Activity** page shows the most recent
+valid events without modifying the authoritative on-disk journal.
 
 ### Running the server headlessly
 

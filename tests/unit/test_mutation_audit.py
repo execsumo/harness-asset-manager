@@ -125,6 +125,30 @@ class MutationAuditJournalTests(unittest.TestCase):
 
             self.assertEqual(events, ({"operation": "ok"},))
 
+    def test_recent_reader_returns_requested_valid_events_despite_corrupt_lines(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "audit.log"
+            path.write_text(
+                '{"operation":"old"}\nnot-json\n{"operation":"first"}\n{broken}\n{"operation":"second"}\n',
+                encoding="utf-8",
+            )
+
+            events = MutationAuditJournal(path).read_recent(limit=2)
+
+            self.assertEqual(events, ({"operation": "first"}, {"operation": "second"}))
+
+    def test_recent_reader_bounds_bytes_read_from_large_journal(self) -> None:
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "audit.log"
+            path.write_text(
+                '{"operation":"old"}\n' + ("x" * 256) + '\n{"operation":"recent"}\n',
+                encoding="utf-8",
+            )
+
+            events = MutationAuditJournal(path).read_recent(limit=10, max_bytes=64)
+
+            self.assertEqual(events, ({"operation": "recent"},))
+
 
 if __name__ == "__main__":
     unittest.main()

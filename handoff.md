@@ -2,6 +2,28 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-07 (latest) — Mutation activity view implemented after PRs #30 and #31 merged
+
+PRs #30 (unknown writer-field preservation) and #31 (mutation audit journal) are merged
+into `main`. Follow-on work is implemented on `feat/activity-view`:
+
+- `GET /api/activity` exposes up to 200 validated events newest-first. Journal reads are
+  bounded to the final 1 MiB and tolerate malformed JSON, truncated writes, and records
+  that do not match the v1 event schema.
+- The new read-only Activity page appears in primary navigation, refreshes independently,
+  and shows outcome, family, operation, safe parameters, changed paths, timestamps, and
+  failure type. It includes empty/loading/error states, responsive styling, theme tokens,
+  and English/Chinese copy.
+- The generated OpenAPI client, README, architecture, and recommendations are updated.
+
+Validation: 496 backend unit + 169 integration tests, Ruff, frontend typecheck, production
+build, generated-contract stability, and all new/changed frontend tests pass. The full
+frontend run passed 274/277; three untouched async-detail tests time out in this container
+and reproduce when run separately (agents unsupported row, CLI detail, skill document).
+
+Next product work after this branch merges is Stage 4 slash-command auto-repair.
+Skills auto-adoption remains Stage 5 and default-off; Codex support remains deferred.
+
 ## 2026-07-27 (latest) — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
 
 Audit only, no behaviour changed. **The agents path is fine** — this entry is not about a

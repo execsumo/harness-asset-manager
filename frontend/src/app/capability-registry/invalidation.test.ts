@@ -16,5 +16,6 @@ describe("capability invalidation", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["mcp"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["settings"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["marketplace"] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["activity"] });
   });
 });

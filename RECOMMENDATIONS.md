@@ -76,17 +76,6 @@ seven more harnesses on the README roadmap, define a repeatable "new harness ver
 
 ## Tier 2 — Strategic investments
 
-### 2.1 Surface the mutation journal as an activity view — M
-
-**Shipped (2026-08-06):** every shared domain-service mutation now appends a structured,
-secret-safe JSON Lines event to `${XDG_DATA_HOME}/harness-asset-manager/audit.log`: UTC
-timestamp, family, operation, safe identifiers, paths actually changed, and
-success/partial/refused/failed outcome. HTTP and CLI calls share the same wrapper, and
-automatic agent reconciliation is recorded only when it changes the filesystem.
-
-**Remaining:** expose recent events as a read-only activity view in the Web UI. Keep the
-on-disk journal authoritative and bounded UI reads tolerant of malformed/truncated lines.
-
 ### 2.2 Coverage measurement with a ratchet — S–M
 
 385 backend unit tests, 155 integration tests, and 62 frontend test files (263 tests) exist, but nothing measures what they cover, so

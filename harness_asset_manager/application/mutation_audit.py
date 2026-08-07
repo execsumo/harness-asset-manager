@@ -14,6 +14,8 @@ from harness_asset_manager.atomic_files import file_lock
 AuditOutcome = str
 PathSpec = tuple[Path, bool]
 
+_DEFAULT_READ_LIMIT_BYTES = 1024 * 1024
+
 _SAFE_PARAMETER_NAMES = {
     "action",
     "enabled",
@@ -157,22 +159,45 @@ class MutationAuditJournal:
                 stream.flush()
                 os.fsync(stream.fileno())
 
-    def read_recent(self, limit: int = 100) -> tuple[dict[str, object], ...]:
+    def read_recent(
+        self,
+        limit: int = 100,
+        *,
+        max_bytes: int = _DEFAULT_READ_LIMIT_BYTES,
+    ) -> tuple[dict[str, object], ...]:
         if limit <= 0 or not self.path.is_file():
             return ()
-        events: list[dict[str, object]] = []
+        if max_bytes <= 0:
+            return ()
         try:
-            lines = self.path.read_text(encoding="utf-8").splitlines()
+            with self.path.open("rb") as stream:
+                stream.seek(0, os.SEEK_END)
+                end = stream.tell()
+                start = max(0, end - max_bytes)
+                stream.seek(start)
+                payload = stream.read(max_bytes)
         except OSError:
             return ()
-        for line in lines[-limit:]:
+
+        # A bounded tail may begin in the middle of a line. Drop that fragment;
+        # a concurrently appended trailing fragment is rejected by JSON parsing.
+        if start:
+            separator = payload.find(b"\n")
+            if separator < 0:
+                return ()
+            payload = payload[separator + 1 :]
+
+        events: list[dict[str, object]] = []
+        for line in reversed(payload.splitlines()):
             try:
-                payload = json.loads(line)
-            except json.JSONDecodeError:
+                event = json.loads(line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
                 continue
-            if isinstance(payload, dict):
-                events.append(payload)
-        return tuple(events)
+            if isinstance(event, dict):
+                events.append(event)
+                if len(events) == limit:
+                    break
+        return tuple(reversed(events))
 
 
 class AuditedMutationService:

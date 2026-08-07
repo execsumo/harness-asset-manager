@@ -1,4 +1,5 @@
 from . import (
+    activity,
     health,
     hooks,
     marketplace,
@@ -9,4 +10,4 @@ from . import (
     slash_commands,
 )
 
-__all__ = ["health", "hooks", "marketplace", "mcp", "settings", "skills", "slash_commands", "permissions"]
+__all__ = ["activity", "health", "hooks", "marketplace", "mcp", "settings", "skills", "slash_commands", "permissions"]
