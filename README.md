@@ -39,6 +39,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Manage Agents — markdown files in the store, symlinked into each harness's agents directory, with In Use and Needs Review views like every other family. If a harness overwrites a link with its own copy, provably-safe edits are folded back in automatically and conflicting ones are left for you.
 - Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
 - Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
+- Trace every Web UI, API, and CLI mutation in an append-only JSON Lines journal, including the operation, outcome, and filesystem paths changed—without recording prompts, config payloads, or secrets.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 - Drive all of the above **headlessly** from the [CLI](#headless-and-cli) — every family has `list`/`show`/`enable`/`disable` commands with `--json` output, so a VPS or Linux sandbox needs no browser.
 
@@ -277,6 +278,11 @@ Running the CLI while the app is serving is safe — the stores serialize writes
 `flock`, and the server's read models refresh within a second, so the open UI catches up
 on its own.
 
+Every CLI mutation is also appended to the shared `audit.log`. Events include only safe
+identifiers such as asset name and harness, plus the filesystem paths that actually
+changed. Prompt bodies, config objects, environment values, and exception messages are
+never serialized into the journal.
+
 ### Running the server headlessly
 
 `serve` runs in the foreground (systemd, Docker, `tmux`); `start` daemonizes and records
@@ -492,6 +498,7 @@ Useful macOS paths:
 - agents store: `~/.harness-asset-manager/agents`
 - agent binding ledger: `~/.harness-asset-manager/bindings.json`
 - agent repair audit log: `~/.harness-asset-manager/agents-audit.json`
+- mutation audit journal: `~/.harness-asset-manager/audit.log` (append-only JSON Lines)
 - preserved conflicting agent copies: `~/.harness-asset-manager/agents/conflicts`
 - MCP manifest: `~/.harness-asset-manager/mcp/manifest.json`
 - hooks manifest: `~/.harness-asset-manager/hooks/manifest.json`
@@ -506,6 +513,7 @@ Useful Linux paths:
 - agents store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents`
 - agent binding ledger: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/bindings.json`
 - agent repair audit log: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents-audit.json`
+- mutation audit journal: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/audit.log`
 - MCP manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/mcp/manifest.json`
 - hooks manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/hooks/manifest.json`
 - slash command library: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/slash-commands/commands`

@@ -24,6 +24,7 @@ class AppPaths:
     agents_audit_path: Path
     agents_conflicts_root: Path
     agents_reconcile_lock_path: Path
+    mutation_audit_path: Path
     marketplace_cache_root: Path
     mcp_store_manifest: Path
     hooks_store_manifest: Path
@@ -58,6 +59,7 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
         # level only, so a preserved conflict copy can never be read back as an agent.
         agents_conflicts_root=data_dir / "agents" / "conflicts",
         agents_reconcile_lock_path=data_dir / "agents-reconcile.lock",
+        mutation_audit_path=data_dir / "audit.log",
         marketplace_cache_root=data_dir / "marketplace",
         mcp_store_manifest=data_dir / "mcp" / "manifest.json",
         hooks_store_manifest=data_dir / "hooks" / "manifest.json",

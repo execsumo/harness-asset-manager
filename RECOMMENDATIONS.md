@@ -76,17 +76,16 @@ seven more harnesses on the README roadmap, define a repeatable "new harness ver
 
 ## Tier 2 — Strategic investments
 
-### 2.1 A mutation audit journal — M–L
+### 2.1 Surface the mutation journal as an activity view — M
 
-A tool whose job is mutating local config has almost no observability: a `grep -rn 'logging'`
-over `harness_asset_manager/` now returns **zero** hits (the last holdout, `db/migrations.py`, was removed
-in `9f23101`), and uvicorn runs with `access_log=False`. When something goes wrong in a
-user's setup — or a user asks "what did Harness Asset Manager change?" — there is no answer on disk.
+**Shipped (2026-08-06):** every shared domain-service mutation now appends a structured,
+secret-safe JSON Lines event to `${XDG_DATA_HOME}/harness-asset-manager/audit.log`: UTC
+timestamp, family, operation, safe identifiers, paths actually changed, and
+success/partial/refused/failed outcome. HTTP and CLI calls share the same wrapper, and
+automatic agent reconciliation is recorded only when it changes the filesystem.
 
-**Action:** append a structured record (JSON Lines) to
-`${XDG_DATA_HOME}/harness-asset-manager/audit.log` for every mutation: timestamp, family, operation,
-target paths, outcome. This doubles as product surface later (an activity view) and strengthens
-the trust story that "Needs Review" already builds.
+**Remaining:** expose recent events as a read-only activity view in the Web UI. Keep the
+on-disk journal authoritative and bounded UI reads tolerant of malformed/truncated lines.
 
 ### 2.2 Coverage measurement with a ratchet — S–M
 
@@ -149,6 +148,6 @@ modules).
    1.2 ruff gate; 1.3 Hermes slash label). **Next (all S/M):** finish the partials in value order —
    1.1 harden the writers to preserve unknown fields, 1.2 add pyright + ESLint + chip the ruff
    baseline, 1.3 label/verify Hermes MCP & hooks.
-2. **When planning the next family or harness:** 2.3 first, 2.1 alongside, 2.2 to keep it honest.
+2. **When planning the next family or harness:** 2.3 first; use the shipped journal for traceability,
+   and add 2.2 to keep coverage honest.
 3. **Tier 3 housekeeping** rides along whenever its files are touched next.
-
