@@ -57,7 +57,7 @@ records this as "274/277," which was a miscount. Added as a Tier-3 item.
 1. **Push `main`.** Local `main` is one commit ahead of `origin/main` and the activity view is
    in it. There was never a PR for `feat/activity-view`, so **it has never run in CI** — CI only
    triggers on `main` pushes and pull requests.
-2. **Delete six merged-but-undeleted branches**, contrary to the short-lived-branch rule in
+2. **Delete seven merged-but-undeleted branches**, contrary to the short-lived-branch rule in
    `CLAUDE.md`: `feat/activity-view`, `feat/mutation-audit-journal`,
    `fix/preserve-unknown-writer-fields`, `feat/harnessam-short-command`,
    `fix/readme-broken-image-links`, `fix/rebrand-skill-manager-remnants`, and

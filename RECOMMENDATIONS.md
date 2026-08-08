@@ -5,8 +5,8 @@
 > succeeds, and `ruff check harness_asset_manager tests` (CI's scope) is clean.
 > `npm test` is **275/278 — not green**: three async detail tests (`SkillDetailContent`, `MarketplaceCliPage`,
 > `AgentsInUsePage`) time out under this container's `waitFor` budget and reproduce in isolation.
-> They are pre-existing and unrelated to the entries below, but the suite does exit non-zero — see
-> the Tier-3 entry on the timing-fragile frontend tests.
+> They are pre-existing and unrelated to the entries below, but the suite does exit non-zero and
+> the cause is not yet established — see the Tier-3 entry on the three timing-out frontend tests.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
 >
@@ -116,12 +116,14 @@ modules).
 - **`choose_port` / `bind_socket` TOCTOU race** (`runtime/server.py:32-49`): probe-bind, close,
   re-bind. Two quick starts can collide between the probes. Bind once and keep the socket (the
   code already passes `fd` to uvicorn, so this is mostly deleting the probe). — **S**
-- **Three frontend tests are timing-fragile, so `npm test` exits non-zero on slower machines.**
-  `SkillDetailContent`, `MarketplaceCliPage`, and `AgentsInUsePage` each `await findBy…` on an
-  async detail render and blow the default `waitFor` budget in a container (the full run takes
-  ~13 min here, most of it environment setup). CI has been green on `main`, so this reads as a
-  flake, but a suite that cannot be trusted to go green locally stops being a gate.
-  Raise the budget for those three, or make the detail render deterministic under test. — **S**
+- **Three frontend tests time out locally, so `npm test` exits non-zero.** `SkillDetailContent`,
+  `MarketplaceCliPage`, and `AgentsInUsePage` each `await findBy…` on an async detail render and
+  blow the default `waitFor` budget in a dev container (full run ~13 min, mostly environment
+  setup); they reproduce when run in isolation. **Not yet diagnosed** — CI was last green on
+  `main` at `2faa775`, which predates the activity-view commit, so no CI evidence exists for the
+  current tree. First step is to run these three in CI and see whether they fail there too; only
+  then decide between raising the `waitFor` budget and making the detail render deterministic.
+  A suite that cannot be trusted to go green locally stops being a gate. — **S**
 - **Clean local scratch from the repo dir.** The orphaned `harness_asset_manager/db/` package is
   **gone** (fixed); no `.pytest_cache` remains. What lingers is untracked `__pycache__/*.pyc`
   throughout the tree. Harmless but confusing — the project standardizes on `unittest`, so either
