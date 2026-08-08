@@ -45,7 +45,17 @@ class CliCommandTestCase(unittest.TestCase):
 
 class ParserTests(unittest.TestCase):
     def test_asset_groups_are_not_treated_as_serve_arguments(self) -> None:
-        for group in ("skills", "agents", "mcp", "hooks", "permissions", "commands", "settings", "snapshots"):
+        for group in (
+            "skills",
+            "agents",
+            "mcp",
+            "hooks",
+            "permissions",
+            "commands",
+            "settings",
+            "snapshots",
+            "refresh",
+        ):
             self.assertEqual(normalize_argv([group, "list"])[0], group)
 
     def test_bare_server_flags_still_imply_serve(self) -> None:
@@ -62,6 +72,23 @@ class ParserTests(unittest.TestCase):
     def test_snapshot_dispatches_through_the_asset_runner(self) -> None:
         args = build_parser().parse_args(["snapshot"])
         self.assertIsNotNone(getattr(args, "handler", None))
+
+    def test_refresh_dispatches_through_the_asset_runner(self) -> None:
+        args = build_parser().parse_args(["refresh"])
+        self.assertIsNotNone(getattr(args, "handler", None))
+
+
+class RefreshCommandTests(CliCommandTestCase):
+    def test_refresh_runs_one_pass_for_every_asset_family(self) -> None:
+        code, out, err = self.run_cli("refresh")
+        self.assertEqual(code, 0, msg=err)
+        self.assertIn("refreshed: skills, slash_commands, mcp, hooks, permissions, agents", out)
+
+        payload = self.run_json("refresh")
+        self.assertEqual(
+            payload["refreshed"],
+            ["skills", "slash_commands", "mcp", "hooks", "permissions", "agents"],
+        )
 
 
 class SettingsCommandTests(CliCommandTestCase):

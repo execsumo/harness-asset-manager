@@ -29,6 +29,10 @@ class SettingsAutoAdoptResponse(BaseModel):
 
     agents: bool
     skills: bool
+    slash_commands: bool
+    mcp: bool
+    hooks: bool
+    permissions: bool
 
 
 class SettingsResponse(BaseModel):

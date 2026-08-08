@@ -1,7 +1,9 @@
 # Plan — Automatic re-adoption of drifted bindings
 
-**Status: Stages 1, 2 and 3 shipped 2026-07-27.** Stages 4 (skills auto-adopt) and 5
-(Codex) are not started. Amendments made while building are marked **AMENDED** inline:
+**Status: Agents shipped 2026-07-27; family auto-adoption shipped 2026-08-08.** Skills,
+slash commands, MCP, Hooks, and Permissions now have opt-in, family-specific adoption
+paths. Codex agent adoption remains excluded. Amendments made while building are marked
+**AMENDED** inline:
 §3's rebaseline rule, §5's exclusion from it, and §4's conflict-file location. Read
 those before extending this — the literal wording of §3 loses data and there is a test
 proving it.
@@ -240,7 +242,8 @@ existing `unmanaged_paths()` walk and need no hashing at all.
 
 ## 7. Skills — auto-adopt new local directories
 
-**Stage 5, not Stage 4** — reordered 2026-07-27 behind slash commands (see §9). This is
+**Implemented 2026-08-08 (opt-in, default off).** Formerly Stage 5, not Stage 4 — reordered
+2026-07-27 behind slash commands (see §9). This is
 a *different* mechanism from the rest of this plan: it is not clobber repair, because
 skills cannot be clobbered (§12). Treat it as an optional convenience feature, and do it
 only if it is wanted for its own sake.
@@ -365,17 +368,22 @@ is worse than an absent one, because it reads as a working feature.
 
 ## 12. Does this pattern belong in the other asset families? — verdict
 
-Asked and answered 2026-07-27, from the code, and **re-audited later the same day** after
-Stage 3 shipped. There are six families and they fall into four groups, decided by
-binding shape. The re-audit changed one verdict: slash commands is no longer "done", it
-is **Stage 4** (below).
+Asked and answered 2026-07-27, from the code, and **re-audited 2026-08-08** after the
+family-wide implementation. There are six families and they fall into four groups,
+decided by binding shape. The current implementation is intentionally family-specific:
+automatic ownership changes happen only when observations are equivalent.
 
 | Family | Binding shape | Verdict |
 |---|---|---|
 | **agents** | `AgentFileBindingProfile` — file symlink | **Needs it.** Built here. |
-| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Has the ledger and the diagnosis, not the repair.** Now Stage 4. |
-| **skills** | `FileTreeBindingProfile` — directory symlink | **Structurally immune.** |
-| **mcp / hooks / permissions** | `ConfigSubtreeBindingProfile` | **Wrong shape; does not transfer.** |
+| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Adopts equivalent new unmanaged files; changed managed files remain review-driven.** |
+| **skills** | `FileTreeBindingProfile` — directory symlink | **Adopts equivalent new unmanaged directories; existing links are structurally immune.** |
+| **mcp / hooks / permissions** | `ConfigSubtreeBindingProfile` | **Promotes equivalent unmanaged observations; never chooses between differing configs.** |
+
+The remainder of this section preserves the original design audit and rejected alternatives.
+The shipped read-time adopters are `SkillsAutoAdoptService`,
+`SlashCommandsAutoAdoptService`, `McpAutoAdoptService`, and
+`ObservedConfigAutoAdoptService`; all are independently gated by `autoAdopt` settings.
 
 **Slash commands already shipped this pattern, before the agents ledger existed.**
 `SlashCommandSyncStateStore` (`slash_commands/sync_state.py`) is the same ledger —

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from harness_asset_manager.errors import MutationError
 
 from .contracts import HookHarnessScan, HookInventory, HookInventoryIssue
@@ -11,10 +13,20 @@ from .read_models import HooksReadModelService
 class HooksQueryService:
     """Read-side service exposing canonical hooks config and inventory views."""
 
-    def __init__(self, read_models: HooksReadModelService) -> None:
+    def __init__(
+        self,
+        read_models: HooksReadModelService,
+        reconcile: Callable[[], object] | None = None,
+    ) -> None:
         self.read_models = read_models
+        self._reconcile = reconcile
+
+    def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
+        self._reconcile = reconcile
 
     def list_hooks(self) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         return inventory_payload(
@@ -23,6 +35,8 @@ class HooksQueryService:
         )
 
     def get_hook(self, id: str) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         visible_scans = self.read_models.visible_scans(snapshot)

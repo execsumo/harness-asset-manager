@@ -168,6 +168,21 @@ class PermissionRoutesTests(unittest.TestCase):
             entry2 = next(e for e in payload2["entries"] if e["id"] == entry["id"])
             self.assertEqual(entry2["kind"], "managed")
             states = {s["harness"]: s["state"] for s in entry2["sightings"]}
+
+    def test_auto_adopt_promotes_a_parseable_unmanaged_rule(self) -> None:
+        with AppTestHarness() as harness:
+            claude_path = harness.spec.home / ".claude" / "settings.json"
+            claude_path.parent.mkdir(parents=True, exist_ok=True)
+            claude_path.write_text(
+                json.dumps({"permissions": {"deny": ["Bash(git auto-status)"]}}),
+                encoding="utf-8",
+            )
+            harness.put_json("/api/settings/auto-adopt/permissions", {"enabled": True})
+
+            payload = harness.get_json("/api/permissions")
+            entry = next(e for e in payload["entries"] if e.get("spec", {}).get("pattern") == "git auto-status")
+            self.assertEqual(entry["kind"], "managed")
+            states = {s["harness"]: s["state"] for s in entry["sightings"]}
             self.assertEqual(states.get("claude"), "managed")
 
 

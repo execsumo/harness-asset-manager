@@ -16,9 +16,9 @@ export async function updateHarnessSupport(harness: string, enabled: boolean): P
 export async function updateAutoAdopt(
   family: string,
   enabled: boolean,
-): Promise<{ ok: boolean; autoAdopt: { agents: boolean; skills: boolean } }> {
+): Promise<{ ok: boolean; autoAdopt: Record<string, boolean> }> {
   const body = { enabled };
-  return putJson<{ ok: boolean; autoAdopt: { agents: boolean; skills: boolean } }>(
+  return putJson<{ ok: boolean; autoAdopt: Record<string, boolean> }>(
     `/settings/auto-adopt/${encodeURIComponent(family)}`,
     body,
   );

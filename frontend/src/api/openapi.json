@@ -4391,14 +4391,34 @@
             "title": "Agents",
             "type": "boolean"
           },
+          "hooks": {
+            "title": "Hooks",
+            "type": "boolean"
+          },
+          "mcp": {
+            "title": "Mcp",
+            "type": "boolean"
+          },
+          "permissions": {
+            "title": "Permissions",
+            "type": "boolean"
+          },
           "skills": {
             "title": "Skills",
+            "type": "boolean"
+          },
+          "slash_commands": {
+            "title": "Slash Commands",
             "type": "boolean"
           }
         },
         "required": [
           "agents",
-          "skills"
+          "skills",
+          "slash_commands",
+          "mcp",
+          "hooks",
+          "permissions"
         ],
         "title": "SettingsAutoAdoptResponse",
         "type": "object"

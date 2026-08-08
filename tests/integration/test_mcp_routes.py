@@ -1076,6 +1076,20 @@ class McpRoutesTests(unittest.TestCase):
             assert isinstance(servers, dict)
             self.assertIn("context7", [e["name"] for e in servers["entries"]])
 
+    def test_auto_adopt_promotes_identical_unmanaged_mcp_configs(self) -> None:
+        with AppTestHarness() as harness:
+            payload = {"command": "uvx", "args": ["auto-mcp"]}
+            cursor_cfg = harness.spec.home / ".cursor" / "mcp.json"
+            cursor_cfg.parent.mkdir(parents=True, exist_ok=True)
+            cursor_cfg.write_text(json.dumps({"mcpServers": {"auto-mcp": payload}}))
+            claude_cfg = harness.spec.home / ".claude.json"
+            claude_cfg.write_text(json.dumps({"mcpServers": {"auto-mcp": payload}}))
+            harness.put_json("/api/settings/auto-adopt/mcp", {"enabled": True})
+
+            servers = harness.get_json("/api/mcp/servers")
+            entry = next(e for e in servers["entries"] if e["name"] == "auto-mcp")
+            self.assertEqual(entry["kind"], "managed")
+
     def test_adopt_differing_without_observed_harness_returns_409(self) -> None:
         with AppTestHarness() as harness:
             cursor_cfg = harness.spec.home / ".cursor" / "mcp.json"

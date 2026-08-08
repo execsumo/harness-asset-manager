@@ -129,8 +129,19 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         if existing_dir.is_symlink():
             self._self_heal_or_raise(existing_dir, resolved_target, existing_dir.name, "adopt_local_copy")
             return
-        shutil.rmtree(existing_dir)
-        existing_dir.symlink_to(resolved_target)
+        # Rename the user's directory out of the way before creating the link.
+        # This makes adoption recoverable if symlink creation fails and avoids
+        # deleting the only copy before the binding exists.
+        backup = existing_dir.parent / f".{existing_dir.name}.harnessam-adopt-{uuid4().hex}"
+        existing_dir.rename(backup)
+        try:
+            existing_dir.symlink_to(resolved_target)
+        except OSError:
+            if existing_dir.is_symlink():
+                existing_dir.unlink()
+            backup.rename(existing_dir)
+            raise
+        shutil.rmtree(backup)
 
     def has_binding(self, package_dir: str) -> bool:
         candidate = self._binding_path(package_dir)

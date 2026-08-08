@@ -15,6 +15,7 @@ from . import (
     hooks,
     mcp,
     permissions,
+    refresh,
     settings,
     skills,
     slash_commands,
@@ -32,13 +33,14 @@ GROUP_NAMES = frozenset(
         "hooks",
         "mcp",
         "permissions",
+        "refresh",
         "settings",
         "skills",
         "snapshots",
     }
 )
 
-_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, snapshots)
+_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, snapshots, refresh)
 
 
 def register(subparsers, common: argparse.ArgumentParser) -> None:

@@ -12,7 +12,7 @@ from .queries import SlashCommandQueryService
 from .read_models import SlashCommandReadModelService
 from .review_resolver import SlashCommandReviewResolver
 from .store import SlashCommandStore, validate_command_name
-from .sync_state import SlashCommandSyncStateStore
+from .sync_state import SlashCommandSyncRecord, SlashCommandSyncStateStore, hash_file
 from .targets import default_target_ids, target_by_id
 
 
@@ -85,6 +85,36 @@ class SlashCommandMutationService:
         resolved_targets = self.resolve_targets()
         selected_target = self._require_target(target, resolved_targets)
         return self.review_resolver.import_unmanaged_command(selected_target, name)
+
+    def auto_adopt_unmanaged(
+        self,
+        *,
+        name: str,
+        observations: list[tuple[SlashTarget, SlashCommand]],
+    ) -> None:
+        """Register equivalent unmanaged files without rewriting their contents."""
+        validate_command_name(name)
+        if self.store.get_command(name) is not None:
+            raise MutationError(f"slash command already exists: {name}", status=409)
+        if not observations:
+            raise MutationError("no unmanaged slash command observations", status=400)
+        for target, _command in observations:
+            path = self.path_policy.output_path(target, name)
+            if not path.is_file():
+                raise MutationError(f"slash command file not found: {path}", status=404)
+        _first_target, first_command = observations[0]
+        self.store.create_command(first_command)
+        for target, _command in observations:
+            path = self.path_policy.output_path(target, name)
+            self.sync_state.add_target(
+                name,
+                SlashCommandSyncRecord(
+                    target=target.id,
+                    path=path,
+                    content_hash=hash_file(path),
+                    render_format=target.render_format,
+                ),
+            )
 
     def resolve_review_command(
         self,

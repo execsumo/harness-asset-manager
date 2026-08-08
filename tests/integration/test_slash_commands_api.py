@@ -156,6 +156,20 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertEqual([command["name"] for command in updated["commands"]], ["code-review"])
             self.assertEqual(updated["reviewCommands"], [])
 
+    def test_auto_adopt_imports_equivalent_unmanaged_command(self) -> None:
+        with AppTestHarness() as harness:
+            target = harness.spec.home / ".codex" / "prompts" / "auto-review.md"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(
+                "---\ndescription: Auto review\n---\n\nReview automatically.\n",
+                encoding="utf-8",
+            )
+            harness.put_json("/api/settings/auto-adopt/slash_commands", {"enabled": True})
+
+            payload = harness.get_json("/api/slash-commands")
+            self.assertEqual([command["name"] for command in payload["commands"]], ["auto-review"])
+            self.assertEqual(payload["reviewCommands"], [])
+
     def test_drifted_target_can_be_restored_from_review(self) -> None:
         with AppTestHarness() as harness:
             harness.post_json(

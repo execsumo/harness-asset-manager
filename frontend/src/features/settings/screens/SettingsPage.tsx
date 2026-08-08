@@ -10,6 +10,8 @@ import { SettingsHarnessCard } from "../components/SettingsHarnessCard";
 import { useSettingsCopy } from "../i18n";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
 
+const autoAdoptFamilies = ["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"] as const;
+
 export default function SettingsPage() {
   const copy = useSettingsCopy();
   const formatPath = useFormatPath();
@@ -79,24 +81,29 @@ export default function SettingsPage() {
 
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
-            <div className="settings-row">
-              <span className="settings-row__icon">
-                <Wrench size={15} />
-              </span>
-              <div className="settings-row__body">
-                <p className="settings-row__title">{copy.autoAdopt.label}</p>
-                <p className="settings-row__sub">{copy.autoAdopt.sub}</p>
-              </div>
-              <div className="settings-row__controls">
-                <ToggleSwitch
-                  checked={controller.data.autoAdopt?.agents ?? true}
-                  disabled={controller.isAutoAdoptPending("agents")}
-                  label=""
-                  ariaLabel={copy.autoAdopt.label}
-                  onCheckedChange={(checked) => controller.handleAutoAdoptToggle("agents", checked)}
-                />
-              </div>
-            </div>
+            {autoAdoptFamilies.map((family) => {
+              const option = copy.autoAdopt[family];
+              return (
+                <div className="settings-row" key={family}>
+                  <span className="settings-row__icon">
+                    <Wrench size={15} />
+                  </span>
+                  <div className="settings-row__body">
+                    <p className="settings-row__title">{option.label}</p>
+                    <p className="settings-row__sub">{option.sub}</p>
+                  </div>
+                  <div className="settings-row__controls">
+                    <ToggleSwitch
+                      checked={controller.data?.autoAdopt?.[family] ?? false}
+                      disabled={controller.isAutoAdoptPending(family)}
+                      label=""
+                      ariaLabel={option.label}
+                      onCheckedChange={(checked) => controller.handleAutoAdoptToggle(family, checked)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </section>
 
           <ConfigSnapshotsSection />

@@ -2,7 +2,7 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-08 (latest) — Docs reconciled against `main`; §1.1 confirmed already shipped
+## 2026-08-08 — Docs reconciled against `main`; §1.1 confirmed already shipped
 
 Documentation-only pass on `docs/refresh-open-items`. No behaviour changed. Written after
 `feat/activity-view` was fast-forwarded into local `main` (`63cfbe4`) — **which is not yet
@@ -66,7 +66,53 @@ records this as "274/277," which was a miscount. Added as a Tier-3 item.
    `feat/mutation-audit-journal`, a docs-only handoff refresh that this entry supersedes.
 3. **`RECOMMENDATIONS.md §1.2`** — pyright + ESLint + chip the ruff `F401` baseline. Now the
    only open Tier-1 item.
-4. **Stage 4 slash-command auto-repair** is the next product work (`plan-auto-adoption.md`).
+4. **Family-wide auto-adoption is now implemented** on this working branch; run the
+   focused adoption tests and review the latest handoff entry before merging.
+
+## 2026-08-08 (latest) — Family-wide opt-in auto-adoption implemented
+
+Auto-adoption is now wired for the asset families that have a safe, family-specific
+ownership transition:
+
+- **Skills:** when enabled, equivalent unmanaged local directories are ingested into the
+  shared store and replaced with directory symlinks. Different revisions and symlinks are
+  left for review. The directory is renamed to a temporary backup before the link is made,
+  so a failed link creation restores the original copy.
+- **Slash commands:** equivalent unmanaged files are registered in the store and sync
+  ledger without rewriting the source files. A same-name managed command is never silently
+  replaced.
+- **MCP:** identical unmanaged observations are adopted through the existing multi-harness
+  adoption path; differing configurations remain a manual choice.
+- **Hooks and Permissions:** equivalent parseable unmanaged observations are promoted into
+  their manifests without rewriting harness-owned config documents.
+- **Agents:** existing safe drift repair remains unchanged; Codex rendered-agent adoption
+  remains excluded.
+
+Each family has an independent `autoAdopt` setting (Agents on by default; the new family
+paths off by default), Settings-page toggles, CLI support, Activity-journal entries, and
+read-time reconciliation. The relevant list/detail read triggers reconcile before building
+the response, so enabling a family takes effect on the next read without a restart.
+
+The CLI form is `harnessam settings auto-adopt <family> --enable|--disable`, with
+`agents`, `skills`, `slash_commands`, `mcp`, `hooks`, and `permissions` as the family
+names. Auto-adoption is deliberately limited to the safe cases described above: it does
+not overwrite a different managed source, pick a winner between conflicting observations,
+or run as a background watcher. Config snapshots and CLI marketplace entries remain
+outside the managed auto-adoption families.
+
+For a headless one-shot pass, `harnessam refresh` reads all six managed asset families and
+triggers their enabled reconciliation paths; `harnessam refresh --json` emits the refreshed
+family names for scripts. It is not a background watcher, so cron or a systemd timer can
+invoke it when periodic polling is wanted.
+
+Follow-up to consider: add a user setting for each asset family that defines the default
+harnesses to enable when an asset is auto-adopted. Today adoption registers the asset in the
+shared store but does not enable it for every harness, so a newly adopted Claude skill still
+requires an explicit Codex enablement. The setting should remain a default only — explicit
+harness selections and unsupported-harness checks must continue to win.
+
+Validation completed: targeted backend unittest suites pass, the new cross-family adoption
+tests pass, Ruff is clean, frontend typecheck is clean, and the Settings frontend tests pass.
 
 ## 2026-08-07 — Mutation activity view implemented after PRs #30 and #31 merged
 
@@ -89,6 +135,10 @@ and reproduce when run separately (agents unsupported row, CLI detail, skill doc
 
 Next product work after this branch merges is Stage 4 slash-command auto-repair.
 Skills auto-adoption remains Stage 5 and default-off; Codex support remains deferred.
+
+> Historical note: the following 2026-07-27 audit predates the family-wide implementation
+> recorded above. Its agents-only, skills-no-op, and slash-command-404 conclusions describe
+> the code at that time and are superseded by the latest entry.
 
 ## 2026-07-27 — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
 

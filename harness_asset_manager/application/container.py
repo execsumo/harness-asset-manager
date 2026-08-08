@@ -22,6 +22,7 @@ from .agents import (
     resolve_agent_targets,
 )
 from .cli_marketplace import CliMarketplaceCatalog
+from .config_auto_adopt import McpAutoAdoptService, ObservedConfigAutoAdoptService
 from .config_snapshots import ConfigSnapshotService
 from .hooks import (
     HooksMutationService,
@@ -53,6 +54,7 @@ from .permissions import (
 from .scaffold import ScaffoldService
 from .settings import AutoAdoptStore, SettingsMutationService, SettingsQueryService
 from .skills import SkillsMutationService, SkillsQueryService
+from .skills.auto_adopt import SkillsAutoAdoptService
 from .skills.marketplace import (
     MarketplaceCatalog,
     MarketplaceDocumentService,
@@ -74,6 +76,7 @@ from .slash_commands import (
     migrate_legacy_slash_commands,
     resolve_slash_targets,
 )
+from .slash_commands.auto_adopt import SlashCommandsAutoAdoptService
 
 
 @dataclass(frozen=True)
@@ -193,6 +196,7 @@ def build_backend_container(
     support_store = HarnessSupportStore(paths.settings_path)
     harness_kernel = HarnessKernelService.from_environment(active_env, support_store=support_store)
     invalidation = InvalidationFanout()
+    mutation_audit = MutationAuditJournal(paths.mutation_audit_path)
 
     skills_store = SkillStore(
         paths.skills_store_root,
@@ -242,6 +246,13 @@ def build_backend_container(
         SlashCommandPlanner(slash_command_path_policy),
         resolve_slash_snapshot,
     )
+    slash_auto_adopt = SlashCommandsAutoAdoptService(
+        read_models=slash_command_read_models,
+        mutations=slash_command_mutations,
+        is_enabled=lambda: auto_adopt_store.is_enabled("slash_commands"),
+        journal=mutation_audit,
+    )
+    slash_command_queries.set_reconcile(slash_auto_adopt.reconcile)
 
     cache = MarketplaceCache.from_environment(active_env)
     skills_catalog = marketplace_catalog or MarketplaceCatalog.from_environment(
@@ -289,6 +300,13 @@ def build_backend_container(
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
     )
+    mcp_auto_adopt = McpAutoAdoptService(
+        planner=mcp_planner,
+        mutations=mcp_mutations,
+        is_enabled=lambda: auto_adopt_store.is_enabled("mcp"),
+        journal=mutation_audit,
+    )
+    mcp_queries.set_reconcile(mcp_auto_adopt.reconcile)
 
     hooks_store = HookStore(paths.hooks_store_manifest)
     hooks_read_models = HooksReadModelService.from_kernel(store=hooks_store, kernel=harness_kernel)
@@ -298,6 +316,15 @@ def build_backend_container(
         store=hooks_store,
         read_models=hooks_read_models,
     )
+    hooks_auto_adopt = ObservedConfigAutoAdoptService(
+        read_models=hooks_read_models,
+        store=hooks_store,
+        promote=hooks_mutations.promote_hook,
+        family="hooks",
+        is_enabled=lambda: auto_adopt_store.is_enabled("hooks"),
+        journal=mutation_audit,
+    )
+    hooks_queries.set_reconcile(hooks_auto_adopt.reconcile)
 
     permissions_store = PermissionStore(paths.permissions_store_manifest)
     permissions_read_models = PermissionsReadModelService.from_kernel(store=permissions_store, kernel=harness_kernel)
@@ -307,6 +334,15 @@ def build_backend_container(
         store=permissions_store,
         read_models=permissions_read_models,
     )
+    permissions_auto_adopt = ObservedConfigAutoAdoptService(
+        read_models=permissions_read_models,
+        store=permissions_store,
+        promote=permissions_mutations.promote_permission,
+        family="permissions",
+        is_enabled=lambda: auto_adopt_store.is_enabled("permissions"),
+        journal=mutation_audit,
+    )
+    permissions_queries.set_reconcile(permissions_auto_adopt.reconcile)
 
     scaffold_service = ScaffoldService(paths)
     agent_bindings = AgentBindingLedger(paths.bindings_ledger_path)
@@ -361,7 +397,14 @@ def build_backend_container(
     config_snapshots = ConfigSnapshotService(paths)
     config_snapshots.capture_all_external_changes()
 
-    mutation_audit = MutationAuditJournal(paths.mutation_audit_path)
+    skills_auto_adopt = SkillsAutoAdoptService(
+        read_models=skills_read_models,
+        mutations=skills_mutations,
+        is_enabled=lambda: auto_adopt_store.is_enabled("skills"),
+        journal=mutation_audit,
+        lock_path=paths.data_dir / "auto-adopt.lock",
+    )
+    skills_queries.set_reconcile(skills_auto_adopt.reconcile)
 
     skills_tracker = MutationPathTracker(
         lambda: (

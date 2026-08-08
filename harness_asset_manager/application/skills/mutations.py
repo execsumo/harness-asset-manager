@@ -106,9 +106,18 @@ class SkillsMutationService:
         entry = self.queries.require_entry(skill_ref)
         if entry.kind != "unmanaged":
             raise MutationError(f"only unmanaged skills can be managed; this is {display_status(entry)}", status=400)
-        self._manage_entry(entry)
+        self.manage_entry(entry)
         self.read_models.invalidate()
         return {"ok": True}
+
+    def manage_entry(self, entry: InventoryEntry) -> None:
+        """Adopt an already-scanned unmanaged entry.
+
+        The auto-adoption reconciler uses this after it has made its own safety
+        decision. Keeping the filesystem operation here ensures manual and
+        automatic adoption use the same ingest-and-bind semantics.
+        """
+        self._manage_entry(entry)
 
     def manage_all_skills(self) -> dict[str, object]:
         inventory = self.queries.inventory()
@@ -121,7 +130,7 @@ class SkillsMutationService:
                 skipped_count += 1
                 continue
             try:
-                self._manage_entry(entry)
+                self.manage_entry(entry)
                 managed_count += 1
             except MutationError as error:
                 failures.append({

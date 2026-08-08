@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from harness_asset_manager.errors import MutationError
 
 from .contracts import (
@@ -15,10 +17,20 @@ from .read_models import PermissionsReadModelService
 class PermissionsQueryService:
     """Read-side service exposing canonical permissions config and inventory views."""
 
-    def __init__(self, read_models: PermissionsReadModelService) -> None:
+    def __init__(
+        self,
+        read_models: PermissionsReadModelService,
+        reconcile: Callable[[], object] | None = None,
+    ) -> None:
         self.read_models = read_models
+        self._reconcile = reconcile
+
+    def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
+        self._reconcile = reconcile
 
     def list_permissions(self) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         return inventory_payload(
@@ -27,6 +39,8 @@ class PermissionsQueryService:
         )
 
     def get_permission(self, id: str) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         visible_scans = self.read_models.visible_scans(snapshot)

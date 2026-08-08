@@ -27,7 +27,10 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     auto_adopt = group.add_parser(
         "auto-adopt", parents=[common], help="Enable or disable automatic repair of drifted bindings."
     )
-    auto_adopt.add_argument("family", choices=("agents", "skills"))
+    auto_adopt.add_argument(
+        "family",
+        choices=("agents", "skills", "slash_commands", "mcp", "hooks", "permissions"),
+    )
     _add_toggle(auto_adopt)
     auto_adopt.set_defaults(handler=set_auto_adopt)
 

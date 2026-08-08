@@ -45,8 +45,8 @@ describe("SettingsPage", () => {
 
     expect(await screen.findByText("/tmp/data/harness-asset-manager/shared")).toBeInTheDocument();
     expect(screen.getByText("/tmp/data/harness-asset-manager/marketplace")).toBeInTheDocument();
-    expect(screen.getByText("Repair drifted agent bindings automatically")).toBeInTheDocument();
-    const toggle = screen.getByRole("switch", { name: "Repair drifted agent bindings automatically" });
+    expect(screen.getByText("Repair drifted Agent bindings")).toBeInTheDocument();
+    const toggle = screen.getByRole("switch", { name: "Repair drifted Agent bindings" });
     expect(toggle).toBeChecked();
   });
 
@@ -81,7 +81,7 @@ describe("SettingsPage", () => {
 
     renderWithAppProviders(<SettingsPage />);
 
-    const toggle = await screen.findByRole("switch", { name: "Repair drifted agent bindings automatically" });
+    const toggle = await screen.findByRole("switch", { name: "Repair drifted Agent bindings" });
     expect(toggle).toBeChecked();
 
     fireEvent.click(toggle);
@@ -126,7 +126,7 @@ describe("SettingsPage", () => {
     });
 
     const { container } = renderWithAppProviders(<SettingsPage />);
-    await screen.findByRole("switch", { name: "Repair drifted agent bindings automatically" });
+    await screen.findByRole("switch", { name: "Repair drifted Agent bindings" });
 
     const rows = container.querySelectorAll(".settings-row");
     expect(rows.length).toBeGreaterThan(0);

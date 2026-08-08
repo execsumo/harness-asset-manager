@@ -2594,8 +2594,16 @@ export interface components {
         SettingsAutoAdoptResponse: {
             /** Agents */
             agents: boolean;
+            /** Hooks */
+            hooks: boolean;
+            /** Mcp */
+            mcp: boolean;
+            /** Permissions */
+            permissions: boolean;
             /** Skills */
             skills: boolean;
+            /** Slash Commands */
+            slash_commands: boolean;
         };
         /** SettingsHarnessResponse */
         SettingsHarnessResponse: {

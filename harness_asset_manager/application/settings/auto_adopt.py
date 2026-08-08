@@ -8,15 +8,21 @@ from harness_asset_manager.settings_file import (
     update_settings_document,
 )
 
-AutoAdoptFamily = Literal["agents", "skills"]
+AutoAdoptFamily = Literal["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"]
 
-# Agents default **on**: every action it can take is provable — the harness copy is
-# either identical to the store or the only edit in existence (see the decision table
-# in plan-auto-adoption.md §4). Skills default **off**: adopting a local skill
-# directory means `shutil.rmtree` on a real directory of the user's, which is a
-# different class of operation and is not implemented here yet.
-DEFAULTS: Mapping[str, bool] = {"agents": True, "skills": False}
-IMPLEMENTED: set[str] = {"agents"}
+# Agents default **on**: every repair it takes is provable. The remaining families
+# default **off** because adoption changes ownership of user-created files or
+# config entries. They can be enabled independently once the user has reviewed the
+# family-specific safety rules.
+DEFAULTS: Mapping[str, bool] = {
+    "agents": True,
+    "skills": False,
+    "slash_commands": False,
+    "mcp": False,
+    "hooks": False,
+    "permissions": False,
+}
+IMPLEMENTED: set[str] = set(DEFAULTS)
 
 SETTINGS_KEY = "autoAdopt"
 

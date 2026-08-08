@@ -252,7 +252,8 @@ harnesses today — Harness Asset Manager is denylist-only.
 | --- | --- |
 | `settings show` | Storage paths, per-harness support and install state, auto-adopt |
 | `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
-| `settings auto-adopt <agents\|skills> --enable\|--disable` | Control automatic repair of drifted bindings |
+| `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
+| `refresh` | Run one inventory and auto-adoption pass for every asset family |
 | `snapshots list [--harness <h>]` | Captured native config snapshots |
 | `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
 | `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
@@ -376,7 +377,20 @@ Actions that can change local state include:
 - changing harness support settings
 - repairing a drifted agent binding, which can move an edit out of a harness file and into the store
 
-That last one is the only action Harness Asset Manager takes without being asked. It is limited to cases where no content can be lost — either the two copies are identical, or the harness copy is provably the only edit that exists — and it is recorded in an audit log surfaced in the app. Turn it off in Settings under **Repair drifted agent bindings automatically**.
+Automatic adoption is opt-in per asset family, except for the existing safe Agent repair default. It is limited to equivalent observations or cases where a harness copy is provably the only edit, and every action is recorded in the Activity audit log.
+
+| Family | Default | Automatic behavior when enabled |
+| --- | --- | --- |
+| Agents | On | Repair provable drift; conflicting edits remain for review. |
+| Skills | Off | Adopt new, equivalent unmanaged local directories and replace them with store links. |
+| Slash commands | Off | Register equivalent unmanaged files without overwriting their contents. |
+| MCP, Hooks, Permissions | Off | Promote equivalent unmanaged observations without choosing between conflicting configurations. |
+
+These checks run while reading the relevant inventory or detail view, so a setting change
+takes effect on the next read; there is no background watcher. Codex rendered-agent adoption
+remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is
+closed, run `harnessam refresh` for one read and reconciliation pass across all asset families;
+use `harnessam refresh --json` for automation.
 
 App-owned files live under `~/.harness-asset-manager` on macOS (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists) and XDG base directories on Linux.
 
@@ -428,7 +442,7 @@ Disabling a harness in Settings removes its column here immediately, without a r
 Command files already written to that harness and their sync records are left alone —
 re-enabling it restores the column and its sync state unchanged.
 
-Harness Asset Manager tracks target ownership with sync state and content hashes. It will not overwrite an untracked command file automatically, and it reports managed files as changed or missing when the target no longer matches the last synced hash. Review actions let you adopt unmanaged commands, restore managed content, adopt a changed harness command as the new source, or remove a broken binding while leaving the harness file untouched.
+Harness Asset Manager tracks target ownership with sync state and content hashes. With slash-command auto-adoption enabled, it adopts only equivalent unmanaged command files and never overwrites their contents. Otherwise it reports unmanaged, changed, or missing files for review. Review actions let you adopt unmanaged commands, restore managed content, adopt a changed harness command as the new source, or remove a broken binding while leaving the harness file untouched.
 
 ### Hooks
 
@@ -483,7 +497,10 @@ On the next inventory load, each broken binding is classified and handled:
 
 Newest-file-wins is deliberately **not** a rule here — it silently discards the other harness's work, which is the exact failure this exists to prevent. Codex is excluded from automatic adoption entirely, because converting its TOML back to Markdown drops keys Harness Asset Manager does not model.
 
-Every automatic action is appended to an audit log and shown as **Recent automatic repairs** on the agents review page: repair you cannot see is nearly as bad as breakage you cannot see. The whole behaviour is off with one switch in Settings, and turning it off takes effect on the next load, not the next restart.
+Every automatic action is appended to the Activity audit log: repair you cannot see is nearly
+as bad as breakage you cannot see. Agent-specific repairs are also shown as **Recent automatic
+repairs** on the agents review page. Each family has its own setting, and turning one off takes
+effect on the next load, not the next restart.
 
 ### CLIs
 

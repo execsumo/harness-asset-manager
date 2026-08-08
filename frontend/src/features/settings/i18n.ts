@@ -20,8 +20,30 @@ const englishSettingsCopy = {
   },
   autoAdopt: {
     heading: "Automatic maintenance",
-    label: "Repair drifted agent bindings automatically",
-    sub: "When a harness replaces a managed agent link with its own copy, fold that copy back in — but only when it is provably the only edit. Conflicting edits are always left for you.",
+    agents: {
+      label: "Repair drifted Agent bindings",
+      sub: "Fold an edited harness copy back into the store only when it is provably the only edit.",
+    },
+    skills: {
+      label: "Adopt new local Skills",
+      sub: "Adopt equivalent unmanaged Skill folders and replace them with store links.",
+    },
+    slash_commands: {
+      label: "Adopt new slash commands",
+      sub: "Adopt equivalent unmanaged command files without overwriting their contents.",
+    },
+    mcp: {
+      label: "Adopt MCP configurations",
+      sub: "Adopt only when all observed harness configurations are identical.",
+    },
+    hooks: {
+      label: "Adopt Hooks",
+      sub: "Promote equivalent unmanaged Hooks into the shared manifest.",
+    },
+    permissions: {
+      label: "Adopt Permissions",
+      sub: "Promote equivalent unmanaged deny rules into the shared manifest.",
+    },
   },
   errors: {
     unableToLoad: "Unable to load settings.",
@@ -53,8 +75,30 @@ export const settingsCopy = {
     },
     autoAdopt: {
       heading: "自动维护",
-      label: "自动修复偏离的 Agent 绑定",
-      sub: "当 harness 用自己的副本替换托管的 Agent 链接时，将其折叠回存储中——但仅当其被证明是唯一的编辑时。冲突的编辑始终由您处理。",
+      agents: {
+        label: "自动修复偏离的 Agent 绑定",
+        sub: "只有在能证明它是唯一编辑时，才将 harness 副本折叠回存储。",
+      },
+      skills: {
+        label: "自动采用新的本地 Skill",
+        sub: "采用内容相同的未托管 Skill 文件夹，并替换为存储链接。",
+      },
+      slash_commands: {
+        label: "自动采用新的斜杠命令",
+        sub: "采用内容相同的未托管命令文件，不覆盖其内容。",
+      },
+      mcp: {
+        label: "自动采用 MCP 配置",
+        sub: "只有所有 harness 配置完全一致时才采用。",
+      },
+      hooks: {
+        label: "自动采用 Hooks",
+        sub: "将内容相同的未托管 Hook 提升到共享清单。",
+      },
+      permissions: {
+        label: "自动采用权限规则",
+        sub: "将内容相同的未托管拒绝规则提升到共享清单。",
+      },
     },
     errors: {
       unableToLoad: "无法加载设置。",

@@ -220,6 +220,20 @@ class HookRoutesTests(unittest.TestCase):
             states = {s["harness"]: s["state"] for s in entry2["sightings"]}
             self.assertEqual(states.get("claude"), "managed")
 
+    def test_auto_adopt_promotes_a_parseable_unmanaged_hook(self) -> None:
+        with AppTestHarness() as harness:
+            claude_path = harness.spec.home / ".claude" / "settings.json"
+            claude_path.parent.mkdir(parents=True, exist_ok=True)
+            claude_path.write_text(
+                json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo auto-hook"}]}]}}),
+                encoding="utf-8",
+            )
+            harness.put_json("/api/settings/auto-adopt/hooks", {"enabled": True})
+
+            payload = harness.get_json("/api/hooks")
+            entry = next(e for e in payload["entries"] if e.get("spec", {}).get("command") == "echo auto-hook")
+            self.assertEqual(entry["kind"], "managed")
+
 
 if __name__ == "__main__":
     unittest.main()

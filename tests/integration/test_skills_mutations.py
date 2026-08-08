@@ -92,6 +92,10 @@ def seed_unmanage_fixture(spec):
 def seed_cursor_owned_skill_fixture(spec):
     seed_skill_package(spec.cursor_owned_root, "cursor-built", "Cursor Built")
 
+
+def seed_auto_adopt_skill_fixture(spec):
+    seed_skill_package(spec.claude_root, "auto-local", "Auto Local", body="from harness")
+
 def seed_hermes_bundled_exclusion_fixture(spec):
     bundled = seed_skill_package(
         spec.hermes_skills_root / "builtin",
@@ -155,6 +159,17 @@ def seed_hermes_external_hub_fixture(spec):
 
 
 class SkillsMutationTests(unittest.TestCase):
+
+    def test_auto_adopt_enabled_skill_moves_local_folder_into_store(self) -> None:
+        with AppTestHarness(fixture_factory=seed_auto_adopt_skill_fixture) as harness:
+            harness.put_json("/api/settings/auto-adopt/skills", {"enabled": True})
+
+            skills = harness.get_json("/api/skills")
+            adopted = next(row for row in skills["rows"] if row["name"] == "Auto Local")
+
+            self.assertEqual(adopted["displayStatus"], "Managed")
+            self.assertTrue((harness.spec.claude_root / "auto-local").is_symlink())
+            self.assertTrue((harness.spec.skills_store_root / "auto-local").is_dir())
 
 
     def test_hermes_external_hub_skill_can_be_managed_and_enabled_everywhere(self) -> None:

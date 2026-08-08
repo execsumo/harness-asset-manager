@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from harness_asset_manager.errors import MutationError
 
 from .availability import (
@@ -30,6 +32,7 @@ class McpQueryService:
         marketplace_catalog: McpMarketplaceCatalog | None = None,
         availability_probe: McpAvailabilityProbe | None = None,
         availability_cache: AvailabilityCache | None = None,
+        reconcile: Callable[[], object] | None = None,
     ) -> None:
         self.read_models = read_models
         self.planner = planner
@@ -37,8 +40,14 @@ class McpQueryService:
         self.marketplace = marketplace_catalog
         self.availability_probe = availability_probe or McpAvailabilityProbe()
         self._availability_cache = availability_cache if availability_cache is not None else {}
+        self._reconcile = reconcile
+
+    def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
+        self._reconcile = reconcile
 
     def list_servers(self) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         return inventory_payload(
@@ -50,6 +59,8 @@ class McpQueryService:
         )
 
     def get_server(self, name: str) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         visible_scans = self.read_models.visible_scans(snapshot)
@@ -71,6 +82,8 @@ class McpQueryService:
         raise MutationError(f"unknown mcp server: {name}", status=404)
 
     def check_availability(self, name: str) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         entry = next((item for item in inventory.entries if item.name == name), None)
@@ -86,6 +99,8 @@ class McpQueryService:
         }
 
     def list_unmanaged_by_server(self) -> dict[str, object]:
+        if self._reconcile is not None:
+            self._reconcile()
         if self.planner is None:
             raise RuntimeError("unmanaged MCP planner is not configured")
         snapshot = self.read_models.snapshot()

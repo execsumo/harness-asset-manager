@@ -13,7 +13,6 @@ from harness_asset_manager.application.settings.auto_adopt import (
 from harness_asset_manager.application.settings.mutations import (
     SettingsMutationService,
 )
-from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.support_store import HarnessSupportStore
 from harness_asset_manager.settings_file import (
     load_settings_document,
@@ -92,12 +91,11 @@ class AutoAdoptStoreTests(unittest.TestCase):
         self.store.set_enabled("agents", False)
         self.assertFalse(AutoAdoptStore(self.path).is_enabled("agents"))
 
-    def test_enabling_unimplemented_family_raises_value_error(self) -> None:
-        with self.assertRaises(ValueError) as ctx:
-            self.store.set_enabled("skills", True)
-        self.assertIn("not implemented yet", str(ctx.exception))
+    def test_enabling_skills_is_supported(self) -> None:
+        prefs = self.store.set_enabled("skills", True)
+        self.assertTrue(prefs["skills"])
 
-    def test_disabling_unimplemented_family_succeeds(self) -> None:
+    def test_disabling_skills_succeeds(self) -> None:
         prefs = self.store.set_enabled("skills", False)
         self.assertFalse(prefs["skills"])
 
@@ -125,7 +123,7 @@ class AutoAdoptStoreTests(unittest.TestCase):
 
     def test_an_unknown_family_is_refused(self) -> None:
         with self.assertRaises(KeyError):
-            self.store.set_enabled("mcp", True)
+            self.store.set_enabled("unknown", True)
 
 
 class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
@@ -142,31 +140,31 @@ class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
             auto_adopt_store=self.auto_adopt_store,
         )
 
-    def test_enabling_skills_raises_mutation_error_400(self) -> None:
-        with self.assertRaises(MutationError) as ctx:
-            self.service.set_auto_adopt("skills", True)
-        self.assertEqual(ctx.exception.status, 400)
-        self.assertIn("not implemented yet", str(ctx.exception))
+    def test_enabling_skills_succeeds(self) -> None:
+        result = self.service.set_auto_adopt("skills", True)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["autoAdopt"]["skills"])
 
     def test_disabling_skills_succeeds(self) -> None:
         result = self.service.set_auto_adopt("skills", False)
         self.assertTrue(result["ok"])
-        self.assertEqual(result["autoAdopt"], {"agents": True, "skills": False})
+        self.assertEqual(result["autoAdopt"], dict(DEFAULTS))
 
     def test_agents_unaffected_both_ways(self) -> None:
         res_off = self.service.set_auto_adopt("agents", False)
         self.assertTrue(res_off["ok"])
-        self.assertEqual(res_off["autoAdopt"], {"agents": False, "skills": False})
+        expected = dict(DEFAULTS)
+        expected["agents"] = False
+        self.assertEqual(res_off["autoAdopt"], expected)
 
         res_on = self.service.set_auto_adopt("agents", True)
         self.assertTrue(res_on["ok"])
-        self.assertEqual(res_on["autoAdopt"], {"agents": True, "skills": False})
+        expected["agents"] = True
+        self.assertEqual(res_on["autoAdopt"], expected)
 
     def test_unknown_family_raises_mutation_error_404(self) -> None:
-        with self.assertRaises(MutationError) as ctx:
-            self.service.set_auto_adopt("slash_commands", True)
-        self.assertEqual(ctx.exception.status, 404)
-        self.assertIn("unknown asset family", str(ctx.exception))
+        result = self.service.set_auto_adopt("slash_commands", True)
+        self.assertTrue(result["autoAdopt"]["slash_commands"])
 
 
 if __name__ == "__main__":

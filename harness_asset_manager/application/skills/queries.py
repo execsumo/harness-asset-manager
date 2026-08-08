@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Literal
+from typing import Callable, Literal
 
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.sources import (
@@ -25,9 +25,14 @@ class SkillsQueryService:
         self,
         read_models: SkillsReadModelService,
         source_fetcher: SourceFetchService,
+        reconcile: Callable[[], object] | None = None,
     ) -> None:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
+        self._reconcile = reconcile
+
+    def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
+        self._reconcile = reconcile
 
     def health(self) -> dict[str, object]:
         snapshot = self.read_models.snapshot()
@@ -61,6 +66,8 @@ class SkillsQueryService:
         return source_status_payload(self.resolve_update_status(entry))
 
     def inventory(self) -> SkillInventory:
+        if self._reconcile is not None:
+            self._reconcile()
         snapshot = self.read_models.snapshot()
         return SkillInventory.from_snapshot(
             store_scan=snapshot.store_scan,
