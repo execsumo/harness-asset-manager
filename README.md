@@ -348,13 +348,13 @@ from every matrix rather than shown as an inert column.
 
 | Harness | Skills | MCP servers | Slash commands | Hooks | Permissions |
 |---|---:|---:|---:|---:|---:|
-| Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | Claude Code | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Antigravity (agy) | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
 | Cursor | Yes | Yes | Yes | Yes | No |
 | OpenCode | Yes | Yes | Yes | Partial | No |
 | Hermes Agent | Yes | Yes | Yes* | Not Yet | No |
 | OpenClaw | Yes | Not Yet | Not Yet | Not Yet | No |
-| Antigravity (agy) | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
 
 <sub>\* Hermes Agent slash-command support is provisional. Its slash-command directory (`~/.hermes/commands`, frontmatter Markdown) follows common conventions but is **not yet verified against a shipping Hermes build**; hooks are not yet mapped. See `handoff.md`.</sub>
 

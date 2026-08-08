@@ -147,7 +147,7 @@ directory name. Only `marketplace/` is safe to delete; it is a cache and rebuild
 
 ### Native Config Snapshot Service
 HAM captures canonical baselines and timestamped snapshots of user-level native harness config files under `configs/<harness_id>/`.
-- **Triggers**: Pre-write (prior to HAM edits), External drift (detected via SHA-256 hash checks on startup), and Manual (`ham snapshot` CLI / Web UI).
+- **Triggers**: Pre-write (prior to HAM edits), External drift (detected via SHA-256 hash checks on startup), and Manual (`harnessam snapshot` CLI / Web UI).
 - **Safety**: SHA-256 deduplication avoids storage bloat; automatic secret redaction masks API keys and tokens prior to export.
 - **Atomic-Save Immunity**: Real files in native harness homes are preserved to prevent atomic `rename()` operations from severing file symlinks.
 

@@ -2,7 +2,73 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-07 (latest) — Mutation activity view implemented after PRs #30 and #31 merged
+## 2026-08-08 (latest) — Docs reconciled against `main`; §1.1 confirmed already shipped
+
+Documentation-only pass on `docs/refresh-open-items`. No behaviour changed. Written after
+`feat/activity-view` was fast-forwarded into local `main` (`63cfbe4`) — **which is not yet
+pushed; `origin/main` is still `2faa775`.**
+
+### What was wrong, and what it now says
+
+- **`RECOMMENDATIONS.md` §1.1 was stale and has been removed.** It still read "Remaining: flip
+  those to preservation assertions," but PR #30 (`bd72d0a`, merged 2026-08-06) had already done
+  it: `McpServerSpec` carries `extras`/`extras_dict()`, every transport mapper round-trips them
+  via `_extras(raw, {…owned keys})`, `FrontmatterMarkdownCommandCodec` carries unowned
+  frontmatter verbatim on `SlashCommand.frontmatter`, and `test_writer_round_trip.py` now
+  asserts **preservation** (`test_unknown_frontmatter_keys_are_preserved`,
+  `test_frontmatter_comments_are_preserved`, `test_unknown_stdio_fields_are_preserved`,
+  `test_unknown_http_fields_are_preserved`, `test_unknown_fields_are_preserved`) plus
+  `test_disabled_server_stays_disabled_on_write` — the exact OpenCode force-`enabled=True` case
+  §1.1 named as open. Recorded in the shipped-batches list instead.
+- **Checked, and there is no equivalent gap in hooks/permissions.** Those families have no
+  `extras` plumbing, which looks like the same bug but is not: they are config-subtree families
+  whose adapter loads the whole document, mutates in place, and atomically writes it back.
+  Probed `claude-code-hooks.enable_hook` with a realistic document — unrelated sibling keys,
+  a foreign hook entry, and an unmodeled per-entry key all survive, and the call is idempotent.
+  This confirms the 2026-07-27 audit's "n/a for config-subtree families" verdict.
+- **Stale test counts refreshed** (was 385/155/263) and the header no longer claims a green
+  frontend suite it does not have — see below.
+- **`ARCHITECTURE.md` said `ham snapshot`.** No such binary; PR #21 renamed the CLI to
+  `harnessam` and fixed the README examples but missed this one.
+- **`README.md`'s support matrix contradicted its own invariant.** The paragraph above it says
+  harness order is declared once in `SUPPORTED_HARNESS_DEFINITIONS`, but the table was ordered
+  Codex-first. Verified the real order at runtime — `['claude', 'codex', 'agy', 'cursor',
+  'opencode', 'hermes', 'openclaw']` — and reordered the table to match. `ARCHITECTURE.md §3`
+  was already correct.
+- **The ruff gate is narrower than the docs implied.** CI runs
+  `ruff check harness_asset_manager tests`, so `scripts/` has never been linted — it has 9
+  auto-fixable `I001` violations today. Not a regression and not a CI failure; §1.2 now names
+  widening the scope as its first remaining step.
+- **`handoff.md` had two `(latest)` headings**; the 2026-07-27 one is now plain. The
+  2026-07-12 "⚠️ Incomplete — resume here" block carries a SUPERSEDED banner rather than being
+  rewritten — this file is an append-only log and its history is left intact.
+
+### Validation state — read this before trusting a "green" claim
+
+Measured on this branch: backend **496 unit + 169 integration pass**, `npm run typecheck`
+clean, `npm run build` clean. **`npm test` is 275/278 and exits non-zero.** The three failures
+are `SkillDetailContent`, `MarketplaceCliPage`, and `AgentsInUsePage` — async detail renders
+that blow the default `waitFor` budget in this container (full run ~13 min, mostly environment
+setup). Pre-existing and unrelated to any change here, but note the 2026-08-07 entry below
+records this as "274/277," which was a miscount. Added as a Tier-3 item.
+
+### Still open, in priority order
+
+1. **Push `main`.** Local `main` is one commit ahead of `origin/main` and the activity view is
+   in it. There was never a PR for `feat/activity-view`, so **it has never run in CI** — CI only
+   triggers on `main` pushes and pull requests.
+2. **Delete six merged-but-undeleted branches**, contrary to the short-lived-branch rule in
+   `CLAUDE.md`: `feat/activity-view`, `feat/mutation-audit-journal`,
+   `fix/preserve-unknown-writer-fields`, `feat/harnessam-short-command`,
+   `fix/readme-broken-image-links`, `fix/rebrand-skill-manager-remnants`, and
+   `claude/harness-asset-manager-headless-cli-jze29n`. Verified via `git cherry -v main <branch>`
+   plus the merged-PR list; the only commit not in `main` is `0748b8a` on
+   `feat/mutation-audit-journal`, a docs-only handoff refresh that this entry supersedes.
+3. **`RECOMMENDATIONS.md §1.2`** — pyright + ESLint + chip the ruff `F401` baseline. Now the
+   only open Tier-1 item.
+4. **Stage 4 slash-command auto-repair** is the next product work (`plan-auto-adoption.md`).
+
+## 2026-08-07 — Mutation activity view implemented after PRs #30 and #31 merged
 
 PRs #30 (unknown writer-field preservation) and #31 (mutation audit journal) are merged
 into `main`. Follow-on work is implemented on `feat/activity-view`:
@@ -24,7 +90,7 @@ and reproduce when run separately (agents unsupported row, CLI detail, skill doc
 Next product work after this branch merges is Stage 4 slash-command auto-repair.
 Skills auto-adoption remains Stage 5 and default-off; Codex support remains deferred.
 
-## 2026-07-27 (latest) — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
+## 2026-07-27 — Auto-repair coverage audited: agents only, and `autoAdopt.skills` is a no-op
 
 Audit only, no behaviour changed. **The agents path is fine** — this entry is not about a
 defect in it.
@@ -1044,6 +1110,14 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
   `npm run build`, `npm run codegen:openapi` — all green.
 
 ### ⚠️ Incomplete — resume here
+
+> **PARTLY SUPERSEDED (2026-08-08) — do not resume from this list as written.** Item 2's MCP
+> half was resolved on 2026-07-13 by the migration to upstream's product-accurate Hermes impl
+> (`~/.hermes/config.yaml`, YAML `mcp_servers`); only the *slash* convention is still
+> unverified. The "Housekeeping" note below ("Nothing is committed… working tree on `main`")
+> described that session only — it landed long ago. Items 1, 3, and 4 are still open and are
+> tracked in `RECOMMENDATIONS.md §1.3` and the README support matrix. Current status is at the
+> top of this file.
 
 1. **Hermes hooks — NOT implemented (the main open item).** Hermes has no `hooks` binding, so it
    is correctly absent from the Hooks views. Deferred because hook config formats are

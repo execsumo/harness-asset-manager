@@ -1,16 +1,22 @@
 # Recommendations
 
-> Review of 2026-07-25, refreshed against `main` after the Tier-1 batch. Verified by running the
-> suites: backend unit (385) + integration (155) tests pass, `npm run typecheck` clean, `npm test`
-> green (263), `ruff check` clean, OpenAPI drift gate clean.
+> Review of 2026-07-25, refreshed against `main` on 2026-08-08. Verified by running the suites:
+> backend unit (496) + integration (169) pass, `npm run typecheck` is clean, `npm run build`
+> succeeds, and `ruff check harness_asset_manager tests` (CI's scope) is clean.
+> `npm test` is **275/278 — not green**: three async detail tests (`SkillDetailContent`, `MarketplaceCliPage`,
+> `AgentsInUsePage`) time out under this container's `waitFor` budget and reproduce in isolation.
+> They are pre-existing and unrelated to the entries below, but the suite does exit non-zero — see
+> the Tier-3 entry on the timing-fragile frontend tests.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
 >
 > **This list is kept to open items only — shipped work is removed.** Shipped batches:
 > 2026-07-24 merge `98c3417` (audit gates, loopback guards, static-root containment, dead-code pass);
 > 2026-07-25 Tier-1 batch (Dependabot + SHA-pinned actions; golden writer round-trip tests; ruff lint
-> gate; Hermes slash provisional label) — see `handoff.md` for the record. Partially-shipped items
-> below keep their number and describe only the remaining scope.
+> gate; Hermes slash provisional label);
+> 2026-08-06 PR #30 `bd72d0a` (§1.1 — writers now preserve unknown user fields);
+> 2026-08-07 `63cfbe4` (§2.1 — mutation activity view) — see `handoff.md` for the record.
+> Partially-shipped items below keep their number and describe only the remaining scope.
 
 ## Already strong — don't churn these
 
@@ -28,33 +34,20 @@
 
 ## Tier 1 — High value, moderate effort
 
-### 1.1 Harden the writers so unknown user fields survive a round-trip — M
-
-**Shipped (2026-07-25):** `tests/unit/test_writer_round_trip.py` codifies the test the retrospective
-in `plan-agents-simplify.md` calls for — for every writer of a user-authored file (slash frontmatter
-codec, every MCP transport mapper) it pins idempotency, owned-field preservation, and a
-*characterization* of the unknown keys/comments currently dropped. The data-loss surface is now
-visible and locked.
-
-**Remaining:** the characterization tests today assert that unknown frontmatter keys/comments and
-unknown MCP entry fields (e.g. `disabled`, `autoApprove`) are *dropped* — the writers still destroy
-what they do not model. Flip those to preservation assertions: have
-`FrontmatterMarkdownCommandCodec` carry unknown frontmatter verbatim and `McpServerSpec` carry
-per-entry extras, so re-writing a realistic file leaves untouched regions byte-identical (OpenCode's
-force-`enabled=True` is the clearest live example). Consider `hypothesis` for frontmatter/JSON
-round-trip properties once preservation lands.
-
 ### 1.2 Finish static-analysis adoption (type-check + frontend lint + baseline cleanup) — M
 
 **Shipped (2026-07-25):** ruff is the backend lint gate — `[tool.ruff]` in `pyproject.toml`,
-`requirements-dev.txt`, and a "Backend lint" CI step. Import sorting (I) is enforced and applied
-across the tree; pyflakes (F) is enforced with `F401`/`F821`/`F841` baselined (the baseline is
-documented in-config and meant to shrink).
+`requirements-dev.txt`, and a "Backend lint" CI step. Import sorting (I) is enforced and applied;
+pyflakes (F) is enforced with `F401`/`F821`/`F841` baselined (the baseline is documented in-config
+and meant to shrink).
 
-**Remaining:** (a) chip the ruff baseline — drop `F401` by removing the 29 unused imports in a
+**Remaining:** (a) **widen the lint scope** — the CI step runs `ruff check harness_asset_manager
+tests`, so `scripts/` has never been linted and currently has 9 `I001` violations across 8 files
+(all auto-fixable). "Applied across the tree" above was only ever true of the two linted
+directories; (b) chip the ruff baseline — drop `F401` by removing the 29 unused imports in a
 verified per-module pass (a blanket `--fix` rewrote import paths and broke test collection, so this
-needs care), then broaden `select` toward `E`/`W`/`UP`/`B`; (b) add `pyright` (or `mypy`) with a
-committed config + CI step, starting from `basic`; (c) add ESLint (typescript + react-hooks) for
+needs care), then broaden `select` toward `E`/`W`/`UP`/`B`; (c) add `pyright` (or `mypy`) with a
+committed config + CI step, starting from `basic`; (d) add ESLint (typescript + react-hooks) for
 `frontend/src`. The fifteen `# noqa: BLE001` comments are the existing half-adoption this completes.
 
 
@@ -78,8 +71,9 @@ seven more harnesses on the README roadmap, define a repeatable "new harness ver
 
 ### 2.2 Coverage measurement with a ratchet — S–M
 
-385 backend unit tests, 155 integration tests, and 62 frontend test files (263 tests) exist, but nothing measures what they cover, so
-gaps are invisible (e.g. the two data-loss bugs in §1.1 lived in well-tested-looking code).
+496 backend unit tests, 169 integration tests, and 62 frontend test files (278 tests) exist, but
+nothing measures what they cover, so gaps are invisible — the unknown-field data loss fixed by
+PR #30 lived in well-tested-looking code for months.
 
 **Action:** add `coverage.py` to `scripts/test_backend.sh` and `vitest --coverage` to CI; report
 per-package coverage and ratchet the threshold (fail if it drops). The point is trend, not a
@@ -112,9 +106,9 @@ modules).
 
 ## Tier 3 — Housekeeping (low priority, cheap when touched next)
 
-- **Root doc sprawl.** `handoff.md` (21 KB), two `plan-agents-*.md`, and this file sit beside a
-  22 KB README. Move plans/handoffs under `docs/` (keeping the handoff discipline that clearly
-  works) and leave a pointer at the root. — **S**
+- **Root doc sprawl.** `handoff.md` (69 KB and growing), `plan-auto-adoption.md`, two
+  `plan-agents-*.md`, and this file sit beside a 36 KB README. Move plans/handoffs under `docs/`
+  (keeping the handoff discipline that clearly works) and leave a pointer at the root. — **S**
 - **Windows is architecturally excluded, not just unsupported.** `atomic_files.py` imports
   `fcntl` at module top level, so the package doesn't even *import* on Windows. Fine while the
   README badges say macOS/Linux — just gate the import so "Windows support" later is a port of
@@ -122,21 +116,25 @@ modules).
 - **`choose_port` / `bind_socket` TOCTOU race** (`runtime/server.py:32-49`): probe-bind, close,
   re-bind. Two quick starts can collide between the probes. Bind once and keep the socket (the
   code already passes `fd` to uvicorn, so this is mostly deleting the probe). — **S**
-- **Clean local scratch from the repo dir.** Stale `test_scan_*.pyc` and `.pytest_cache` linger
-  in the working tree (untracked, but confusing); and the `harness_asset_manager/db/` directory now
-  contains **only** stale `__pycache__/*.pyc` — its source was removed in `9f23101` but the
-  compiled cache and the empty package dir were left behind. The project standardizes on
-  `unittest`, so either document pytest compatibility or remove the cache dirs / orphaned
-  `db/` package. — **S**
+- **Three frontend tests are timing-fragile, so `npm test` exits non-zero on slower machines.**
+  `SkillDetailContent`, `MarketplaceCliPage`, and `AgentsInUsePage` each `await findBy…` on an
+  async detail render and blow the default `waitFor` budget in a container (the full run takes
+  ~13 min here, most of it environment setup). CI has been green on `main`, so this reads as a
+  flake, but a suite that cannot be trusted to go green locally stops being a gate.
+  Raise the budget for those three, or make the detail render deterministic under test. — **S**
+- **Clean local scratch from the repo dir.** The orphaned `harness_asset_manager/db/` package is
+  **gone** (fixed); no `.pytest_cache` remains. What lingers is untracked `__pycache__/*.pyc`
+  throughout the tree. Harmless but confusing — the project standardizes on `unittest`, so either
+  document pytest compatibility or add the cache dirs to a cleanup target. — **S**
 
 ---
 
 ## Suggested sequencing
 
-1. **Tier-1 batch shipped 2026-07-25** (1.4 Dependabot + SHA pinning; 1.1 golden round-trip tests;
-   1.2 ruff gate; 1.3 Hermes slash label). **Next (all S/M):** finish the partials in value order —
-   1.1 harden the writers to preserve unknown fields, 1.2 add pyright + ESLint + chip the ruff
-   baseline, 1.3 label/verify Hermes MCP & hooks.
+1. **§1.1 closed 2026-08-06** (PR #30) and **§2.1 closed 2026-08-07** (activity view), so Tier 1
+   has one open item left: **1.2** — add pyright + ESLint and chip the ruff `F401` baseline.
+   **1.3** (label or verify Hermes MCP & hooks) is next after it.
 2. **When planning the next family or harness:** 2.3 first; use the shipped journal for traceability,
    and add 2.2 to keep coverage honest.
-3. **Tier 3 housekeeping** rides along whenever its files are touched next.
+3. **Tier 3 housekeeping** rides along whenever its files are touched next — except the flaky
+   frontend trio, which is worth doing on its own the next time `npm test` blocks someone.
