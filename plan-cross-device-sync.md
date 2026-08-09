@@ -204,6 +204,22 @@ rename} — against two synthetic devices, plus a property test over the pure cl
 handling (§8). Each family is independently shippable; the UI states which families sync,
 in the same honest way the harness matrix already prints "Not Yet" cells.
 
+### Harness scope — core first, at every phase
+
+**Decision: correctness on the core four before the best-effort harnesses are considered
+at all. Settled.** The tier is declared in `catalog.py` (`support_tier`) and reachable via
+`core_harness_ids()`; see README → Supported harnesses → Support tiers.
+
+- **Phase 1's gate is a core-harness gate.** "A target machine with a different
+  installed-harness set" means a container that receives Claude and Codex bindings
+  correctly — not one that happens to exercise Hermes.
+- **Phase 3 reaches correctness on core before touching the rest.** MCP is the clearest
+  case: it is hardest precisely because of the number of config shapes, and cutting the
+  set to the core four removes a third of them from the critical path.
+- Best-effort harnesses are not *excluded* from sync — records are harness-agnostic, so
+  they come along. They are excluded from the **gates**. A sync bug that only manifests on
+  OpenCode does not block a phase.
+
 ### Phase 4 — Make devices visible
 
 **Ships:** device presence per asset ("on 2 of 3 machines") and a differences summary on

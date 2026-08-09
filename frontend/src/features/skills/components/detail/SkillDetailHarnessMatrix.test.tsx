@@ -9,7 +9,6 @@ const cells: HarnessCell[] = [
   { harness: "claude", label: "Claude", state: "enabled", interactive: true },
   { harness: "cursor", label: "Cursor", state: "found", interactive: false },
   { harness: "opencode", label: "OpenCode", state: "empty", interactive: false },
-  { harness: "openclaw", label: "OpenClaw", state: "empty", interactive: false },
 ];
 
 describe("SkillDetailHarnessMatrix", () => {

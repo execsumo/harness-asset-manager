@@ -376,17 +376,6 @@ profiles:
             self.assertNotIn("mcp", canonical)
             self.assertNotIn("mcp", official)
 
-    def test_openclaw_without_mcp_command_is_not_writable(self) -> None:
-        with TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            adapter = _adapter("openclaw", home=home)
-
-            status = adapter.status()
-            self.assertFalse(status.mcp_writable)
-            self.assertIn("OpenClaw", status.mcp_unavailable_reason or "")
-            with self.assertRaises(MutationError):
-                adapter.enable_server(_spec())
-
     def test_has_binding_after_enable(self) -> None:
         with TemporaryDirectory() as tmp:
             home = Path(tmp)

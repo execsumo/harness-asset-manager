@@ -275,61 +275,6 @@ class HermesMapper:
         )
 
 
-# OpenClaw -----------------------------------------------------------------
-
-
-class OpenClawMapper:
-    """OpenClaw MCP config shape, used only when the local CLI supports it."""
-
-    def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
-        payload = spec.extras_dict()
-        if spec.transport == "stdio":
-            if spec.command is not None:
-                payload["command"] = spec.command
-            if spec.args:
-                payload["args"] = list(spec.args)
-            if spec.env:
-                payload["env"] = dict(spec.env)
-            return payload
-
-        payload["url"] = spec.url
-        payload["transport"] = "streamable-http" if spec.transport == "http" else "sse"
-        if spec.headers:
-            payload["headers"] = dict(spec.headers)
-        return payload
-
-    def dict_to_spec(
-        self, name: str, raw: Mapping[str, object], *, source: McpSource | None = None
-    ) -> McpServerSpec:
-        if "command" in raw or "args" in raw:
-            return McpServerSpec(
-                name=name,
-                display_name=name,
-                source=source or McpSource.adopted("openclaw", name),
-                transport="stdio",
-                command=_str_or_none(raw.get("command")),
-                args=_str_tuple(raw.get("args")),
-                env=_str_pairs(raw.get("env")),
-                extras=_extras(raw, {"command", "args", "env"}),
-            )
-        if "url" in raw:
-            transport_raw = _str_or_none(raw.get("transport")) or _str_or_none(raw.get("type"))
-            transport = "http" if transport_raw in {None, "http", "streamable-http"} else "sse"
-            return McpServerSpec(
-                name=name,
-                display_name=name,
-                source=source or McpSource.adopted("openclaw", name),
-                transport=transport,
-                url=_str_or_none(raw.get("url")),
-                headers=_str_pairs(raw.get("headers")),
-                extras=_extras(raw, {"url", "transport", "type", "headers"}),
-            )
-        raise MutationError(
-            f"unsupported openclaw mcp entry '{name}': missing 'command' and 'url'",
-            status=400,
-        )
-
-
 # Antigravity CLI -----------------------------------------------------------
 
 
@@ -416,7 +361,6 @@ _MAPPERS: dict[str, TransportMapper] = {
     "opencode": OpenCodeMapper(),
     "codex": CodexMapper(),
     "hermes": HermesMapper(),
-    "openclaw": OpenClawMapper(),
     "antigravity-cli": AntigravityCliMapper(),
 }
 
@@ -433,7 +377,6 @@ __all__ = [
     "CodexMapper",
     "CursorMapper",
     "HermesMapper",
-    "OpenClawMapper",
     "OpenCodeMapper",
     "TransportMapper",
     "get_mapper",

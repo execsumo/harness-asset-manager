@@ -60,14 +60,6 @@ class FakeHomeSpec:
         return self.xdg_config_home / "opencode" / "skills"
 
     @property
-    def openclaw_home(self) -> Path:
-        return self.home / ".openclaw"
-
-    @property
-    def openclaw_managed_root(self) -> Path:
-        return self.openclaw_home / "skills"
-
-    @property
     def agy_root(self) -> Path:
         return self.home / ".gemini" / "antigravity-cli" / "skills"
 
@@ -97,7 +89,13 @@ class FakeHomeSpec:
         }
 
 
-def create_fake_home_spec(root: Path, *, seed_openclaw_state: bool = True) -> FakeHomeSpec:
+def create_fake_home_spec(root: Path, *, omit_clis: tuple[str, ...] = ()) -> FakeHomeSpec:
+    """A synthetic machine: HOME, the XDG roots, and a stub PATH of harness CLIs.
+
+    ``omit_clis`` leaves those executables off the stub PATH, which is how a test says
+    "this harness is not installed on this machine". It replaced a boolean that could
+    only express that for OpenClaw, retired 2026-08-09.
+    """
     spec = FakeHomeSpec(
         root=root,
         home=root / "home",
@@ -113,7 +111,6 @@ def create_fake_home_spec(root: Path, *, seed_openclaw_state: bool = True) -> Fa
         spec.claude_root,
         spec.cursor_root,
         spec.opencode_root,
-        spec.openclaw_managed_root,
         spec.agy_root,
         spec.hermes_skills_root,
         spec.xdg_state_home,
@@ -122,9 +119,9 @@ def create_fake_home_spec(root: Path, *, seed_openclaw_state: bool = True) -> Fa
         path.mkdir(parents=True, exist_ok=True)
 
     for executable in ("codex", "claude", "cursor-agent", "opencode", "agy", "hermes"):
+        if executable in omit_clis:
+            continue
         write_cli_stub(spec.bin_dir / executable, executable)
-    if seed_openclaw_state:
-        write_cli_stub(spec.bin_dir / "openclaw", "openclaw")
     return spec
 
 

@@ -31,17 +31,17 @@ class HttpApiTests(unittest.TestCase):
                 settings["storage"]["settingsPath"],
                 str(harness.spec.xdg_config_home / "harness-asset-manager" / "settings.json"),
             )
-            self.assertEqual(len(settings["harnesses"]), 7)
-            openclaw = next(item for item in settings["harnesses"] if item["harness"] == "openclaw")
-            self.assertTrue(openclaw["installed"])
-            self.assertTrue(openclaw["supportEnabled"])
-            self.assertEqual(openclaw["managedLocation"], str(harness.spec.home / ".openclaw"))
-            self.assertNotIn("discoveryMode", openclaw)
+            self.assertEqual(len(settings["harnesses"]), 6)
+            opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
+            self.assertTrue(opencode["installed"])
+            self.assertTrue(opencode["supportEnabled"])
+            self.assertEqual(opencode["managedLocation"], str(harness.spec.opencode_root.parent))
+            self.assertNotIn("discoveryMode", opencode)
             self.assertNotIn("centralStore", settings)
             self.assertNotIn("topology", settings)
 
-    def test_health_skills_and_settings_work_without_openclaw_state(self) -> None:
-        with AppTestHarness(seed_openclaw=False) as harness:
+    def test_health_skills_and_settings_work_without_opencode_state(self) -> None:
+        with AppTestHarness(omit_clis=("opencode",)) as harness:
             health = harness.get_json("/api/health")
             skills = harness.get_json("/api/skills")
             settings = harness.get_json("/api/settings")
@@ -49,10 +49,10 @@ class HttpApiTests(unittest.TestCase):
             self.assertTrue(health["ok"])
             self.assertEqual(skills["summary"], {"managed": 0, "unmanaged": 0})
             self.assertEqual(skills["rows"], [])
-            openclaw = next(item for item in settings["harnesses"] if item["harness"] == "openclaw")
-            self.assertFalse(openclaw["installed"])
-            self.assertTrue(openclaw["supportEnabled"])
-            self.assertEqual(openclaw["managedLocation"], str(harness.spec.home / ".openclaw"))
+            opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
+            self.assertFalse(opencode["installed"])
+            self.assertTrue(opencode["supportEnabled"])
+            self.assertEqual(opencode["managedLocation"], str(harness.spec.opencode_root.parent))
 
     def test_settings_support_toggle_hides_disabled_harness_from_skills_inventory(self) -> None:
         with AppTestHarness(mixed=True) as harness:
@@ -87,7 +87,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(detail["displayStatus"], "Managed")
             self.assertEqual(
                 [cell["label"] for cell in detail["harnessCells"]],
-                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Hermes Agent", "OpenClaw"],
+                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Hermes Agent"],
             )
             self.assertNotIn("updateStatus", detail["actions"])
             self.assertEqual(source_status["updateStatus"], "no_update_available")
@@ -111,7 +111,7 @@ class HttpApiTests(unittest.TestCase):
             shared_audit = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
             detail = harness.get_json(f"/api/skills/{shared_audit['skillRef']}")
 
-            self.assertEqual([location["label"] for location in detail["locations"]], ["Shared Store", "Antigravity", "Codex", "OpenClaw", "OpenCode"])
+            self.assertEqual([location["label"] for location in detail["locations"]], ["Shared Store", "Antigravity", "Codex", "OpenCode"])
             self.assertEqual(detail["actions"]["stopManagingStatus"], "available")
             self.assertEqual(detail["actions"]["stopManagingHarnessLabels"], ["Codex"])
             self.assertEqual(detail["actions"]["deleteHarnessLabels"], ["Codex"])

@@ -308,13 +308,13 @@ describe("isMcpHarnessAddressable", () => {
   it("returns false when the harness is present but not MCP-writable", () => {
     expect(
       isMcpHarnessAddressable({
-        harness: "openclaw",
-        label: "OpenClaw",
-        logoKey: "openclaw",
+        harness: "hermes",
+        label: "Hermes Agent",
+        logoKey: "hermes",
         installed: true,
         configPresent: true,
         mcpWritable: false,
-        mcpUnavailableReason: "Installed OpenClaw does not expose MCP config support",
+        mcpUnavailableReason: "Installed Hermes Agent does not expose MCP config support",
       }),
     ).toBe(false);
   });

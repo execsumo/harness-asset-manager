@@ -1,13 +1,14 @@
 # Recommendations
 
-> Review of 2026-07-25, refreshed against `main` on 2026-08-08. Verified by running the suites:
-> backend unit (496) + integration (169) pass, `npm run typecheck` is clean, `npm run build`
-> succeeds, `ruff check harness_asset_manager tests scripts` is clean, `pyright` completes with
-> its current basic-mode warning baseline, and `npm run lint:frontend` completes with warnings.
-> `npm test` is **275/278 — not green**: three async detail tests (`SkillDetailContent`, `MarketplaceCliPage`,
-> `AgentsInUsePage`) time out under this container's `waitFor` budget and reproduce in isolation.
-> They are pre-existing and unrelated to the entries below, but the suite does exit non-zero and
-> the cause is not yet established — see the Tier-3 entry on the three timing-out frontend tests.
+> Review of 2026-07-25, refreshed against `main` on 2026-08-09 (harness support tiers; OpenClaw
+> retired). Verified by running the suites: backend unit (507) + integration (175) pass,
+> `npm run typecheck` is clean, `npm run codegen:check` reports no drift, `npm run build` succeeds,
+> `ruff check harness_asset_manager tests scripts` is clean, `pyright` reports 0 errors against its
+> 165-warning basic-mode baseline (unchanged), and `npm run lint:frontend` completes with 23
+> warnings, 0 errors. `npm test` was **278/278 green** in this container in ~43s — the three async
+> detail tests recorded below as timing out did **not** reproduce here. That does not close the
+> Tier-3 entry (no CI evidence either way yet), but it does mean the suite is not currently
+> blocking.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
 >
@@ -36,20 +37,6 @@
 
 ## Tier 1 — High value, moderate effort
 
-### 1.3 Finish labeling (or verify) the Hermes harness — M
-
-**Shipped (2026-07-25):** the Hermes **slash** binding now carries a provisional `support_note`
-("…unverified against a real Hermes install; writes may not take effect…") in
-`harness/catalog.py`, surfaced to the UI via the existing `SlashTarget.supportNote` path. The agents
-binding was already labeled unavailable (no agent-definition format).
-
-**Remaining:** MCP and hooks are still written on unverified assumptions with no provisional label.
-Thread a `support_note` through `ConfigSubtreeBindingProfile` → the MCP/hooks read models (typed,
-so it needs an OpenAPI regen) and mark both provisional, **or** validate against a real Hermes
-build and record the evidence in `handoff.md` (as was done for Claude/agy agent symlinks). With
-seven more harnesses on the README roadmap, define a repeatable "new harness verification" checklist
-(probe CLI, real read, real write, round-trip diff) and reuse it per harness.
-
 ### 1.4 `--state-dir` does not isolate the store, but the README says it does — S
 
 Found 2026-08-09 during cross-device sync planning (`plan-cross-device-sync.md` §13).
@@ -65,6 +52,46 @@ consequence is not, which is why it sits here.
 plus `HOME` for harness roots — what `tests/support/fake_home.py` already does), or make
 `--state-dir` mean what it says by having it override all three base dirs. Prefer the latter if
 cross-device sync proceeds, since its two-machine test strategy leans on real isolation.
+
+### 1.3 Label Hermes MCP & hooks provisional — do NOT verify — S
+
+**Rescoped 2026-08-09** when the four core harnesses (Claude Code, Codex, Antigravity,
+Cursor) were declared and the rest dropped to best effort. This was the top Tier-1 item at
+M effort; under the tier split its expensive branch is no longer worth doing.
+
+**Shipped (2026-07-25):** the Hermes **slash** binding carries a provisional `support_note`
+surfaced through `SlashTarget.supportNote`. The agents binding was already labeled
+unavailable.
+
+**Remaining, reduced:** thread a `support_note` through `ConfigSubtreeBindingProfile` → the
+MCP/hooks read models (typed, so it needs an OpenAPI regen) and mark both provisional.
+**Do not validate against a real Hermes build** — Hermes is `best_effort`, and per
+`SupportTier` a best-effort harness may ship on documented assumptions carrying a note.
+The "repeatable new-harness verification checklist" this item used to carry moved to §2.3,
+where it now needs two checklists — one per tier.
+
+### 1.5 Antigravity has no slash-command binding — M
+
+Antigravity is a **core** harness with a declared gap: `catalog.py` binds five of six
+families for `agy`, omitting `slash_commands`, so the shared prompt library does not reach
+it. Pinned in `tests/unit/test_harness_support_tiers.py::KNOWN_CORE_GAPS`, which is what
+now makes the gap loud rather than invisible.
+
+Antigravity is also the least-tested core harness — at the time of the tier split it was
+referenced by 11 test files against Claude's 26, Codex's 21 and Cursor's 19, and by fewer
+than OpenCode (13) or Hermes (12). Closing this gap is the natural way to pull coverage
+back where it belongs.
+
+**Action:** verify whether Antigravity exposes a slash-command surface at all (probe the
+CLI, real read, real write, round-trip diff — the §2.3 core checklist), record the evidence
+in `handoff.md`, then either implement `CommandFileBindingProfile` for `agy` or record it
+as verifiably impossible and remove the entry from `KNOWN_CORE_GAPS`.
+
+### 1.6 Cursor has no permissions binding — M
+
+Denylists reach Claude, Codex, and Antigravity but not Cursor, which is a core harness.
+Same treatment as §1.5: verify Cursor's current permission surface first, then implement or
+prove impossible. Also pinned in `KNOWN_CORE_GAPS`.
 
 ---
 
@@ -88,8 +115,11 @@ application — e.g. `hooks/mappers.py` is 897 lines, `permissions/mappers.py` 6
 is deliberate and has real benefits (families evolve independently), but the *knowledge* of what
 a conforming family needs exists only in the plans and handoffs.
 
-**Action:** write `docs/adding-a-family.md` + `docs/adding-a-harness.md` checklists (the harness
-one pairs with §1.3's verification checklist). Only after that, evaluate extracting a shared
+**Action:** write `docs/adding-a-family.md` + `docs/adding-a-harness.md` checklists. The harness
+one needs **two** bars, matching `SupportTier`: a core harness must be verified against a live
+CLI (probe, real read, real write, round-trip diff, evidence in `handoff.md`), while a
+best-effort harness may ship on documented assumptions carrying a `support_note`. §1.5 and §1.6
+are the first two users of the core checklist. Only after that, evaluate extracting a shared
 "family framework" for the truly invariant parts (manifest store, matrix read model) — with the
 checklist as the spec it must satisfy. Do not extract first: the agents rebuild shows the cost of
 a bespoke abstraction that had to be torn out.
@@ -134,10 +164,15 @@ modules).
 
 ## Suggested sequencing
 
-1. **§1.1 closed 2026-08-06** (PR #30), **§2.1 closed 2026-08-07** (activity view), and
-   **§1.2 closed 2026-08-08** (static-analysis adoption). **§1.3** (label or verify Hermes MCP &
-   hooks) is now the next Tier-1 item.
-2. **When planning the next family or harness:** 2.3 first; use the shipped journal for traceability,
-   and add 2.2 to keep coverage honest.
-3. **Tier 3 housekeeping** rides along whenever its files are touched next — except the flaky
-   frontend trio, which is worth doing on its own the next time `npm test` blocks someone.
+1. **Closed:** §1.1 2026-08-06 (PR #30), §2.1 2026-08-07 (activity view), §1.2 2026-08-08
+   (static-analysis adoption).
+2. **§1.4 first** — a one-line doc correction that stops a documented workflow from writing to the
+   user's real store. Highest value-for-effort on the board.
+3. **Then §1.3**, now an S: label Hermes MCP & hooks provisional and stop. Do not verify.
+4. **Then §1.5, then §1.6** — the two declared gaps in core harnesses. §1.5 first: it is both a
+   functional gap and the weakest-tested core harness, so the work pulls coverage where it belongs.
+   Both start with verification against a live CLI, not implementation.
+5. **When planning the next family or harness:** 2.3 first (it now needs a per-tier harness
+   checklist); use the shipped journal for traceability, and add 2.2 to keep coverage honest —
+   2.2 is also what would have caught Antigravity's thin coverage before a grep did.
+6. **Tier 3 housekeeping** rides along whenever its files are touched next.

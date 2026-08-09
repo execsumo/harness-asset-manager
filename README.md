@@ -38,7 +38,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 - Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
 - Manage Agents — markdown files in the store, symlinked into each harness's agents directory, with In Use and Needs Review views like every other family. If a harness overwrites a link with its own copy, provably-safe edits are folded back in automatically and conflicting ones are left for you.
 - Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
-- Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
+- Capture and back up **Native Config Snapshots** across all 6 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
 - Trace every Web UI, API, and CLI mutation in an append-only JSON Lines journal, including the operation, outcome, and filesystem paths changed—without recording prompts, config payloads, or secrets.
 - Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
 - Drive all of the above **headlessly** from the [CLI](#headless-and-cli) — every family has `list`/`show`/`enable`/`disable` commands with `--json` output, so a VPS or Linux sandbox needs no browser.
@@ -150,7 +150,7 @@ harnessam settings show
 ### Command reference
 
 Every command takes `--json` and `--state-dir`. `--harness` names a harness id
-(`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `openclaw`), and
+(`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`), and
 `set-harnesses --target enabled|disabled` applies one state to every interactive cell
 in that row. Run `harnessam <group> <verb> --help` for the full flag list.
 
@@ -333,11 +333,6 @@ authentication.
       <strong>Hermes Agent</strong><br />
       <a href="https://hermes-agent.nousresearch.com/docs">Docs</a>
     </td>
-    <td align="center" valign="middle">
-      <img src="assets/harness-logos/openclaw-logo.svg" alt="OpenClaw" height="56" /><br />
-      <strong>OpenClaw</strong><br />
-      <a href="https://docs.openclaw.ai/start/getting-started">Docs</a>
-    </td>
   </tr>
 </table>
 
@@ -347,15 +342,35 @@ matrix. The order is declared once, in `SUPPORTED_HARNESS_DEFINITIONS`
 is no per-page ordering to keep in sync. A harness switched off in Settings is dropped
 from every matrix rather than shown as an inert column.
 
-| Harness | Skills | MCP servers | Slash commands | Hooks | Permissions |
-|---|---:|---:|---:|---:|---:|
-| Claude Code | Yes | Yes | Yes | Yes | Yes (Denylist) |
-| Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
-| Antigravity (agy) | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
-| Cursor | Yes | Yes | Yes | Yes | No |
-| OpenCode | Yes | Yes | Yes | Partial | No |
-| Hermes Agent | Yes | Yes | Yes* | Not Yet | No |
-| OpenClaw | Yes | Not Yet | Not Yet | Not Yet | No |
+### Support tiers
+
+Harnesses carry a **support tier**, declared once in the same catalog and derived
+everywhere else. It is a statement about our investment, not about the harness:
+
+- **Core** — Claude Code, Codex, Antigravity, and Cursor: the harnesses this tool is
+  built for. Every family the harness can support is implemented or verifiably
+  impossible, behaviour is checked against a live CLI, and a gap is a release blocker
+  tracked in `tests/unit/test_harness_support_tiers.py`.
+- **Best effort** — OpenCode and Hermes Agent: kept working, not invested in. They may
+  ship on documented assumptions carrying a support note, and bugs are fixed when
+  someone hits them rather than sought out.
+
+A `Not Yet` cell on a core harness is a commitment to close; a `No` on a best-effort
+harness is not.
+
+> **OpenClaw was retired on 2026-08-09.** It bound only Skills — its MCP writes were
+> never implemented — while carrying a column in every matrix. Harness Asset Manager no
+> longer reads or writes `~/.openclaw`; anything already there is left exactly as it is,
+> since Harness Asset Manager only ever removes files it owns.
+
+| Harness | Tier | Skills | MCP servers | Slash commands | Hooks | Permissions |
+|---|---|---:|---:|---:|---:|---:|
+| Claude Code | Core | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Codex CLI | Core | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| Antigravity (agy) | Core | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
+| Cursor | Core | Yes | Yes | Yes | Yes | Not Yet |
+| OpenCode | Best effort | Yes | Yes | Yes | Partial | No |
+| Hermes Agent | Best effort | Yes | Yes | Yes* | Not Yet | No |
 
 <sub>\* Hermes Agent slash-command support is provisional. Its slash-command directory (`~/.hermes/commands`, frontmatter Markdown) follows common conventions but is **not yet verified against a shipping Hermes build**; hooks are not yet mapped. See `handoff.md`.</sub>
 
@@ -421,7 +436,6 @@ MCP servers are stored as normalized Harness Asset Manager records, then transla
 - OpenCode uses typed local/remote MCP entries.
 - Antigravity (agy) uses `mcpServers` JSON entries with `serverUrl` for HTTP transports and `command`/`args`/`env` for stdio.
 - Hermes Agent uses YAML under `mcp_servers` in `~/.hermes/config.yaml` (or `$HERMES_HOME/config.yaml`).
-- OpenClaw MCP writes are not yet supported.
 
 When Harness Asset Manager finds different configs for the same MCP server, it asks you to resolve the source of truth first.
 
@@ -436,7 +450,7 @@ Slash commands are stored as TOML records under Harness Asset Manager app storag
 - Cursor writes plain text command files under `~/.cursor/commands` and invokes them with `/`.
 - OpenCode writes Markdown command files under `~/.config/opencode/commands` and invokes them with `/`.
 - Hermes Agent writes Markdown command files under `~/.hermes/commands` and invokes them with `/` (provisional).
-- OpenClaw and Antigravity (agy) slash command writes are not yet supported.
+- Antigravity (agy) slash command writes are not yet supported.
 
 Disabling a harness in Settings removes its column here immediately, without a restart.
 Command files already written to that harness and their sync records are left alone —
@@ -548,7 +562,6 @@ Most users do not need to change these locations. If you manage skills in a cust
 | Cursor | `HARNESS_ASSET_MANAGER_CURSOR_ROOT` | `~/.cursor/skills` |
 | OpenCode | `HARNESS_ASSET_MANAGER_OPENCODE_ROOT` | `~/.config/opencode/skills` |
 | Hermes Agent | `HARNESS_ASSET_MANAGER_HERMES_ROOT` | `${HERMES_HOME:-~/.hermes}/skills` |
-| OpenClaw | `n/a` | `~/.openclaw/skills` |
 | Antigravity (agy) | `HARNESS_ASSET_MANAGER_AGY_ROOT` | `~/.gemini/antigravity-cli/skills` |
 
 Note: Legacy `SKILL_MANAGER_*` env var spellings are still read as fallbacks but are deprecated, to be removed after one release.

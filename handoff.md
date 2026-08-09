@@ -2,7 +2,103 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-09 (latest) — Cross-device sync planned; nothing implemented yet
+## 2026-08-09 (latest) — Harness support tiers introduced; OpenClaw retired
+
+Effort had drifted away from the harnesses this tool is built for, and nothing in the repo
+said the four were different from the seven. Now they are declared, and the declaration is
+enforced.
+
+### The evidence that prompted it
+
+Test files referencing each harness, before this change:
+
+| Harness | Tier | Test files | Families bound |
+|---|---|---:|---|
+| Claude Code | core | 26 | 6/6 |
+| Codex | core | 21 | 6/6 |
+| Cursor | core | 19 | 5/6 — no `permissions` |
+| **Antigravity** | **core** | **11** | **5/6 — no `slash_commands`** |
+| OpenCode | best effort | 13 | 5/6 |
+| Hermes | best effort | 12 | 4/6 |
+| OpenClaw | *retired* | 8 | 2/6, MCP writes never implemented |
+
+Antigravity — a core harness — was the least-tested of the four and had fewer test files
+than two harnesses we do not invest in. Counting `agy` and `antigravity` spellings together;
+it is a crude proxy, which is exactly why §2.2 (real coverage measurement) matters.
+
+### What shipped
+
+- **`HarnessDefinition.support_tier`** (`harness/contracts.py`), `core` | `best_effort`,
+  with `is_core` and `catalog.core_harness_ids()`. Declared once per harness, derived
+  everywhere else — the same discipline as column ordering. **Backend-only on purpose:** it
+  is deliberately not surfaced in any API response, so there is no OpenAPI regen and no
+  frontend change. `codegen:check` confirms no drift.
+- **`tests/unit/test_harness_support_tiers.py`** — pins the core set, and pins each core
+  harness's family coverage against `KNOWN_CORE_GAPS`. A gap now has to be declared with a
+  written justification; closing one forces the entry's removal. It is a *declaration*
+  ratchet, not a coverage ratchet — it cannot tell you a family is well tested, only that it
+  is claimed. Measuring exercise is still §2.2's job.
+- **CI job `core-harness-gate`** runs that file on its own, so a core-harness regression is
+  its own red check in seconds rather than being buried in 682 backend tests. It needs no
+  dependencies — `catalog.py` is stdlib-only — so it is a bare `python -m unittest`.
+- **OpenClaw removed**: catalog definition, `OpenClawMapper` and its registry entry, the
+  `openclaw-mcp-command` capability probe, the logo asset, the frontend `HarnessLogoKey`
+  member, and every test fixture.
+
+### Read this before touching the tier mechanism
+
+- **`capability_probe` now has zero users.** OpenClaw's was the only one. The field and the
+  `_mcp_write_capability` branch are kept deliberately (documented in `mcp/adapters.py`) —
+  they are part of the `ConfigSubtreeBindingProfile` contract, and the next harness whose MCP
+  support is version-dependent will want them. An unrecognised probe degrades to "writable
+  iff installed" rather than silently claiming support. Removing `import subprocess` from
+  `adapters.py` was a consequence of deleting the probe body, not an unrelated cleanup.
+- **`create_fake_home_spec(seed_openclaw_state=)` became `omit_clis=`**, a tuple of CLI
+  names left off the stub PATH. The old boolean could only say "OpenClaw is not installed";
+  the replacement expresses that for any harness, which is what the not-installed tests
+  needed once OpenClaw was gone. `AppTestHarness(seed_openclaw=)` changed the same way.
+- **A retired harness leaves user files alone.** Harness Asset Manager no longer reads or
+  writes `~/.openclaw`; anything already there stays, consistent with only ever removing
+  files it owns. A stale `"openclaw"` in `disabledHarnesses` is inert — unknown ids are
+  ignored.
+
+### Docs updated
+
+README (harness table, support matrix with a Tier column, a Support tiers section, the
+retirement note, harness-id list, env-var table, "all 6 supported harnesses"), ARCHITECTURE
+§3 (catalog table + tier semantics + retirement), RECOMMENDATIONS (see below),
+`plan-cross-device-sync.md` §7 (core-first harness scope at every phase).
+
+### RECOMMENDATIONS re-cut
+
+- **§1.3 rescoped M → S.** Was the top Tier-1 item, "finish labeling **or verify** the
+  Hermes harness". Under the tier split the expensive branch is dead: Hermes is
+  `best_effort`, so **label it provisional and stop**. Do not validate against a real
+  Hermes build.
+- **§1.5 (new)** — Antigravity has no slash-command binding. **§1.6 (new)** — Cursor has no
+  permissions binding. Both are core-harness gaps, both pinned in `KNOWN_CORE_GAPS`, and
+  both start with *verification against a live CLI*, not implementation. Neither should be
+  built on an assumption about what those harnesses expose today.
+- **§2.3** now needs two harness checklists, one per tier.
+- Tier 1 reordered by value-for-effort: §1.4, §1.3, §1.5, §1.6.
+
+### Known gap left open, deliberately
+
+`assets/harness-asset-manager-mcp-translation.svg` still shows an "OpenClaw (gated)" card
+and names it in the `<desc>`. It is a hand-laid-out diagram with fixed `translate()`
+coordinates; deleting the card leaves the remaining three unbalanced, so it needs a real
+re-layout rather than a surgical text edit. **Not attempted.** The README section that
+embeds it is otherwise accurate.
+
+### Validation, run independently
+
+`ruff` clean; `pyright` 0 errors / 165 warnings (identical to the pre-change baseline,
+checked by stashing); backend 507 unit + 175 integration pass; `npm run typecheck` clean;
+`codegen:check` no drift; `lint:frontend` 23 warnings / 0 errors; `npm test` **278/278 in
+~43s**; `npm run build` succeeds. The three frontend tests RECOMMENDATIONS records as timing
+out did **not** reproduce here.
+
+## 2026-08-09 — Cross-device sync planned; nothing implemented yet
 
 Design session only. **No code changed.** `plan-cross-device-sync.md` is new; `README.md`
 gained a "Cross-device sync — planned, not yet started" section; `RECOMMENDATIONS.md`

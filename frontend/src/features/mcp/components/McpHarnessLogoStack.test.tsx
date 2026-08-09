@@ -10,9 +10,9 @@ describe("McpHarnessLogoStack", () => {
     { harness: "claude", label: "Claude", logoKey: "claude", installed: true, configPresent: true, mcpWritable: true },
     { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true, configPresent: true, mcpWritable: true },
     {
-      harness: "openclaw",
-      label: "OpenClaw",
-      logoKey: "openclaw",
+      harness: "hermes",
+      label: "Hermes Agent",
+      logoKey: "hermes",
       installed: true,
       configPresent: true,
       mcpWritable: false,

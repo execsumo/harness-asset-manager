@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import subprocess
 import tomllib
 from collections.abc import MutableMapping
 from dataclasses import dataclass
@@ -225,24 +224,13 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         raise MutationError(reason, status=400)
 
     def _mcp_write_capability(self, *, installed: bool) -> tuple[bool, str | None]:
+        # No harness declares a capability_probe today — the only one that did was
+        # OpenClaw, retired 2026-08-09. The mechanism is kept because it is part of the
+        # ConfigSubtreeBindingProfile contract and the next harness whose MCP support is
+        # version-dependent will need it; an unrecognised probe degrades to "writable iff
+        # installed" rather than silently claiming support.
         if self._capability_probe is None:
             return True, None
-        if self._capability_probe == "openclaw-mcp-command":
-            executable = shutil.which(self._install_probe, path=self._path_env)
-            reason = self._capability_unavailable_reason or f"{self.label} MCP support is unavailable"
-            if executable is None:
-                return False, reason
-            try:
-                result = subprocess.run(
-                    [executable, "mcp", "--help"],
-                    text=True,
-                    capture_output=True,
-                    timeout=2.0,
-                    check=False,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                return False, reason
-            return (result.returncode == 0, None if result.returncode == 0 else reason)
         reason = self._capability_unavailable_reason or f"{self.label} MCP support is unavailable"
         return (installed, None if installed else reason)
 

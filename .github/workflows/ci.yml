@@ -25,6 +25,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Fast, separately-named gate on the core-harness commitment (Claude, Codex,
+  # Antigravity, Cursor). It runs the declaration ratchet on its own so a core-harness
+  # regression shows up as its own red check in seconds, instead of being buried in the
+  # full backend suite. See harness/contracts.py::SupportTier.
+  core-harness-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Core harness support-tier gate
+        run: python -m unittest tests.unit.test_harness_support_tiers -v
+
   backend-compat:
     runs-on: ubuntu-latest
     strategy:
