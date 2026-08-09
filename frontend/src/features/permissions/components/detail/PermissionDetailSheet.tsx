@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Loader2, Trash2, X } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { Loader2, Trash2 } from "lucide-react";
+import { useId, useState } from "react";
 
 import { DetailBindingIdentity } from "../../../../components/detail/DetailBindingIdentity";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";

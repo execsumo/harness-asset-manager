@@ -124,7 +124,7 @@ export function matrixColumns(inventory: { columns: HookInventoryColumnDto[] } |
 export function matrixCellFor(
   entry: HookInventoryEntryDto,
   column: HookInventoryColumnDto,
-  copy: HooksCopy = hooksCopy.en,
+  _copy: HooksCopy = hooksCopy.en,
 ): HooksMatrixCellModel {
   const binding = entry.sightings.find((candidate) => candidate.harness === column.harness) ?? null;
   const writable = isHooksHarnessAddressable(column);

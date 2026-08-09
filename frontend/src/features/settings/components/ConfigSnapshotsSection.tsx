@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useConfigSnapshotsQuery, useTriggerConfigSnapshotMutation } from "../queries";
 
 export function ConfigSnapshotsSection() {
-  const { data, isLoading, isError, refetch } = useConfigSnapshotsQuery();
+  const { data, isLoading, isError } = useConfigSnapshotsQuery();
   const triggerMutation = useTriggerConfigSnapshotMutation();
   const [feedback, setFeedback] = useState<string | null>(null);
 

@@ -1,0 +1,24 @@
+{
+  "include": ["harness_asset_manager", "scripts"],
+  "exclude": ["**/__pycache__", "**/node_modules"],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["."]
+    }
+  ],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportMissingTypeStubs": "none",
+  "reportArgumentType": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportCallIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+  "reportIndexIssue": "warning",
+  "reportOptionalCall": "warning",
+  "reportReturnType": "warning",
+  "reportUndefinedVariable": "error",
+  "reportUnsupportedDunderAll": "warning"
+}

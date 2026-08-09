@@ -75,7 +75,7 @@ class SkillInventory:
         self,
         *,
         columns: tuple[InventoryColumn, ...],
-        harness_scans: tuple[HarnessScan, ...],
+        harness_scans: tuple[SkillsHarnessScan, ...],
         store_issues: tuple[str, ...],
         entries: tuple[InventoryEntry, ...],
     ) -> None:

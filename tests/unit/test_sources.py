@@ -12,7 +12,6 @@ from harness_asset_manager.application.skills.marketplace.skillssh import (
     raw_skill_from_payload,
 )
 from harness_asset_manager.sources.github import (
-    GitHubSource,
     ResolvedGitHubSkill,
     _find_skill,
     _parse_locator,

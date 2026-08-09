@@ -17,7 +17,7 @@ export function MatrixTable({
   compactColumnWidth = "140px",
   coverageColumnWidth = "64px",
   minWidth,
-  hasCheckboxColumn = true,
+  hasCheckboxColumn: _hasCheckboxColumn = true,
 }: MatrixTableProps) {
   const style = {
     "--matrix-harness-column-width": harnessColumnWidth,

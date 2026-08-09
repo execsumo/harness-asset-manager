@@ -6,7 +6,7 @@ from pathlib import Path
 from harness_asset_manager.atomic_files import file_lock
 
 from .health import CheckIssue
-from .identity import SkillRef, SourceDescriptor
+from .identity import SourceDescriptor
 from .manifest import (
     SkillStoreEntry,
     SkillStoreManifest,

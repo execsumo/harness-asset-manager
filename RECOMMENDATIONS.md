@@ -2,7 +2,8 @@
 
 > Review of 2026-07-25, refreshed against `main` on 2026-08-08. Verified by running the suites:
 > backend unit (496) + integration (169) pass, `npm run typecheck` is clean, `npm run build`
-> succeeds, and `ruff check harness_asset_manager tests` (CI's scope) is clean.
+> succeeds, `ruff check harness_asset_manager tests scripts` is clean, `pyright` completes with
+> its current basic-mode warning baseline, and `npm run lint:frontend` completes with warnings.
 > `npm test` is **275/278 — not green**: three async detail tests (`SkillDetailContent`, `MarketplaceCliPage`,
 > `AgentsInUsePage`) time out under this container's `waitFor` budget and reproduce in isolation.
 > They are pre-existing and unrelated to the entries below, but the suite does exit non-zero and
@@ -15,7 +16,8 @@
 > 2026-07-25 Tier-1 batch (Dependabot + SHA-pinned actions; golden writer round-trip tests; ruff lint
 > gate; Hermes slash provisional label);
 > 2026-08-06 PR #30 `bd72d0a` (§1.1 — writers now preserve unknown user fields);
-> 2026-08-07 `63cfbe4` (§2.1 — mutation activity view) — see `handoff.md` for the record.
+> 2026-08-07 `63cfbe4` (§2.1 — mutation activity view);
+> 2026-08-08 (static-analysis adoption — full-scope Ruff, Pyright, and ESLint) — see `handoff.md`.
 > Partially-shipped items below keep their number and describe only the remaining scope.
 
 ## Already strong — don't churn these
@@ -33,23 +35,6 @@
 ---
 
 ## Tier 1 — High value, moderate effort
-
-### 1.2 Finish static-analysis adoption (type-check + frontend lint + baseline cleanup) — M
-
-**Shipped (2026-07-25):** ruff is the backend lint gate — `[tool.ruff]` in `pyproject.toml`,
-`requirements-dev.txt`, and a "Backend lint" CI step. Import sorting (I) is enforced and applied;
-pyflakes (F) is enforced with `F401`/`F821`/`F841` baselined (the baseline is documented in-config
-and meant to shrink).
-
-**Remaining:** (a) **widen the lint scope** — the CI step runs `ruff check harness_asset_manager
-tests`, so `scripts/` has never been linted and currently has 9 `I001` violations across 8 files
-(all auto-fixable). "Applied across the tree" above was only ever true of the two linted
-directories; (b) chip the ruff baseline — drop `F401` by removing the 29 unused imports in a
-verified per-module pass (a blanket `--fix` rewrote import paths and broke test collection, so this
-needs care), then broaden `select` toward `E`/`W`/`UP`/`B`; (c) add `pyright` (or `mypy`) with a
-committed config + CI step, starting from `basic`; (d) add ESLint (typescript + react-hooks) for
-`frontend/src`. The fifteen `# noqa: BLE001` comments are the existing half-adoption this completes.
-
 
 ### 1.3 Finish labeling (or verify) the Hermes harness — M
 
@@ -133,9 +118,9 @@ modules).
 
 ## Suggested sequencing
 
-1. **§1.1 closed 2026-08-06** (PR #30) and **§2.1 closed 2026-08-07** (activity view), so Tier 1
-   has one open item left: **1.2** — add pyright + ESLint and chip the ruff `F401` baseline.
-   **1.3** (label or verify Hermes MCP & hooks) is next after it.
+1. **§1.1 closed 2026-08-06** (PR #30), **§2.1 closed 2026-08-07** (activity view), and
+   **§1.2 closed 2026-08-08** (static-analysis adoption). **§1.3** (label or verify Hermes MCP &
+   hooks) is now the next Tier-1 item.
 2. **When planning the next family or harness:** 2.3 first; use the shipped journal for traceability,
    and add 2.2 to keep coverage honest.
 3. **Tier 3 housekeeping** rides along whenever its files are touched next — except the flaky

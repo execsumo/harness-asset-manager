@@ -16,7 +16,6 @@ import { PermissionFormDialog } from "../components/edit/PermissionFormDialog";
 import {
   filterPermissions,
   permissionsSummary,
-  type PermissionsDecisionFilter,
   type PermissionsStatusFilter,
 } from "../model/selectors";
 import { usePermissionsManagementController } from "../model/use-permissions-management-controller";
@@ -57,7 +56,6 @@ export default function PermissionsPage() {
   const [addPending, setAddPending] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [decision, setDecision] = useState<PermissionsDecisionFilter>("all");
   const copy = usePermissionsCopy();
   const common = useCommonCopy();
 

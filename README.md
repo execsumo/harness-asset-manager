@@ -609,6 +609,9 @@ Validation:
 
 ```bash
 scripts/install-dev.sh
+.venv/bin/ruff check harness_asset_manager tests scripts
+.venv/bin/pyright
+npm run lint:frontend
 npm run typecheck
 bash scripts/test_backend.sh
 npm test
@@ -629,16 +632,6 @@ npm run build
 - [x] Agent personas
 - [x] Package-based storage (portable resource bundles)
 - [ ] Plugin support
-
-### Harness expansion
-
-- [ ] GitHub Copilot
-- [ ] Gemini CLI
-- [ ] Cline
-- [ ] Windsurf
-- [ ] Qwen Code
-- [ ] Kimi Code
-- [ ] Qoder
 
 ## Community
 

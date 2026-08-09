@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAgentsInventory, fetchAgentDetail, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
 import { agentsKeys } from "./keys";
-import type { AgentAdoptConflict, AdoptAllResponse } from "./types";
 
 export function useAgentsInventoryQuery() {
   return useQuery({

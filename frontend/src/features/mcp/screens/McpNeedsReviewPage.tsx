@@ -11,7 +11,6 @@ import {
   McpConfigChoiceDialog,
   type McpConfigChoiceOption,
 } from "../components/edit/McpConfigChoiceDialog";
-import { MatrixTable } from "../../../components/matrix";
 import { McpNeedsReviewMatrixView } from "../components/McpNeedsReviewMatrixView";
 import { useCommonCopy } from "../../../i18n";
 import type { McpIdentityGroupDto } from "../api/management-types";

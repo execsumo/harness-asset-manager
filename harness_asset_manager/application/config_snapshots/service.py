@@ -15,7 +15,6 @@ from harness_asset_manager.paths import AppPaths
 from harness_asset_manager.platform_context import resolve_platform_context
 
 from .model import ConfigSnapshot, HarnessConfigTarget, SnapshotTrigger
-from .redaction import redact_secrets
 
 
 class ConfigSnapshotService:

@@ -20,7 +20,7 @@ export function useAgentsController() {
   const updateMutation = useUpdateAgentMutation();
   const createMutation = useCreateAgentMutation();
 
-  const [pendingAgentKeys, setPendingAgentKeys] = useState<ReadonlySet<string>>(new Set());
+  const [pendingAgentKeys] = useState<ReadonlySet<string>>(new Set());
   const [pendingPerHarnessKeys, setPendingPerHarnessKeys] = useState<ReadonlySet<string>>(new Set());
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 

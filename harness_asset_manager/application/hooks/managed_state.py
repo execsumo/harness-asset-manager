@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
-
 from .contracts import HookBinding, HookHarnessScan, HookInventory, HookInventoryEntry
-from .store import HookSpec
 
 
 def inventory_payload(

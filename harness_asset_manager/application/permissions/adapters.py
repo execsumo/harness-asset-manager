@@ -4,9 +4,7 @@ import json
 import re
 import shutil
 import tomllib
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 import tomli_w
 
@@ -20,7 +18,6 @@ from harness_asset_manager.harness import (
 )
 
 from .contracts import (
-    BindingState,
     PermissionHarnessAdapter,
     PermissionHarnessScan,
     PermissionHarnessStatus,

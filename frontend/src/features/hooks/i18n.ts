@@ -1,4 +1,4 @@
-import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "../../i18n";
+import { useLocalizedCopy } from "../../i18n";
 
 const englishHooksCopy = {
   inUse: {

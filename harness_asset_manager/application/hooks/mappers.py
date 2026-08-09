@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import shlex
 from typing import Iterable, Mapping, Protocol
 
 from harness_asset_manager.errors import MutationError

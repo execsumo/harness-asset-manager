@@ -14,7 +14,7 @@ from .contracts import (
     PermissionHarnessScan,
     PermissionHarnessStatus,
 )
-from .store import PermissionSpec, PermissionStore
+from .store import PermissionStore
 
 
 @dataclass(frozen=True)

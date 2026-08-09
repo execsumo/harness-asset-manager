@@ -11,7 +11,6 @@ from harness_asset_manager.application.skills.marketplace.repo_snapshots import 
     GitHubRepoSnapshotService,
 )
 from harness_asset_manager.application.skills.marketplace.resolver import (
-    DetailEnrichment,
     GitHubSkillResolver,
 )
 from harness_asset_manager.errors import (

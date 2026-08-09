@@ -27,8 +27,6 @@ export default function HooksInUsePage() {
     status,
     inventory,
     isInitialLoading,
-    selectedHookId,
-    setSelectedHookId,
     pendingHookKeys,
     pendingPerHarnessKeys,
     queryErrorMessage,

@@ -4,7 +4,6 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { MatrixTable } from "../../../components/matrix";
 import { SlashCommandReviewDetailSheet } from "../components/detail/SlashCommandReviewDetailSheet";
 import { SlashCommandReviewMatrixView } from "../components/SlashCommandReviewMatrixView";
 import { primaryReviewAction } from "../model/selectors";

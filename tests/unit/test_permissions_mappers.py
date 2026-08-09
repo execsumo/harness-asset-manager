@@ -8,7 +8,6 @@ from harness_asset_manager.application.permissions.mappers import (
     CodexPermissionsMapper,
 )
 from harness_asset_manager.application.permissions.store import PermissionSpec
-from harness_asset_manager.errors import MutationError
 
 
 class ClaudeCodePermissionsMapperTests(unittest.TestCase):

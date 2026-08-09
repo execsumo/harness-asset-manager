@@ -3,9 +3,6 @@ from __future__ import annotations
 import json
 import tomllib
 import unittest
-from pathlib import Path
-
-import tomli_w
 
 from tests.support.app_harness import AppTestHarness
 

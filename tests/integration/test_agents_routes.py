@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import unittest
-from pathlib import Path
 
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import FakeHomeSpec

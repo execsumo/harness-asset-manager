@@ -439,10 +439,6 @@ function buildMarketplaceEntries(copy: OverviewCopy): OverviewMarketplaceEntry[]
   ];
 }
 
-function formatCount(value: number | null): string {
-  return value == null ? "-" : value.toLocaleString();
-}
-
 function buildReviewItems({
   skillsToReview,
   slashCommandsToReview,

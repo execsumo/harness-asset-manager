@@ -4,7 +4,6 @@ import json
 import os
 import socket
 import ssl
-from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urljoin
 from urllib.request import Request, urlopen
@@ -12,7 +11,7 @@ from urllib.request import Request, urlopen
 from harness_asset_manager import __version__
 from harness_asset_manager import env_names as _shared
 from harness_asset_manager.application.marketplace_http import (
-    configured_marketplace_ca_file,
+    configured_marketplace_ca_file,  # noqa: F401 - compatibility re-export
     marketplace_ssl_context,
 )
 from harness_asset_manager.errors import MarketplaceUpstreamError

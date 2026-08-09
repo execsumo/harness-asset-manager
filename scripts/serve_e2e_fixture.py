@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +12,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from harness_asset_manager.application import build_backend_container
 from harness_asset_manager.runtime.server import serve_foreground
-
 from tests.support.fake_home import create_fake_home_spec, seed_mixed_fixture
 from tests.support.marketplace_fixture import create_fixture_marketplace_service
 

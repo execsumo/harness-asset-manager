@@ -6,7 +6,6 @@ import {
   MatrixHarnessIcon,
   MatrixTable,
 } from "../../../components/matrix";
-import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../api/management-types";
 import { usePermissionsCopy, type PermissionsCopy } from "../i18n";

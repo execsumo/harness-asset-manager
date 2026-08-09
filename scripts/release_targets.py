@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import platform
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TARGETS_FILE = REPO_ROOT / "packaging" / "npm" / "release-targets.json"

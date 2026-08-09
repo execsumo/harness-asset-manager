@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import unittest
-from pathlib import Path
 
 from harness_asset_manager.application.mcp.availability import McpAvailabilityResult
 from harness_asset_manager.application.mcp.stdio import parse_static_stdio_function

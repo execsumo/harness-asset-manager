@@ -127,7 +127,7 @@ export function matrixColumns(inventory: { columns: PermissionInventoryColumnDto
 export function matrixCellFor(
   entry: PermissionInventoryEntryDto,
   column: PermissionInventoryColumnDto,
-  copy: PermissionsCopy = permissionsCopy.en,
+  _copy: PermissionsCopy = permissionsCopy.en,
 ): PermissionsMatrixCellModel {
   const binding = entry.sightings.find((candidate) => candidate.harness === column.harness) ?? null;
   const writable = isPermissionsHarnessAddressable(column);

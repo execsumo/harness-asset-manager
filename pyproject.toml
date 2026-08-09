@@ -58,7 +58,8 @@ harness_asset_manager = ["VERSION", "data/templates/*"]
 # Codes in ``ignore`` are the current baseline of pre-existing findings kept
 # green on adoption; each is a deliberate "fix-later". Removing a code from
 # ``ignore`` means the codebase now satisfies it and it is enforced — the list
-# is meant to shrink over time. Broadening ``select`` (E/W/UP/B/...) is the
+# is meant to shrink over time. Ruff now covers the application, tests, and
+# release/support scripts. Broadening ``select`` (E/W/UP/B/...) is the next
 # follow-up once the deferred cleanup lands.
 [tool.ruff]
 target-version = "py311"
@@ -66,8 +67,6 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["I", "F"]
 ignore = [
-    "F401",  # unused imports — 29 pre-existing; drop in a verified follow-up PR.
-    "F821",  # ruff false positives on conditional / TYPE_CHECKING-guarded names.
+    "F821",  # existing dynamic-name findings; Pyright catches undefined names in its gate.
     "F841",  # intentionally-unused locals (mostly test readability).
 ]
-

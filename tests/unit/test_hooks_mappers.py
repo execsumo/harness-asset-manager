@@ -10,7 +10,6 @@ from harness_asset_manager.application.hooks.mappers import (
     OpenCodeHooksMapper,
 )
 from harness_asset_manager.application.hooks.store import HookSpec
-from harness_asset_manager.errors import MutationError
 
 
 class ClaudeCodeHooksMapperTests(unittest.TestCase):

@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 import { DetailDisclosure } from "../../../../components/detail/DetailDisclosure";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
-import { DetailNote } from "../../../../components/detail/DetailNote";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";

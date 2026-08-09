@@ -30,7 +30,6 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { useSidebarModel, type SidebarIconKey } from "../app/capability-registry";
 import { LoadingSpinner } from "./LoadingSpinner";
-import { useToast } from "./Toast";
 import { useCommonCopy, useLocale } from "../i18n";
 import { useTheme } from "../lib/theme";
 
@@ -41,7 +40,6 @@ interface SidebarProps {
 
 export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
   const model = useSidebarModel();
-  const { toast } = useToast();
   const common = useCommonCopy();
   const { theme, toggleTheme } = useTheme();
 

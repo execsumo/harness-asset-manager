@@ -12,7 +12,9 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from harness_asset_manager.api.app import create_app  # noqa: E402
 from harness_asset_manager.application import build_backend_container  # noqa: E402
-from harness_asset_manager.application.skills.marketplace import MarketplaceCatalog  # noqa: E402
+from harness_asset_manager.application.skills.marketplace import (
+    MarketplaceCatalog,  # noqa: E402
+)
 
 
 def main() -> int:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import unittest
-from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package

@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 import argparse
-from hashlib import sha256
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tarfile
+from hashlib import sha256
+from pathlib import Path
 
 from release_targets import artifact_name, resolve_current_target
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERSION_FILE = REPO_ROOT / "harness_asset_manager" / "VERSION"

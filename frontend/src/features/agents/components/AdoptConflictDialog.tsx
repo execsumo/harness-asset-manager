@@ -1,5 +1,4 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import type { ReactNode } from "react";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { useCommonCopy } from "../../../i18n";
 

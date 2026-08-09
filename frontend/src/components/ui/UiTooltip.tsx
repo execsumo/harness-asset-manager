@@ -31,11 +31,12 @@ export function UiTooltip({
   collisionPadding = 16,
   delayDuration,
 }: UiTooltipProps) {
+  const hasProvider = useContext(UiTooltipContext);
+
   if (disabled || content === null || content === undefined || content === "") {
     return children;
   }
 
-  const hasProvider = useContext(UiTooltipContext);
   const tooltipClassName = contentClassName
     ? `ui-popup ui-popup--tooltip ${contentClassName}`
     : "ui-popup ui-popup--tooltip";

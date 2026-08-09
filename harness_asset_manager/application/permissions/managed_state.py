@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import Mapping
-
 from .contracts import (
     PermissionBinding,
     PermissionHarnessScan,
     PermissionInventory,
     PermissionInventoryEntry,
 )
-from .store import PermissionSpec
 
 
 def inventory_payload(

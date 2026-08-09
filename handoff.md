@@ -2,6 +2,26 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-08 (latest) — Static-analysis gates completed
+
+The static-analysis follow-up from `RECOMMENDATIONS.md §1.2` is implemented:
+
+- Ruff now checks `harness_asset_manager`, `tests`, and `scripts`; all 9 script import-order
+  findings and all 30 `F401` findings were removed. The remaining `F821`/`F841` rules stay as
+  the intentional Ruff baseline.
+- Pyright 1.1.411 is pinned in `requirements-dev.txt` with a committed basic-mode
+  `pyrightconfig.json`. It type-checks the application and scripts, fails on undefined names,
+  and reports the existing broader typing backlog as warnings so CI remains actionable without
+  hiding the diagnostics.
+- ESLint 10 with TypeScript ESLint and the stable React Hooks rules is configured in
+  `eslint.config.mjs`; `npm run lint:frontend` covers `frontend/src`. Existing `any`, empty
+  catch blocks, and hook-dependency findings remain visible as warnings.
+- CI now runs full-scope Ruff, Pyright, and frontend ESLint.
+
+Validation on this checkout: Ruff passes; Pyright reports 0 errors / 165 warnings; frontend lint
+reports 0 errors / 23 warnings; the targeted TypeScript/build and backend checks remain the next
+validation pass. The old static-analysis item below is superseded by this entry.
+
 ## 2026-08-08 — Docs reconciled against `main`; §1.1 confirmed already shipped
 
 Documentation-only pass on `docs/refresh-open-items`. No behaviour changed. Written after
