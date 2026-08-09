@@ -391,4 +391,4 @@ store. Isolation requires `XDG_DATA_HOME` + `XDG_CONFIG_HOME` (and `HOME` for ha
 roots), which is what `fake_home.py` does and what §11 depends on.
 
 Fix the documentation, or make `--state-dir` mean what it says. Worth doing in Phase 0
-either way, since the test strategy leans on it.
+either way, since the test strategy leans on it. Tracked as `RECOMMENDATIONS.md` §1.4.

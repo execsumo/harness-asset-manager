@@ -2,7 +2,90 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-09 (latest) — Slash-command drift auto-repair shipped (Stage 4 of plan-auto-adoption.md)
+## 2026-08-09 (latest) — Cross-device sync planned; nothing implemented yet
+
+Design session only. **No code changed.** `plan-cross-device-sync.md` is new; `README.md`
+gained a "Cross-device sync — planned, not yet started" section; `RECOMMENDATIONS.md`
+gained the `--state-dir` defect below. Read the plan before starting Phase 0 — several
+decisions there are marked settled and are load-bearing.
+
+The ask: one person, several machines, assets identical on all of them without hand-copying.
+
+### The decisions that matter most
+
+- **The store is the sync unit, not the harness directories.** Harness dirs hold symlinks
+  (absolute, machine-specific), per-harness translations, and config files the user also
+  owns. Folder-level sync (Dropbox/iCloud/Syncthing) breaks all three. Canonical records
+  travel; each machine recomputes bindings locally.
+- **`application/drift.py` is the merge engine — no new classifier.** The 2026-08-09
+  entry below made it family-agnostic for slash commands; `remote` maps onto its
+  `harness_sha256` and the last successful sync onto `baseline_sha256` with zero changes
+  to the decision table. `clobber_one_sided` ("the side that moved holds the only edit in
+  existence") is *provably true for one person's machines* — that is precisely why this is
+  tractable, and precisely why teams are out of scope.
+- **Git as transport, but HAM never invokes a git merge.** Fetch to a scratch ref,
+  classify per record, write the result. A line-based merge of `manifest.json` is the most
+  likely way this corrupts a portfolio.
+- **Secrets excluded structurally, not redacted.** MCP `env`/`headers` *values* never
+  enter the bundle; keys do, and the receiving machine reports "needs credential".
+  `config_snapshots/redaction.py` is a regex pass over config text and is the wrong
+  instrument for this — keep it only as a pre-publish refusal gate.
+- **Tombstones decided up front** (§6). Retrofitting deletion semantics is the classic
+  painful sync retrofit.
+
+### Family sequencing — the non-obvious part
+
+Sync difficulty is **not** family complexity. Because sync writes store records and lets
+the existing projection path write harness files, binding shape mostly drops out; the
+driver is content portability. Order: **agents → slash commands → skills → permissions →
+hooks → MCP.**
+
+- **Agents first**: a self-contained Markdown file with nothing machine-specific, and the
+  only family whose drift machinery is already built and proven.
+- **Permissions (4th) are more portable than they look**: `shell`, `web`, and `mcp` scopes
+  are inherently machine-independent, and the file-glob idiom is already tilde- or
+  project-relative (`permissions/store.py:29-33`).
+- **Hooks (5th) are less portable than they look**: `HookSpec.command` is a raw shell
+  string usually pointing at a local script. Arrival must check resolvability — a hook
+  that looks enabled and silently never fires is worse than an absent one.
+- **MCP last**: secrets, absolute paths in `command`/`args`, requires the binary installed,
+  five config shapes, and the `extras` tuple must survive the bundle round-trip.
+
+### Defect found from a code read — not yet fixed
+
+`README.md` claimed `--state-dir` "isolates a run, which is how you keep CI or a throwaway
+sandbox from touching the real store." **It does not.** `paths.py:77-98` uses
+`STATE_DIR_ENV` only for `state_dir` (`runtime.json`, `server.log`); `config_dir` and
+`data_dir` still resolve from XDG or the macOS default, so anyone following that advice
+writes to their **real store**. Isolation needs `XDG_DATA_HOME` + `XDG_CONFIG_HOME` (plus
+`HOME` for harness roots) — which is exactly what `tests/support/fake_home.py` does.
+
+Logged as `RECOMMENDATIONS.md` §1.4 — Tier 1 on consequence, not on effort. The README
+sentence is still wrong as of this entry; fix the doc or make the flag mean what it says.
+
+### Test strategy — already affordable
+
+`tests/support/fake_home.py` is a complete synthetic machine: `HOME`, all three XDG roots,
+and a stub `PATH` with an executable per harness so `install_probe` detection works. **Two
+of those plus a bare git repo is a full two-machine sync test, in process, in CI** — no
+cloud, no second laptop. The conflict matrix belongs in the phase gate, not in manual QA.
+
+### Explicitly out of scope, permanently
+
+Multi-person and team distribution — served by the published Plugin versions. Do **not**
+add a remote "role"/authority concept in anticipation; it was considered and dropped
+deliberately. Roadmap (not now): profiles, standalone harmonization view, portfolio
+snapshots (largely subsumed by git history), credential indirection, background sync,
+rich conflict UI.
+
+### Next step
+
+Phase 0 — the portable/device-local split and bundle envelope, proven with agents only. It
+has **no user-visible value**; everything else hangs off it. Gate: export → import into a
+clean synthetic home is byte-identical, and a scanner proves zero device-local paths and
+zero secret values in the bundle.
+
+## 2026-08-09 — Slash-command drift auto-repair shipped (Stage 4 of plan-auto-adoption.md)
 
 Slash commands now auto-repair already-managed target files that drifted, not just adopt new
 unmanaged ones (that half shipped 2026-08-08). Implements `plan-auto-adoption.md` Stage 4.

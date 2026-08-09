@@ -50,6 +50,22 @@ build and record the evidence in `handoff.md` (as was done for Claude/agy agent 
 seven more harnesses on the README roadmap, define a repeatable "new harness verification" checklist
 (probe CLI, real read, real write, round-trip diff) and reuse it per harness.
 
+### 1.4 `--state-dir` does not isolate the store, but the README says it does — S
+
+Found 2026-08-09 during cross-device sync planning (`plan-cross-device-sync.md` §13).
+
+The README's Scripting section says `--state-dir` "isolates a run, which is how you keep CI or
+a throwaway sandbox from touching the real store." It does not. `paths.py:77-98` uses
+`STATE_DIR_ENV` only for `state_dir` (`runtime.json`, `server.log`); `config_dir` and `data_dir`
+still resolve from XDG or the macOS default. **A user following that advice writes to their real
+store** — the exact outcome the sentence promises to prevent. Effort is Tier-3-sized; the
+consequence is not, which is why it sits here.
+
+**Action:** either correct the sentence (isolation needs `XDG_DATA_HOME` + `XDG_CONFIG_HOME`,
+plus `HOME` for harness roots — what `tests/support/fake_home.py` already does), or make
+`--state-dir` mean what it says by having it override all three base dirs. Prefer the latter if
+cross-device sync proceeds, since its two-machine test strategy leans on real isolation.
+
 ---
 
 ## Tier 2 — Strategic investments
