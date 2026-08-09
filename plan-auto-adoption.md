@@ -1,8 +1,10 @@
 # Plan — Automatic re-adoption of drifted bindings
 
-**Status: Agents shipped 2026-07-27; family auto-adoption shipped 2026-08-08.** Skills,
-slash commands, MCP, Hooks, and Permissions now have opt-in, family-specific adoption
-paths. Codex agent adoption remains excluded. Amendments made while building are marked
+**Status: Agents shipped 2026-07-27; family auto-adoption shipped 2026-08-08; slash-command
+drift auto-repair (Stage 4) shipped 2026-08-09.** Skills, slash commands, MCP, Hooks, and
+Permissions now have opt-in, family-specific adoption paths, and slash commands additionally
+auto-repairs already-managed drifted files. Codex agent adoption remains excluded. Amendments
+made while building are marked
 **AMENDED** inline:
 §3's rebaseline rule, §5's exclusion from it, and §4's conflict-file location. Read
 those before extending this — the literal wording of §3 loses data and there is a test
@@ -301,10 +303,15 @@ Each stage ships independently and leaves the tree working.
    *notice* drift.
 3. **✅ SHIPPED — Auto-repair the provable cases.** Rows 2 and 3 only, behind
    `auto_adopt.agents` (default on). Rows 1 and 4 keep prompting.
-4. **Slash commands — add the store-side baseline.** See §12. This is the *same*
-   mechanism as Stage 3 against a family that already has the ledger, the
-   classification, and the review UI. Reordered ahead of skills on 2026-07-27,
-   deliberately — see below.
+4. **✅ SHIPPED (2026-08-09) — Slash commands auto-repair drifted managed files.**
+   Reuses the existing `content_hash` in `sync-state.json` as the baseline — no new
+   persisted field was needed, since it already records what HAM wrote at that
+   target the last time it wrote there. `classify_drift()` moved to the
+   family-agnostic `application/drift.py` and is called directly; rows 2 and 3
+   call the existing `restore_managed`/`adopt_target` review actions
+   automatically, behind the same `auto_adopt.slash_commands` flag the new-file
+   adoption pass already used (one setting per family, not one per mechanism).
+   Rows 1 and 4 keep prompting. See §12.
 5. **Skills auto-adopt**, behind `auto_adopt.skills` (default off). A *different*
    mechanism (§7), not clobber repair.
 6. **Deferred:** Codex, gated on a lossless TOML round-trip.
@@ -376,7 +383,7 @@ automatic ownership changes happen only when observations are equivalent.
 | Family | Binding shape | Verdict |
 |---|---|---|
 | **agents** | `AgentFileBindingProfile` — file symlink | **Needs it.** Built here. |
-| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Adopts equivalent new unmanaged files; changed managed files remain review-driven.** |
+| **slash_commands** | `CommandFileBindingProfile` — HAM writes a real file | **Needs it. Adopts equivalent new unmanaged files, and auto-repairs already-managed drifted ones (Stage 4, shipped 2026-08-09).** |
 | **skills** | `FileTreeBindingProfile` — directory symlink | **Adopts equivalent new unmanaged directories; existing links are structurally immune.** |
 | **mcp / hooks / permissions** | `ConfigSubtreeBindingProfile` | **Promotes equivalent unmanaged observations; never chooses between differing configs.** |
 
@@ -424,6 +431,26 @@ Cheaper than agents was: the ledger, the classification inputs, the review rows,
 UI all exist. The reason to do it is that slash commands is the one remaining family
 where the drift is **real and reachable today** — unlike skills, which cannot be
 clobbered at all.
+
+**AMENDED (shipped 2026-08-09) — corrections against what was actually built.** Two
+details above did not survive contact with the implementation:
+
+- **No second hash was needed.** The existing `contentHash` already *is* the
+  store-rendered baseline: it is set to `hash_file(path)` immediately after writing
+  `render_slash_command(command, format)` to that path, so it is byte-identical to
+  hashing the rendered command at that moment. The only new computation is the
+  *current* store hash, `hash_text(render_slash_command(current_command, format))`,
+  computed fresh each reconcile — nothing new is persisted.
+- **`auto_adopt.slash_commands` already existed** (added when new-unmanaged-file
+  adoption shipped 2026-08-08), so this reused it rather than adding a second key.
+  One toggle covers every safe automatic ownership change for a family; see §9 item 4.
+- The audit trail is the shared Activity journal (`record_auto_repair`, `operation:
+  "auto_repair"`), not the agents-specific `AgentAuditLog` — that mechanism was itself
+  generalized into the Activity journal by the 2026-08-07 mutation-audit work, after
+  this section's "grow a family column" note was written.
+- `classify_drift()` was generalized to take a plain `baseline_sha256` instead of an
+  `AgentBindingRecord`, and moved to `harness_asset_manager/application/drift.py`.
+  The agents ledger's `classify_drift()` is now a thin wrapper over it.
 
 **Skills cannot be clobbered.** A skill binds as a *directory* symlink, and
 `rename(dir, dir-symlink)` fails `ENOTDIR` at the kernel — verified empirically (see

@@ -244,6 +244,30 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertFalse(cursor.startswith("---"))
             self.assertTrue(cursor.startswith("Review code\n\nReview:\n$ARGUMENTS"))
 
+    def test_one_sided_drift_is_auto_adopted_when_enabled(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "code-review",
+                    "description": "Review code",
+                    "prompt": "$ARGUMENTS",
+                    "targets": ["codex"],
+                },
+            )
+            target = harness.spec.home / ".codex" / "prompts" / "code-review.md"
+            target.write_text("---\ndescription: Edited\n---\n\nEdited prompt\n", encoding="utf-8")
+
+            harness.put_json("/api/settings/auto-adopt/slash_commands", {"enabled": True})
+
+            payload = harness.get_json("/api/slash-commands")
+            self.assertEqual(payload["reviewCommands"], [])
+            command = next(c for c in payload["commands"] if c["name"] == "code-review")
+            self.assertEqual(command["description"], "Edited")
+            self.assertEqual(command["prompt"], "Edited prompt")
+            drifted_entry = next(entry for entry in command["syncTargets"] if entry["target"] == "codex")
+            self.assertEqual(drifted_entry["status"], "synced")
+
     def test_drifted_target_can_be_unbound_without_deleting_file(self) -> None:
         with AppTestHarness() as harness:
             harness.post_json(

@@ -2,7 +2,85 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-08 (latest) — Static-analysis gates completed
+## 2026-08-09 (latest) — Slash-command drift auto-repair shipped (Stage 4 of plan-auto-adoption.md)
+
+Slash commands now auto-repair already-managed target files that drifted, not just adopt new
+unmanaged ones (that half shipped 2026-08-08). Implements `plan-auto-adoption.md` Stage 4.
+
+- **`classify_drift()` is now family-agnostic**, moved to `harness_asset_manager/application/drift.py`
+  and taking a plain `baseline_sha256` instead of an `AgentBindingRecord`. The agents ledger's
+  `classify_drift()` is now a thin wrapper that extracts `record.store_sha256` and delegates —
+  zero behavior change for agents, verified by leaving `agents/reconcile.py` and `agents/inventory.py`
+  untouched.
+- **No new persisted field was needed.** `sync-state.json`'s existing `contentHash` already *is*
+  the store-rendered baseline (it is set to `hash_file(path)` right after writing
+  `render_slash_command(command, format)` to that path). Reconcile only computes the *current*
+  store hash fresh each pass; nothing new is stored on disk.
+- **`SlashCommandsAutoAdoptService.reconcile()` grew a second pass, `_repair_drift()`**, gated by
+  the same `auto_adopt.slash_commands` setting the 2026-08-08 new-file adoption already used —
+  one toggle per family, not one per mechanism. It reuses the exact review actions a user would
+  click manually: `clobber_clean` calls `restore_managed`, `clobber_one_sided` calls `adopt_target`.
+  `collision`/`two_sided_conflict` are left for manual review, exactly like agents Stage 3 never
+  auto-resolving a two-sided conflict. No new mutation logic was written for the actual repair.
+- **Audit trail**: added `record_auto_repair` (operation `auto_repair`) beside the existing
+  `record_auto_adopt` in `application/auto_adopt.py`, sharing an `_append` helper. No OpenAPI
+  regen or frontend change needed — `ActivityEventResponse.parameters`/`operation`/`family` are
+  already free-form strings and the Activity page already humanizes arbitrary values.
+- **No other wiring changed.** `container.py` already wired `slash_command_queries.set_reconcile(
+  slash_auto_adopt.reconcile)`; the CLI (`harnessam refresh`, `harnessam settings auto-adopt
+  slash_commands`) and the Settings toggle already covered this family end-to-end.
+
+### Evaluated: does this belong in any other family? No.
+
+- **Skills**: directory symlinks; `rename(dir, dir-symlink)` fails `ENOTDIR`, so a managed skill
+  binding cannot be clobbered at all — there is nothing to repair, only new directories to adopt
+  (already shipped).
+- **MCP / hooks / permissions**: config-subtree families. HAM writes into a file it does not own;
+  there is no single binding/whole-file hash that can distinguish "clobbered" from "the harness
+  legitimately changed something else in that file." `ObservedConfigAutoAdoptService` and
+  `McpAutoAdoptService` correctly only ever promote equivalent *new* observations.
+- **Codex** (both agents and slash): excluded regardless of family — the TOML/rendered round-trip
+  is lossy (plan invariant 3).
+
+Agents (Stage 3) and slash commands (this change) remain the only two families whose binding
+shape — "Harness Asset Manager writes a real file a harness can independently overwrite" — needs
+this mechanism.
+
+### Tests added
+
+`tests/unit/test_drift.py` (new, exhaustive decision-table coverage), `tests/unit/test_agent_ledger.py`
+(`ClassifyDriftTests` trimmed to the wrapper's own record→baseline responsibility, decision table
+itself moved out), `tests/unit/test_slash_commands.py::SlashCommandDriftAutoRepairTests` (one-sided
+adopts, clean-clobber resyncs without data loss, two-sided left untouched, disabled setting is a
+no-op, idempotent), `tests/integration/test_slash_commands_api.py::test_one_sided_drift_is_auto_adopted_when_enabled`.
+
+Validation: see the entry immediately below for the full-suite run this was checked against.
+
+## 2026-08-09 — handoff.md corrected: stale duplicate heading and a resolved open-items list
+
+Docs-only. No behaviour changed.
+
+- **Two `(latest)` headings again** — the exact problem the 2026-08-08 docs-reconciliation entry
+  fixed for the 2026-07-27 pair. `## 2026-08-08 — Family-wide opt-in auto-adoption implemented`
+  below is chronologically *before* `## 2026-08-08 — Static-analysis gates completed` (`f9003b1`
+  landed, then `c60d45a` — confirmed via `git log`), so its `(latest)` tag is removed here rather
+  than rewriting the entry.
+- **The "Still open, in priority order" list under the docs-reconciliation entry is stale in three
+  of its four items**, and is marked superseded in place rather than rewritten (this file is an
+  append-only log). Verified against the live repo, not assumed:
+  1. `main` is pushed — local `main` and `origin/main` are both `c60d45a`.
+  2. All seven branches that entry names to delete are gone; only `main` remains, locally and on
+     the remote.
+  3. `RECOMMENDATIONS.md §1.2` shipped in `c60d45a` (the entry directly above this one).
+  4. Family-wide auto-adoption merged as `f9003b1`, not "on this working branch."
+- **CI evidence for the flaky frontend trio now exists.** `ci.yml`'s `frontend-validate` job runs
+  `npm test`; it passed on `c60d45a` (run `31291859168`), the same commit `RECOMMENDATIONS.md`'s
+  Tier-3 entry says has no CI evidence yet. `SkillDetailContent`, `MarketplaceCliPage`, and
+  `AgentsInUsePage` timing out is confirmed container-local, not a real regression.
+  `RECOMMENDATIONS.md` still needs its own pass to reflect this; not done here since this pass is
+  `handoff.md`-only.
+
+## 2026-08-08 — Static-analysis gates completed
 
 The static-analysis follow-up from `RECOMMENDATIONS.md §1.2` is implemented:
 
@@ -74,6 +152,9 @@ records this as "274/277," which was a miscount. Added as a Tier-3 item.
 
 ### Still open, in priority order
 
+> **SUPERSEDED (2026-08-09)** — all four items below are resolved; see the entry at the top of
+> this file for current status and evidence.
+
 1. **Push `main`.** Local `main` is one commit ahead of `origin/main` and the activity view is
    in it. There was never a PR for `feat/activity-view`, so **it has never run in CI** — CI only
    triggers on `main` pushes and pull requests.
@@ -89,7 +170,7 @@ records this as "274/277," which was a miscount. Added as a Tier-3 item.
 4. **Family-wide auto-adoption is now implemented** on this working branch; run the
    focused adoption tests and review the latest handoff entry before merging.
 
-## 2026-08-08 (latest) — Family-wide opt-in auto-adoption implemented
+## 2026-08-08 — Family-wide opt-in auto-adoption implemented
 
 Auto-adoption is now wired for the asset families that have a safe, family-specific
 ownership transition:

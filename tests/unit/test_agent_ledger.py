@@ -20,10 +20,12 @@ from harness_asset_manager.hashing import hash_file, hash_text
 
 
 class ClassifyDriftTests(unittest.TestCase):
-    """The decision table of plan-auto-adoption.md §4, one test per row.
+    """The agents wrapper's own responsibility: turning a record into a baseline.
 
-    Pure function, no filesystem: the classification is the part that must be
-    reviewable on its own, because every automatic action will be gated on it.
+    The decision table itself (the four rows) is family-agnostic and lives in
+    ``application.drift``, tested exhaustively in ``tests/unit/test_drift.py``.
+    This only pins that the agents-specific wrapper extracts the right baseline
+    hash from an ``AgentBindingRecord`` before delegating to it.
     """
 
     def record(self, store_sha256: str | None) -> AgentBindingRecord:
@@ -34,44 +36,14 @@ class ClassifyDriftTests(unittest.TestCase):
             store_sha256=store_sha256,
         )
 
-    def test_row_1_no_record_is_a_collision(self) -> None:
+    def test_no_record_is_a_collision(self) -> None:
+        """A record we cannot measure against proves nothing, so it must claim nothing."""
         self.assertEqual(
             classify_drift(record=None, harness_sha256="sha256:a", store_sha256="sha256:b"),
             "collision",
         )
 
-    def test_row_2_identical_content_is_a_clean_clobber(self) -> None:
-        self.assertEqual(
-            classify_drift(
-                record=self.record("sha256:old"),
-                harness_sha256="sha256:same",
-                store_sha256="sha256:same",
-            ),
-            "clobber_clean",
-        )
-
-    def test_row_3_store_untouched_since_link_is_one_sided(self) -> None:
-        self.assertEqual(
-            classify_drift(
-                record=self.record("sha256:linked"),
-                harness_sha256="sha256:edited",
-                store_sha256="sha256:linked",
-            ),
-            "clobber_one_sided",
-        )
-
-    def test_row_4_both_sides_moved_is_a_two_sided_conflict(self) -> None:
-        self.assertEqual(
-            classify_drift(
-                record=self.record("sha256:linked"),
-                harness_sha256="sha256:edited",
-                store_sha256="sha256:also-edited",
-            ),
-            "two_sided_conflict",
-        )
-
     def test_record_without_a_baseline_degrades_to_collision(self) -> None:
-        """A record we cannot measure against proves nothing, so it must claim nothing."""
         self.assertEqual(
             classify_drift(
                 record=self.record(None),
@@ -81,14 +53,22 @@ class ClassifyDriftTests(unittest.TestCase):
             "collision",
         )
 
-    def test_unreadable_side_degrades_to_collision(self) -> None:
+    def test_a_valid_record_delegates_its_store_hash_as_the_baseline(self) -> None:
         self.assertEqual(
             classify_drift(
                 record=self.record("sha256:linked"),
-                harness_sha256=None,
+                harness_sha256="sha256:edited",
                 store_sha256="sha256:linked",
             ),
-            "collision",
+            "clobber_one_sided",
+        )
+        self.assertEqual(
+            classify_drift(
+                record=self.record("sha256:linked"),
+                harness_sha256="sha256:edited",
+                store_sha256="sha256:also-edited",
+            ),
+            "two_sided_conflict",
         )
 
 

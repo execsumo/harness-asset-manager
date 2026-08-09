@@ -4,21 +4,15 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
+from harness_asset_manager.application.drift import DriftKind
+from harness_asset_manager.application.drift import (
+    classify_drift as _classify_drift_by_baseline,
+)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.hashing import hash_file, hash_text
 
 LEDGER_VERSION = 1
-
-# What an unmanaged file at a binding path actually is. Derived, never stored — the
-# ledger records evidence, this names the conclusion drawn from it.
-DriftKind = Literal[
-    "collision",  # no record: a genuine name clash, indistinguishable from today's case
-    "clobber_clean",  # our binding was replaced by an identical copy; no content decision
-    "clobber_one_sided",  # replaced and edited, but provably the only edit that exists
-    "two_sided_conflict",  # store and harness both moved; nobody can pick for the user
-]
 
 
 @dataclass(frozen=True)
@@ -227,23 +221,19 @@ def classify_drift(
 ) -> DriftKind:
     """The decision table of ``plan-auto-adoption.md`` §4, as a pure function.
 
-    Deliberately has no filesystem access and takes no action — Stage 2 only names
-    what happened. Whether a classification is *acted on* is a separate decision,
-    made by a caller that knows about user settings and destructive operations.
+    Thin wrapper over the family-agnostic table in ``application.drift``: this is
+    only the agents-specific step of turning a ``record`` into the baseline hash
+    that table actually compares against. Deliberately has no filesystem access and
+    takes no action — Stage 2 only names what happened. Whether a classification is
+    *acted on* is a separate decision, made by a caller that knows about user
+    settings and destructive operations.
     """
-    if record is None or record.store_sha256 is None:
-        # Never recorded, or recorded without a usable baseline: we cannot tell a
-        # clobbered binding from a name collision, so we must not claim we can.
-        return "collision"
-    if harness_sha256 is None or store_sha256 is None:
-        return "collision"
-    if harness_sha256 == store_sha256:
-        return "clobber_clean"
-    if store_sha256 == record.store_sha256:
-        # The store has not moved since we linked, so the harness copy is the only
-        # edit in existence. Nothing can be discarded by preferring it.
-        return "clobber_one_sided"
-    return "two_sided_conflict"
+    baseline_sha256 = record.store_sha256 if record is not None else None
+    return _classify_drift_by_baseline(
+        baseline_sha256=baseline_sha256,
+        harness_sha256=harness_sha256,
+        store_sha256=store_sha256,
+    )
 
 
 def _safe_hash(path: Path) -> str | None:

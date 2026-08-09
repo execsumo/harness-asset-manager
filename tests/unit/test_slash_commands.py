@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from harness_asset_manager.application.mutation_audit import MutationAuditJournal
 from harness_asset_manager.application.slash_commands import (
     SlashCommand,
     SlashCommandMutationService,
@@ -18,6 +19,9 @@ from harness_asset_manager.application.slash_commands import (
     SlashCommandSyncStateStore,
     migrate_legacy_slash_commands,
     resolve_slash_targets,
+)
+from harness_asset_manager.application.slash_commands.auto_adopt import (
+    SlashCommandsAutoAdoptService,
 )
 from harness_asset_manager.application.slash_commands.codecs import (
     parse_slash_command_document,
@@ -403,6 +407,126 @@ class SlashCommandStoreTests(unittest.TestCase):
                 state_payload["commands"]["code-review"]["codex"]["contentHash"],
                 hash_file(target),
             )
+
+
+class SlashCommandDriftAutoRepairTests(unittest.TestCase):
+    """Stage 4 of plan-auto-adoption.md: repair already-managed, drifted files.
+
+    Reuses the shared ``classify_drift`` decision table (tested exhaustively in
+    ``tests/unit/test_drift.py``) plus the existing manual review actions; these
+    tests pin the *decision* of when it is safe to press those buttons automatically.
+    """
+
+    def _auto_adopt(self, root: Path, home: Path, *, enabled: bool = True):
+        _kernel, _targets, store, sync_state, _queries, mutations = _services(home, root)
+        journal = MutationAuditJournal(root / "app" / "mutation-audit.jsonl")
+        auto_adopt = SlashCommandsAutoAdoptService(
+            read_models=mutations.read_models,
+            mutations=mutations,
+            is_enabled=lambda: enabled,
+            journal=journal,
+        )
+        return store, sync_state, mutations, auto_adopt, journal
+
+    def test_one_sided_drift_is_adopted_into_the_store(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home)
+            store.create_command(SlashCommand(name="code-review", description="d", prompt="$ARGUMENTS"))
+            mutations.sync_command("code-review", targets=["codex"])
+            output = home / ".codex" / "prompts" / "code-review.md"
+            output.write_text("---\ndescription: Edited\n---\n\nEdited prompt\n", encoding="utf-8")
+
+            auto_adopt.reconcile()
+
+            updated = store.require_command("code-review")
+            self.assertEqual(updated.description, "Edited")
+            self.assertEqual(updated.prompt, "Edited prompt")
+            record = sync_state.load()["code-review"]["codex"]
+            self.assertEqual(record.content_hash, hash_file(output))
+
+    def test_clean_clobber_resyncs_the_record_without_losing_data(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home)
+            store.create_command(SlashCommand(name="code-review", description="Review code", prompt="$ARGUMENTS"))
+            mutations.sync_command("code-review", targets=["codex"])
+            output = home / ".codex" / "prompts" / "code-review.md"
+
+            # An out-of-band edit that happens to byte-match what the store will
+            # render *after* an update the blocked sync never applied to this file.
+            new_command = SlashCommand(name="code-review", description="Review carefully", prompt="$ARGUMENTS")
+            new_rendered = render_slash_command(new_command, "frontmatter_markdown")
+            output.write_text(new_rendered, encoding="utf-8")
+            mutations.update_command(
+                "code-review", description="Review carefully", prompt="$ARGUMENTS", targets=["codex"]
+            )
+            self.assertEqual(output.read_text(encoding="utf-8"), new_rendered)
+
+            auto_adopt.reconcile()
+
+            record = sync_state.load()["code-review"]["codex"]
+            self.assertEqual(record.content_hash, hash_file(output))
+            self.assertEqual(output.read_text(encoding="utf-8"), new_rendered)
+
+    def test_two_sided_conflict_is_left_untouched(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home)
+            store.create_command(SlashCommand(name="code-review", description="Review code", prompt="$ARGUMENTS"))
+            mutations.sync_command("code-review", targets=["codex"])
+            output = home / ".codex" / "prompts" / "code-review.md"
+            output.write_text("manual edit that does not match anything", encoding="utf-8")
+            mutations.update_command(
+                "code-review", description="Something else", prompt="different prompt", targets=["codex"]
+            )
+            before_hash = sync_state.load()["code-review"]["codex"].content_hash
+
+            auto_adopt.reconcile()
+
+            self.assertEqual(output.read_text(encoding="utf-8"), "manual edit that does not match anything")
+            self.assertEqual(store.require_command("code-review").description, "Something else")
+            self.assertEqual(sync_state.load()["code-review"]["codex"].content_hash, before_hash)
+
+    def test_disabled_setting_leaves_drift_untouched(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home, enabled=False)
+            store.create_command(SlashCommand(name="code-review", description="d", prompt="$ARGUMENTS"))
+            mutations.sync_command("code-review", targets=["codex"])
+            output = home / ".codex" / "prompts" / "code-review.md"
+            output.write_text("manual edit", encoding="utf-8")
+            before = sync_state.load()["code-review"]["codex"].content_hash
+
+            auto_adopt.reconcile()
+
+            self.assertEqual(sync_state.load()["code-review"]["codex"].content_hash, before)
+
+    def test_reconcile_is_idempotent(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home)
+            store.create_command(SlashCommand(name="code-review", description="d", prompt="$ARGUMENTS"))
+            mutations.sync_command("code-review", targets=["codex"])
+            output = home / ".codex" / "prompts" / "code-review.md"
+            output.write_text("---\ndescription: Edited\n---\n\nEdited prompt\n", encoding="utf-8")
+
+            auto_adopt.reconcile()
+            record_after_first = sync_state.load()["code-review"]["codex"]
+            auto_adopt.reconcile()
+            record_after_second = sync_state.load()["code-review"]["codex"]
+
+            self.assertEqual(record_after_first, record_after_second)
 
 
 if __name__ == "__main__":
