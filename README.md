@@ -267,8 +267,10 @@ harnesses today — Harness Asset Manager is denylist-only.
   check `succeeded`/`failed` in the JSON when partial application is acceptable.
 - Destructive commands (`delete`, `uninstall`) prompt when stdin is a terminal and
   refuse otherwise — pass `--yes` in scripts.
-- `--state-dir` isolates a run, which is how you keep CI or a throwaway sandbox from
-  touching the real store.
+- `--state-dir <dir>` isolates a run into one directory — settings, every asset
+  family's store, and runtime state all move there — which is how you keep CI or a
+  throwaway sandbox from touching the real store. Pass the same directory to every
+  command in that run, including `stop`/`status` for a `start`ed instance.
 
 ```bash
 harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'

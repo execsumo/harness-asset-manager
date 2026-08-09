@@ -59,10 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_server_options(start_parser)
 
     stop_parser = subparsers.add_parser("stop", help="Stop the managed background app instance.")
-    stop_parser.add_argument("--state-dir", help="Override the runtime state directory.")
+    stop_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
 
     status_parser = subparsers.add_parser("status", help="Show status for the managed background instance.")
-    status_parser.add_argument("--state-dir", help="Override the runtime state directory.")
+    status_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
 
     common = asset_flags()
 
@@ -100,7 +100,7 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
             "anyone who can reach the port can mutate local harness config."
         ),
     )
-    parser.add_argument("--state-dir", help="Override the runtime state directory.")
+    parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
 
 
 def normalize_argv(argv: list[str] | None) -> list[str]:

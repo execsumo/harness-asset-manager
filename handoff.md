@@ -2,7 +2,89 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-09 (latest) — Harness support tiers introduced; OpenClaw retired
+## 2026-08-09 (latest) — `--state-dir` now actually isolates a run (RECOMMENDATIONS §1.4)
+
+Follows the harness-support-tiers entry below, same branch (`feat/harness-support-tiers`,
+PR #36). Fixes the defect found while writing `plan-cross-device-sync.md` (its old §13).
+
+### The bug
+
+The README's Scripting section said `--state-dir` "isolates a run, which is how you keep
+CI or a throwaway sandbox from touching the real store." `paths.py`'s old `_base_dirs()`
+only routed `STATE_DIR_ENV` into `state_dir` (`runtime.json`, `server.log`). `config_dir`
+(`settings.json`) and `data_dir` (every asset family's manifests, the skills/agents store)
+still resolved from XDG or the macOS default regardless. Every asset command accepts
+`--state-dir` via `asset_flags()` (`cli/support.py`), so this was not a narrow server-only
+gap — `harnessam skills list --state-dir /tmp/x` still read and could still write the real
+store.
+
+### The fix
+
+`_base_dirs()` (`paths.py`) now checks `STATE_DIR_ENV` first and, when set, returns the
+**same directory** for `config_dir`, `data_dir`, and `state_dir` — short-circuiting before
+the per-platform default logic runs at all. This mirrors a shape the code already had:
+macOS's own default (no `XDG_*` override) already collapses all three to one directory;
+the fix is that shape on request instead of only by accident of platform. Legacy env-var
+precedence (`SKILL_MANAGER_STATE_DIR` fallback) is unchanged — the override lookup itself
+didn't move, only what happens once it resolves.
+
+Net diff is small: one function in `paths.py`, three `--help` strings (`cli/main.py` ×3,
+`cli/support.py` ×1) shortened from "Override the runtime state directory" to describe the
+actual scope, and a README line made precise instead of vague. No new files.
+
+### Tests
+
+- `tests/unit/test_paths.py::test_state_dir_env_isolates_config_data_and_state_together`
+  replaces the old `test_state_dir_env_overrides_state_paths`, which only asserted
+  `state_dir`/`runtime_state_path` moved — exactly the narrow behavior being fixed. The new
+  test checks all three dirs plus derived paths (`settings_path`, `skills_store_root`,
+  `mutation_audit_path`) for both env-var spellings and the both-set-new-wins case.
+- `tests/unit/test_paths.py::test_state_dir_env_overrides_xdg_variables_too` (new) — sets
+  every `XDG_*` variable **and** `STATE_DIR_ENV` together and asserts the override wins for
+  all three dirs. This is the case that would have caught the original bug: the old code's
+  per-platform branches only consulted the override for `state_dir`, so `XDG_DATA_HOME`
+  would have silently won for `data_dir` even with `--state-dir` set.
+- `tests/unit/test_cli_main.py::test_explicit_state_dir_flag_beats_both_env_spellings`
+  extended to also assert `config_dir`/`data_dir`, not just `state_dir`.
+- `tests/integration/test_cli_runtime.py` (real subprocess `start`/`status`/`stop`) needed
+  **no changes** and still passes — it never asserted anything about where `config_dir` or
+  `data_dir` landed, only that `--state-dir`'s `runtime.json` behaved correctly.
+- `tests/unit/test_config_snapshots.py`'s `state_dir=` is an unrelated `AppPaths` field
+  constructed directly in a test fixture, not a call through `resolve_app_paths` — confirmed
+  unaffected, left untouched.
+
+### Read this before extending `_base_dirs()` further
+
+The override short-circuits **before** the platform branch, not inside it — the old code
+had near-identical override logic duplicated in both the macOS and Linux branches (dead
+giveaway of the bug once seen: two copies of "except when overridden," each doing something
+narrower than the other implied). If you need a fourth base dir with different override
+semantics, resist folding it into this same override; give it its own env var the way
+`SETTINGS_PATH_ENV` already has one, independent of `STATE_DIR_ENV`.
+
+### Docs updated
+
+README (Scripting bullet made precise + reciprocal instruction to pass the same dir to
+`stop`/`status`), RECOMMENDATIONS (§1.4 body removed per "shipped work is removed," pointer
+added to the shipped-batches list and to Suggested sequencing), `plan-cross-device-sync.md`
+§13 (marked fixed, with a note that this does **not** replace `fake_home.py`'s multi-XDG
+machine simulation for the sync test strategy — they solve different problems, see below).
+
+**One clarification worth keeping:** `--state-dir` collapsing everything into one directory
+and `fake_home.py` keeping `HOME`+XDG roots separate are both correct, for different jobs.
+`--state-dir` isolates one run. `fake_home.py` simulates a realistic machine, which is what
+lets sync tests catch platform-skew bugs (`plan-cross-device-sync.md` §10 item 7) — do not
+"simplify" sync's synthetic-machine tests toward `--state-dir` later; that would remove the
+exact realism they need.
+
+### Validation, run independently
+
+`ruff` clean; `pyright` 0 errors / 165 warnings (unchanged baseline); backend **508** unit
+(+1 from the new XDG-override test) + 175 integration pass, including the real-subprocess
+`test_cli_runtime.py`; `npm run typecheck` clean (no frontend files touched, run anyway);
+`npm run build` succeeds (same reason).
+
+## 2026-08-09 — Harness support tiers introduced; OpenClaw retired
 
 Effort had drifted away from the harnesses this tool is built for, and nothing in the repo
 said the four were different from the seven. Now they are declared, and the declaration is

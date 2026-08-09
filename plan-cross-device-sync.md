@@ -396,15 +396,23 @@ the conflict matrix belongs in the gate, not in manual QA.
 
 ---
 
-## 13. Defect found while writing this
+## 13. Defect found while writing this — fixed 2026-08-09
 
-`README.md` claims `--state-dir` "isolates a run, which is how you keep CI or a throwaway
-sandbox from touching the real store." **It does not.** `paths.py:77-98` uses
+`README.md` claimed `--state-dir` "isolates a run, which is how you keep CI or a throwaway
+sandbox from touching the real store." It did not: `paths.py`'s old `_base_dirs()` used
 `STATE_DIR_ENV` only for `state_dir` (`runtime.json`, `server.log`); `config_dir` and
-`data_dir` still
-resolve from XDG or the macOS default. Anyone following that advice writes to their real
-store. Isolation requires `XDG_DATA_HOME` + `XDG_CONFIG_HOME` (and `HOME` for harness
-roots), which is what `fake_home.py` does and what §11 depends on.
+`data_dir` still resolved from XDG or the macOS default, so anyone following that advice
+wrote to their real store. Tracked as `RECOMMENDATIONS.md` §1.4.
 
-Fix the documentation, or make `--state-dir` mean what it says. Worth doing in Phase 0
-either way, since the test strategy leans on it. Tracked as `RECOMMENDATIONS.md` §1.4.
+**Fixed**, ahead of Phase 0. When `STATE_DIR_ENV` is set, `_base_dirs()` now collapses
+`config_dir`, `data_dir`, and `state_dir` into that one directory — the same shape the
+macOS default already produces when no XDG variable is set, just requested explicitly.
+`--state-dir` now means what the README always said it meant: any single command, or a
+whole CI run, can be pointed at one throwaway directory and genuinely touch nothing else.
+
+This is a narrower fix than §11's test strategy needs and does not replace it. `--state-dir`
+collapses one run into one directory; `fake_home.py`'s separate `HOME` + three XDG roots
+deliberately keep config/data/state apart, the same way a real machine does, which is what
+lets those tests catch the platform-skew failures §10 item 7 calls out. Both are correct,
+for different jobs: `--state-dir` for "isolate this one run," `fake_home.py` for "simulate
+a realistic machine."

@@ -1,14 +1,14 @@
 # Recommendations
 
 > Review of 2026-07-25, refreshed against `main` on 2026-08-09 (harness support tiers; OpenClaw
-> retired). Verified by running the suites: backend unit (507) + integration (175) pass,
-> `npm run typecheck` is clean, `npm run codegen:check` reports no drift, `npm run build` succeeds,
-> `ruff check harness_asset_manager tests scripts` is clean, `pyright` reports 0 errors against its
-> 165-warning basic-mode baseline (unchanged), and `npm run lint:frontend` completes with 23
-> warnings, 0 errors. `npm test` was **278/278 green** in this container in ~43s — the three async
-> detail tests recorded below as timing out did **not** reproduce here. That does not close the
-> Tier-3 entry (no CI evidence either way yet), but it does mean the suite is not currently
-> blocking.
+> retired; §1.4 `--state-dir` fix). Verified by running the suites: backend unit (508) +
+> integration (175) pass, `npm run typecheck` is clean, `npm run codegen:check` reports no drift,
+> `npm run build` succeeds, `ruff check harness_asset_manager tests scripts` is clean, `pyright`
+> reports 0 errors against its 165-warning basic-mode baseline (unchanged), and
+> `npm run lint:frontend` completes with 23 warnings, 0 errors. `npm test` was **278/278 green** in
+> this container in ~43s — the three async detail tests recorded below as timing out did **not**
+> reproduce here. That does not close the Tier-3 entry (no CI evidence either way yet), but it
+> does mean the suite is not currently blocking.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
 >
@@ -18,7 +18,9 @@
 > gate; Hermes slash provisional label);
 > 2026-08-06 PR #30 `bd72d0a` (§1.1 — writers now preserve unknown user fields);
 > 2026-08-07 `63cfbe4` (§2.1 — mutation activity view);
-> 2026-08-08 (static-analysis adoption — full-scope Ruff, Pyright, and ESLint) — see `handoff.md`.
+> 2026-08-08 (static-analysis adoption — full-scope Ruff, Pyright, and ESLint) — see `handoff.md`;
+> 2026-08-09 (§1.4 — `--state-dir` now isolates config, data, and state together, matching what
+> the README already claimed; see `handoff.md`).
 > Partially-shipped items below keep their number and describe only the remaining scope.
 
 ## Already strong — don't churn these
@@ -36,22 +38,6 @@
 ---
 
 ## Tier 1 — High value, moderate effort
-
-### 1.4 `--state-dir` does not isolate the store, but the README says it does — S
-
-Found 2026-08-09 during cross-device sync planning (`plan-cross-device-sync.md` §13).
-
-The README's Scripting section says `--state-dir` "isolates a run, which is how you keep CI or
-a throwaway sandbox from touching the real store." It does not. `paths.py:77-98` uses
-`STATE_DIR_ENV` only for `state_dir` (`runtime.json`, `server.log`); `config_dir` and `data_dir`
-still resolve from XDG or the macOS default. **A user following that advice writes to their real
-store** — the exact outcome the sentence promises to prevent. Effort is Tier-3-sized; the
-consequence is not, which is why it sits here.
-
-**Action:** either correct the sentence (isolation needs `XDG_DATA_HOME` + `XDG_CONFIG_HOME`,
-plus `HOME` for harness roots — what `tests/support/fake_home.py` already does), or make
-`--state-dir` mean what it says by having it override all three base dirs. Prefer the latter if
-cross-device sync proceeds, since its two-machine test strategy leans on real isolation.
 
 ### 1.3 Label Hermes MCP & hooks provisional — do NOT verify — S
 
@@ -165,14 +151,12 @@ modules).
 ## Suggested sequencing
 
 1. **Closed:** §1.1 2026-08-06 (PR #30), §2.1 2026-08-07 (activity view), §1.2 2026-08-08
-   (static-analysis adoption).
-2. **§1.4 first** — a one-line doc correction that stops a documented workflow from writing to the
-   user's real store. Highest value-for-effort on the board.
-3. **Then §1.3**, now an S: label Hermes MCP & hooks provisional and stop. Do not verify.
-4. **Then §1.5, then §1.6** — the two declared gaps in core harnesses. §1.5 first: it is both a
+   (static-analysis adoption), §1.4 2026-08-09 (`--state-dir` isolation).
+2. **§1.3 next**, an S: label Hermes MCP & hooks provisional and stop. Do not verify.
+3. **Then §1.5, then §1.6** — the two declared gaps in core harnesses. §1.5 first: it is both a
    functional gap and the weakest-tested core harness, so the work pulls coverage where it belongs.
    Both start with verification against a live CLI, not implementation.
-5. **When planning the next family or harness:** 2.3 first (it now needs a per-tier harness
+4. **When planning the next family or harness:** 2.3 first (it now needs a per-tier harness
    checklist); use the shipped journal for traceability, and add 2.2 to keep coverage honest —
    2.2 is also what would have caught Antigravity's thin coverage before a grep did.
-6. **Tier 3 housekeeping** rides along whenever its files are touched next.
+5. **Tier 3 housekeeping** rides along whenever its files are touched next.

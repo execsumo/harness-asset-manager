@@ -29,6 +29,9 @@ class CliMainTests(unittest.TestCase):
                 env = runtime_env(str(flag_dir))
                 paths = resolve_app_paths(env)
 
+            # The explicit flag isolates config_dir and data_dir too, not just state_dir.
+            self.assertEqual(paths.config_dir, flag_dir)
+            self.assertEqual(paths.data_dir, flag_dir)
             self.assertEqual(paths.state_dir, flag_dir)
 
 
