@@ -6,6 +6,23 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 > and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
 > work. Historical entries below may mention them for context, but do not resume those items.
 
+## 2026-08-10 — Antigravity (agy) Slash Commands & Hooks feature-completeness shipped
+
+Implemented full Slash Commands coverage and feature-complete Hooks support for Antigravity (`agy`).
+
+- **Slash Commands support for agy:**
+  - Added `CommandFileBindingProfile` for `agy` in `catalog.py` pointing to `~/.gemini/antigravity-cli/commands/*.md` with `frontmatter_markdown` render format.
+  - Updated `SlashTargetId` across backend models, API schemas, and frontend TypeScript definitions.
+  - Added unit and integration tests verifying slash command creation, sync, frontmatter rendering, auto-adoption, and deletion.
+  - Updated `README.md` status table and slash commands documentation.
+- **Hooks multi-location discovery & bidirectional drift repair for agy:**
+  - Added `discovery_config_path_resolvers` in `catalog.py` for `agy` hooks across user-level paths (`~/.gemini/config/hooks.json`, `~/.gemini/antigravity-cli/hooks.json`, `~/.gemini/antigravity/hooks.json`, `~/.gemini/antigravity-ide/hooks.json`) and project-level workspace paths (`.agents/hooks.json`).
+  - Enhanced `FileBackedHooksAdapter` to scan and disable hooks across all discovery config paths while writing managed entries to canonical global config.
+  - Enhanced `AntigravityHooksMapper.read_entries` with robust matcher canonicalization for native tool name variants (`run_command`, `bash`, `shell`, `view_file`, `read_file`, `write_to_file...`, `read_url_content...`, `*`, `any`).
+  - Added integration tests for `agy` hook discovery across alternate paths, promotion into central store, and bidirectional drift repair (`adopt_target`).
+
+Validation on this checkout: backend **693 unit and integration tests pass cleanly**, Ruff check passes with 0 errors.
+
 ## 2026-08-10 — Codex lossless adoption and configurable auto-adopt defaults shipped
 
 Implemented the approved priority work for Claude Code, Codex, Antigravity (agy), and Cursor.
