@@ -1,10 +1,11 @@
 {
   "name": "@execsumo/harness-asset-manager",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Public macOS/Linux installer wrapper for the harness-asset-manager native release artifact.",
   "license": "MIT",
   "private": false,
   "bin": {
+    "harness-asset-manager": "bin/harness-asset-manager.js",
     "harnessam": "bin/harness-asset-manager.js"
   },
   "scripts": {

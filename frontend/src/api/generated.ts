@@ -2808,14 +2808,14 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
+            target: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandListResponse */
         SlashCommandListResponse: {
             /** Commands */
             commands: components["schemas"]["SlashCommandResponse"][];
             /** Defaulttargets */
-            defaultTargets: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[];
+            defaultTargets: ("claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes")[];
             /** Reviewcommands */
             reviewCommands: components["schemas"]["SlashCommandReviewResponse"][];
             /** Storepath */
@@ -2834,7 +2834,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashCommandMutationResponse */
         SlashCommandMutationResponse: {
@@ -2857,7 +2857,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
+            target: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
         };
         /** SlashCommandResponse */
         SlashCommandResponse: {
@@ -2899,7 +2899,7 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
+            target: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
             /** Targetlabel */
             targetLabel: string;
         };
@@ -2910,7 +2910,7 @@ export interface components {
             /** Prompt */
             prompt: string;
             /** Targets */
-            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashSyncEntryResponse */
         SlashSyncEntryResponse: {
@@ -2927,12 +2927,12 @@ export interface components {
              * Target
              * @enum {string}
              */
-            target: "claude" | "codex" | "cursor" | "opencode" | "hermes";
+            target: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
         };
         /** SlashSyncRequest */
         SlashSyncRequest: {
             /** Targets */
-            targets?: ("claude" | "codex" | "cursor" | "opencode" | "hermes")[] | null;
+            targets?: ("claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes")[] | null;
         };
         /** SlashTargetResponse */
         SlashTargetResponse: {
@@ -2950,7 +2950,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "claude" | "codex" | "cursor" | "opencode" | "hermes";
+            id: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
             /** Invocationprefix */
             invocationPrefix: string;
             /** Label */

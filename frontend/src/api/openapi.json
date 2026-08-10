@@ -5013,6 +5013,7 @@
             "enum": [
               "claude",
               "codex",
+              "agy",
               "cursor",
               "opencode",
               "hermes"
@@ -5042,6 +5043,7 @@
               "enum": [
                 "claude",
                 "codex",
+                "agy",
                 "cursor",
                 "opencode",
                 "hermes"
@@ -5109,6 +5111,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "agy",
                     "cursor",
                     "opencode",
                     "hermes"
@@ -5184,6 +5187,7 @@
             "enum": [
               "claude",
               "codex",
+              "agy",
               "cursor",
               "opencode",
               "hermes"
@@ -5298,6 +5302,7 @@
             "enum": [
               "claude",
               "codex",
+              "agy",
               "cursor",
               "opencode",
               "hermes"
@@ -5345,6 +5350,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "agy",
                     "cursor",
                     "opencode",
                     "hermes"
@@ -5402,6 +5408,7 @@
             "enum": [
               "claude",
               "codex",
+              "agy",
               "cursor",
               "opencode",
               "hermes"
@@ -5427,6 +5434,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "agy",
                     "cursor",
                     "opencode",
                     "hermes"
@@ -5471,6 +5479,7 @@
             "enum": [
               "claude",
               "codex",
+              "agy",
               "cursor",
               "opencode",
               "hermes"
