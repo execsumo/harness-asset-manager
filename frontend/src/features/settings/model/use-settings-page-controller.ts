@@ -61,6 +61,22 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
     }
   }
 
+  async function handleEnableAllAutoAdopt() {
+    setErrorMessage("");
+    const families = ["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"];
+    try {
+      await Promise.all(
+        families.map((family) =>
+          pendingRegistry.run(`auto-adopt-${family}`, () =>
+            autoAdoptMutation.mutateAsync({ family, enabled: true }),
+          ),
+        ),
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to enable auto-adopt across all families.");
+    }
+  }
+
   return {
     data: settingsQuery.data ?? null,
     errorMessage: errorMessage || (settingsQuery.error instanceof Error ? settingsQuery.error.message : ""),
@@ -72,5 +88,6 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
     handleSupportToggle,
     handleAutoAdoptToggle,
     handleAutoAdoptHarnesses,
+    handleEnableAllAutoAdopt,
   };
 }

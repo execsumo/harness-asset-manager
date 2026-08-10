@@ -80,7 +80,16 @@ export default function SettingsPage() {
           </section>
 
           <section className="settings-section">
-            <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
+            <div className="settings-section__header-row">
+              <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
+              <button
+                type="button"
+                className="action-pill"
+                onClick={controller.handleEnableAllAutoAdopt}
+              >
+                {copy.autoAdopt.enableAll}
+              </button>
+            </div>
             {autoAdoptFamilies.map((family) => {
               const option = copy.autoAdopt[family];
               return (

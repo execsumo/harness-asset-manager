@@ -20,6 +20,7 @@ const englishSettingsCopy = {
   },
   autoAdopt: {
     heading: "Automatic maintenance",
+    enableAll: "Enable all auto-maintenance",
     agents: {
       label: "Repair drifted Agent bindings",
       sub: "Fold an edited harness copy back into the store only when it is provably the only edit.",
@@ -75,6 +76,7 @@ export const settingsCopy = {
     },
     autoAdopt: {
       heading: "自动维护",
+      enableAll: "启用全部自动维护",
       agents: {
         label: "自动修复偏离的 Agent 绑定",
         sub: "只有在能证明它是唯一编辑时，才将 harness 副本折叠回存储。",
