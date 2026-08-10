@@ -14,6 +14,7 @@ from harness_asset_manager.application.permissions.store import (
 )
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.paths import resolve_app_paths
 
 
 def _spec(id: str = "test-perm", **overrides) -> PermissionSpec:
@@ -176,6 +177,46 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             text = adapter.config_path.read_text(encoding="utf-8")
             self.assertIn("[permissions.user-profile]", text)
             self.assertIn("[permissions.harness-asset-manager.filesystem]", text)
+
+    def test_cursor_round_trip_and_unsupported(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            # disable_permission() re-resolves the managed store from the adapter's own
+            # env-derived app paths (see FileBackedPermissionsAdapter._get_managed_pattern),
+            # not from whatever PermissionStore instance the caller happens to hold — so the
+            # store under test must live at that same resolved path for the pattern lookup
+            # used during disable to actually find this spec.
+            app_paths = resolve_app_paths({"HOME": str(home), "PATH": ""})
+            store = PermissionStore(app_paths.permissions_store_manifest)
+            spec_file = _spec("p-file", scope="file_read", pattern="~/.zshrc")
+            spec_shell = _spec("p-shell", scope="shell", pattern="git push")
+            store.upsert_managed(spec_file)
+            store.upsert_managed(spec_shell)
+
+            adapter = _adapter("cursor", home=home)
+            
+            # Enable file_read should work
+            adapter.enable_permission(spec_file)
+            
+            doc = json.loads(adapter.config_path.read_text(encoding="utf-8"))
+            self.assertIn("Read(~/.zshrc)", doc.get("permissions", {}).get("deny", []))
+            self.assertIn("version", doc)
+            self.assertIs(doc.get("editor", {}).get("vimMode"), False)
+            
+            # Enable shell should fail as unsupported
+            with self.assertRaises(MutationError) as ctx:
+                adapter.enable_permission(spec_shell)
+            self.assertIn("Permission not supported on Cursor", str(ctx.exception))
+
+            scan = adapter.scan(store.list_managed())
+            states = {entry.id: entry.state for entry in scan.entries}
+            self.assertEqual(states.get("p-file"), "managed")
+            self.assertEqual(states.get("p-shell"), "unsupported")
+
+            # Disable and assert cleanup
+            adapter.disable_permission(spec_file.id)
+            doc_after = json.loads(adapter.config_path.read_text(encoding="utf-8"))
+            self.assertNotIn("Read(~/.zshrc)", doc_after.get("permissions", {}).get("deny", []))
 
     def test_pressure_test_malformed_config_and_user_profile(self) -> None:
         """Feed a malformed permission config of each format (JSON + TOML) AND a pre-existing

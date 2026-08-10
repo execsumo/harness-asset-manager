@@ -448,6 +448,206 @@ class AntigravityPermissionsMapper:
         return "any", None
 
 
+class CursorPermissionsMapper:
+    """Mapper for Cursor CLI permissions under ~/.cursor/cli-config.json."""
+
+    def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]:
+        if spec.decision != "deny":
+            return False, f"HAM operates in Denylist ONLY mode (decision '{spec.decision}' is unsupported)", None
+
+        supported_scopes = {"shell", "file_read", "file_write", "web", "mcp"}
+        if spec.scope not in supported_scopes:
+            return False, f"Scope '{spec.scope}' is not supported by Cursor", None
+
+        if spec.pattern is None or not spec.pattern:
+            return False, "Cursor permission tokens require a non-empty pattern", None
+
+        if spec.scope == "shell" and any(character.isspace() for character in spec.pattern):
+            return (
+                False,
+                "Cursor Shell(...) only supports a single-token command name; shell patterns containing whitespace are not representable",
+                None,
+            )
+
+        if spec.scope == "mcp" and "/" not in spec.pattern:
+            return False, "Cursor Mcp(...) only supports server:tool; bare-server MCP patterns are not representable", None
+
+        return True, None, None
+
+    def spec_to_dict(self, spec: PermissionSpec) -> dict[str, object]:
+        if spec.scope == "shell":
+            return {"rules": [f"Shell({spec.pattern})"]}
+        elif spec.scope == "file_read":
+            return {"rules": [f"Read({spec.pattern})"]}
+        elif spec.scope == "file_write":
+            return {"rules": [f"Write({spec.pattern})"]}
+        elif spec.scope == "web":
+            return {"rules": [f"WebFetch({spec.pattern})"]}
+        elif spec.scope == "mcp" and spec.pattern and "/" in spec.pattern:
+            server, tool = spec.pattern.split("/", 1)
+            return {"rules": [f"Mcp({server}:{tool})"]}
+        return {"rules": []}
+
+    def dict_to_spec(
+        self,
+        decision: str,
+        scope: str,
+        pattern: str | None,
+        raw: Mapping[str, object],
+    ) -> PermissionSpec:
+        return PermissionSpec(
+            id="",
+            decision=decision,
+            scope=scope,
+            pattern=pattern,
+        )
+
+    def read_entries(self, document: dict[str, object], specs: Iterable[PermissionSpec] = ()) -> list[RawPermissionEntry]:
+        permissions_subtree = document.get("permissions")
+        if not isinstance(permissions_subtree, dict):
+            return []
+
+        rules_list = permissions_subtree.get("deny", [])
+        if not isinstance(rules_list, list):
+            return []
+
+        entries: list[RawPermissionEntry] = []
+        specs_list = list(specs)
+        unprocessed = set(str(rule) for rule in rules_list)
+        yielded_spec_ids: set[str] = set()
+
+        # First pass: find exact matches for all representable specs.
+        for spec in specs_list:
+            is_repr, _, _ = self.representable(spec)
+            if not is_repr:
+                continue
+
+            expected = set(self.spec_to_dict(spec)["rules"])
+            if expected and expected.issubset(unprocessed):
+                entries.append(
+                    RawPermissionEntry(
+                        id=spec.id,
+                        decision="deny",
+                        scope=spec.scope,
+                        pattern=spec.pattern,
+                        payload={"rules": sorted(list(expected))},
+                    )
+                )
+                unprocessed -= expected
+                yielded_spec_ids.add(spec.id)
+
+        # Second pass: partial matches (kept for consistency with the other mappers).
+        for spec in specs_list:
+            if spec.id in yielded_spec_ids:
+                continue
+            is_repr, _, _ = self.representable(spec)
+            if not is_repr:
+                continue
+
+            expected = self.spec_to_dict(spec)["rules"]
+            found = [rule for rule in expected if rule in unprocessed]
+            if found:
+                entries.append(
+                    RawPermissionEntry(
+                        id=spec.id,
+                        decision="deny",
+                        scope=spec.scope,
+                        pattern=spec.pattern,
+                        payload={"rules": sorted(found)},
+                    )
+                )
+                unprocessed -= set(found)
+                yielded_spec_ids.add(spec.id)
+
+        # Third pass: unmanaged/manual rule strings.
+        for rule_string in sorted(unprocessed):
+            scope, pattern = self._parse_rule_string(rule_string)
+            hash_id = hashlib.sha256(rule_string.encode("utf-8")).hexdigest()[:16]
+            entries.append(
+                RawPermissionEntry(
+                    id=f"manual:{hash_id}",
+                    decision="deny",
+                    scope=scope,
+                    pattern=pattern,
+                    payload={"rules": [rule_string]},
+                )
+            )
+
+        return entries
+
+    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None:
+        document.setdefault("version", 1)
+        editor = document.setdefault("editor", {})
+        if isinstance(editor, dict):
+            editor.setdefault("vimMode", False)
+
+        if "permissions" not in document:
+            document["permissions"] = {}
+        permissions_subtree = document["permissions"]
+        if not isinstance(permissions_subtree, dict):
+            raise MutationError("The top-level 'permissions' key is not an object", status=409)
+
+        expected_rules = self.spec_to_dict(spec)["rules"]
+        if "deny" not in permissions_subtree:
+            permissions_subtree["deny"] = []
+        target_list = permissions_subtree["deny"]
+        if not isinstance(target_list, list):
+            raise MutationError("The permission decision 'deny' is not an array", status=409)
+
+        for rule in expected_rules:
+            if rule not in target_list:
+                target_list.append(rule)
+
+    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
+        permissions_subtree = document.get("permissions")
+        if not isinstance(permissions_subtree, dict):
+            return
+
+        def rule_matches(rule_string: str) -> bool:
+            rule_hash = hashlib.sha256(rule_string.encode("utf-8")).hexdigest()[:16]
+            if f"manual:{rule_hash}" == id:
+                return True
+            if pattern:
+                candidates = [
+                    f"Shell({pattern})",
+                    f"Read({pattern})",
+                    f"Write({pattern})",
+                    f"WebFetch({pattern})",
+                ]
+                if "/" in pattern:
+                    server, tool = pattern.split("/", 1)
+                    candidates.append(f"Mcp({server}:{tool})")
+                if rule_string in candidates:
+                    return True
+            return False
+
+        rules_list = permissions_subtree.get("deny")
+        if isinstance(rules_list, list):
+            permissions_subtree["deny"] = [rule for rule in rules_list if not rule_matches(str(rule))]
+            if not permissions_subtree["deny"]:
+                permissions_subtree.pop("deny", None)
+
+        if not permissions_subtree:
+            document.pop("permissions", None)
+
+    def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
+        if rule.startswith("Shell(") and rule.endswith(")"):
+            return "shell", rule[6:-1]
+        if rule.startswith("Read(") and rule.endswith(")"):
+            return "file_read", rule[5:-1]
+        if rule.startswith("Write(") and rule.endswith(")"):
+            return "file_write", rule[6:-1]
+        if rule.startswith("WebFetch(") and rule.endswith(")"):
+            return "web", rule[9:-1]
+        if rule.startswith("Mcp(") and rule.endswith(")"):
+            value = rule[4:-1]
+            if ":" in value:
+                server, tool = value.split(":", 1)
+                return "mcp", f"{server}/{tool}"
+            return "mcp", value
+        return "any", None
+
+
 class CodexPermissionsMapper:
     """Mapper for OpenAI Codex permissions under ~/.codex/config.toml."""
 
@@ -666,6 +866,7 @@ class CodexPermissionsMapper:
 _MAPPERS: dict[str, PermissionMapper] = {
     "claude-code-permissions": ClaudeCodePermissionsMapper(),
     "antigravity-permissions": AntigravityPermissionsMapper(),
+    "cursor-permissions": CursorPermissionsMapper(),
     "codex-permissions": CodexPermissionsMapper(),
 }
 
@@ -679,6 +880,7 @@ def get_mapper(kind: str) -> PermissionMapper:
 __all__ = [
     "ClaudeCodePermissionsMapper",
     "AntigravityPermissionsMapper",
+    "CursorPermissionsMapper",
     "CodexPermissionsMapper",
     "PermissionMapper",
     "RawPermissionEntry",

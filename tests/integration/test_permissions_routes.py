@@ -17,6 +17,7 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertIn("claude", harness_names)
             self.assertIn("codex", harness_names)
             self.assertIn("agy", harness_names)
+            self.assertIn("cursor", harness_names)
 
     def test_create_and_delete_permission(self) -> None:
         with AppTestHarness() as harness:
@@ -128,10 +129,23 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertEqual(codex_cfg["default_permissions"], "harness-asset-manager")
             self.assertEqual(codex_cfg["permissions"]["harness-asset-manager"]["filesystem"]["~/.zshrc"], "deny")
 
-            # Disable on all three
+            # 4. Enable on Cursor
+            enabled_cursor = harness.post_json(
+                "/api/permissions/my-file-perm/enable",
+                {"harness": "cursor"},
+            )
+            self.assertTrue(enabled_cursor["ok"])
+
+            cursor_path = harness.spec.home / ".cursor" / "cli-config.json"
+            self.assertTrue(cursor_path.is_file())
+            cursor_settings = json.loads(cursor_path.read_text(encoding="utf-8"))
+            self.assertIn("Read(~/.zshrc)", cursor_settings["permissions"]["deny"])
+
+            # Disable on all four
             self.assertTrue(harness.post_json("/api/permissions/my-perm/disable", {"harness": "claude"})["ok"])
             self.assertTrue(harness.post_json("/api/permissions/my-perm/disable", {"harness": "agy"})["ok"])
             self.assertTrue(harness.post_json("/api/permissions/my-file-perm/disable", {"harness": "codex"})["ok"])
+            self.assertTrue(harness.post_json("/api/permissions/my-file-perm/disable", {"harness": "cursor"})["ok"])
 
             # Verify files are cleaned up or empty
             self.assertNotIn("permissions", json.loads(settings_path.read_text(encoding="utf-8")))
@@ -139,6 +153,7 @@ class PermissionRoutesTests(unittest.TestCase):
             with open(codex_path, "rb") as f:
                 codex_cfg2 = tomllib.load(f)
             self.assertNotIn("permissions", codex_cfg2)
+            self.assertNotIn("permissions", json.loads(cursor_path.read_text(encoding="utf-8")))
 
 
     def test_unmanaged_rule_is_readable_and_promotable(self) -> None:

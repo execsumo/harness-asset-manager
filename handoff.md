@@ -6,6 +6,81 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 > and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
 > work. Historical entries below may mention them for context, but do not resume those items.
 
+## 2026-08-10 (latest) — Cursor permissions mapper shipped, denylist-only, matrix stays `Planned`
+
+Implements steps 1-3 of the "Next permissions milestone" checklist from the entry directly below
+this one, on branch `feat/cursor-permissions-adapter`. Delegated via herdr: Codex built the mapper,
+Agy (pinned to Gemini 3.1 Pro) wired the catalog binding and tests; both ran in isolated worktrees
+and neither branch was ever committed to — I copied their verified worktree diffs into one
+integration branch myself and re-ran the full DoD there, which is where two real bugs surfaced
+(below). Research was done first against Cursor's live docs (`cursor.com/docs/cli/reference/
+permissions`, `.../configuration`, `.../reference/permissions` (IDE), `.../changelog`) — the
+handoff entry below explicitly warned not to guess this schema, and it was right to warn: the
+CLI and IDE Agent turned out to be two unrelated permission surfaces.
+
+- **What shipped**: `CursorPermissionsMapper` (`mappers.py`, codec `cursor-permissions`) and a
+  `permissions` catalog binding for `cursor` pointing at `~/.cursor/cli-config.json` (global
+  only — the project-level `.cursor/cli.json` is never touched, same rule every other family
+  here already follows). Deny-only, matching every other harness in this family. Scopes map
+  unusually cleanly onto Cursor's five tokens (`Shell()`, `Read()`, `Write()`, `WebFetch()`,
+  `Mcp()`) — no dual-rule complexity like Claude's `file_write`, no missing-scope gap like
+  Codex's shell/mcp. Two representability limits are real and were pinned by tests, not
+  incidental: `Shell()` only matches a single-word command (docs: *"commandBase is the first
+  token in the command line"*), so HAM's common multi-token shell patterns (`"git push"`) are
+  correctly reported unsupported; `Mcp()` only documents the full `server:tool` form, so a
+  bare-server MCP pattern is also unsupported. `enable_permission` seeds `version`/`editor.vimMode`
+  via `setdefault` (never clobbering an existing value) because Cursor's docs list both as
+  required top-level keys and a from-empty `cli-config.json` would otherwise be malformed.
+- **Deliberately not shipped: no auto-run/approval-mode write.** Every other harness in this
+  family flips a persistent no-prompt flag on enable (Claude `bypassPermissions`, Antigravity
+  `always-proceed`, Codex `approval_policy = "never"`). Cursor's `cli-config.json` has a
+  persistent `approvalMode` key (`allowlist` / `auto-review` / `unrestricted`), but nothing in
+  Cursor's docs ties any of its values to guaranteed deny-rule enforcement the way `--force`/
+  `--yolo` are explicitly documented to ("Force allow commands unless explicitly denied"), and
+  the CLI's own changelog shows this exact area (auto-run naming, `auto-review` mode, team-level
+  gating) actively changing release to release. This is precisely the case the entry below
+  pre-decided: *"If the mode is UI-only, version-dependent, or does not guarantee deny-first
+  evaluation, expose Cursor as unsupported... rather than writing an inferred setting."* The
+  mapper only ever reads/writes `permissions.deny`.
+- **IDE Agent confirmed permanently out of scope.** It reads an entirely separate
+  `~/.cursor/permissions.json` (+ per-repo copy, concatenated) with `mcpAllowlist` /
+  `terminalAllowlist` / `autoRun` — allowlist-only, and `autoRun` is explicitly documented as
+  "best-effort convenience," not enforcement. There is no deny surface to bind to at all, so
+  unlike the CLI this is not a "not yet verified" gap, it is structurally unsupported.
+- **Capability matrix intentionally left at `Planned`, not flipped to `Yes (Denylist)`.** The
+  entry below gates the flip on "both the CLI and IDE behavior are confirmed... add a handoff
+  entry with the exact Cursor versions tested." IDE is now genuinely resolved (previous bullet).
+  CLI is not: `cursor-agent` is not installed anywhere in this environment (`which cursor-agent`
+  → not found), so every claim above is doc-verified, not tested against a running binary. The
+  matrix flip is the next step, gated on that test existing.
+- **Two real bugs caught only by integrating the two branches and re-running the DoD myself** —
+  neither delegate's own local run could have caught them, and this is exactly why "a delegate's
+  passing self-report is not the acceptance signal": (1) `FileBackedPermissionsAdapter.__init__`
+  resolves its mapper eagerly via `get_mapper(profile.codec)`, so Agy's catalog binding alone
+  broke the entire DI container (every test that builds it) until Codex's mapper landed —
+  Agy diagnosed this correctly itself and escalated rather than stubbing the mapper, which is
+  the right call and is why its worktree never had a green full suite. (2) Agy's own new
+  adapter test called `adapter.disable_permission(spec_file)` (a whole `PermissionSpec`) where
+  the method wants just an `id: str`, and separately asserted `"editor.vimMode" in doc` against
+  a *nested* `{"editor": {"vimMode": False}}` structure — neither error crashed, both silently
+  passed/failed the wrong thing. Fixed directly in the integration branch rather than bouncing
+  back to a delegate for a two-line test fix; `disable_permission()`'s pattern lookup also turned
+  out to re-resolve its own `PermissionStore` from `resolve_app_paths(env)` rather than trusting
+  whatever store instance the caller holds, which the fix had to route around explicitly (see the
+  comment left in `test_cursor_round_trip_and_unsupported`) — this quirk is pre-existing and
+  shared by every other per-harness adapter test in that file, none of which previously exercised
+  `disable_permission` directly.
+- **Validation on the integration branch**: `ruff check harness_asset_manager tests` clean;
+  targeted permissions suite (`test_permissions_mappers` + `test_permissions_adapters` +
+  `test_permissions_routes`) 23/23 pass; full backend suite 699 tests, same 2 failures + 1 error
+  as an unmodified `main` checkout (confirmed by running both) — a pre-existing environment flake
+  where `tests.integration.test_launcher` spawns a subprocess that can't inherit
+  `~/.local/lib/python3.12/site-packages` in this sandbox, unrelated to this change; `npm run
+  typecheck` clean; `npm run build` clean. No frontend files were touched.
+- **Not yet done**: merging `feat/cursor-permissions-adapter` into `main`, deleting the two
+  delegate worktrees/branches (`codex-cursor-perms` / `agy-cursor-catalog`, neither ever
+  committed to), and the actual CLI-version verification pass that would unlock the matrix flip.
+
 ## 2026-08-10 — Denylist adoption now changes native approval defaults; Cursor permissions planned
 
 The Permissions family remains denylist-only, but adoption now configures each supported harness

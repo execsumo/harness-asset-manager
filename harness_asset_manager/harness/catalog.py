@@ -270,6 +270,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("hooks",),
                 codec="cursor-hooks",
             ),
+            "permissions": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".cursor" / "cli-config.json",
+                file_format="json",
+                subtree_path=("permissions",),
+                codec="cursor-permissions",
+            ),
             "agents": AgentFileBindingProfile(
                 root_path_resolver=lambda context: context.home / ".cursor",
                 output_dir_resolver=lambda context: context.home / ".cursor" / "agents",

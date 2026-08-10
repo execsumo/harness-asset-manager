@@ -6,6 +6,7 @@ from harness_asset_manager.application.permissions.mappers import (
     AntigravityPermissionsMapper,
     ClaudeCodePermissionsMapper,
     CodexPermissionsMapper,
+    CursorPermissionsMapper,
 )
 from harness_asset_manager.application.permissions.store import PermissionSpec
 
@@ -174,6 +175,91 @@ class CodexPermissionsMapperTests(unittest.TestCase):
         self.assertNotIn("harness-asset-manager", doc["permissions"])
         self.assertIn("user-profile", doc["permissions"])
         self.assertEqual(doc["permissions"]["user-profile"]["filesystem"]["~/.bashrc"], "deny")
+
+
+class CursorPermissionsMapperTests(unittest.TestCase):
+    def test_representable(self) -> None:
+        mapper = CursorPermissionsMapper()
+
+        self.assertTrue(mapper.representable(PermissionSpec("p-shell", "deny", "shell", "rm"))[0])
+        is_repr, reason, _ = mapper.representable(PermissionSpec("p-shell", "deny", "shell", "git push"))
+        self.assertFalse(is_repr)
+        self.assertIn("single-token", reason or "")
+        self.assertTrue(mapper.representable(PermissionSpec("p-read", "deny", "file_read", "~/.zshrc"))[0])
+        self.assertTrue(mapper.representable(PermissionSpec("p-write", "deny", "file_write", "~/.zshrc"))[0])
+        self.assertTrue(mapper.representable(PermissionSpec("p-web", "deny", "web", "api.example.com"))[0])
+        self.assertTrue(mapper.representable(PermissionSpec("p-mcp", "deny", "mcp", "server/tool"))[0])
+        self.assertFalse(mapper.representable(PermissionSpec("p-mcp", "deny", "mcp", "server"))[0])
+
+        is_repr, reason, _ = mapper.representable(PermissionSpec("p-allow", "allow", "shell", "rm"))
+        self.assertFalse(is_repr)
+        self.assertIn("Denylist ONLY mode", reason or "")
+        self.assertFalse(mapper.representable(PermissionSpec("p-ask", "ask", "shell", "rm"))[0])
+
+    def test_round_trip(self) -> None:
+        mapper = CursorPermissionsMapper()
+        doc = {}
+        specs = [
+            PermissionSpec("p-shell", "deny", "shell", "rm"),
+            PermissionSpec("p-read", "deny", "file_read", "~/.zshrc"),
+            PermissionSpec("p-write", "deny", "file_write", "./secrets/**"),
+            PermissionSpec("p-web", "deny", "web", "api.example.com"),
+            PermissionSpec("p-mcp", "deny", "mcp", "server/tool"),
+        ]
+
+        for spec in specs:
+            mapper.enable_permission(doc, spec)
+
+        self.assertEqual(doc["permissions"]["deny"], [
+            "Shell(rm)",
+            "Read(~/.zshrc)",
+            "Write(./secrets/**)",
+            "WebFetch(api.example.com)",
+            "Mcp(server:tool)",
+        ])
+        self.assertEqual(doc["version"], 1)
+        self.assertIs(doc["editor"]["vimMode"], False)
+
+        entries = mapper.read_entries(doc, specs)
+        self.assertEqual(len(entries), len(specs))
+        by_id = {entry.id: entry for entry in entries}
+        for spec in specs:
+            entry = by_id[spec.id]
+            self.assertEqual(entry.decision, spec.decision)
+            self.assertEqual(entry.scope, spec.scope)
+            self.assertEqual(entry.pattern, spec.pattern)
+
+        for spec in specs:
+            mapper.disable_permission(doc, spec.id, spec.pattern)
+
+        self.assertNotIn("permissions", doc)
+        self.assertEqual(doc["version"], 1)
+        self.assertIs(doc["editor"]["vimMode"], False)
+
+    def test_enable_does_not_clobber_existing_version_and_editor(self) -> None:
+        mapper = CursorPermissionsMapper()
+        doc = {
+            "version": 2,
+            "editor": {"vimMode": True},
+            "somethingElse": "keep-me",
+        }
+
+        mapper.enable_permission(doc, PermissionSpec("p-shell", "deny", "shell", "rm"))
+
+        self.assertEqual(doc["version"], 2)
+        self.assertIs(doc["editor"]["vimMode"], True)
+        self.assertEqual(doc["somethingElse"], "keep-me")
+
+    def test_unmanaged_manual_rule_is_readable(self) -> None:
+        mapper = CursorPermissionsMapper()
+        rule = "Shell(ls)"
+        entries = mapper.read_entries({"permissions": {"deny": [rule]}}, [])
+
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].id, "manual:ee154490bb4220f0")
+        self.assertEqual(entries[0].decision, "deny")
+        self.assertEqual(entries[0].scope, "shell")
+        self.assertEqual(entries[0].pattern, "ls")
 
 
 if __name__ == "__main__":
