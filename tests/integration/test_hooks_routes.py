@@ -255,18 +255,11 @@ class HookRoutesTests(unittest.TestCase):
 
             payload = harness.get_json("/api/hooks")
             unmanaged = next(e for e in payload["entries"] if e["kind"] == "unmanaged")
-            self.assertEqual(unmanaged["sightings"][0]["harness"], "agy")
-            self.assertEqual(unmanaged["sightings"][0]["event"], "post_tool_use")
-            self.assertEqual(unmanaged["sightings"][0]["match"], "shell")
+            self.assertEqual(unmanaged["spec"]["event"], "post_tool_use")
+            self.assertEqual(unmanaged["spec"]["match"], "shell")
 
-            # Adopt into central store
-            promoted = harness.post_json(
-                "/api/hooks/adopt",
-                {
-                    "harness": "agy",
-                    "observedId": unmanaged["sightings"][0]["observedId"],
-                },
-            )
+            # Promote into central store
+            promoted = harness.post_json(f"/api/hooks/{unmanaged['id']}/promote", {})
             self.assertTrue(promoted["ok"])
             self.assertEqual(promoted["hook"]["command"], "eslint .")
             self.assertEqual(promoted["hook"]["event"], "post_tool_use")
@@ -301,13 +294,12 @@ class HookRoutesTests(unittest.TestCase):
             agy_sighting = next(s for s in entry["sightings"] if s["harness"] == "agy")
             self.assertEqual(agy_sighting["state"], "drifted")
 
-            # Resolve drift by adopting target modification into store
+            # Resolve drift by reconciling with adopt_target (sourceKind="harness")
             resolved = harness.post_json(
-                "/api/hooks/review/resolve",
+                "/api/hooks/safety-check/reconcile",
                 {
-                    "harness": "agy",
-                    "id": "safety-check",
-                    "action": "adopt_target",
+                    "sourceKind": "harness",
+                    "observedHarness": "agy",
                 },
             )
             self.assertTrue(resolved["ok"])
