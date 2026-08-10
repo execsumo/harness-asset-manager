@@ -19,287 +19,35 @@
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
-## Why it exists
+## What it does for you
 
-AI extensions are scattered across harness-specific folders, MCP config files, slash command locations, and marketplace sources. Harness Asset Manager gives those pieces one local control surface:
+AI extensions are scattered across harness-specific folders, MCP config files, slash command locations, and marketplace sources. **Harness Asset Manager** provides a single local control surface for managing, reviewing, and discovering extensions across all your AI coding tools and agent frameworks.
 
-| Product idea | What it means |
+### Key Capabilities
+
+| Asset Family | What Harness Asset Manager does |
 |---|---|
-| **In use** | Harness Asset Manager controls the item and can enable or disable it across harnesses. |
-| **Needs review** | Harness Asset Manager found local state, config differences, or inventory issues that need a decision. |
-| **Discover** | Browse marketplaces and preview external tools. |
-
-## What you can do
-
-- See what is in use, what needs review, and where extensions are active.
-- Adopt local Skills into one shared inventory, then enable or disable them per harness.
-- Install or adopt MCP server configs, resolve differences, and enable them where supported.
-- Manage reusable slash commands once, then sync them to supported harnesses.
-- Manage hooks as normalized records, then sync them into supported harness settings with drift detection and review for unmanaged entries.
-- Manage Agents — markdown files in the store, symlinked into each harness's agents directory, with In Use and Needs Review views like every other family. If a harness overwrites a link with its own copy, provably-safe edits are folded back in automatically and conflicting ones are left for you.
-- Enforce strict **Denylists** across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a single unified view.
-- Capture and back up **Native Config Snapshots** across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
-- Trace every Web UI, API, and CLI mutation in an append-only JSON Lines journal, including the operation, outcome, and filesystem paths changed—without recording prompts, config payloads, or secrets.
-- Discover Skills, MCP servers, and preview-only CLI tools from marketplace sources.
-- Drive all of the above **headlessly** from the [CLI](#headless-and-cli) — every family has `list`/`show`/`enable`/`disable` commands with `--json` output, so a VPS or Linux sandbox needs no browser.
-
-## Product tour
-
-### Overview
-
-Start with the whole extension portfolio: what is in use, what needs review, what can be discovered, and where extensions are active.
-
-![skill-market-overview](./assets/harness-asset-manager-overview.png)
-
-### Skills
-
-Use Skills as shared local packages instead of maintaining separate copies per harness.
-
-Typical flow:
-
-1. Review a Skill found in a harness or install one from the marketplace.
-2. Adopt it into the Harness Asset Manager inventory.
-3. Enable it only where it should be available.
-4. Update, remove, or delete it from one place.
-
-![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
-
-### MCP servers
-
-Use MCP servers as one normalized config that can be written into each harness shape.
-
-Typical flow:
-
-1. Review an MCP server found in a harness or install one from the marketplace.
-2. Adopt it into the Harness Asset Manager inventory.
-3. Enable it where the server should be available.
-4. Resolve config differences, disable harness bindings, or uninstall it from one place.
-
-![mcp-matrix](./assets/harness-asset-manager-mcp-matrix.png)
-
-### Slash commands
-
-Use slash commands as one shared prompt library instead of rewriting the same command in each harness-specific format.
-
-Typical flow:
-
-1. Create a slash command with a name, description, and prompt.
-2. Use `$ARGUMENTS` where runtime input should be inserted.
-3. Sync it to supported harnesses.
-4. Review existing harness command files and adopt them into the shared library when needed.
-
-![skill-market-slash-commands-matrix](./assets/harness-asset-manager-slash_commands-matrix.png)
-
-### Agents
-
-Subagents you keep in one place instead of copy-pasting between harnesses.
-
-Typical flow:
-
-1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
-2. Turn it on for the harnesses that should have it.
-3. Review agents discovered in harness directories and adopt the ones worth keeping.
-
-If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
-
-### Marketplace
-
-Marketplace is the discovery surface:
-
-- **Skills Marketplace**: browse and install Skills.
-- **MCP Marketplace**: browse and install MCP servers.
-- **CLI Marketplace**: preview external CLI tools from CLIs.dev. This is display-only; Harness Asset Manager does not install or manage CLIs.
-
-![marketplace](./assets/harness-asset-manager-marketplace.png)
-
-## Install
-
-### Homebrew (macOS recommended)
-
-```bash
-brew tap execsumo/tap
-brew install harness-asset-manager
-harnessam start
-```
-
-`brew install harnessam` also works as an alias for the same formula.
-
-If `harnessam: command not found` right after installing, Homebrew's bin directory isn't on your `PATH` yet — run `eval "$(brew shellenv)"` and add that line to your shell profile (`~/.zprofile` or `~/.bash_profile`) so it persists across new terminals.
-
-## Headless and CLI
-
-Every asset family the web UI manages is also a command. Nothing needs to be running
-first: the CLI builds the same backend the server does and talks to the same stores, so
-it works on a VPS, in a container, or in a Linux sandbox with no browser and no daemon.
-
-```bash
-harnessam skills list                      # the skills × harness matrix
-harnessam agents enable release-bot --harness claude
-harnessam mcp install exa                  # install from the marketplace
-harnessam hooks set-harnesses lint-gate --target enabled
-harnessam permissions create --id no-force-push \
-    --decision deny --scope shell --pattern 'git push --force'
-harnessam commands sync deploy --target claude --target codex
-harnessam settings show
-```
-
-> Installed from source or PyPI the binary is `harness-asset-manager`; the Homebrew
-> formula also symlinks it as `harnessam`. Both accept the same commands, and
-> `python -m harness_asset_manager` works anywhere the package is importable.
-
-### Command reference
-
-Every command takes `--json` and `--state-dir`. `--harness` names a harness id
-(`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `openclaw`), and
-`set-harnesses --target enabled|disabled` applies one state to every interactive cell
-in that row. Run `harnessam <group> <verb> --help` for the full flag list.
-
-**`skills`** — Skills inventory and the skills marketplace.
-
-| Command | What it does |
-| --- | --- |
-| `skills list` | The skills × harness matrix, plus a managed/unmanaged count |
-| `skills show <ref>` | Detail: status, per-harness cells, on-disk locations |
-| `skills enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
-| `skills set-harnesses <ref> --target <state>` | Apply one state everywhere |
-| `skills manage <ref>` / `skills manage-all` | Take unmanaged skills into the store |
-| `skills unmanage <ref>` | Stop managing, leaving the files in place |
-| `skills update <ref>` | Re-fetch a managed skill from its source |
-| `skills delete <ref> --yes` | Delete a managed skill and its bindings |
-| `skills search <query>` / `skills popular` | Browse the marketplace; prints install tokens |
-| `skills install <install-token>` | Install a marketplace skill |
-
-**`agents`** — subagents stored as markdown and symlinked into each harness.
-
-| Command | What it does |
-| --- | --- |
-| `agents list` | The agents × harness matrix, including unmanaged harness copies |
-| `agents show <ref>` | Detail: prompt, tools, per-harness path and install method |
-| `agents create --name --description --prompt\|--prompt-file [--tool …]` | Create an agent in the store |
-| `agents update <ref> [--name] [--description] [--prompt] [--tool …]` | Change one or more fields |
-| `agents enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
-| `agents set-harnesses <ref> [--harness <h> …]` | Bind to exactly this set; omit all to unbind everywhere |
-| `agents adopt <ref> [--on-conflict keep_store\|replace_store]` | Take a harness-owned agent into the store |
-| `agents adopt-all` | Adopt every unmanaged agent |
-| `agents delete <ref> --yes` | Delete an agent and its bindings |
-
-**`mcp`** — MCP servers and the MCP marketplace.
-
-| Command | What it does |
-| --- | --- |
-| `mcp list` | The servers × harness matrix |
-| `mcp show <name>` | Detail: transport, command/url, per-harness state |
-| `mcp install <qualified-name>` | Install from the marketplace |
-| `mcp uninstall <name> --yes` | Remove a managed server and its bindings |
-| `mcp enable\|disable <name> --harness <h> [--config <json>]` | Bind or unbind one harness |
-| `mcp set-harnesses <name> --target <state> [--config <json>]` | Apply one state everywhere |
-| `mcp check <name>` | Probe availability; exits `1` when unavailable |
-| `mcp unmanaged` | Servers found in harness configs that we do not own |
-| `mcp adopt <name> [--observed-harness <h>] [--harness <h> …]` | Take an unmanaged server into the store |
-| `mcp search <query>` / `mcp popular` | Browse the marketplace |
-
-`--config` takes a JSON object, or `@file` / `@-` to read one from a file or stdin.
-
-**`hooks`** — normalized hook records synced into harness settings.
-
-| Command | What it does |
-| --- | --- |
-| `hooks list` | The hooks × harness matrix |
-| `hooks show <id>` | Detail: event, command, match, per-harness state and drift |
-| `hooks create --id --event --command [--match] [--timeout] [--description]` | Create a managed hook |
-| `hooks enable\|disable <id> --harness <h>` | Bind or unbind one harness |
-| `hooks set-harnesses <id> --target <state>` | Apply one state everywhere |
-| `hooks promote <id> [--observed-harness <h>]` | Take a harness-owned hook into the store |
-| `hooks delete <id> --yes` | Delete a hook and its bindings |
-
-`--event` is one of `pre_tool_use`, `post_tool_use`, `user_prompt_submit`,
-`session_start`, `stop`, `pre_compact`. `--match` is a tool *category* —
-`any`, `shell`, `file_read`, `file_write`, `mcp`, `web` — not a harness tool name;
-each harness maps the category to its own matcher.
-
-**`permissions`** — denylist rules across supported harnesses.
-
-| Command | What it does |
-| --- | --- |
-| `permissions list` | The rules × harness matrix |
-| `permissions show <id>` | Detail: decision, scope, pattern, per-harness state |
-| `permissions create --id --decision --scope [--pattern] [--description]` | Create a managed rule |
-| `permissions enable\|disable <id> --harness <h>` | Bind or unbind one harness |
-| `permissions set-harnesses <id> --target <state>` | Apply one state everywhere |
-| `permissions promote <id> [--observed-harness <h>]` | Take a harness-owned rule into the store |
-| `permissions delete <id> --yes` | Delete a rule and its bindings |
-
-`--scope` is one of `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and
-`--pattern` is read according to it (`shell` → `git push`, `file_*` → `~/.zshrc`,
-`web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to
-harnesses today — Harness Asset Manager is denylist-only.
-
-**`commands`** — slash commands and their per-target renders.
-
-| Command | What it does |
-| --- | --- |
-| `commands list` | Commands with their synced targets, plus anything needing review |
-| `commands targets` | The available targets and whether each is enabled and available |
-| `commands show <name>` | Detail: per-target sync status, path, and the prompt body |
-| `commands create --name --description --prompt\|--prompt-file [--target …]` | Create and sync |
-| `commands update <name> --description --prompt\|--prompt-file [--target …]` | Update and re-sync |
-| `commands sync <name> [--target …]` | Re-render into the selected targets |
-| `commands delete <name> --yes` | Delete the command and its renders |
-
-**`settings`, `snapshots`, `health`**
-
-| Command | What it does |
-| --- | --- |
-| `settings show` | Storage paths, per-harness support and install state, auto-adopt |
-| `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
-| `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
-| `refresh` | Run one inventory and auto-adoption pass for every asset family |
-| `snapshots list [--harness <h>]` | Captured native config snapshots |
-| `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
-| `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
-
-### Scripting
-
-- `--json` on any command prints the same payload the matching API route returns —
-  stdout stays clean for `jq`, and errors go to stderr.
-- Exit codes: `0` success, `1` a refused or partly-applied mutation, `2` bad usage.
-  A fan-out like `set-harnesses` exits `1` when any harness rejected the change, so
-  check `succeeded`/`failed` in the JSON when partial application is acceptable.
-- Destructive commands (`delete`, `uninstall`) prompt when stdin is a terminal and
-  refuse otherwise — pass `--yes` in scripts.
-- `--state-dir` isolates a run, which is how you keep CI or a throwaway sandbox from
-  touching the real store.
-
-```bash
-harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'
-harnessam agents set-harnesses release-bot --harness claude --harness codex --json | jq .failed
-```
-
-Running the CLI while the app is serving is safe — the stores serialize writes with
-`flock`, and the server's read models refresh within a second, so the open UI catches up
-on its own.
-
-Every CLI mutation is also appended to the shared `audit.log`. Events include only safe
-identifiers such as asset name and harness, plus the filesystem paths that actually
-changed. Prompt bodies, config objects, environment values, and exception messages are
-never serialized into the journal. The app's **Activity** page shows the most recent
-valid events without modifying the authoritative on-disk journal.
-
-### Running the server headlessly
-
-`serve` runs in the foreground (systemd, Docker, `tmux`); `start` daemonizes and records
-a pid that `status` and `stop` read back.
-
-```bash
-harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
-```
-
-A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is
-a placeholder. Binding a non-loopback address needs `--allow-remote`; see
-[Local-first safety](#local-first-safety) before you do, because the API has no
-authentication.
-
-## Supported harnesses
+| **Skills** | Adopt local Skill folders into one shared inventory, then enable or disable them per harness using managed symlinks. |
+| **Agents** | Store subagents as Markdown files with YAML frontmatter, symlinked (or rendered for Codex) across harnesses with automated drift repair and safe conflict resolution. |
+| **MCP Servers** | Manage normalized MCP server configurations and translate them into native harness shapes (JSON, TOML, YAML). |
+| **Slash Commands** | Maintain a single reusable prompt library and sync rendered command files into supported harness formats. |
+| **Hooks** | Configure normalized event and tool category hook records, synced into native harness settings with drift detection and review for unmanaged entries. |
+| **Permissions** | Enforce strict denylists across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a unified view. |
+| **Snapshots & Audit** | Capture native config snapshots across all 7 supported harnesses with automatic drift detection, SHA-256 deduplication, and secret redaction, backed by an append-only JSON Lines audit journal. |
+| **Marketplace** | Discover and preview Skills, MCP servers, and external CLI tools from marketplace hubs. |
+| **Headless / CLI** | Drive all features headlessly via CLI commands with `--json` output—ideal for VPS environments, containers, or Linux sandboxes with no browser required. |
+
+### Extension Statuses
+
+- **In use**: Harness Asset Manager controls the item and enables or disables it across harnesses.
+- **Needs review**: Harness Asset Manager found local state differences, unmanaged items, or configuration drift that requires your decision.
+- **Discover**: Browse marketplaces and preview external tools.
+
+---
+
+## Supported Harnesses
+
+Harness Asset Manager supports **7 AI agent harnesses** across **6 asset families**:
 
 <table align="center">
   <tr>
@@ -341,62 +89,181 @@ authentication.
   </tr>
 </table>
 
-Harnesses appear in this order everywhere in the app — Settings, and every resource
-matrix. The order is declared once, in `SUPPORTED_HARNESS_DEFINITIONS`
-(`harness_asset_manager/harness/catalog.py`); every family derives its columns from it, so there
-is no per-page ordering to keep in sync. A harness switched off in Settings is dropped
-from every matrix rather than shown as an inert column.
+Harnesses appear in this canonical order everywhere in the app—Settings and every resource matrix. The order is declared in `SUPPORTED_HARNESS_DEFINITIONS` (`harness_asset_manager/harness/catalog.py`). Disabling a harness in Settings drops its column across all matrices.
 
-| Harness | Skills | MCP servers | Slash commands | Hooks | Permissions |
-|---|---:|---:|---:|---:|---:|
-| Claude Code | Yes | Yes | Yes | Yes | Yes (Denylist) |
-| Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
-| Antigravity (agy) | Yes | Yes | Yes | Partial | Yes (Denylist) |
-| Cursor | Yes | Yes | Yes | Yes | No |
-| OpenCode | Yes | Yes | Yes | Partial | No |
-| Hermes Agent | Yes | Yes | Yes* | Not Yet | No |
-| OpenClaw | Yes | Not Yet | Not Yet | Not Yet | No |
+### Capability Matrix
 
-<sub>\* Hermes Agent slash-command support is provisional. Its slash-command directory (`~/.hermes/commands`, frontmatter Markdown) follows common conventions but is **not yet verified against a shipping Hermes build**; hooks are not yet mapped. See `handoff.md`.</sub>
+| Harness | Skills | Agents | MCP Servers | Slash Commands | Hooks | Permissions |
+|---|---:|---:|---:|---:|---:|---:|
+| **Claude Code** | Yes | Yes (symlink) | Yes | Yes | Yes | Yes (Denylist) |
+| **Codex CLI** | Yes | Yes (rendered TOML) | Yes | Yes | Yes | Yes (Denylist) |
+| **Antigravity (agy)** | Yes | Yes (symlink) | Yes | Yes | Partial | Yes (Denylist) |
+| **Cursor** | Yes | Yes (symlink) | Yes | Yes | Yes | No |
+| **OpenCode** | Yes | Yes (symlink) | Yes | Yes | Partial | No |
+| **Hermes Agent** | Yes | Not Installable¹ | Yes | Yes² (Provisional) | Not Yet | No |
+| **OpenClaw** | Yes | Not Yet | Not Yet³ | Not Yet | Not Yet | No |
 
-## Local-first safety
+<small>
+¹ <strong>Hermes Agent</strong> spawns subagents dynamically and has no static agent-definition file format to install into; UI/CLI cell status explicitly explains why.<br />
+² <strong>Hermes slash-command</strong> support is provisional. Its command directory (<code>~/.hermes/commands</code>, frontmatter Markdown) follows common conventions but is not yet verified against a shipping Hermes build.<br />
+³ <strong>OpenClaw MCP</strong> config writes are not yet supported.
+</small>
 
-Harness Asset Manager is a local configuration-management tool. It runs on your machine and reads or writes local harness extension state.
+---
 
-Actions that can change local state include:
+## How to Use It
 
-- adopting a local skill folder
-- enabling or disabling a skill for a harness
-- updating a source-backed skill
-- removing or deleting a skill
-- installing an MCP server into a selected harness config
-- adopting an existing MCP config
-- enabling, disabling, resolving, or uninstalling an MCP server
-- creating, updating, syncing, importing, or deleting a slash command
-- creating, enabling, disabling, resolving, or deleting a hook binding
-- changing harness support settings
-- repairing a drifted agent binding, which can move an edit out of a harness file and into the store
+### Install
 
-Automatic adoption is opt-in per asset family, except for the existing safe Agent repair default. It is limited to equivalent observations or cases where a harness copy is provably the only edit, and every action is recorded in the Activity audit log.
+#### Homebrew (macOS recommended)
 
-| Family | Default | Automatic behavior when enabled |
-| --- | --- | --- |
-| Agents | On | Repair provable drift; conflicting edits remain for review. |
-| Skills | Off | Adopt new, equivalent unmanaged local directories and replace them with store links. |
-| Slash commands | Off | Register equivalent unmanaged files without overwriting their contents. |
-| MCP, Hooks, Permissions | Off | Promote equivalent unmanaged observations without choosing between conflicting configurations. |
+```bash
+brew tap execsumo/tap
+brew install harness-asset-manager
+harnessam start
+```
 
-These checks run while reading the relevant inventory or detail view, so a setting change
-takes effect on the next read; there is no background watcher. Codex rendered-agent adoption
-remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is
-closed, run `harnessam refresh` for one read and reconciliation pass across all asset families;
-use `harnessam refresh --json` for automation.
+`brew install harnessam` also works as an alias for the same formula.
 
-App-owned files live under `~/.harness-asset-manager` on macOS (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists) and XDG base directories on Linux.
+If `harnessam: command not found` appears after installing, Homebrew's bin directory isn't on your `PATH` yet — run `eval "$(brew shellenv)"` and add that line to your shell profile (`~/.zprofile` or `~/.bash_profile`).
 
-## How it works
+#### From Source / Local Development
 
-### Store layout
+```bash
+git clone https://github.com/execsumo/harness-asset-manager.git
+cd harness-asset-manager
+scripts/install-dev.sh
+```
+
+### Quick Start
+
+#### 1. Web Control Surface
+
+Launch the background daemon and open the browser interface:
+
+```bash
+harnessam start
+```
+
+Or run the server directly in the foreground (for containers, systemd, or remote setups):
+
+```bash
+harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
+```
+
+#### 2. Headless CLI Quick Reference
+
+Every asset family managed by the Web UI is also accessible via the CLI:
+
+```bash
+# Matrix Overview
+harnessam skills list                      # skills × harness matrix
+harnessam agents list                      # agents × harness matrix
+harnessam mcp list                         # mcp servers × harness matrix
+harnessam hooks list                       # hooks × harness matrix
+harnessam permissions list                 # permissions × harness matrix
+harnessam commands list                    # slash commands list
+
+# Management & Binding
+harnessam agents enable release-bot --harness claude
+harnessam skills set-harnesses lint-rule --target enabled
+harnessam commands sync deploy --target claude --target codex
+harnessam hooks set-harnesses lint-gate --target enabled
+
+# Permissions
+harnessam permissions create --id no-force-push \
+    --decision deny --scope shell --pattern 'git push --force'
+
+# Marketplace Installation
+harnessam mcp install exa
+
+# Snapshots & Settings
+harnessam snapshots capture
+harnessam settings show
+```
+
+All CLI commands accept `--json` for script integration:
+
+```bash
+harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'
+```
+
+---
+
+## Product Tour
+
+### Overview
+
+Start with the whole extension portfolio: what is in use, what needs review, what can be discovered, and where extensions are active.
+
+![skill-market-overview](./assets/harness-asset-manager-overview.png)
+
+### Skills
+
+Use Skills as shared local packages instead of maintaining separate copies per harness.
+
+Typical flow:
+
+1. Review a Skill found in a harness or install one from the marketplace.
+2. Adopt it into the Harness Asset Manager inventory.
+3. Enable it only where it should be available.
+4. Update, remove, or delete it from one place.
+
+![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
+
+### MCP Servers
+
+Use MCP servers as one normalized config that can be written into each harness shape.
+
+Typical flow:
+
+1. Review an MCP server found in a harness or install one from the marketplace.
+2. Adopt it into the Harness Asset Manager inventory.
+3. Enable it where the server should be available.
+4. Resolve config differences, disable harness bindings, or uninstall it from one place.
+
+![mcp-matrix](./assets/harness-asset-manager-mcp-matrix.png)
+
+### Slash Commands
+
+Use slash commands as one shared prompt library instead of rewriting the same command in each harness-specific format.
+
+Typical flow:
+
+1. Create a slash command with a name, description, and prompt.
+2. Use `$ARGUMENTS` where runtime input should be inserted.
+3. Sync it to supported harnesses.
+4. Review existing harness command files and adopt them into the shared library when needed.
+
+![skill-market-slash-commands-matrix](./assets/harness-asset-manager-slash_commands-matrix.png)
+
+### Agents
+
+Subagents you keep in one place instead of copy-pasting between harnesses.
+
+Typical flow:
+
+1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
+2. Turn it on for the harnesses that should have it.
+3. Review agents discovered in harness directories and adopt the ones worth keeping.
+
+If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
+
+### Marketplace
+
+Marketplace is the discovery surface:
+
+- **Skills Marketplace**: browse and install Skills.
+- **MCP Marketplace**: browse and install MCP servers.
+- **CLI Marketplace**: preview external CLI tools from CLIs.dev. This is display-only; Harness Asset Manager does not install or manage CLIs.
+
+![marketplace](./assets/harness-asset-manager-marketplace.png)
+
+---
+
+## How It Works (Deep Dive)
+
+### Store Layout
 
 Harness Asset Manager keeps a flat store under its data directory: `skills/` holds one directory per skill, `agents/` holds one `<slug>.md` per agent, and each family's manifests sit alongside. Every binding into a harness points back here, so a resource is edited once and every harness that has it enabled follows.
 
@@ -412,7 +279,7 @@ Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<c
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
-### MCP servers
+### MCP Servers
 
 MCP servers are stored as normalized Harness Asset Manager records, then translated into the config shape each harness expects:
 
@@ -427,7 +294,7 @@ When Harness Asset Manager finds different configs for the same MCP server, it a
 
 ![skill-market-overview](./assets/harness-asset-manager-mcp-translation.svg)
 
-### Slash commands
+### Slash Commands
 
 Slash commands are stored as TOML records under Harness Asset Manager app storage, then rendered into each supported harness format:
 
@@ -438,9 +305,7 @@ Slash commands are stored as TOML records under Harness Asset Manager app storag
 - Antigravity (agy) writes Markdown command files under `~/.gemini/antigravity-cli/commands` and invokes them with `/`.
 - OpenClaw slash command writes are not yet supported.
 
-Disabling a harness in Settings removes its column here immediately, without a restart.
-Command files already written to that harness and their sync records are left alone —
-re-enabling it restores the column and its sync state unchanged.
+Disabling a harness in Settings removes its column here immediately, without a restart. Command files already written to that harness and their sync records are left alone — re-enabling it restores the column and its sync state unchanged.
 
 Harness Asset Manager tracks target ownership with sync state and content hashes. With slash-command auto-adoption enabled, it adopts only equivalent unmanaged command files and never overwrites their contents. Otherwise it reports unmanaged, changed, or missing files for review. Review actions let you adopt unmanaged commands, restore managed content, adopt a changed harness command as the new source, or remove a broken binding while leaving the harness file untouched.
 
@@ -497,22 +362,194 @@ On the next inventory load, each broken binding is classified and handled:
 
 Newest-file-wins is deliberately **not** a rule here — it silently discards the other harness's work, which is the exact failure this exists to prevent. Codex is excluded from automatic adoption entirely, because converting its TOML back to Markdown drops keys Harness Asset Manager does not model.
 
-Every automatic action is appended to the Activity audit log: repair you cannot see is nearly
-as bad as breakage you cannot see. Agent-specific repairs are also shown as **Recent automatic
-repairs** on the agents review page. Each family has its own setting, and turning one off takes
-effect on the next load, not the next restart.
+Every automatic action is appended to the Activity audit log: repair you cannot see is nearly as bad as breakage you cannot see. Agent-specific repairs are also shown as **Recent automatic repairs** on the agents review page. Each family has its own setting, and turning one off takes effect on the next load, not the next restart.
 
-### CLIs
+### Permissions
 
-CLI marketplace entries are preview-only.
+Denylist rules strictly restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. `--scope` values include `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and `--pattern` matches according to scope (`shell` → `git push`, `file_*` → `~/.zshrc`, `web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only.
+
+### Native Config Snapshots
+
+Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
+
+### Mutation Audit Journal
+
+Trace every Web UI, API, and CLI mutation in an append-only JSON Lines journal, including the operation, outcome, and filesystem paths changed—without recording prompts, config payloads, or secrets.
+
+---
+
+## Local-first Safety
+
+Harness Asset Manager is a local configuration-management tool. It runs on your machine and reads or writes local harness extension state.
+
+Actions that can change local state include:
+
+- adopting a local skill folder
+- enabling or disabling a skill for a harness
+- updating a source-backed skill
+- removing or deleting a skill
+- installing an MCP server into a selected harness config
+- adopting an existing MCP config
+- enabling, disabling, resolving, or uninstalling an MCP server
+- creating, updating, syncing, importing, or deleting a slash command
+- creating, enabling, disabling, resolving, or deleting a hook binding
+- changing harness support settings
+- repairing a drifted agent binding, which can move an edit out of a harness file and into the store
+
+Automatic adoption is opt-in per asset family, except for the existing safe Agent repair default. It is limited to equivalent observations or cases where a harness copy is provably the only edit, and every action is recorded in the Activity audit log.
+
+| Family | Default | Automatic behavior when enabled |
+| --- | --- | --- |
+| Agents | On | Repair provable drift; conflicting edits remain for review. |
+| Skills | Off | Adopt new, equivalent unmanaged local directories and replace them with store links. |
+| Slash commands | Off | Register equivalent unmanaged files without overwriting their contents. |
+| MCP, Hooks, Permissions | Off | Promote equivalent unmanaged observations without choosing between conflicting configurations. |
+
+These checks run while reading the relevant inventory or detail view, so a setting change takes effect on the next read; there is no background watcher. Codex rendered-agent adoption remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is closed, run `harnessam refresh` for one read and reconciliation pass across all asset families; use `harnessam refresh --json` for automation.
+
+App-owned files live under `~/.harness-asset-manager` on macOS (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists) and XDG base directories on Linux.
+
+---
+
+## Headless and CLI Reference
+
+Every asset family the Web UI manages is also available as a CLI command. Nothing needs to be running first: the CLI builds the same backend the server does and talks to the same stores, so it works on a VPS, in a container, or in a Linux sandbox with no browser and no daemon.
+
+### Command Reference
+
+Every command takes `--json` and `--state-dir`. `--harness` names a harness id (`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `openclaw`), and `set-harnesses --target enabled|disabled` applies one state to every interactive cell in that row. Run `harnessam <group> <verb> --help` for the full flag list.
+
+**`skills`** — Skills inventory and the skills marketplace.
+
+| Command | What it does |
+| --- | --- |
+| `skills list` | The skills × harness matrix, plus a managed/unmanaged count |
+| `skills show <ref>` | Detail: status, per-harness cells, on-disk locations |
+| `skills enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
+| `skills set-harnesses <ref> --target <state>` | Apply one state everywhere |
+| `skills manage <ref>` / `skills manage-all` | Take unmanaged skills into the store |
+| `skills unmanage <ref>` | Stop managing, leaving the files in place |
+| `skills update <ref>` | Re-fetch a managed skill from its source |
+| `skills delete <ref> --yes` | Delete a managed skill and its bindings |
+| `skills search <query>` / `skills popular` | Browse the marketplace; prints install tokens |
+| `skills install <install-token>` | Install a marketplace skill |
+
+**`agents`** — Subagents stored as markdown and symlinked into each harness.
+
+| Command | What it does |
+| --- | --- |
+| `agents list` | The agents × harness matrix, including unmanaged harness copies |
+| `agents show <ref>` | Detail: prompt, tools, per-harness path and install method |
+| `agents create --name --description --prompt\|--prompt-file [--tool …]` | Create an agent in the store |
+| `agents update <ref> [--name] [--description] [--prompt] [--tool …]` | Change one or more fields |
+| `agents enable\|disable <ref> --harness <h>` | Bind or unbind one harness |
+| `agents set-harnesses <ref> [--harness <h> …]` | Bind to exactly this set; omit all to unbind everywhere |
+| `agents adopt <ref> [--on-conflict keep_store\|replace_store]` | Take a harness-owned agent into the store |
+| `agents adopt-all` | Adopt every unmanaged agent |
+| `agents delete <ref> --yes` | Delete an agent and its bindings |
+
+**`mcp`** — MCP servers and the MCP marketplace.
+
+| Command | What it does |
+| --- | --- |
+| `mcp list` | The servers × harness matrix |
+| `mcp show <name>` | Detail: transport, command/url, per-harness state |
+| `mcp install <qualified-name>` | Install from the marketplace |
+| `mcp uninstall <name> --yes` | Remove a managed server and its bindings |
+| `mcp enable\|disable <name> --harness <h> [--config <json>]` | Bind or unbind one harness |
+| `mcp set-harnesses <name> --target <state> [--config <json>]` | Apply one state everywhere |
+| `mcp check <name>` | Probe availability; exits `1` when unavailable |
+| `mcp unmanaged` | Servers found in harness configs that we do not own |
+| `mcp adopt <name> [--observed-harness <h>] [--harness <h> …]` | Take an unmanaged server into the store |
+| `mcp search <query>` / `mcp popular` | Browse the marketplace |
+
+`--config` takes a JSON object, or `@file` / `@-` to read one from a file or stdin.
+
+**`hooks`** — Normalized hook records synced into harness settings.
+
+| Command | What it does |
+| --- | --- |
+| `hooks list` | The hooks × harness matrix |
+| `hooks show <id>` | Detail: event, command, match, per-harness state and drift |
+| `hooks create --id --event --command [--match] [--timeout] [--description]` | Create a managed hook |
+| `hooks enable\|disable <id> --harness <h>` | Bind or unbind one harness |
+| `hooks set-harnesses <id> --target <state>` | Apply one state everywhere |
+| `hooks promote <id> [--observed-harness <h>]` | Take a harness-owned hook into the store |
+| `hooks delete <id> --yes` | Delete a hook and its bindings |
+
+`--event` is one of `pre_tool_use`, `post_tool_use`, `user_prompt_submit`, `session_start`, `stop`, `pre_compact`. `--match` is a tool *category* — `any`, `shell`, `file_read`, `file_write`, `mcp`, `web` — not a harness tool name; each harness maps the category to its own matcher.
+
+**`permissions`** — Denylist rules across supported harnesses.
+
+| Command | What it does |
+| --- | --- |
+| `permissions list` | The rules × harness matrix |
+| `permissions show <id>` | Detail: decision, scope, pattern, per-harness state |
+| `permissions create --id --decision --scope [--pattern] [--description]` | Create a managed rule |
+| `permissions enable\|disable <id> --harness <h>` | Bind or unbind one harness |
+| `permissions set-harnesses <id> --target <state>` | Apply one state everywhere |
+| `permissions promote <id> [--observed-harness <h>]` | Take a harness-owned rule into the store |
+| `permissions delete <id> --yes` | Delete a rule and its bindings |
+
+**`commands`** — Slash commands and their per-target renders.
+
+| Command | What it does |
+| --- | --- |
+| `commands list` | Commands with their synced targets, plus anything needing review |
+| `commands targets` | The available targets and whether each is enabled and available |
+| `commands show <name>` | Detail: per-target sync status, path, and the prompt body |
+| `commands create --name --description --prompt\|--prompt-file [--target …]` | Create and sync |
+| `commands update <name> --description --prompt\|--prompt-file [--target …]` | Update and re-sync |
+| `commands sync <name> [--target …]` | Re-render into the selected targets |
+| `commands delete <name> --yes` | Delete the command and its renders |
+
+**`settings`, `snapshots`, `health`**
+
+| Command | What it does |
+| --- | --- |
+| `settings show` | Storage paths, per-harness support and install state, auto-adopt |
+| `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
+| `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
+| `refresh` | Run one inventory and auto-adoption pass for every asset family |
+| `snapshots list [--harness <h>]` | Captured native config snapshots |
+| `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
+| `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
+
+### Scripting Guidelines
+
+- `--json` on any command prints the exact payload returned by the corresponding API route — stdout stays clean for `jq`, while errors go to stderr.
+- Exit codes: `0` success, `1` a refused or partly-applied mutation, `2` bad usage. A fan-out like `set-harnesses` exits `1` when any harness rejects the change; check `succeeded`/`failed` in JSON when partial application is acceptable.
+- Destructive commands (`delete`, `uninstall`) prompt when stdin is a terminal and refuse otherwise — pass `--yes` in scripts.
+- `--state-dir` isolates a run, ensuring CI or throwaway sandboxes do not touch the primary store.
+
+```bash
+harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'
+harnessam agents set-harnesses release-bot --harness claude --harness codex --json | jq .failed
+```
+
+Running the CLI while the app is serving is completely safe — stores serialize writes with `flock`, and the server's read models refresh within a second.
+
+### Running the Server Headlessly
+
+`serve` runs in the foreground (systemd, Docker, `tmux`); `start` daemonizes and records a pid that `status` and `stop` read back.
+
+```bash
+harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
+```
+
+A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is a placeholder. Binding a non-loopback address needs `--allow-remote`; see [Local-first safety](#local-first-safety) first, because the API has no authentication.
+
+---
 
 ## Configuration
 
 On macOS, app-owned files live under `~/.harness-asset-manager` (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists). On Linux, app-owned files use XDG base directories.
 
+### Path Locations
+
 Useful macOS paths:
 
-- skills store: `~/.harness-asset-manager/skills` (migrated from the legacy `shared/` and `packages/local/skills` layouts on first start)
+- skills store: `~/.harness-asset-manager/skills`
 - agents store: `~/.harness-asset-manager/agents`
 - agent binding ledger: `~/.harness-asset-manager/bindings.json`
 - agent repair audit log: `~/.harness-asset-manager/agents-audit.json`
@@ -523,7 +560,7 @@ Useful macOS paths:
 - slash command library: `~/.harness-asset-manager/slash-commands/commands`
 - slash command sync state: `~/.harness-asset-manager/slash-commands/sync-state.json`
 - marketplace cache: `~/.harness-asset-manager/marketplace`
-- app settings: `~/.harness-asset-manager/settings.json` (harness on/off, plus `autoAdopt`)
+- app settings: `~/.harness-asset-manager/settings.json`
 
 Useful Linux paths:
 
@@ -539,7 +576,9 @@ Useful Linux paths:
 - marketplace cache: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/marketplace`
 - app settings: `${XDG_CONFIG_HOME:-~/.config}/harness-asset-manager/settings.json`
 
-Most users do not need to change these locations. If you manage skills in a custom environment, you can override individual skill roots with environment variables.
+### Environment Variable Overrides
+
+If you manage skills in a custom environment, you can override individual skill roots with environment variables:
 
 | Harness | Env var | Default Harness Asset Manager skill root |
 |---|---|---|
@@ -551,11 +590,11 @@ Most users do not need to change these locations. If you manage skills in a cust
 | OpenClaw | `n/a` | `~/.openclaw/skills` |
 | Antigravity (agy) | `HARNESS_ASSET_MANAGER_AGY_ROOT` | `~/.gemini/antigravity-cli/skills` |
 
-Note: Legacy `SKILL_MANAGER_*` env var spellings are still read as fallbacks but are deprecated, to be removed after one release.
+Note: Legacy `SKILL_MANAGER_*` env var spellings are still read as fallbacks but are deprecated.
 
-MCP config locations are harness-owned. Harness Asset Manager writes only to verified config paths and skips unsupported harness writes. Hermes Agent config discovery honors `HARNESS_ASSET_MANAGER_HERMES_HOME` first, then legacy `SKILL_MANAGER_HERMES_HOME`, then Hermes' own `HERMES_HOME`, and finally `~/.hermes`.
+---
 
-## From source
+## From Source
 
 ### Requirements
 
@@ -565,13 +604,13 @@ MCP config locations are harness-owned. Harness Asset Manager writes only to ver
 
 `harness-asset-manager` supports Python 3.11+. CI validates backend compatibility on Python 3.11 through 3.14, while packaging and release builds stay pinned to Python 3.11 for determinism.
 
-### Contributor setup
+### Contributor Setup
 
 ```bash
 scripts/install-dev.sh
 ```
 
-### Run locally
+### Run Locally
 
 ```bash
 scripts/start-dev.sh
@@ -596,16 +635,7 @@ Default local URLs:
 - Backend: `http://127.0.0.1:8000`
 - Health: `http://127.0.0.1:8000/api/health`
 
-The server binds to loopback only, and it rejects requests with a non-loopback `Host` header
-(DNS-rebinding protection) and mutations with a non-loopback `Origin` header (CSRF protection).
-Binding a non-loopback address requires an explicit opt-in, and is discouraged because the API
-has no authentication:
-
-```bash
-harnessam serve --host 0.0.0.0 --allow-remote
-```
-
-Validation:
+Validation suite:
 
 ```bash
 scripts/install-dev.sh
@@ -618,14 +648,18 @@ npm test
 npm run build
 ```
 
+---
+
 ## Troubleshooting
 
 - If Marketplace requests fail with `Marketplace is temporarily unavailable`, verify your network connection and try again.
 - If an MCP harness is shown as unavailable, Harness Asset Manager has detected that the local client is missing or does not support the required config surface.
 
-## More to come
+---
 
-### Extension families
+## More to Come
+
+### Extension Families
 
 - [x] Hook support
 - [x] Slash command support
@@ -635,29 +669,20 @@ npm run build
 
 ### Cross-device sync — planned, not yet started
 
-Harness Asset Manager collapses *many harnesses → one store*. The next major piece adds
-*many machines → one store*: adopt a Skill on your desktop and have it be there, wired into
-the right harnesses, on your laptop and in your containers.
+Harness Asset Manager collapses *many harnesses → one store*. The next major piece adds *many machines → one store*: adopt a Skill on your desktop and have it be there, wired into the right harnesses, on your laptop and in your containers.
 
-The unit of sync is the Harness Asset Manager store, not the harness directories — those
-hold symlinks, per-harness translations, and config files you also own, none of which
-survive being copied between machines. Canonical records travel; each machine recomputes
-its own bindings on arrival, so a machine without Cursor simply does not bind Cursor.
+The unit of sync is the Harness Asset Manager store, not the harness directories — those hold symlinks, per-harness translations, and config files you also own, none of which survive being copied between machines. Canonical records travel; each machine recomputes its own bindings on arrival, so a machine without Cursor simply does not bind Cursor.
 
 Planned shape:
 
-- a private git remote you own — no accounts, no hosted service, nothing leaves your
-  control
-- MCP credential **values are never transported**; the receiving machine reports which
-  credentials it still needs
+- a private git remote you own — no accounts, no hosted service, nothing leaves your control
+- MCP credential **values are never transported**; the receiving machine reports which credentials it still needs
 - conflicts are preserved and reported, never auto-resolved by timestamp
-- one-way `pull` for ephemeral and headless machines (containers, VPS, CI), which should
-  inherit a portfolio and never push back
-
-Multi-person and team distribution are **not** in scope — that is what the published
-Plugin versions are for.
+- one-way `pull` for ephemeral and headless machines (containers, VPS, CI), which should inherit a portfolio and never push back
 
 Design and sequencing: [`plan-cross-device-sync.md`](plan-cross-device-sync.md).
+
+---
 
 ## Community
 
