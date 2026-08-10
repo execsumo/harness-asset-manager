@@ -6,6 +6,77 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 > and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
 > work. Historical entries below may mention them for context, but do not resume those items.
 
+## 2026-08-10 — Denylist adoption now changes native approval defaults; Cursor permissions planned
+
+The Permissions family remains denylist-only, but adoption now configures each supported harness
+so unlisted actions do not fall back to the harness's interactive approval flow:
+
+- **Claude Code:** enabling a rule writes `permissions.defaultMode = "bypassPermissions"` beside
+  `permissions.deny`. Claude deny rules are evaluated before the mode, so recorded denials still
+  block. Disabling the final HAM rule removes the HAM-added mode.
+- **Antigravity:** enabling a rule writes top-level `toolPermission = "always-proceed"` beside
+  `permissions.deny`; the mode is removed after the final deny rule is disabled.
+- **Codex:** enabling a rule writes top-level `approval_policy = "never"` and
+  `default_permissions = "harness-asset-manager"`, changes the HAM profile to extend
+  `:workspace`, and enables its allow-by-default network baseline before applying recorded
+  domain denials. The profile is removed, and the HAM-added top-level settings are cleaned up,
+  after the final rule is disabled. Re-enabling an existing rule reapplies these surrounding
+  defaults rather than treating the existing binding as complete.
+- **Codex limitation:** its current permission-profile config can express filesystem and network
+  rules but not shell-command or MCP deny rules. HAM continues to classify those scopes as
+  unsupported for Codex.
+
+Validation for this change: backend `unittest discover` passes **694 tests**, focused permission
+tests pass, Ruff passes, and `git diff --check` is clean.
+
+### Next permissions milestone: Cursor adapter and auto-run handling
+
+Cursor is currently `Permissions: Planned` in the capability matrix and has no `permissions`
+binding in `harness_asset_manager/harness/catalog.py`. Do not add Cursor by copying the Claude or
+Antigravity mapper: Cursor uses a separate CLI permissions surface and its product has changed
+auto-run/allowlist behavior across releases.
+
+Implementation investigation and design checklist:
+
+1. **Confirm the supported configuration surfaces against the installed Cursor CLI.** The current
+   public CLI permissions documentation points to global `~/.cursor/cli-config.json` and
+   project-level `.cursor/cli.json`, with permission tokens such as `Shell(...)` and file rules.
+   Verify the exact JSON schema, whether `deny` is still supported in the current release, and
+   whether the IDE Agent reads these files or only `cursor-agent` does. Record precedence between
+   global, project, workspace, and command-line settings before adding a catalog binding.
+2. **Resolve auto-run mode separately from rule storage.** Identify the documented persistent key
+   or CLI option for “run without prompts” / auto-run. Confirm that explicit deny rules remain
+   authoritative in that mode. If the mode is UI-only, version-dependent, or does not guarantee
+   deny-first evaluation, expose Cursor as unsupported with a clear caveat rather than writing an
+   inferred setting. The desired HAM behavior is the equivalent of “always run unlisted actions;
+   deny only recorded rules,” not Cursor's allowlist or classifier mode.
+3. **Add a `cursor-permissions` mapper and catalog profile.** Map canonical scopes only where
+   Cursor can enforce them. At minimum, investigate `shell` → `Shell(commandBase)`,
+   `file_read` → `Read(path/glob)`, and `file_write` → the corresponding Cursor write token.
+   Determine whether `web` and `mcp` have stable native permission tokens. Cursor's documented
+   shell token may match only the first command token, while HAM shell patterns can include a
+   command prefix such as `git push`; mark multi-token patterns unsupported unless Cursor's
+   matching semantics can preserve that distinction.
+4. **Preserve native configuration and ownership boundaries.** Use a JSON config-subtree adapter
+   that merges only HAM-owned deny entries, retains unknown keys and user-authored allow/ask
+   entries, and never rewrites project config while operating on global config. Define how
+   managed IDs, unmanaged native rules, partial matches, drift, and disable cleanup work before
+   enabling the family in the UI.
+5. **Make adoption idempotent and reversible.** Enabling the first Cursor rule should apply the
+   verified no-prompt mode plus the deny entry. Re-enabling an existing binding must repair a
+   stale mode. Disabling the final HAM rule should remove only settings HAM can prove it owns and
+   restore the prior native mode where ownership metadata makes that safe; do not erase a user's
+   pre-existing auto-run choice.
+6. **Test at three levels.** Add mapper round-trip and representability tests; adapter tests for
+   global/project path resolution, preservation, unmanaged promotion, drift, and mode cleanup;
+   and integration tests proving Cursor appears in the Permissions matrix only when the adapter
+   is actually supported. Include a fixture for an older Cursor config whose auto-run mode is
+   “auto”/review-like and prove adoption changes it to the verified denylist-only mode.
+7. **Update capability and safety documentation only after verification.** Change Cursor from
+   `Planned` to `Yes (Denylist)` only once both the CLI and IDE behavior are confirmed. Document
+   unsupported scopes and any version-specific auto-run caveat alongside the mapper, and add a
+   handoff entry with the exact Cursor versions tested.
+
 ## 2026-08-10 — Frontloaded README refactor & Hybrid Sync Architecture shipped
 
 - **Refactored README.md**:

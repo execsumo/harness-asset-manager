@@ -172,6 +172,11 @@ class ClaudeCodePermissionsMapper:
         if not isinstance(permissions_subtree, dict):
             raise MutationError("The top-level 'permissions' key is not an object", status=409)
 
+        # A denylist is only useful as the sole policy when the harness does
+        # not put unmatched requests back through its approval flow.  Deny
+        # rules are evaluated before this mode, so recorded rules still block.
+        permissions_subtree["defaultMode"] = "bypassPermissions"
+
         expected_rules = self.spec_to_dict(spec)["rules"]
 
         # Ensure target decision array has these rules
@@ -234,6 +239,12 @@ class ClaudeCodePermissionsMapper:
 
         if not permissions_subtree:
             document.pop("permissions", None)
+        elif not permissions_subtree.get("deny"):
+            # The mode is part of HAM's denylist adoption, not a permanent
+            # global setting after the last adopted rule is removed.
+            permissions_subtree.pop("defaultMode", None)
+            if not permissions_subtree:
+                document.pop("permissions", None)
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Bash(") and rule.endswith(")"):
@@ -372,6 +383,11 @@ class AntigravityPermissionsMapper:
         if not isinstance(permissions_subtree, dict):
             raise MutationError("The top-level 'permissions' key is not an object", status=409)
 
+        # Antigravity's request-review default prompts for unlisted actions.
+        # always-proceed makes the deny list the only HAM-managed decision
+        # boundary; native deny rules still take precedence.
+        document["toolPermission"] = "always-proceed"
+
         expected_rules = self.spec_to_dict(spec)["rules"]
 
         if spec.decision not in permissions_subtree:
@@ -420,6 +436,9 @@ class AntigravityPermissionsMapper:
 
         if not permissions_subtree:
             document.pop("permissions", None)
+        if not permissions_subtree or not permissions_subtree.get("deny"):
+            if document.get("toolPermission") == "always-proceed":
+                document.pop("toolPermission", None)
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("command(") and rule.endswith(")"):
@@ -546,13 +565,33 @@ class CodexPermissionsMapper:
         perms = document["permissions"]
         if not isinstance(perms, dict):
             raise MutationError("The 'permissions' key is not an object", status=409)
+
+        # Activate HAM's profile and disable approval prompts.  Without
+        # default_permissions, Codex merely stores this profile and continues
+        # using its normal approval/sandbox defaults.
+        document["approval_policy"] = "never"
+        document["default_permissions"] = "harness-asset-manager"
         if "harness-asset-manager" not in perms:
-            perms["harness-asset-manager"] = {"extends": ":read-only"}
+            perms["harness-asset-manager"] = {"extends": ":workspace"}
         sm_profile = perms["harness-asset-manager"]
         if not isinstance(sm_profile, dict):
             raise MutationError("The 'permissions.harness-asset-manager' key is not an object", status=409)
 
-        sm_profile["extends"] = ":read-only"
+        sm_profile["extends"] = ":workspace"
+
+        # A denylist profile must allow unlisted network access.  Individual
+        # domains recorded by HAM are then applied as explicit denies below.
+        if "network" not in sm_profile:
+            sm_profile["network"] = {}
+        network = sm_profile["network"]
+        if not isinstance(network, dict):
+            raise MutationError("The 'permissions.harness-asset-manager.network' key is not an object", status=409)
+        network["enabled"] = True
+        network["mode"] = "allow"
+        if "domains" not in network:
+            network["domains"] = {}
+        if not isinstance(network["domains"], dict):
+            raise MutationError("The 'permissions.harness-asset-manager.network.domains' key is not an object", status=409)
 
         if spec.scope in ("file_read", "file_write"):
             if "filesystem" not in sm_profile:
@@ -569,21 +608,8 @@ class CodexPermissionsMapper:
                 fs[spec.pattern] = "write"
 
         elif spec.scope == "web":
-            if "network" not in sm_profile:
-                sm_profile["network"] = {}
-            net = sm_profile["network"]
-            if not isinstance(net, dict):
-                raise MutationError("The 'permissions.harness-asset-manager.network' key is not an object", status=409)
-
-            net["enabled"] = True
-            net["mode"] = "allow"
-
-            if "domains" not in net:
-                net["domains"] = {}
-            doms = net["domains"]
-            if not isinstance(doms, dict):
-                raise MutationError("The 'permissions.harness-asset-manager.network.domains' key is not an object", status=409)
-
+            doms = network["domains"]
+            assert isinstance(doms, dict)
             doms[spec.pattern] = "allow" if spec.decision == "allow" else "deny"
 
     def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
@@ -618,15 +644,23 @@ class CodexPermissionsMapper:
                     ]
                     if id in candidates or pat == pattern:
                         domains.pop(pat, None)
-                if not domains:
-                    network.pop("domains", None)
-            if not network.get("domains"):
+            # Keep the allow-by-default network baseline while any HAM
+            # filesystem deny remains active.  It is removed with the profile
+            # once the final HAM rule is disabled.
+            has_filesystem_rules = isinstance(filesystem, dict) and bool(filesystem)
+            if not network.get("domains") and not has_filesystem_rules:
                 sm_profile.pop("network", None)
 
         if len(sm_profile) <= 1 and "extends" in sm_profile:
             perms.pop("harness-asset-manager", None)
         if not perms:
             document.pop("permissions", None)
+
+        if "harness-asset-manager" not in perms:
+            if document.get("default_permissions") == "harness-asset-manager":
+                document.pop("default_permissions", None)
+            if document.get("approval_policy") == "never":
+                document.pop("approval_policy", None)
 
 
 _MAPPERS: dict[str, PermissionMapper] = {

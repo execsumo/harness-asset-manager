@@ -31,6 +31,7 @@ class ClaudeCodePermissionsMapperTests(unittest.TestCase):
         # Enable - must write both Edit and Write rules under deny
         mapper.enable_permission(doc, spec)
         self.assertIn("permissions", doc)
+        self.assertEqual(doc["permissions"]["defaultMode"], "bypassPermissions")
         self.assertIn("deny", doc["permissions"])
         rules = doc["permissions"]["deny"]
         self.assertIn("Edit(~/.zshrc)", rules)
@@ -85,6 +86,7 @@ class AntigravityPermissionsMapperTests(unittest.TestCase):
         # Enable shell
         mapper.enable_permission(doc, spec_shell)
         self.assertIn("permissions", doc)
+        self.assertEqual(doc["toolPermission"], "always-proceed")
         self.assertEqual(doc["permissions"]["deny"], ["command(git push)"])
 
         # Enable mcp
@@ -127,10 +129,13 @@ class CodexPermissionsMapperTests(unittest.TestCase):
         mapper.enable_permission(doc, spec_web)
 
         profile = doc["permissions"]["harness-asset-manager"]
-        self.assertEqual(profile["extends"], ":read-only")
+        self.assertEqual(doc["approval_policy"], "never")
+        self.assertEqual(doc["default_permissions"], "harness-asset-manager")
+        self.assertEqual(profile["extends"], ":workspace")
         self.assertEqual(profile["filesystem"]["~/.zshrc"], "deny")
         self.assertEqual(profile["filesystem"]["./secrets/**"], "deny")
         self.assertEqual(profile["network"]["enabled"], True)
+        self.assertEqual(profile["network"]["mode"], "allow")
         self.assertEqual(profile["network"]["domains"]["api.example.com"], "deny")
 
         # Read back

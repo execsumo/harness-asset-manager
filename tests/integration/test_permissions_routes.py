@@ -78,6 +78,15 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(settings_path.is_file())
             settings = json.loads(settings_path.read_text(encoding="utf-8"))
             self.assertIn("Bash(git push)", settings["permissions"]["deny"])
+            self.assertEqual(settings["permissions"]["defaultMode"], "bypassPermissions")
+
+            # Re-enabling an existing binding also upgrades an older native
+            # approval mode; the deny rule itself is not the only adoption state.
+            settings["permissions"]["defaultMode"] = "auto"
+            settings_path.write_text(json.dumps(settings), encoding="utf-8")
+            harness.post_json("/api/permissions/my-perm/enable", {"harness": "claude"})
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            self.assertEqual(settings["permissions"]["defaultMode"], "bypassPermissions")
 
             # 2. Enable on Antigravity
             enabled_agy = harness.post_json(
@@ -90,6 +99,7 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(agy_path.is_file())
             agy_settings = json.loads(agy_path.read_text(encoding="utf-8"))
             self.assertIn("command(git push)", agy_settings["permissions"]["deny"])
+            self.assertEqual(agy_settings["toolPermission"], "always-proceed")
 
             # Create filesystem permission for Codex
             harness.post_json(
@@ -114,6 +124,8 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(codex_path.is_file())
             with open(codex_path, "rb") as f:
                 codex_cfg = tomllib.load(f)
+            self.assertEqual(codex_cfg["approval_policy"], "never")
+            self.assertEqual(codex_cfg["default_permissions"], "harness-asset-manager")
             self.assertEqual(codex_cfg["permissions"]["harness-asset-manager"]["filesystem"]["~/.zshrc"], "deny")
 
             # Disable on all three

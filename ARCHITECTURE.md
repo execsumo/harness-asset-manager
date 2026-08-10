@@ -82,10 +82,13 @@ Harness Asset Manager manages six core extension families:
 - **Storage**: Deny rules in `permissions/manifest.json`.
 - **Supported Scope Types**: `shell` (command prefix), `file_read` / `file_write` (path globs), `web` (domain names), `mcp` (`server/tool` or `server`).
 - **Denylist-ONLY Policy**: HAM operates exclusively as a **Denylist Manager**. `allow` and `ask` decisions are unsupported.
+- **Unlisted actions**: Adopting a denylist also switches each harness to its native no-prompt/auto-execute default, so only HAM-recorded deny rules stop execution. Claude uses `bypassPermissions`, Antigravity uses `always-proceed`, and Codex activates an `approval_policy = "never"` workspace profile.
 - **Harness Sync**:
   - **Claude Code**: Written into `permissions.deny` in `~/.claude/settings.json`.
   - **Antigravity (AGY)**: Written into `permissions.deny` in `~/.gemini/antigravity-cli/settings.json`.
   - **Codex**: Written into `[permissions.harness-asset-manager.filesystem]` and `[permissions.harness-asset-manager.network.domains]` as `"deny"` in `~/.codex/config.toml`.
+- **Codex limitation**: Codex's native permission profiles currently expose filesystem and network rules, not command-prefix deny rules; HAM continues to report Codex `shell` and `mcp` scopes as unsupported.
+- **Cursor status**: Cursor is not yet bound to the Permissions family. Its CLI permissions live in a separate `~/.cursor/cli-config.json` / project `.cursor/cli.json` surface, with native `Shell(...)` / file permission tokens and a separate auto-run mode. A future adapter must verify current CLI-versus-IDE precedence and the persistent auto-run setting before writing either.
 
 ---
 

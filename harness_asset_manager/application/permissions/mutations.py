@@ -73,8 +73,9 @@ class PermissionsMutationService:
     ) -> dict[str, bool]:
         spec = self._require_spec(id)
         adapter = self.read_models.require_enabled_adapter(harness)
-        if adapter.has_binding(id):
-            return {"ok": True}
+        # Re-apply even when the rule already exists. Adoption also owns the
+        # harness's native no-prompt default, so an older binding may need its
+        # surrounding policy upgraded without changing the deny rule itself.
         result = self.harness_application.enable_one(
             adapter,
             spec,

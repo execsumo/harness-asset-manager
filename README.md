@@ -104,7 +104,7 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 | **Claude Code** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **Codex CLI** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
-| **Cursor** | Yes | Yes | Yes | Yes | Yes | No |
+| **Cursor** | Yes | Yes | Yes | Yes | Yes | Planned |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
 | **Hermes Agent** | Yes | Not Installable¹ | Yes | Yes² (Provisional) | Not Yet | No |
 | **OpenClaw** | Yes | Not Yet | Not Yet³ | Not Yet | Not Yet | No |
@@ -372,7 +372,7 @@ Every automatic action is appended to the Activity audit log: repair you cannot 
 
 ### Permissions
 
-Denylist rules strictly restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. `--scope` values include `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and `--pattern` matches according to scope (`shell` → `git push`, `file_*` → `~/.zshrc`, `web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only.
+Denylist rules strictly restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. `--scope` values include `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and `--pattern` matches according to scope (`shell` → `git push`, `file_*` → `~/.zshrc`, `web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only. Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default. Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules. Cursor permissions are planned: Cursor exposes a separate CLI permissions configuration and auto-run surface that need a dedicated adapter before it can join this model.
 
 ### Native Config Snapshots
 
