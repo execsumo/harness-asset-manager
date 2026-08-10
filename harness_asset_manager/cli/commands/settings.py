@@ -34,6 +34,20 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     _add_toggle(auto_adopt)
     auto_adopt.set_defaults(handler=set_auto_adopt)
 
+    auto_adopt_defaults = group.add_parser(
+        "auto-adopt-defaults",
+        parents=[common],
+        help="Choose harnesses enabled after automatic adoption.",
+    )
+    auto_adopt_defaults.add_argument(
+        "family",
+        choices=("agents", "skills", "slash_commands", "mcp", "hooks", "permissions"),
+    )
+    defaults_group = auto_adopt_defaults.add_mutually_exclusive_group(required=True)
+    defaults_group.add_argument("--harness", action="append", dest="harnesses")
+    defaults_group.add_argument("--clear", action="store_true")
+    auto_adopt_defaults.set_defaults(handler=set_auto_adopt_defaults)
+
     health = subparsers.add_parser("health", parents=[common], help="Print a health summary and exit.")
     health.set_defaults(handler=show_health)
 
@@ -86,6 +100,13 @@ def show_settings(container: "BackendContainer", args: argparse.Namespace) -> in
         "auto-adopt: "
         + ", ".join(f"{family}={'on' if enabled else 'off'}" for family, enabled in auto_adopt.items())
     )
+    print(
+        "auto-adopt defaults: "
+        + ", ".join(
+            f"{family}={','.join(harnesses) or '-'}"
+            for family, harnesses in payload.get("autoAdoptHarnesses", {}).items()
+        )
+    )
     return 0
 
 
@@ -106,6 +127,17 @@ def set_auto_adopt(container: "BackendContainer", args: argparse.Namespace) -> i
         print_json(payload)
         return 0
     print(f"{'enabled' if enabled else 'disabled'} auto-adopt for {args.family}")
+    return 0
+
+
+def set_auto_adopt_defaults(container: "BackendContainer", args: argparse.Namespace) -> int:
+    harnesses = [] if args.clear else list(args.harnesses or [])
+    payload = container.settings_mutations.set_auto_adopt_harnesses(args.family, harnesses)
+    if args.json_output:
+        print_json(payload)
+        return 0
+    configured = payload["autoAdoptHarnesses"][args.family]
+    print(f"auto-adopt defaults for {args.family}: {', '.join(configured) or '-'}")
     return 0
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import tomllib
+from dataclasses import replace
 from pathlib import Path
 from typing import Callable
 
@@ -38,6 +40,11 @@ class AgentStore:
             raise MutationError(f"unsafe agent ref: {slug!r}")
         return self.agents_root / f"{slug}.md"
 
+    def codex_extras_path(self, slug: str) -> Path:
+        """Return the opaque Codex metadata sidecar for a stored agent."""
+        self.path_for(slug)  # validate the slug before constructing a second path
+        return self.agents_root / f".{slug}.codex.toml"
+
     def scan(self) -> tuple[tuple[AgentDefinition, ...], tuple[AgentIssue, ...]]:
         agents: list[AgentDefinition] = []
         issues: list[AgentIssue] = []
@@ -45,7 +52,7 @@ class AgentStore:
             return (), ()
         for path in sorted(self.agents_root.glob("*.md")):
             try:
-                agents.append(parse_agent_file(path))
+                agents.append(self._load_agent(path))
             except AgentParseError as error:
                 issues.append(AgentIssue(name=path.stem, reason=str(error)))
         return tuple(agents), tuple(issues)
@@ -55,7 +62,7 @@ class AgentStore:
         if not path.is_file():
             return None
         try:
-            return parse_agent_file(path)
+            return self._load_agent(path)
         except AgentParseError:
             return None
 
@@ -77,7 +84,7 @@ class AgentStore:
             ),
         )
         self._notify_write(slug)
-        return parse_agent_file(path)
+        return self._load_agent(path)
 
     def update(
         self,
@@ -104,13 +111,39 @@ class AgentStore:
             ),
         )
         self._notify_write(slug)
-        return parse_agent_file(current.path)
+        return self._load_agent(current.path)
 
     def write_raw(self, slug: str, document: str) -> None:
         """Adopt path: keep the harness file's bytes verbatim rather than re-rendering."""
         self.agents_root.mkdir(parents=True, exist_ok=True)
         atomic_write_text(self.path_for(slug), document)
         self._notify_write(slug)
+
+    def write_codex_extras(self, slug: str, extras: dict[str, object]) -> None:
+        """Persist unmodeled Codex TOML fields outside the shared Markdown file."""
+        path = self.codex_extras_path(slug)
+        if extras:
+            import tomli_w
+
+            atomic_write_text(path, tomli_w.dumps(extras))
+        elif path.exists():
+            path.unlink()
+
+    def write_codex_agent(
+        self,
+        slug: str,
+        *,
+        name: str,
+        description: str,
+        prompt: str,
+        extras: dict[str, object],
+    ) -> None:
+        """Write a Codex adoption without placing Codex-only fields in Markdown."""
+        self.write_raw(
+            slug,
+            render_agent_document(name=name, description=description, prompt=prompt),
+        )
+        self.write_codex_extras(slug, extras)
 
     def delete(self, slug: str) -> None:
         path = self.path_for(slug)
@@ -119,10 +152,26 @@ class AgentStore:
         if path.is_symlink():
             raise MutationError(f"refusing to delete a symlink in the store: {path}")
         path.unlink()
+        extras_path = self.codex_extras_path(slug)
+        if extras_path.exists():
+            extras_path.unlink()
 
     def _notify_write(self, slug: str) -> None:
         if self._on_store_write is not None:
             self._on_store_write(slug)
+
+    def _load_agent(self, path: Path) -> AgentDefinition:
+        agent = parse_agent_file(path)
+        extras_path = self.codex_extras_path(path.stem)
+        if not extras_path.is_file():
+            return agent
+        try:
+            raw = tomllib.loads(extras_path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise AgentParseError(f"invalid Codex metadata for {path.stem}: {error}") from error
+        if not isinstance(raw, dict):
+            raise AgentParseError(f"Codex metadata for {path.stem} must be a table")
+        return replace(agent, codex_extras=raw)
 
 
 __all__ = ["AgentStore", "slugify"]

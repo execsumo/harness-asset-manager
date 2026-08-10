@@ -173,6 +173,22 @@ class HttpApiTests(unittest.TestCase):
             settings = harness.get_json("/api/settings")
             self.assertIn("slash_commands", settings["autoAdopt"])
 
+    def test_auto_adopt_defaults_validate_and_round_trip(self) -> None:
+        with AppTestHarness() as harness:
+            result = harness.put_json(
+                "/api/settings/auto-adopt/agents/harnesses",
+                {"harnesses": ["claude", "codex"]},
+            )
+            self.assertEqual(result["autoAdoptHarnesses"]["agents"], ["claude", "codex"])
+            settings = harness.get_json("/api/settings")
+            self.assertEqual(settings["autoAdoptHarnesses"]["agents"], ["claude", "codex"])
+
+            harness.put_json(
+                "/api/settings/auto-adopt/agents/harnesses",
+                {"harnesses": ["not-a-harness"]},
+                expected_status=404,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

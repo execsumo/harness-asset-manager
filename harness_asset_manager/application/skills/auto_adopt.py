@@ -37,12 +37,14 @@ class SkillsAutoAdoptService:
         is_enabled: Callable[[], bool],
         journal: MutationAuditJournal,
         lock_path: Path,
+        default_harnesses: Callable[[], tuple[str, ...]] | None = None,
     ) -> None:
         self.read_models = read_models
         self.mutations = mutations
         self.is_enabled = is_enabled
         self.journal = journal
         self.lock_path = lock_path
+        self.default_harnesses = default_harnesses or (lambda: ())
 
     def reconcile(self) -> SkillsAutoAdoptOutcome:
         if not self.is_enabled():
@@ -74,6 +76,12 @@ class SkillsAutoAdoptService:
                     continue
                 try:
                     self.mutations.manage_entry(entry)
+                    enabled = {
+                        adapter.harness for adapter in self.read_models.enabled_installed_adapters()
+                    }
+                    for harness in self.default_harnesses():
+                        if harness in enabled:
+                            self.mutations.enable_skill(entry.skill_ref, harness)
                 except Exception as error:  # noqa: BLE001 — keep one bad skill from blocking the inventory
                     skipped.append((entry.skill_ref, str(error)))
                     record_auto_adopt(

@@ -11,7 +11,6 @@ from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
 from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
-from .parser import render_agent_document
 from .store import AgentStore
 
 ConflictResolution = Literal["keep_store", "replace_store"]
@@ -104,7 +103,7 @@ class AgentMutationService:
             if on_conflict is None:
                 raise AgentAdoptConflict(slug, store_path, harness_path)
             if on_conflict == "replace_store":
-                self.store.write_raw(slug, self._as_store_document(adapter, harness_path))
+                self._write_store_from_harness(adapter, harness_path, slug)
             elif on_conflict != "keep_store":
                 raise MutationError(f"unknown conflict resolution: {on_conflict}")
             # keep_store: the store file stands; the harness copy is simply displaced.
@@ -113,10 +112,11 @@ class AgentMutationService:
             # Codex agents are TOML; convert into the store's markdown rather than
             # moving a file the store cannot parse.
             self.store.agents_root.mkdir(parents=True, exist_ok=True)
-            self.store.write_raw(slug, self._as_store_document(adapter, harness_path))
+            self._write_store_from_harness(adapter, harness_path, slug)
             harness_path.unlink()
         else:
             self.store.agents_root.mkdir(parents=True, exist_ok=True)
+            self.store.write_codex_extras(slug, {})
             shutil.move(str(harness_path), str(store_path))
 
         # Re-links and re-records in one step: the fresh record's store hash is taken
@@ -125,13 +125,20 @@ class AgentMutationService:
         self._enable(adapter, harness, self._require_agent(slug))
         return slug
 
-    @staticmethod
-    def _as_store_document(adapter: AgentHarnessAdapter, harness_path: Path) -> str:
+    def _write_store_from_harness(self, adapter: AgentHarnessAdapter, harness_path: Path, slug: str) -> None:
         """Whatever the harness holds, expressed in the store's markdown format."""
         if not adapter.renders:
-            return harness_path.read_text(encoding="utf-8")
-        name, description, prompt = parse_codex_agent(harness_path)
-        return render_agent_document(name=name, description=description, prompt=prompt)
+            self.store.write_raw(slug, harness_path.read_text(encoding="utf-8"))
+            self.store.write_codex_extras(slug, {})
+            return
+        parsed = parse_codex_agent(harness_path)
+        self.store.write_codex_agent(
+            slug,
+            name=parsed.name,
+            description=parsed.description,
+            prompt=parsed.prompt,
+            extras=dict(parsed.extras),
+        )
 
     def adopt_all(self) -> BulkAdoptResult:
         """Adopt every non-conflicting unmanaged agent; report the rest for the user."""

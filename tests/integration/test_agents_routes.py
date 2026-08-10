@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import tomllib
 import unittest
 
 from tests.support.app_harness import AppTestHarness
@@ -428,6 +429,33 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(claude["detail"], "the link was replaced by an edited file")
             self.assertFalse(binding.is_symlink())
             self.assertEqual(harness.container.agents_audit.recent(), ())
+
+    def test_auto_adopt_defaults_enable_additional_harnesses(self) -> None:
+        with AppTestHarness() as harness:
+            harness.put_json(
+                "/api/settings/auto-adopt/agents/harnesses",
+                {"harnesses": ["claude", "codex"]},
+            )
+            harness.post_json(
+                "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
+            )
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            binding.unlink()
+            binding.write_text(
+                "---\nname: Red Team\ndescription: d\n---\nedited by the harness\n",
+                encoding="utf-8",
+            )
+
+            harness.get_json("/api/agents")
+
+            codex_path = harness.spec.home / ".codex" / "agents" / "red-team.toml"
+            self.assertTrue(codex_path.is_file())
+            self.assertEqual(
+                tomllib.loads(codex_path.read_text(encoding="utf-8"))["description"],
+                "d",
+            )
 
     def test_a_two_sided_conflict_is_never_resolved_automatically(self) -> None:
         """Both sides hold edits, so no choice can be made without discarding one."""

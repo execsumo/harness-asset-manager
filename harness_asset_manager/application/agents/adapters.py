@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
+
+import tomli_w
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -149,17 +152,28 @@ def codex_agent_name(slug: str) -> str:
 
 def render_codex_agent(agent: AgentDefinition) -> str:
     """Render the store's markdown agent as a Codex TOML agent definition."""
-    lines = [
-        f"# {GENERATED_MARKER} — edits are overwritten when this agent is re-enabled",
-        f"name = {_toml_str(codex_agent_name(agent.slug))}",
-        f"description = {_toml_str(agent.description or agent.name)}",
-        f"developer_instructions = {_toml_multiline(agent.prompt)}",
-    ]
-    return "\n".join(lines) + "\n"
+    document: dict[str, object] = dict(agent.codex_extras)
+    document["name"] = codex_agent_name(agent.slug)
+    document["description"] = agent.description or agent.name
+    document["developer_instructions"] = agent.prompt
+    return (
+        f"# {GENERATED_MARKER} — edits are overwritten when this agent is re-enabled\n"
+        + tomli_w.dumps(document)
+    )
 
 
-def parse_codex_agent(path: Path) -> tuple[str, str, str]:
-    """Read a Codex TOML agent as ``(name, description, prompt)``.
+@dataclass(frozen=True)
+class CodexAgentDocument:
+    """The modeled Codex fields plus TOML keys HAM must carry through adoption."""
+
+    name: str
+    description: str
+    prompt: str
+    extras: Mapping[str, object]
+
+
+def parse_codex_agent(path: Path) -> CodexAgentDocument:
+    """Read a Codex TOML agent without discarding unmodeled fields.
 
     The inverse of :func:`render_codex_agent`, so a Codex-authored agent can be
     adopted into the store's markdown format rather than shown as un-actionable.
@@ -173,10 +187,15 @@ def parse_codex_agent(path: Path) -> tuple[str, str, str]:
     if not isinstance(data, dict):
         raise AgentParseError("Codex agent TOML must be a table")
     name = str(data.get("name") or path.stem).strip()
-    return (
+    return CodexAgentDocument(
         name,
         str(data.get("description") or "").strip(),
         str(data.get("developer_instructions") or "").strip(),
+        {
+            key: value
+            for key, value in data.items()
+            if key not in {"name", "description", "developer_instructions"}
+        },
     )
 
 
@@ -208,6 +227,7 @@ TargetResolver = Callable[[], tuple[tuple[AgentTarget, ...], dict[str, "AgentHar
 
 __all__ = [
     "AgentHarnessAdapter",
+    "CodexAgentDocument",
     "TargetResolver",
     "GENERATED_MARKER",
     "codex_agent_name",

@@ -24,6 +24,8 @@ class ObservedConfigAutoAdoptService:
         family: str,
         is_enabled: Callable[[], bool],
         journal: MutationAuditJournal,
+        default_harnesses: Callable[[], tuple[str, ...]] | None = None,
+        enable_default: Callable[[str, str], object] | None = None,
     ) -> None:
         self.read_models = read_models
         self.store = store
@@ -31,6 +33,8 @@ class ObservedConfigAutoAdoptService:
         self.family = family
         self.is_enabled = is_enabled
         self.journal = journal
+        self.default_harnesses = default_harnesses or (lambda: ())
+        self.enable_default = enable_default
 
     def reconcile(self) -> None:
         if not self.is_enabled():
@@ -51,6 +55,20 @@ class ObservedConfigAutoAdoptService:
                 continue
             try:
                 self.promote(ref, observed_harness=sightings[0][0])
+                if self.enable_default is not None:
+                    observed = {harness for harness, _spec in sightings}
+                    for harness in self.default_harnesses():
+                        if harness not in observed:
+                            try:
+                                self.enable_default(ref, harness)
+                            except Exception as error:  # noqa: BLE001 — keep adoption successful
+                                record_auto_adopt(
+                                    self.journal,
+                                    family=self.family,
+                                    ref=ref,
+                                    outcome="failed",
+                                    error_type=error.__class__.__name__,
+                                )
             except Exception as error:  # noqa: BLE001 — leave ambiguous/failed entries for review
                 record_auto_adopt(
                     self.journal,
@@ -73,11 +91,13 @@ class McpAutoAdoptService:
         mutations: object,
         is_enabled: Callable[[], bool],
         journal: MutationAuditJournal,
+        default_harnesses: Callable[[], tuple[str, ...]] | None = None,
     ) -> None:
         self.planner = planner
         self.mutations = mutations
         self.is_enabled = is_enabled
         self.journal = journal
+        self.default_harnesses = default_harnesses or (lambda: ())
 
     def reconcile(self) -> None:
         if not self.is_enabled():
@@ -87,7 +107,12 @@ class McpAutoAdoptService:
             if not group.identical or group.canonical_spec is None:
                 continue
             try:
-                result = self.mutations.adopt(group.name)
+                observed = {sighting.harness for sighting in group.sightings}
+                available = {
+                    adapter.harness for adapter in self.mutations.read_models.enabled_writable_adapters()
+                }
+                harnesses = sorted(observed | (set(self.default_harnesses()) & available))
+                result = self.mutations.adopt(group.name, harnesses=harnesses)
                 if isinstance(result, dict) and result.get("ok") is False:
                     continue
             except Exception as error:  # noqa: BLE001 — preserve the unmanaged entry for review

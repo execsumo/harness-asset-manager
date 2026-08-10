@@ -36,11 +36,13 @@ class SlashCommandsAutoAdoptService:
         mutations: SlashCommandMutationService,
         is_enabled: Callable[[], bool],
         journal: MutationAuditJournal,
+        default_harnesses: Callable[[], tuple[str, ...]] | None = None,
     ) -> None:
         self.read_models = read_models
         self.mutations = mutations
         self.is_enabled = is_enabled
         self.journal = journal
+        self.default_harnesses = default_harnesses or (lambda: ())
 
     def reconcile(self) -> None:
         if not self.is_enabled():
@@ -78,6 +80,15 @@ class SlashCommandsAutoAdoptService:
                     name=name,
                     observations=[(target, command) for target, _path, command in observations],
                 )
+                observed_targets = {target.id for target, _path, _command in observations}
+                available_targets = {target.id for target in self.read_models.resolve_targets()}
+                defaults = [
+                    harness
+                    for harness in self.default_harnesses()
+                    if harness not in observed_targets and harness in available_targets
+                ]
+                if defaults:
+                    self.mutations.sync_command(name, targets=defaults)
             except Exception as error:  # noqa: BLE001 — leave the row for review
                 record_auto_adopt(
                     self.journal,

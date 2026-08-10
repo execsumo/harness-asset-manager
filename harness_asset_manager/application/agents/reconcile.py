@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 import time
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from harness_asset_manager.application.drift import (
+    classify_drift as classify_drift_by_baseline,
+)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
-from harness_asset_manager.hashing import hash_file
+from harness_asset_manager.hashing import hash_file, hash_text
 
-from .adapters import AgentHarnessAdapter, TargetResolver
+from .adapters import (
+    AgentHarnessAdapter,
+    TargetResolver,
+    parse_codex_agent,
+    render_codex_agent,
+)
 from .audit import AgentAuditLog, AuditEntry
-from .ledger import AgentBindingLedger, AgentBindingRecord, build_record, classify_drift
+from .ledger import AgentBindingLedger, AgentBindingRecord, build_record
+from .model import AgentParseError
 from .store import AgentStore
 
 
@@ -48,6 +58,7 @@ class AgentReconcileService:
         conflicts_root: Path,
         is_enabled: Callable[[], bool],
         lock_path: Path,
+        default_harnesses: Callable[[], tuple[str, ...]] | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
@@ -56,6 +67,7 @@ class AgentReconcileService:
         self.conflicts_root = conflicts_root
         self._is_enabled = is_enabled
         self.lock_path = lock_path
+        self._default_harnesses = default_harnesses or (lambda: ())
 
     def reconcile(self) -> ReconcileOutcome:
         if not self._is_enabled():
@@ -80,10 +92,6 @@ class AgentReconcileService:
                     if harness_id not in supported_target_ids or harness_id not in adapters:
                         continue
                     adapter = adapters[harness_id]
-                    if adapter.renders:
-                        # Skip Codex entirely (Invariant 3)
-                        continue
-
                     binding_path = adapter.binding_path(slug)
                     if binding_path.is_symlink():
                         # Intact symlink -> skip (no hashing)
@@ -95,10 +103,18 @@ class AgentReconcileService:
                     # Real file -> hash it and store file, classify drift
                     harness_sha256 = _safe_hash(binding_path)
                     store_path = self.store.path_for(slug)
-                    store_sha256 = _safe_hash(store_path)
+                    if adapter.renders:
+                        agent = self.store.get(slug)
+                        if agent is None or record.rendered_sha256 is None:
+                            continue
+                        store_sha256 = _safe_hash_text(render_codex_agent(agent))
+                        baseline_sha256 = record.rendered_sha256
+                    else:
+                        store_sha256 = _safe_hash(store_path)
+                        baseline_sha256 = record.store_sha256
 
-                    kind = classify_drift(
-                        record=record,
+                    kind = classify_drift_by_baseline(
+                        baseline_sha256=baseline_sha256,
                         harness_sha256=harness_sha256,
                         store_sha256=store_sha256,
                     )
@@ -145,13 +161,20 @@ class AgentReconcileService:
                             )
                             continue
 
-                        item.binding_path.unlink()
-                        item.binding_path.symlink_to(item.store_path.resolve())
+                        if item.adapter.renders:
+                            agent = self.store.get(slug)
+                            if agent is None:
+                                continue
+                            item.adapter.enable(agent)
+                        else:
+                            item.binding_path.unlink()
+                            item.binding_path.symlink_to(item.store_path.resolve())
                         self.ledger.upsert(
                             slug,
                             build_record(
                                 harness=item.harness_id,
                                 store_path=item.store_path,
+                                rendered_path=item.binding_path if item.adapter.renders else None,
                                 now=now,
                             ),
                         )
@@ -186,12 +209,47 @@ class AgentReconcileService:
                             issues.append((slug, f"failed to read harness file: {error}"))
                             continue
 
-                        # Step 2: store.write_raw
-                        self.store.write_raw(slug, document)
+                        # Step 2: ingest the edited document, preserving Codex-only
+                        # TOML fields outside the shared Markdown store.
+                        primary_adapter = primary_item.adapter
+                        try:
+                            if primary_adapter.renders:
+                                parsed = parse_codex_agent(primary_item.binding_path)
+                                self.store.write_codex_agent(
+                                    slug,
+                                    name=parsed.name,
+                                    description=parsed.description,
+                                    prompt=parsed.prompt,
+                                    extras=dict(parsed.extras),
+                                )
+                            else:
+                                self.store.write_raw(slug, document)
+                                self.store.write_codex_extras(slug, {})
+                        except (AgentParseError, OSError, tomllib.TOMLDecodeError) as error:
+                            now = time.time()
+                            actions.append(
+                                AuditEntry(
+                                    at=now,
+                                    ref=slug,
+                                    harness=primary_item.harness_id,
+                                    action="refused",
+                                    detail=f"failed to adopt harness file: {error}",
+                                )
+                            )
+                            issues.append((slug, f"failed to adopt harness file: {error}"))
+                            continue
 
-                        # Step 3: verify store file hash equals harness file's hash
-                        store_hash_after = _safe_hash(primary_item.store_path)
-                        if store_hash_after != primary_item.harness_sha256:
+                        # Step 3: verify the store faithfully captured the harness
+                        # file. Markdown and Codex TOML cannot share a byte hash, so
+                        # Codex uses a semantic TOML comparison instead.
+                        if primary_adapter.renders:
+                            stored_agent = self.store.get(slug)
+                            verified = stored_agent is not None and _codex_equivalent(
+                                render_codex_agent(stored_agent), document
+                            )
+                        else:
+                            verified = _safe_hash(primary_item.store_path) == primary_item.harness_sha256
+                        if not verified:
                             now = time.time()
                             actions.append(
                                 AuditEntry(
@@ -227,13 +285,20 @@ class AgentReconcileService:
                                     )
                                 )
                                 continue
-                            item.binding_path.unlink()
-                            item.binding_path.symlink_to(item.store_path.resolve())
+                            if item.adapter.renders:
+                                agent = self.store.get(slug)
+                                if agent is None:
+                                    continue
+                                item.adapter.enable(agent)
+                            else:
+                                item.binding_path.unlink()
+                                item.binding_path.symlink_to(item.store_path.resolve())
                             self.ledger.upsert(
                                 slug,
                                 build_record(
                                     harness=item.harness_id,
                                     store_path=item.store_path,
+                                    rendered_path=item.binding_path if item.adapter.renders else None,
                                     now=now,
                                 ),
                             )
@@ -259,6 +324,7 @@ class AgentReconcileService:
                                     detail="restored link after adopting store content",
                                 )
                             )
+                        self._enable_defaults(slug, adapters, drifted, actions, issues, now)
 
                     else:
                         # Several clobber_one_sided with differing hashes -> do not auto-resolve
@@ -309,12 +375,70 @@ class AgentReconcileService:
 
             return ReconcileOutcome(actions=tuple(actions), issues=tuple(issues))
 
+    def _enable_defaults(
+        self,
+        slug: str,
+        adapters: dict[str, AgentHarnessAdapter],
+        already_handled: list[_DriftInfo],
+        actions: list[AuditEntry],
+        issues: list[tuple[str, str]],
+        now: float,
+    ) -> None:
+        handled = {item.harness_id for item in already_handled}
+        agent = self.store.get(slug)
+        if agent is None:
+            return
+        for harness in self._default_harnesses():
+            if harness in handled:
+                continue
+            adapter = adapters.get(harness)
+            if adapter is None:
+                continue
+            try:
+                if adapter.is_enabled(slug):
+                    continue
+                adapter.enable(agent)
+                self.ledger.upsert(
+                    slug,
+                    build_record(
+                        harness=harness,
+                        store_path=agent.path,
+                        rendered_path=adapter.binding_path(slug) if adapter.renders else None,
+                        now=now,
+                    ),
+                )
+                actions.append(
+                    AuditEntry(
+                        at=now,
+                        ref=slug,
+                        harness=harness,
+                        action="adopted",
+                        detail="enabled the configured auto-adopt default harness",
+                    )
+                )
+            except Exception as error:  # noqa: BLE001 — preserve the adopted source
+                issues.append((slug, f"could not enable default harness {harness}: {error}"))
+
 
 def _safe_hash(path: Path) -> str | None:
     try:
         return hash_file(path)
     except OSError:
         return None
+
+
+def _safe_hash_text(text: str) -> str | None:
+    try:
+        return hash_text(text)
+    except (UnicodeEncodeError, AttributeError):
+        return None
+
+
+def _codex_equivalent(rendered: str, original: str) -> bool:
+    try:
+        return tomllib.loads(rendered) == tomllib.loads(original)
+    except tomllib.TOMLDecodeError:
+        return False
 
 
 __all__ = ["AgentReconcileService", "ReconcileOutcome"]

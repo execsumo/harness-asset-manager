@@ -1,6 +1,7 @@
 from .adapters import (
     GENERATED_MARKER,
     AgentHarnessAdapter,
+    CodexAgentDocument,
     codex_agent_name,
     parse_codex_agent,
     render_codex_agent,
@@ -53,6 +54,7 @@ __all__ = [
     "AgentReconcileService",
     "AgentStore",
     "AgentTarget",
+    "CodexAgentDocument",
     "AuditAction",
     "AuditEntry",
     "BulkAdoptResult",

@@ -28,6 +28,10 @@ class AgentDefinition:
     tools: tuple[str, ...]
     path: Path
     metadata: Mapping[str, object] = field(default_factory=dict)
+    # Codex-only TOML fields live beside the Markdown store file. Keeping them
+    # outside frontmatter prevents Codex configuration from leaking into the
+    # Markdown file symlinked into Claude, Agy, or Cursor.
+    codex_extras: Mapping[str, object] = field(default_factory=dict)
 
     @property
     def ref(self) -> str:

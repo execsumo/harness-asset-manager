@@ -39,14 +39,21 @@ class SettingsResponse(BaseModel):
     storage: SettingsStorageResponse
     harnesses: list[SettingsHarnessResponse]
     autoAdopt: SettingsAutoAdoptResponse
+    autoAdoptHarnesses: dict[str, list[str]]
+    autoAdoptHarnessOptions: dict[str, list[str]]
 
 
 class SetAutoAdoptRequest(BaseModel):
     enabled: bool
 
 
+class SetAutoAdoptHarnessesRequest(BaseModel):
+    harnesses: list[str]
+
+
 __all__ = [
     "SetAutoAdoptRequest",
+    "SetAutoAdoptHarnessesRequest",
     "SettingsAutoAdoptResponse",
     "SettingsHarnessResponse",
     "SettingsResponse",

@@ -24,6 +24,16 @@ export async function updateAutoAdopt(
   );
 }
 
+export async function updateAutoAdoptHarnesses(
+  family: string,
+  harnesses: string[],
+): Promise<{ ok: boolean; autoAdoptHarnesses: Record<string, string[]> }> {
+  return putJson<{ ok: boolean; autoAdoptHarnesses: Record<string, string[]> }>(
+    `/settings/auto-adopt/${encodeURIComponent(family)}/harnesses`,
+    { harnesses },
+  );
+}
+
 export async function fetchConfigSnapshots(harness?: string): Promise<ConfigSnapshotsResponse> {
   const url = harness ? `/config-snapshots?harness=${encodeURIComponent(harness)}` : "/config-snapshots";
   return fetchJson<ConfigSnapshotsResponse>(url);

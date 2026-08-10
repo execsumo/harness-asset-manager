@@ -1,24 +1,32 @@
 # Recommendations
 
-> Review of 2026-07-25, refreshed against `main` on 2026-08-08. Verified by running the suites:
-> backend unit (496) + integration (169) pass, `npm run typecheck` is clean, `npm run build`
-> succeeds, `ruff check harness_asset_manager tests scripts` is clean, `pyright` completes with
-> its current basic-mode warning baseline, and `npm run lint:frontend` completes with warnings.
-> `npm test` is **275/278 — not green**: three async detail tests (`SkillDetailContent`, `MarketplaceCliPage`,
-> `AgentsInUsePage`) time out under this container's `waitFor` budget and reproduce in isolation.
-> They are pre-existing and unrelated to the entries below, but the suite does exit non-zero and
-> the cause is not yet established — see the Tier-3 entry on the three timing-out frontend tests.
+> Review of 2026-07-25, refreshed against `main` on 2026-08-10 (`2195a84`). Verified suites on
+> earlier same-tree commits: backend unit (496) + integration (169) pass, `npm run typecheck` is
+> clean, `npm run build` succeeds, `ruff check harness_asset_manager tests scripts` is clean,
+> `pyright` completes with its current basic-mode warning baseline, and `npm run lint:frontend`
+> completes with warnings. Locally, `npm test` can still exit non-zero on three async detail tests
+> (`SkillDetailContent`, `MarketplaceCliPage`, `AgentsInUsePage`) under this container's `waitFor`
+> budget — **CI `frontend-validate` is green** on `c60d45a` (run `31291859168`), so the timeouts
+> are confirmed container-local, not a regression on `main`. See the Tier-3 entry.
 > Ordered by value: each tier outranks the next. Within a tier, items are ordered by
 > value-for-effort. Effort scale: **S** < 1 hour, **M** hours–a day, **L** multi-day.
+>
+> **Current priority scope:** Claude Code, Codex, Antigravity (agy), and Cursor. Hermes,
+> OpenCode, and OpenClaw are intentionally out of the active roadmap; references to them below
+> are retained only where they describe shared behavior or shipped compatibility.
 >
 > **This list is kept to open items only — shipped work is removed.** Shipped batches:
 > 2026-07-24 merge `98c3417` (audit gates, loopback guards, static-root containment, dead-code pass);
 > 2026-07-25 Tier-1 batch (Dependabot + SHA-pinned actions; golden writer round-trip tests; ruff lint
-> gate; Hermes slash provisional label);
+> gate);
 > 2026-08-06 PR #30 `bd72d0a` (§1.1 — writers now preserve unknown user fields);
 > 2026-08-07 `63cfbe4` (§2.1 — mutation activity view);
-> 2026-08-08 (static-analysis adoption — full-scope Ruff, Pyright, and ESLint) — see `handoff.md`.
+> 2026-08-08 `c60d45a` (§1.2 — static-analysis adoption: full-scope Ruff, Pyright, ESLint);
+> 2026-08-08 `f9003b1` (family-wide opt-in auto-adoption + `harnessam refresh`);
+> 2026-08-09 `2195a84` (`plan-auto-adoption.md` Stage 4 — slash-command drift auto-repair);
+> 2026-08-10 (Codex lossless agent adoption/drift repair + configurable auto-adopt defaults).
 > Partially-shipped items below keep their number and describe only the remaining scope.
+> See `handoff.md` for the full chronological record.
 
 ## Already strong — don't churn these
 
@@ -31,24 +39,6 @@
 - CI matrix across Python 3.11–3.14 plus a full packaging smoke on four OS/arch targets.
 - Ruff lint gate in CI (`[tool.ruff]` in `pyproject.toml`): import sorting + pyflakes enforced
   and baselined green; `requirements-dev.txt` pins the tool.
-
----
-
-## Tier 1 — High value, moderate effort
-
-### 1.3 Finish labeling (or verify) the Hermes harness — M
-
-**Shipped (2026-07-25):** the Hermes **slash** binding now carries a provisional `support_note`
-("…unverified against a real Hermes install; writes may not take effect…") in
-`harness/catalog.py`, surfaced to the UI via the existing `SlashTarget.supportNote` path. The agents
-binding was already labeled unavailable (no agent-definition format).
-
-**Remaining:** MCP and hooks are still written on unverified assumptions with no provisional label.
-Thread a `support_note` through `ConfigSubtreeBindingProfile` → the MCP/hooks read models (typed,
-so it needs an OpenAPI regen) and mark both provisional, **or** validate against a real Hermes
-build and record the evidence in `handoff.md` (as was done for Claude/agy agent symlinks). With
-seven more harnesses on the README roadmap, define a repeatable "new harness verification" checklist
-(probe CLI, real read, real write, round-trip diff) and reuse it per harness.
 
 ---
 
@@ -101,14 +91,15 @@ modules).
 - **`choose_port` / `bind_socket` TOCTOU race** (`runtime/server.py:32-49`): probe-bind, close,
   re-bind. Two quick starts can collide between the probes. Bind once and keep the socket (the
   code already passes `fd` to uvicorn, so this is mostly deleting the probe). — **S**
-- **Three frontend tests time out locally, so `npm test` exits non-zero.** `SkillDetailContent`,
+- **Three frontend tests time out in this container; CI is green.** `SkillDetailContent`,
   `MarketplaceCliPage`, and `AgentsInUsePage` each `await findBy…` on an async detail render and
-  blow the default `waitFor` budget in a dev container (full run ~13 min, mostly environment
-  setup); they reproduce when run in isolation. **Not yet diagnosed** — CI was last green on
-  `main` at `2faa775`, which predates the activity-view commit, so no CI evidence exists for the
-  current tree. First step is to run these three in CI and see whether they fail there too; only
-  then decide between raising the `waitFor` budget and making the detail render deterministic.
-  A suite that cannot be trusted to go green locally stops being a gate. — **S**
+  blow the default `waitFor` budget here (full local run ~13 min, mostly environment setup);
+  they reproduce in isolation. **CI evidence:** `ci.yml`'s `frontend-validate` job runs
+  `npm test` and passed on `c60d45a` (run `31291859168`) — post activity-view and static-analysis,
+  pre Stage-4 only by docs/behavior-unrelated commits. Confirmed **container-local**, not a
+  `main` regression. Remaining work is optional local ergonomics: raise the `waitFor` budget,
+  make the detail render deterministic, or document the container quirk so a red local suite is
+  not mistaken for a broken tree. — **S**
 - **Clean local scratch from the repo dir.** The orphaned `harness_asset_manager/db/` package is
   **gone** (fixed); no `.pytest_cache` remains. What lingers is untracked `__pycache__/*.pyc`
   throughout the tree. Harmless but confusing — the project standardizes on `unittest`, so either
@@ -118,10 +109,16 @@ modules).
 
 ## Suggested sequencing
 
-1. **§1.1 closed 2026-08-06** (PR #30), **§2.1 closed 2026-08-07** (activity view), and
-   **§1.2 closed 2026-08-08** (static-analysis adoption). **§1.3** (label or verify Hermes MCP &
-   hooks) is now the next Tier-1 item.
-2. **When planning the next family or harness:** 2.3 first; use the shipped journal for traceability,
-   and add 2.2 to keep coverage honest.
-3. **Tier 3 housekeeping** rides along whenever its files are touched next — except the flaky
-   frontend trio, which is worth doing on its own the next time `npm test` blocks someone.
+1. **Next:** §2.2, coverage measurement with a ratchet. It is the best follow-on for keeping
+   the newly expanded auto-adoption behavior honest across the priority harnesses.
+2. **Closed recently:** Codex lossless adoption and configurable auto-adopt defaults (2026-08-10),
+   §1.1 (PR #30, 2026-08-06), §2.1 activity view (2026-08-07), §1.2
+   static-analysis (2026-08-08), family-wide auto-adoption (2026-08-08), slash-command drift
+   auto-repair / `plan-auto-adoption.md` Stage 4 (2026-08-09).
+3. **Auto-adoption plan remainder:** Stages 1–4 shipped; skills new-directory adoption shipped
+   opt-in (plan §7 / former Stage 5). The Codex gate and default-harness follow-up are now shipped.
+4. **When planning the next family or harness:** 2.3 first; use the shipped activity journal for
+   traceability, and add 2.2 to keep coverage honest.
+5. **Tier 3 housekeeping** rides along whenever its files are touched next. The container-local
+   frontend trio is optional local ergonomics now that CI is known green — only prioritize it if
+   a red local `npm test` is blocking someone.

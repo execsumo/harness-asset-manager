@@ -25,4 +25,13 @@ class SettingsQueryService:
             harness_statuses=self.harness_kernel.harness_statuses(),
             enabled_harnesses=self.harness_kernel.enabled_harness_ids(),
             auto_adopt=self.auto_adopt_store.preferences(),
+            auto_adopt_harnesses=self.auto_adopt_store.default_harnesses(),
+            auto_adopt_harness_options={
+                family: tuple(
+                    binding.definition.harness
+                    for binding in self.harness_kernel.bindings_for_family(family)
+                    if binding.definition.harness in {"claude", "codex", "agy", "cursor"}
+                )
+                for family in self.auto_adopt_store.default_harnesses()
+            },
         )

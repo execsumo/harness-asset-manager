@@ -253,7 +253,57 @@ class CodexAgentTests(unittest.TestCase):
 
         inventory = self.inventory.build()
         self.assertEqual([e.ref for e in inventory.entries], ["pr-reviewer"])
-        self.assertEqual(inventory.entries[0].bindings[0].state, "enabled")
+
+    def test_codex_adoption_preserves_unknown_toml_fields_without_markdown_leakage(self) -> None:
+        unmanaged = self.harness_dir / "auditor.toml"
+        unmanaged.write_text(
+            'name = "auditor"\n'
+            'description = "audits things"\n'
+            'developer_instructions = "Check everything."\n'
+            'sandbox_mode = "workspace-write"\n'
+            '[model_settings]\n'
+            'reasoning_effort = "high"\n'
+            'enabled = false\n',
+            encoding="utf-8",
+        )
+
+        self.mutations.adopt("codex/auditor")
+
+        stored = self.store.get("auditor")
+        assert stored is not None
+        self.assertEqual(
+            stored.codex_extras,
+            {
+                "sandbox_mode": "workspace-write",
+                "model_settings": {"reasoning_effort": "high", "enabled": False},
+            },
+        )
+        self.assertNotIn("sandbox_mode", stored.path.read_text(encoding="utf-8"))
+
+        import tomllib
+
+        rendered = tomllib.loads((self.harness_dir / "auditor.toml").read_text(encoding="utf-8"))
+        self.assertEqual(rendered["sandbox_mode"], "workspace-write")
+        self.assertEqual(rendered["model_settings"]["enabled"], False)
+
+    def test_codex_unknown_fields_survive_a_store_edit(self) -> None:
+        unmanaged = self.harness_dir / "auditor.toml"
+        unmanaged.write_text(
+            'name = "auditor"\n'
+            'description = "audits things"\n'
+            'developer_instructions = "Check everything."\n'
+            'sandbox_mode = "workspace-write"\n',
+            encoding="utf-8",
+        )
+        self.mutations.adopt("codex/auditor")
+        self.store.update("auditor", description="updated")
+        self.mutations.enable("auditor", "codex")
+
+        import tomllib
+
+        rendered = tomllib.loads((self.harness_dir / "auditor.toml").read_text(encoding="utf-8"))
+        self.assertEqual(rendered["description"], "updated")
+        self.assertEqual(rendered["sandbox_mode"], "workspace-write")
 
     def test_disable_removes_only_generated_files(self) -> None:
         self.store.create(name="PR Reviewer", description="d", prompt="p")

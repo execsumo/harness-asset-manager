@@ -2,7 +2,51 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-09 (latest) — Slash-command drift auto-repair shipped (Stage 4 of plan-auto-adoption.md)
+> **Priority scope (2026-08-10):** Focus active work on Claude Code, Codex, Antigravity (agy),
+> and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
+> work. Historical entries below may mention them for context, but do not resume those items.
+
+## 2026-08-10 — Codex lossless adoption and configurable auto-adopt defaults shipped
+
+Implemented the approved priority work for Claude Code, Codex, Antigravity (agy), and Cursor.
+Hermes, OpenCode, and OpenClaw were not included in new behavior.
+
+- **Codex preservation:** `parse_codex_agent()` now retains unmodeled TOML values. They are stored
+  in a per-agent `.codex.toml` sidecar rather than shared Markdown, so Codex-only settings do not
+  leak into Claude/Agy/Cursor symlinked agents.
+- **Codex drift repair:** rendered Codex files now participate in the existing safe decision table.
+  One-sided edits are adopted after semantic TOML verification; two-sided conflicts are left alone.
+  Existing generated-file ownership and ledger baselines remain intact.
+- **Auto-adopt defaults:** added per-family `autoAdoptHarnesses` settings, family support validation,
+  API/OpenAPI, CLI (`harnessam settings auto-adopt-defaults`), and Settings UI controls. Defaults
+  are applied only to usable targets; explicit existing bindings and disabled/unsupported harnesses
+  win. The default remains empty to preserve existing behavior until the user selects targets.
+- **Auditability:** automatic default bindings use the existing mutation/audit paths; failed default
+  targets do not roll back a successful ownership adoption.
+
+Validation on this checkout: backend **513 unit + 177 integration pass**, targeted Codex/agent,
+settings, and family auto-adoption tests pass; frontend Settings tests pass (4), typecheck and
+production build pass, Ruff passes, and frontend ESLint reports 0 errors / 23 existing warnings.
+OpenAPI was regenerated for the new settings endpoint.
+
+## 2026-08-10 (latest) — RECOMMENDATIONS.md refreshed against handoff CI evidence
+
+Docs-only. No behaviour changed.
+
+Closes the open item left by the 2026-08-09 handoff correction entry: `RECOMMENDATIONS.md`
+still claimed the three timing-out frontend tests had "no CI evidence" and that the cause was
+unestablished. Updated against verified state on `main` (`2195a84`):
+
+- Header refresh date → 2026-08-10; notes local `npm test` can still red on the trio while
+  **CI `frontend-validate` is green** on `c60d45a` (run `31291859168`).
+- Shipped-batches list gains `c60d45a` (§1.2), `f9003b1` (family-wide auto-adoption), and
+  `2195a84` (Stage 4 slash-command drift auto-repair).
+- Tier-3 frontend-trio item rewritten: container-local ergonomics only, not a `main` regression.
+- Suggested sequencing: Codex lossless adoption is now the next Tier-1 item; auto-adoption
+  remainder also includes the default harnesses-on-adopt follow-up; trio demoted from "do next time npm test
+  blocks" urgency now that CI is known green.
+
+## 2026-08-09 — Slash-command drift auto-repair shipped (Stage 4 of plan-auto-adoption.md)
 
 Slash commands now auto-repair already-managed target files that drifted, not just adopt new
 unmanaged ones (that half shipped 2026-08-08). Implements `plan-auto-adoption.md` Stage 4.
@@ -39,8 +83,9 @@ unmanaged ones (that half shipped 2026-08-08). Implements `plan-auto-adoption.md
   there is no single binding/whole-file hash that can distinguish "clobbered" from "the harness
   legitimately changed something else in that file." `ObservedConfigAutoAdoptService` and
   `McpAutoAdoptService` correctly only ever promote equivalent *new* observations.
-- **Codex** (both agents and slash): excluded regardless of family — the TOML/rendered round-trip
-  is lossy (plan invariant 3).
+- **Codex agents:** now included after the 2026-08-10 lossless sidecar work. Codex slash commands
+  were already covered by Stage 4; the remaining lossy-render rule applies only to any future
+  rendered family without an equivalent preservation contract.
 
 Agents (Stage 3) and slash commands (this change) remain the only two families whose binding
 shape — "Harness Asset Manager writes a real file a harness can independently overwrite" — needs
@@ -1260,36 +1305,11 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
 - Validation: `npm run typecheck`, `bash scripts/test_backend.sh` (300 + 127), `npm test` (269),
   `npm run build`, `npm run codegen:openapi` — all green.
 
-### ⚠️ Incomplete — resume here
+### Hermes follow-up — retired from the roadmap
 
-> **PARTLY SUPERSEDED (2026-08-08) — do not resume from this list as written.** Item 2's MCP
-> half was resolved on 2026-07-13 by the migration to upstream's product-accurate Hermes impl
-> (`~/.hermes/config.yaml`, YAML `mcp_servers`); only the *slash* convention is still
-> unverified. The "Housekeeping" note below ("Nothing is committed… working tree on `main`")
-> described that session only — it landed long ago. Items 1, 3, and 4 are still open and are
-> tracked in `RECOMMENDATIONS.md §1.3` and the README support matrix. Current status is at the
-> top of this file.
-
-1. **Hermes hooks — NOT implemented (the main open item).** Hermes has no `hooks` binding, so it
-   is correctly absent from the Hooks views. Deferred because hook config formats are
-   harness-specific (each harness has its own event taxonomy + file shape) and Hermes' real
-   schema is unknown. Reusing another harness's hook codec would write structurally-wrong config.
-   **To finish:** obtain Hermes' actual hooks schema (event names, config file path, JSON/TOML
-   shape), then add a `HookMapper` in `harness_asset_manager/application/hooks/mappers.py` + register it,
-   and add a `hooks` `ConfigSubtreeBindingProfile` to the Hermes entry in `catalog.py`.
-
-2. **Hermes MCP + slash conventions are UNVERIFIED assumptions.** `~/.hermes/mcp.json`
-   (`mcpServers` shape) and `~/.hermes/commands` (frontmatter Markdown) follow common
-   cross-vendor conventions but have **not** been checked against a shipping Hermes build. If
-   Hermes differs, correct the resolvers/codec in `catalog.py` (and `HermesMapper` if the MCP
-   shape differs).
-
-3. **Hermes permissions — no binding** (not requested). Add a `permissions`
-   `ConfigSubtreeBindingProfile` + a `PermissionMapper` if/when wanted.
-
-4. **Hermes not installed locally** → its skills/MCP/slash adapters have never run against a real
-   Hermes install. Behavior is exercised only via the catalog wiring and unit/integration tests
-   with a fake home. Validate against a real `hermes` CLI before trusting writes.
+The remaining Hermes hooks, MCP, permissions, and live-install verification work is intentionally
+scrapped as of 2026-08-10. Do not resume it. The historical implementation notes remain below
+only to explain past changes; active work is limited to Claude Code, Codex, Agy, and Cursor.
 
 ### Housekeeping
 

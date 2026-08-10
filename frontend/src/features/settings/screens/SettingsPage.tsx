@@ -100,6 +100,25 @@ export default function SettingsPage() {
                       ariaLabel={option.label}
                       onCheckedChange={(checked) => controller.handleAutoAdoptToggle(family, checked)}
                     />
+                    <select
+                      className="settings-select"
+                      multiple
+                      value={controller.data?.autoAdoptHarnesses?.[family] ?? []}
+                      disabled={controller.isAutoAdoptHarnessesPending(family)}
+                      aria-label={`Default harnesses for ${option.label}`}
+                      onChange={(event) =>
+                        controller.handleAutoAdoptHarnesses(
+                          family,
+                          Array.from(event.currentTarget.selectedOptions, (item) => item.value),
+                        )
+                      }
+                    >
+                      {(controller.data?.autoAdoptHarnessOptions?.[family] ?? []).map((harness) => (
+                        <option key={harness} value={harness}>
+                          {harness}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               );

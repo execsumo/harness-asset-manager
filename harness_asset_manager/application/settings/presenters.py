@@ -14,6 +14,8 @@ def settings_payload(
     harness_statuses: tuple[HarnessStatus, ...],
     enabled_harnesses: tuple[str, ...],
     auto_adopt: dict[str, bool],
+    auto_adopt_harnesses: dict[str, tuple[str, ...]],
+    auto_adopt_harness_options: dict[str, tuple[str, ...]],
 ) -> dict[str, object]:
     enabled_set = set(enabled_harnesses)
 
@@ -24,6 +26,12 @@ def settings_payload(
             for status in harness_statuses
         ],
         "autoAdopt": dict(auto_adopt),
+        "autoAdoptHarnesses": {
+            family: list(harnesses) for family, harnesses in auto_adopt_harnesses.items()
+        },
+        "autoAdoptHarnessOptions": {
+            family: list(harnesses) for family, harnesses in auto_adopt_harness_options.items()
+        },
     }
 
 

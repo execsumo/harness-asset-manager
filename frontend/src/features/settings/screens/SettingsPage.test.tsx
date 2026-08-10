@@ -136,4 +136,74 @@ describe("SettingsPage", () => {
       expect(row.children[1]).toHaveClass("settings-row__body");
     });
   });
+
+  it("updates the default harnesses for an auto-adopt family", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/settings") {
+        return okJson({
+          storage: {
+            platform: "linux",
+            configDir: "/tmp/config",
+            dataDir: "/tmp/data",
+            stateDir: "/tmp/state",
+            skillsStorePath: "/tmp/data/skills",
+            marketplaceCachePath: "/tmp/data/marketplace",
+            settingsPath: "/tmp/config/settings.json",
+          },
+          harnesses: [],
+          autoAdopt: {
+            agents: true,
+            skills: false,
+            slash_commands: false,
+            mcp: false,
+            hooks: false,
+            permissions: false,
+          },
+          autoAdoptHarnesses: {
+            agents: [],
+            skills: [],
+            slash_commands: [],
+            mcp: [],
+            hooks: [],
+            permissions: [],
+          },
+          autoAdoptHarnessOptions: {
+            agents: ["claude", "codex"],
+            skills: [],
+            slash_commands: [],
+            mcp: [],
+            hooks: [],
+            permissions: [],
+          },
+        });
+      }
+      if (url === "/api/settings/auto-adopt/agents/harnesses") {
+        expect(init?.method).toBe("PUT");
+        expect(JSON.parse(String(init?.body))).toEqual({ harnesses: ["claude"] });
+        return okJson({ ok: true, autoAdoptHarnesses: { agents: ["claude"] } });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<SettingsPage />);
+
+    const select = await screen.findByRole("listbox", {
+      name: "Default harnesses for Repair drifted Agent bindings",
+    });
+    fireEvent.change(select, {
+      target: {
+        value: "claude",
+      },
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some((call) => {
+          const url = typeof call[0] === "string" ? call[0] : call[0].toString();
+          return url === "/api/settings/auto-adopt/agents/harnesses";
+        }),
+      ).toBe(true);
+    });
+  });
 });

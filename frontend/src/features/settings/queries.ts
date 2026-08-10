@@ -4,7 +4,7 @@ import { queryPolicy } from "../../lib/query";
 import { invalidateAgentsQueries } from "../agents/public";
 import { invalidateMcpQueries } from "../mcp/public";
 import { invalidateSkillsQueries } from "../skills/public";
-import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateAutoAdopt, updateHarnessSupport } from "./api/client";
+import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateAutoAdopt, updateAutoAdoptHarnesses, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
 const SETTINGS_STALE_TIME_MS = 60_000;
@@ -117,6 +117,37 @@ export function useAutoAdoptMutation() {
         invalidateSettingsQueries(queryClient),
         invalidateAgentsQueries(queryClient),
       ]);
+    },
+  });
+}
+
+export function useAutoAdoptHarnessesMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ family, harnesses }: { family: string; harnesses: string[] }) =>
+      updateAutoAdoptHarnesses(family, harnesses),
+    onMutate: async ({ family, harnesses }) => {
+      await queryClient.cancelQueries({ queryKey: settingsKeys.detail() });
+      const previousSettings = queryClient.getQueryData<SettingsData>(settingsKeys.detail());
+      if (previousSettings) {
+        queryClient.setQueryData<SettingsData>(settingsKeys.detail(), {
+          ...previousSettings,
+          autoAdoptHarnesses: {
+            ...previousSettings.autoAdoptHarnesses,
+            [family]: harnesses,
+          },
+        });
+      }
+      return { previousSettings };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSettings) {
+        queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
+      }
+    },
+    onSuccess: async () => {
+      await invalidateSettingsQueries(queryClient);
     },
   });
 }

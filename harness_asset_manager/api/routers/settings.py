@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.api.schemas import (
+    SetAutoAdoptHarnessesRequest,
     SetAutoAdoptRequest,
     SetHarnessSupportRequest,
     SettingsResponse,
@@ -34,3 +35,12 @@ def set_auto_adopt(
     container: BackendContainer = Depends(get_container),
 ) -> dict[str, object]:
     return container.settings_mutations.set_auto_adopt(family, body.enabled)
+
+
+@router.put("/auto-adopt/{family}/harnesses")
+def set_auto_adopt_harnesses(
+    family: str,
+    body: SetAutoAdoptHarnessesRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    return container.settings_mutations.set_auto_adopt_harnesses(family, body.harnesses)

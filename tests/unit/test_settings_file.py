@@ -125,6 +125,24 @@ class AutoAdoptStoreTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.store.set_enabled("unknown", True)
 
+    def test_auto_adopt_harness_defaults_round_trip_without_wiping_other_settings(self) -> None:
+        self.store.set_enabled("agents", False)
+        defaults = self.store.set_default_harnesses("agents", ("claude", "codex", "claude"))
+
+        self.assertEqual(defaults["agents"], ("claude", "codex"))
+        reloaded = AutoAdoptStore(self.path)
+        self.assertEqual(reloaded.default_harnesses()["agents"], ("claude", "codex"))
+        self.assertFalse(reloaded.is_enabled("agents"))
+
+    def test_auto_adopt_harness_defaults_ignore_malformed_entries(self) -> None:
+        self.path.write_text(
+            json.dumps({"autoAdoptHarnesses": {"agents": ["claude", 3, "claude"], "bogus": ["cursor"]}}),
+            encoding="utf-8",
+        )
+
+        self.assertEqual(self.store.default_harnesses()["agents"], ("claude",))
+        self.assertNotIn("bogus", self.store.default_harnesses())
+
 
 class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
     def setUp(self) -> None:

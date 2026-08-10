@@ -210,6 +210,9 @@ def build_backend_container(
     skills_mutations = SkillsMutationService(skills_read_models, skills_queries, active_source_fetcher)
     auto_adopt_store = AutoAdoptStore(paths.settings_path)
     settings_queries = SettingsQueryService(harness_kernel, paths, auto_adopt_store)
+
+    def auto_adopt_defaults(family: str) -> tuple[str, ...]:
+        return auto_adopt_store.default_harnesses().get(family, ())
     slash_targets = resolve_slash_targets(harness_kernel)
     slash_command_store = SlashCommandStore(
         SlashCommandStorePaths(
@@ -251,6 +254,7 @@ def build_backend_container(
         mutations=slash_command_mutations,
         is_enabled=lambda: auto_adopt_store.is_enabled("slash_commands"),
         journal=mutation_audit,
+        default_harnesses=lambda: auto_adopt_defaults("slash_commands"),
     )
     slash_command_queries.set_reconcile(slash_auto_adopt.reconcile)
 
@@ -305,6 +309,7 @@ def build_backend_container(
         mutations=mcp_mutations,
         is_enabled=lambda: auto_adopt_store.is_enabled("mcp"),
         journal=mutation_audit,
+        default_harnesses=lambda: auto_adopt_defaults("mcp"),
     )
     mcp_queries.set_reconcile(mcp_auto_adopt.reconcile)
 
@@ -323,6 +328,8 @@ def build_backend_container(
         family="hooks",
         is_enabled=lambda: auto_adopt_store.is_enabled("hooks"),
         journal=mutation_audit,
+        default_harnesses=lambda: auto_adopt_defaults("hooks"),
+        enable_default=lambda ref, harness: hooks_mutations.enable_hook(ref, harness),
     )
     hooks_queries.set_reconcile(hooks_auto_adopt.reconcile)
 
@@ -341,6 +348,8 @@ def build_backend_container(
         family="permissions",
         is_enabled=lambda: auto_adopt_store.is_enabled("permissions"),
         journal=mutation_audit,
+        default_harnesses=lambda: auto_adopt_defaults("permissions"),
+        enable_default=lambda ref, harness: permissions_mutations.enable_permission(ref, harness),
     )
     permissions_queries.set_reconcile(permissions_auto_adopt.reconcile)
 
@@ -389,6 +398,7 @@ def build_backend_container(
         # the next reconcile, not the next restart.
         is_enabled=lambda: auto_adopt_store.is_enabled("agents"),
         lock_path=paths.agents_reconcile_lock_path,
+        default_harnesses=lambda: auto_adopt_defaults("agents"),
     )
     agents_mutations = AgentMutationService(
         agents_store, resolve_agents_snapshot, agent_bindings
@@ -403,6 +413,7 @@ def build_backend_container(
         is_enabled=lambda: auto_adopt_store.is_enabled("skills"),
         journal=mutation_audit,
         lock_path=paths.data_dir / "auto-adopt.lock",
+        default_harnesses=lambda: auto_adopt_defaults("skills"),
     )
     skills_queries.set_reconcile(skills_auto_adopt.reconcile)
 

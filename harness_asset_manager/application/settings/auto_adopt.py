@@ -9,6 +9,7 @@ from harness_asset_manager.settings_file import (
 )
 
 AutoAdoptFamily = Literal["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"]
+AUTO_ADOPT_FAMILIES = tuple(("agents", "skills", "slash_commands", "mcp", "hooks", "permissions"))
 
 # Agents default **on**: every repair it takes is provable. The remaining families
 # default **off** because adoption changes ownership of user-created files or
@@ -22,9 +23,13 @@ DEFAULTS: Mapping[str, bool] = {
     "hooks": False,
     "permissions": False,
 }
+DEFAULT_HARNESSES: Mapping[str, tuple[str, ...]] = {
+    family: () for family in AUTO_ADOPT_FAMILIES
+}
 IMPLEMENTED: set[str] = set(DEFAULTS)
 
 SETTINGS_KEY = "autoAdopt"
+HARNESS_DEFAULTS_KEY = "autoAdoptHarnesses"
 
 
 class AutoAdoptStore:
@@ -51,6 +56,31 @@ class AutoAdoptStore:
     def is_enabled(self, family: AutoAdoptFamily) -> bool:
         return self.preferences().get(family, DEFAULTS.get(family, False))
 
+    def default_harnesses(self) -> dict[str, tuple[str, ...]]:
+        stored = load_settings_document(self.path).get(HARNESS_DEFAULTS_KEY)
+        values = {family: tuple(harnesses) for family, harnesses in DEFAULT_HARNESSES.items()}
+        if isinstance(stored, dict):
+            for family in DEFAULT_HARNESSES:
+                raw = stored.get(family)
+                if isinstance(raw, list):
+                    values[family] = tuple(
+                        dict.fromkeys(item for item in raw if isinstance(item, str) and item)
+                    )
+        return values
+
+    def set_default_harnesses(self, family: str, harnesses: tuple[str, ...]) -> dict[str, tuple[str, ...]]:
+        if family not in DEFAULT_HARNESSES:
+            raise KeyError(family)
+        values = self.default_harnesses()
+        values[family] = tuple(dict.fromkeys(harnesses))
+        update_settings_document(
+            self.path,
+            lambda document: document.update(
+                {HARNESS_DEFAULTS_KEY: {key: list(items) for key, items in values.items()}}
+            ),
+        )
+        return values
+
     def set_enabled(self, family: str, enabled: bool) -> dict[str, bool]:
         if family not in DEFAULTS:
             raise KeyError(family)
@@ -64,4 +94,13 @@ class AutoAdoptStore:
         return values
 
 
-__all__ = ["DEFAULTS", "IMPLEMENTED", "SETTINGS_KEY", "AutoAdoptFamily", "AutoAdoptStore"]
+__all__ = [
+    "AUTO_ADOPT_FAMILIES",
+    "DEFAULTS",
+    "DEFAULT_HARNESSES",
+    "HARNESS_DEFAULTS_KEY",
+    "IMPLEMENTED",
+    "SETTINGS_KEY",
+    "AutoAdoptFamily",
+    "AutoAdoptStore",
+]

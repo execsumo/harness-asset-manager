@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tomllib
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -265,16 +266,64 @@ class TestAgentReconcile(AgentReconcileFixture):
         self.assertEqual(h_claude.read_text(encoding="utf-8"), "edit\n")
         self.assertEqual(self.audit.recent(), ())
 
-    def test_8_codex_renders_harness_never_adopted(self) -> None:
+    def test_codex_one_sided_edit_is_adopted_without_losing_unknown_toml(self) -> None:
+        slug = self.create()
+        self.mutations.enable(slug, "codex")
+        rendered = self.codex_dir / f"{slug}.toml"
+        rendered.write_text(
+            rendered.read_text(encoding="utf-8") + 'sandbox_mode = "workspace-write"\n',
+            encoding="utf-8",
+        )
+
+        outcome = self.service.reconcile()
+
+        self.assertEqual([action.action for action in outcome.actions], ["adopted"])
+        self.assertEqual(self.store.get(slug).codex_extras["sandbox_mode"], "workspace-write")
+        self.assertEqual(
+            tomllib.loads(rendered.read_text(encoding="utf-8"))["sandbox_mode"],
+            "workspace-write",
+        )
+
+    def test_codex_two_sided_conflict_is_left_untouched(self) -> None:
+        slug = self.create()
+        self.mutations.enable(slug, "codex")
+        rendered = self.codex_dir / f"{slug}.toml"
+        rendered.write_text(
+            rendered.read_text(encoding="utf-8") + 'sandbox_mode = "workspace-write"\n',
+            encoding="utf-8",
+        )
+        self.store.update(slug, prompt="store edit")
+        before = rendered.read_text(encoding="utf-8")
+
+        outcome = self.service.reconcile()
+
+        self.assertEqual(outcome.actions, ())
+        self.assertEqual(rendered.read_text(encoding="utf-8"), before)
+
+    def test_8_codex_rendered_file_is_adopted_when_only_codex_changed(self) -> None:
         slug = self.create()
         self.mutations.enable(slug, "codex")
         codex_path = self.adapters["codex"].binding_path(slug)
         codex_path.write_text(codex_path.read_text(encoding="utf-8") + '\nextra = "mine"\n', encoding="utf-8")
 
         outcome = self.service.reconcile()
-        self.assertEqual(outcome.actions, ())
+        self.assertEqual([action.action for action in outcome.actions], ["adopted"])
         self.assertTrue(codex_path.is_file())
-        self.assertIn('extra = "mine"', codex_path.read_text(encoding="utf-8"))
+        self.assertEqual(tomllib.loads(codex_path.read_text(encoding="utf-8"))["extra"], "mine")
+
+    def test_malformed_codex_edit_is_left_in_place_and_reported(self) -> None:
+        slug = self.create()
+        self.mutations.enable(slug, "codex")
+        codex_path = self.adapters["codex"].binding_path(slug)
+        malformed = 'name = [\n'
+        codex_path.write_text(malformed, encoding="utf-8")
+
+        outcome = self.service.reconcile()
+
+        self.assertEqual(codex_path.read_text(encoding="utf-8"), malformed)
+        self.assertFalse(codex_path.is_symlink())
+        self.assertEqual(len(outcome.issues), 1)
+        self.assertIn("failed to adopt harness file", outcome.issues[0][1])
 
     def test_9_reconcile_is_idempotent(self) -> None:
         slug = self.create()

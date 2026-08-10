@@ -829,6 +829,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/auto-adopt/{family}/harnesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Auto Adopt Harnesses */
+        put: operations["set_auto_adopt_harnesses_api_settings_auto_adopt__family__harnesses_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/harnesses/{harness}/support": {
         parameters: {
             query?: never;
@@ -2524,6 +2541,11 @@ export interface components {
             /** Succeeded */
             succeeded: string[];
         };
+        /** SetAutoAdoptHarnessesRequest */
+        SetAutoAdoptHarnessesRequest: {
+            /** Harnesses */
+            harnesses: string[];
+        };
         /** SetAutoAdoptRequest */
         SetAutoAdoptRequest: {
             /** Enabled */
@@ -2623,6 +2645,14 @@ export interface components {
         /** SettingsResponse */
         SettingsResponse: {
             autoAdopt: components["schemas"]["SettingsAutoAdoptResponse"];
+            /** Autoadoptharnessoptions */
+            autoAdoptHarnessOptions: {
+                [key: string]: string[];
+            };
+            /** Autoadoptharnesses */
+            autoAdoptHarnesses: {
+                [key: string]: string[];
+            };
             /** Harnesses */
             harnesses: components["schemas"]["SettingsHarnessResponse"][];
             storage: components["schemas"]["SettingsStorageResponse"];
@@ -4743,6 +4773,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetAutoAdoptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_auto_adopt_harnesses_api_settings_auto_adopt__family__harnesses_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAutoAdoptHarnessesRequest"];
             };
         };
         responses: {

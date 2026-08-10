@@ -325,7 +325,8 @@ class AgentInventoryService:
         slug = path.stem
         try:
             if target.render_format == "codex_toml":
-                name, description, _prompt = parse_codex_agent(path)
+                parsed = parse_codex_agent(path)
+                name, description = parsed.name, parsed.description
             else:
                 parsed = parse_agent_file(path)
                 name, description = parsed.name, parsed.description

@@ -83,6 +83,7 @@ from .permissions import (
     SetPermissionHarnessesRequest,
 )
 from .settings import (
+    SetAutoAdoptHarnessesRequest,
     SetAutoAdoptRequest,
     SettingsAutoAdoptResponse,
     SettingsHarnessResponse,
@@ -184,6 +185,7 @@ __all__ = [
     "McpUnmanagedHarnessResponse",
     "OkResponse",
     "ReconcileMcpServerRequest",
+    "SetAutoAdoptHarnessesRequest",
     "SetAutoAdoptRequest",
     "SetHarnessSupportRequest",
     "SettingsAutoAdoptResponse",

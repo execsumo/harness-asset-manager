@@ -3,6 +3,7 @@ import { useState } from "react";
 import { usePendingRegistry } from "../../../lib/async/pending-registry";
 import {
   useAutoAdoptMutation,
+  useAutoAdoptHarnessesMutation,
   useHarnessSupportMutation,
   useSettingsQuery,
 } from "../queries";
@@ -21,6 +22,7 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
   const settingsQuery = useSettingsQuery();
   const supportMutation = useHarnessSupportMutation();
   const autoAdoptMutation = useAutoAdoptMutation();
+  const autoAdoptHarnessesMutation = useAutoAdoptHarnessesMutation();
   const pendingRegistry = usePendingRegistry<string>();
 
   async function handleSupportToggle(harness: string, nextEnabled: boolean) {
@@ -47,14 +49,28 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
     }
   }
 
+  async function handleAutoAdoptHarnesses(family: string, harnesses: string[]) {
+    setErrorMessage("");
+    try {
+      await pendingRegistry.run(
+        `auto-adopt-defaults-${family}`,
+        () => autoAdoptHarnessesMutation.mutateAsync({ family, harnesses }),
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update auto-adopt defaults.");
+    }
+  }
+
   return {
     data: settingsQuery.data ?? null,
     errorMessage: errorMessage || (settingsQuery.error instanceof Error ? settingsQuery.error.message : ""),
     isPending: settingsQuery.isPending,
     isHarnessPending: (harness: string) => pendingRegistry.isPending(settingsSupportActionKey(harness)),
     isAutoAdoptPending: (family: string) => pendingRegistry.isPending(`auto-adopt-${family}`),
+    isAutoAdoptHarnessesPending: (family: string) => pendingRegistry.isPending(`auto-adopt-defaults-${family}`),
     setErrorMessage,
     handleSupportToggle,
     handleAutoAdoptToggle,
+    handleAutoAdoptHarnesses,
   };
 }

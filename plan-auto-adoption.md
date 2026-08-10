@@ -1,9 +1,10 @@
 # Plan — Automatic re-adoption of drifted bindings
 
 **Status: Agents shipped 2026-07-27; family auto-adoption shipped 2026-08-08; slash-command
-drift auto-repair (Stage 4) shipped 2026-08-09.** Skills, slash commands, MCP, Hooks, and
-Permissions now have opt-in, family-specific adoption paths, and slash commands additionally
-auto-repairs already-managed drifted files. Codex agent adoption remains excluded. Amendments
+drift auto-repair (Stage 4) shipped 2026-08-09; Codex lossless agent adoption and configurable
+auto-adopt defaults shipped 2026-08-10.** Skills, slash commands, MCP, Hooks, and Permissions
+now have opt-in, family-specific adoption paths, and slash commands and Codex agents additionally
+auto-repair already-managed drifted files. Amendments
 made while building are marked
 **AMENDED** inline:
 §3's rebaseline rule, §5's exclusion from it, and §4's conflict-file location. Read
@@ -172,7 +173,7 @@ without violating the principle the docstring is defending.
 
 ### Multi-harness divergence — stated rule, not left to the implementer
 
-`delegate` may be bound into Claude, AGY, and Hermes simultaneously. Resolve
+`delegate` may be bound into Claude, AGY, and Cursor simultaneously. Resolve
 **per slug, not per binding**: gather every drifted binding for a slug first, then
 decide once.
 
@@ -199,25 +200,19 @@ plan exists to prevent.
 
 ---
 
-## 5. Codex is not symmetric — scope it out of v1
+## 5. Codex is not symmetric — preserve it explicitly
 
-The user expects drift "from codex, or from claude, or from hermes." Codex cannot
+The user expects drift "from Codex, Claude, Agy, or Cursor." Codex cannot
 be treated like the others:
 
 - Codex is a `renders` harness (`adapters.py`, `renders` → `.toml`). There is no
   symlink; HAM writes a real file carrying `GENERATED_MARKER`.
-- Adoption *from* Codex round-trips through `parse_codex_agent()` →
-  `render_agent_document()`, which keeps only `name`, `description`, `prompt`.
-  Any other TOML the user added is **dropped**. That is lossy, and doing it
-  automatically means silently discarding content.
-- `enable()` on the renders path overwrites with no drift detection at all — the
-  class docstring says so outright: *"**No drift detection**: re-enabling
-  overwrites local edits to a rendered file."*
-
-**v1: symlink harnesses only** (Claude, Cursor, AGY, OpenCode, Hermes). For Codex,
-do the cheap useful half — store `rendered_sha256` at write time, compare on
-reconcile, and when it differs surface *"Codex's copy was edited locally"* as an
-issue with the existing manual adopt action. Detection without automation.
+- Adoption from Codex preserves the modeled fields in Markdown and stores every
+  unmodeled TOML field in an opaque `.codex.toml` sidecar. Codex-only fields do not
+  leak into Markdown files symlinked into Claude, Agy, or Cursor.
+- Rendered Codex files retain their rendered baseline hash. Reconcile compares the
+  current rendered TOML semantically, so a one-sided Codex edit can be adopted safely
+  while a two-sided conflict remains for manual review.
 
 **AMENDED (shipped):** Codex is also excluded from the store-write **rebaseline**, for
 the mirror-image reason. A store write reaches a symlinked harness automatically; it
@@ -225,9 +220,8 @@ does not reach a rendered file at all. Re-baselining Codex would record "the har
 has this content" about a copy that just went stale. Its `rendered_sha256` is recorded
 at write time and only ever compared, never refreshed from the store side.
 
-Automating Codex needs a lossless round-trip first (preserve unknown TOML keys
-through parse/render, with a property test proving `render(parse(x)) == x`). That
-is its own piece of work — do not smuggle it into this one.
+This is shipped behind the existing `auto_adopt.agents` setting, with tests covering
+unknown nested fields, store edits, one-sided repair, and two-sided conflicts.
 
 ---
 
@@ -263,8 +257,8 @@ symlink. A crash between those steps must leave the user's directory intact.
   symlink and is not owned.
 - Same-name collisions across harnesses follow §4's multi-harness rule — differing
   content is never auto-resolved.
-- Skip anything matching the existing exclusion policies (Hermes bundled/learned
-  skills are already handled by `_hermes_scan_policy`; do not regress that).
+- Skip anything matching the existing harness-specific exclusion policies; do not regress
+  those ownership boundaries.
 
 The clobber problem does **not** apply here — directory symlinks cannot be
 replaced by `rename()`. Do not build clobber detection for skills.
@@ -312,9 +306,21 @@ Each stage ships independently and leaves the tree working.
    automatically, behind the same `auto_adopt.slash_commands` flag the new-file
    adoption pass already used (one setting per family, not one per mechanism).
    Rows 1 and 4 keep prompting. See §12.
-5. **Skills auto-adopt**, behind `auto_adopt.skills` (default off). A *different*
-   mechanism (§7), not clobber repair.
-6. **Deferred:** Codex, gated on a lossless TOML round-trip.
+5. **✅ SHIPPED (2026-08-08) — Skills auto-adopt**, behind `auto_adopt.skills`
+   (default off). A *different* mechanism (§7), not clobber repair: it adopts
+   genuinely **new** unmanaged directories and never repairs an existing binding,
+   because a directory symlink cannot be clobbered (§12, `ENOTDIR`).
+   `SkillsAutoAdoptService.reconcile()` groups unmanaged inventory entries, refuses
+   any group whose local copies have differing revisions, refuses symlinks and
+   non-directories, and delegates the move itself to
+   `SkillsMutationService.manage_entry()` — which owns the non-negotiable
+   ingest → verify → replace ordering from §7. Wired read-time in `container.py`.
+   **Marker corrected 2026-08-10:** §7 recorded this as implemented on 2026-08-08 but
+   this list still showed it unshipped, so the plan contradicted itself for two days.
+6. **✅ SHIPPED (2026-08-10) — Codex lossless adoption and rendered drift repair.**
+   Unknown TOML fields are stored in a Codex-only sidecar, verified semantically on
+   adoption, and preserved when the shared agent is edited. One-sided rendered drift
+   is repaired automatically; two-sided conflicts remain manual.
 
 Stage 2 is the highest value-per-risk. If the work stalls, stall it there.
 
@@ -345,6 +351,17 @@ Now refused with a 400 until the mechanism lands. **When adding Stage 4 or 5, wi
 consumer and flip the guard in the same change** — a declared-but-unread preference key
 is worse than an absent one, because it reads as a working feature.
 
+**AMENDED 2026-08-10 — the guard is now fully open, and that is correct.**
+`IMPLEMENTED: set[str] = set(DEFAULTS)` in `application/settings/auto_adopt.py`, so no
+family is refused any more. That is the intended end state, not a regression: every
+family in `DEFAULTS` now has a real consumer, which is exactly the condition this rule
+asks for. The rule still binds for any *future* family — add it to `DEFAULTS` only in
+the change that wires its consumer. Note the mechanism this guard protected has
+changed shape: with `IMPLEMENTED` derived from `DEFAULTS` rather than listed
+separately, the two can no longer drift, but they also can no longer express
+"declared but not yet wired." A future half-built family must therefore be held back
+from `DEFAULTS` itself.
+
 ---
 
 ## 10. Tests
@@ -367,7 +384,8 @@ is worse than an absent one, because it reads as a working feature.
 
 - No filesystem watcher (§2).
 - No content merging. HAM picks a side or asks; it never merges two versions.
-- No automatic Codex adoption (§5).
+- No automatic adoption for a rendered family without a lossless preservation contract;
+  Codex agent TOML now has that contract and shipped in Stage 6 (§5).
 - No change to the derived-state model. `is_enabled()` must keep deriving from the
   filesystem — the ledger is strictly additional evidence, never the authority.
 
