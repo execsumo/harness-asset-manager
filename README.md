@@ -351,7 +351,7 @@ from every matrix rather than shown as an inert column.
 |---|---:|---:|---:|---:|---:|
 | Claude Code | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | Codex CLI | Yes | Yes | Yes | Yes | Yes (Denylist) |
-| Antigravity (agy) | Yes | Yes | Not Yet | Partial | Yes (Denylist) |
+| Antigravity (agy) | Yes | Yes | Yes | Partial | Yes (Denylist) |
 | Cursor | Yes | Yes | Yes | Yes | No |
 | OpenCode | Yes | Yes | Yes | Partial | No |
 | Hermes Agent | Yes | Yes | Yes* | Not Yet | No |
@@ -435,8 +435,8 @@ Slash commands are stored as TOML records under Harness Asset Manager app storag
 - Codex writes prompt files under `~/.codex/prompts` and invokes them with `/prompts:`.
 - Cursor writes plain text command files under `~/.cursor/commands` and invokes them with `/`.
 - OpenCode writes Markdown command files under `~/.config/opencode/commands` and invokes them with `/`.
-- Hermes Agent writes Markdown command files under `~/.hermes/commands` and invokes them with `/` (provisional).
-- OpenClaw and Antigravity (agy) slash command writes are not yet supported.
+- Antigravity (agy) writes Markdown command files under `~/.gemini/antigravity-cli/commands` and invokes them with `/`.
+- OpenClaw slash command writes are not yet supported.
 
 Disabling a harness in Settings removes its column here immediately, without a restart.
 Command files already written to that harness and their sync records are left alone —

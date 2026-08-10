@@ -222,6 +222,19 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("permissions",),
                 codec="antigravity-permissions",
             ),
+            "slash_commands": CommandFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli",
+                output_dir_resolver=lambda context: context.home
+                / ".gemini"
+                / "antigravity-cli"
+                / "commands",
+                invocation_prefix="/",
+                render_format="frontmatter_markdown",
+                scope="global",
+                docs_url="https://antigravity.google/docs/cli/reference",
+                file_glob="*.md",
+                supports_frontmatter=True,
+            ),
         },
     ),
     HarnessDefinition(

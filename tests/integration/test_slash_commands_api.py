@@ -13,7 +13,7 @@ class SlashCommandApiTests(unittest.TestCase):
 
             self.assertEqual(payload["commands"], [])
             target_ids = [target["id"] for target in payload["targets"]]
-            self.assertEqual(target_ids, ["claude", "codex", "cursor", "opencode", "hermes"])
+            self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "hermes"])
             self.assertIn("codex", payload["defaultTargets"])
             self.assertTrue(all("enabled" in target for target in payload["targets"]))
             self.assertTrue(str(harness.spec.xdg_data_home / "harness-asset-manager") in payload["storePath"])
@@ -296,6 +296,29 @@ class SlashCommandApiTests(unittest.TestCase):
             unmanaged = next(row for row in updated["reviewCommands"] if row["target"] == "codex")
             self.assertEqual(unmanaged["kind"], "unmanaged")
             self.assertEqual(unmanaged["actions"], ["adopt_target"])
+
+    def test_agy_slash_command_sync_and_auto_adopt(self) -> None:
+        with AppTestHarness() as harness:
+            # Create a slash command targeting agy
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "lint-check",
+                    "description": "Run lint checks",
+                    "prompt": "Run linting on $ARGUMENTS",
+                    "targets": ["agy"],
+                },
+            )
+            agy_cmd_path = harness.spec.home / ".gemini" / "antigravity-cli" / "commands" / "lint-check.md"
+            self.assertTrue(agy_cmd_path.is_file())
+            content = agy_cmd_path.read_text(encoding="utf-8")
+            self.assertIn("description: \"Run lint checks\"", content)
+            self.assertIn("Run linting on $ARGUMENTS", content)
+
+            payload = harness.get_json("/api/slash-commands")
+            cmd = next(c for c in payload["commands"] if c["name"] == "lint-check")
+            agy_target = next(t for t in cmd["syncTargets"] if t["target"] == "agy")
+            self.assertEqual(agy_target["status"], "synced")
 
 
 if __name__ == "__main__":
