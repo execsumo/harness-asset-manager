@@ -90,6 +90,11 @@ class RefreshCommandTests(CliCommandTestCase):
             ["skills", "slash_commands", "mcp", "hooks", "permissions", "agents"],
         )
 
+    def test_refresh_sync_all_enables_auto_adopt_across_families(self) -> None:
+        payload = self.run_json("refresh", "--sync-all")
+        self.assertEqual(payload["syncAll"], True)
+        self.assertIn("skills", payload["refreshed"])
+
 
 class SettingsCommandTests(CliCommandTestCase):
     def test_show_lists_storage_and_harnesses(self) -> None:

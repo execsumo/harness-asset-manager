@@ -6,6 +6,18 @@ Running status for in-flight work. Read this before resuming. Newest session on 
 > and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
 > work. Historical entries below may mention them for context, but do not resume those items.
 
+## 2026-08-10 — Frontloaded README refactor & Hybrid Sync Architecture shipped
+
+- **Refactored README.md**:
+  - Frontloaded **What it does for you** and **Key Capabilities** table right below the header.
+  - Frontloaded **Supported Harnesses** with logo grid and a comprehensive 7-harness x 6-family **Capability Matrix**, adding **Agents** explicitly.
+  - Simplified Capability Matrix status entries (`Yes` / `Not Installable` / `Not Yet`) for clean consistency across all families.
+  - Frontloaded **How to Use It** with quick installation, Web UI launch, and CLI reference.
+- **Hybrid Sync Architecture & CLI `refresh --sync-all`**:
+  - Added `--sync-all` flag to `harnessam refresh` CLI command to trigger auto-adoption and drift reconciliation across all asset families in one step.
+  - Documented instant zero-copy symlink sharing (Skills & Agents) vs. on-demand drift auto-reconciliation for native configs (MCP, Slash Commands, Hooks, Permissions).
+  - Added unit test coverage in `tests/unit/test_cli_commands.py`.
+
 ## 2026-08-10 — Antigravity (agy) Slash Commands & Hooks feature-completeness shipped
 
 Implemented full Slash Commands coverage and feature-complete Hooks support for Antigravity (`agy`).

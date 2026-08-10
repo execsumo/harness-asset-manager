@@ -19,11 +19,20 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
         parents=[common],
         help="Run one inventory and auto-adoption pass for every asset family.",
     )
+    parser.add_argument(
+        "--sync-all",
+        action="store_true",
+        help="Enable auto-adoption and drift reconciliation across all asset families during this pass.",
+    )
     parser.set_defaults(handler=refresh_inventories)
 
 
 def refresh_inventories(container: "BackendContainer", args: argparse.Namespace) -> int:
     """Trigger each query path once; the query services own reconciliation."""
+    if getattr(args, "sync_all", False):
+        for family in REFRESHED_FAMILIES:
+            container.settings_mutations.set_auto_adopt(family, enabled=True)
+
     container.skills_queries.list_skills()
     container.slash_command_queries.list_commands()
     container.mcp_queries.list_servers()
@@ -31,9 +40,15 @@ def refresh_inventories(container: "BackendContainer", args: argparse.Namespace)
     container.permissions_queries.list_permissions()
     container.agents_inventory.build()
 
-    payload = {"refreshed": list(REFRESHED_FAMILIES)}
+    payload = {
+        "refreshed": list(REFRESHED_FAMILIES),
+        "syncAll": getattr(args, "sync_all", False),
+    }
     if args.json_output:
         print_json(payload)
     else:
-        print("refreshed: " + ", ".join(REFRESHED_FAMILIES))
+        status_msg = "refreshed: " + ", ".join(REFRESHED_FAMILIES)
+        if getattr(args, "sync_all", False):
+            status_msg += " (sync-all enabled across all families)"
+        print(status_msg)
     return 0

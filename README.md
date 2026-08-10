@@ -516,7 +516,7 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `settings show` | Storage paths, per-harness support and install state, auto-adopt |
 | `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
 | `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
-| `refresh` | Run one inventory and auto-adoption pass for every asset family |
+| `refresh [--sync-all]` | Run inventory pass; `--sync-all` enforces auto-adoption & drift reconciliation across all asset families |
 | `snapshots list [--harness <h>]` | Captured native config snapshots |
 | `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
 | `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
