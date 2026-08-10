@@ -23,6 +23,12 @@
 
 AI extensions are scattered across harness-specific folders, MCP config files, slash command locations, and marketplace sources. **Harness Asset Manager** provides a single local control surface for managing, reviewing, and discovering extensions across all your AI coding tools and agent frameworks.
 
+### Single Source of Truth & Cross-Harness Sync
+
+- **Edit Once, Active Everywhere**: For file-based extensions (**Skills** and **Agents**), Harness Asset Manager uses managed symlinks to a single canonical store. Edit an asset in any enabled harness or in the shared store, and the changes are immediately active across every harness sharing the link.
+- **Drift Detection & One-Click Sync**: For native config-based and rendered extensions (**MCP Servers**, **Slash Commands**, **Hooks**, and **Security Permissions**), Harness Asset Manager actively monitors local harness state. When you edit a native config in one harness, Harness Asset Manager detects the drift, flags it for review, and lets you adopt or sync the changes across all your other harnesses in one step.
+- **Safe Conflict Isolation**: If multiple harnesses edit the same asset independently, Harness Asset Manager preserves both versions, prevents silent data loss, and lets you resolve conflicts safely.
+
 ### Key Capabilities
 
 | Asset Family | What Harness Asset Manager does |
