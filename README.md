@@ -95,11 +95,11 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 
 | Harness | Skills | Agents | MCP Servers | Slash Commands | Hooks | Permissions |
 |---|---:|---:|---:|---:|---:|---:|
-| **Claude Code** | Yes | Yes (symlink) | Yes | Yes | Yes | Yes (Denylist) |
-| **Codex CLI** | Yes | Yes (rendered TOML) | Yes | Yes | Yes | Yes (Denylist) |
-| **Antigravity (agy)** | Yes | Yes (symlink) | Yes | Yes | Partial | Yes (Denylist) |
-| **Cursor** | Yes | Yes (symlink) | Yes | Yes | Yes | No |
-| **OpenCode** | Yes | Yes (symlink) | Yes | Yes | Partial | No |
+| **Claude Code** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| **Codex CLI** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
+| **Cursor** | Yes | Yes | Yes | Yes | Yes | No |
+| **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
 | **Hermes Agent** | Yes | Not Installable¹ | Yes | Yes² (Provisional) | Not Yet | No |
 | **OpenClaw** | Yes | Not Yet | Not Yet³ | Not Yet | Not Yet | No |
 
