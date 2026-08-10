@@ -735,13 +735,27 @@ class AntigravityHooksMapper:
             "Stop": "stop",
             "PreInvocation": "user_prompt_submit",
         }
-        matcher_map = {
-            "run_command": "shell",
-            "view_file": "file_read",
-            "write_to_file|replace_file_content|multi_replace_file_content": "file_write",
-            "read_url_content|search_web": "web",
-            "*": "any",
-        }
+
+        def _canonicalize_matcher(raw_matcher: str | None) -> str | None:
+            if raw_matcher is None:
+                return None
+            if raw_matcher in ("*", "", "any"):
+                return "any"
+            if raw_matcher in ("run_command", "bash", "shell"):
+                return "shell"
+            if raw_matcher in ("view_file", "read_file", "file_read"):
+                return "file_read"
+            if raw_matcher in (
+                "write_to_file|replace_file_content|multi_replace_file_content",
+                "write_to_file",
+                "replace_file_content",
+                "multi_replace_file_content",
+                "file_write",
+            ):
+                return "file_write"
+            if raw_matcher in ("read_url_content|search_web", "read_url_content", "search_web", "web"):
+                return "web"
+            return raw_matcher
 
         entries: list[RawHookEntry] = []
         for hook_id, hook_entry in document.items():
@@ -773,7 +787,7 @@ class AntigravityHooksMapper:
                             if not isinstance(group, dict):
                                 continue
                             native_matcher = group.get("matcher")
-                            canonical_match = matcher_map.get(native_matcher, native_matcher) if native_matcher is not None else None
+                            canonical_match = _canonicalize_matcher(native_matcher if isinstance(native_matcher, str) else None)
                             hooks_list = group.get("hooks", [])
                             if isinstance(hooks_list, list):
                                 for hook in hooks_list:

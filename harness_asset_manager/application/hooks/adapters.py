@@ -39,6 +39,7 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
         self.label = definition.label
         self.logo_key = definition.logo_key
         self.config_path = profile.resolve_config_path(context)
+        self._discovery_config_paths = profile.resolve_discovery_config_paths(context)
         self._install_probe = definition.install_probe
         self._path_env = context.env.get("PATH")
         self._file_format = profile.file_format
@@ -48,7 +49,7 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
 
     def status(self) -> HookHarnessStatus:
         installed = self._is_installed()
-        config_present = self.config_path.is_file()
+        config_present = any(path.is_file() for path in self._discovery_config_paths)
         return HookHarnessStatus(
             harness=self.harness,
             label=self.label,
@@ -222,13 +223,14 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
             atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def disable_hook(self, id: str) -> None:
-        if not self.config_path.is_file():
-            return
-        with file_lock(self._lock_path(self.config_path)):
-            document = self._load_document(self.config_path)
-            command = self._get_managed_command(id)
-            self._mapper.disable_hook(document, id, command)
-            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
+        for path in self._discovery_config_paths:
+            if not path.is_file():
+                continue
+            with file_lock(self._lock_path(path)):
+                document = self._load_document(path)
+                command = self._get_managed_command(id)
+                self._mapper.disable_hook(document, id, command)
+                atomic_write_text(path, self._dump_document(document), follow_symlinks=True)
 
     def invalidate(self) -> None:
         return None
@@ -269,10 +271,17 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
         return tomli_w.dumps(document)
 
     def _read_entries(self, specs: tuple[HookSpec, ...] = ()) -> tuple[RawHookEntry, ...]:
-        if not self.config_path.is_file():
-            return ()
-        document = self._load_document(self.config_path)
-        return tuple(self._mapper.read_entries(document, specs))
+        raw_entries: list[RawHookEntry] = []
+        seen_ids: set[str] = set()
+        for path in self._discovery_config_paths:
+            if not path.is_file():
+                continue
+            document = self._load_document(path)
+            for entry in self._mapper.read_entries(document, specs):
+                if entry.id not in seen_ids:
+                    seen_ids.add(entry.id)
+                    raw_entries.append(entry)
+        return tuple(raw_entries)
 
     def _get_managed_command(self, id: str) -> str | None:
         try:

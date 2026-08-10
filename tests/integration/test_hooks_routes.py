@@ -231,6 +231,94 @@ class HookRoutesTests(unittest.TestCase):
             entry = next(e for e in payload["entries"] if e.get("spec", {}).get("command") == "echo auto-hook")
             self.assertEqual(entry["kind"], "managed")
 
+    def test_antigravity_unmanaged_hook_discovery_and_adoption(self) -> None:
+        with AppTestHarness() as harness:
+            # Seed an unmanaged hook in ~/.gemini/antigravity-cli/hooks.json (discovery location)
+            cli_hooks_path = harness.spec.home / ".gemini" / "antigravity-cli" / "hooks.json"
+            cli_hooks_path.parent.mkdir(parents=True, exist_ok=True)
+            cli_hooks_path.write_text(
+                json.dumps(
+                    {
+                        "custom-linter": {
+                            "enabled": True,
+                            "PostToolUse": [
+                                {
+                                    "matcher": "run_command",
+                                    "hooks": [{"type": "command", "command": "eslint ."}],
+                                }
+                            ],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/hooks")
+            unmanaged = next(e for e in payload["entries"] if e["kind"] == "unmanaged")
+            self.assertEqual(unmanaged["sightings"][0]["harness"], "agy")
+            self.assertEqual(unmanaged["sightings"][0]["event"], "post_tool_use")
+            self.assertEqual(unmanaged["sightings"][0]["match"], "shell")
+
+            # Adopt into central store
+            promoted = harness.post_json(
+                "/api/hooks/adopt",
+                {
+                    "harness": "agy",
+                    "observedId": unmanaged["sightings"][0]["observedId"],
+                },
+            )
+            self.assertTrue(promoted["ok"])
+            self.assertEqual(promoted["hook"]["command"], "eslint .")
+            self.assertEqual(promoted["hook"]["event"], "post_tool_use")
+            self.assertEqual(promoted["hook"]["match"], "shell")
+
+    def test_antigravity_hook_drift_detection_and_repair(self) -> None:
+        with AppTestHarness() as harness:
+            # Create a managed hook for agy
+            harness.post_json(
+                "/api/hooks",
+                {
+                    "id": "safety-check",
+                    "event": "pre_tool_use",
+                    "command": "./scripts/safety.sh",
+                    "match": "shell",
+                },
+            )
+            harness.post_json("/api/hooks/safety-check/enable", {"harness": "agy"})
+
+            agy_path = harness.spec.home / ".gemini" / "config" / "hooks.json"
+            self.assertTrue(agy_path.is_file())
+
+            # Simulate Agy modifying the command on disk
+            agy_cfg = json.loads(agy_path.read_text(encoding="utf-8"))
+            agy_cfg["safety-check"]["PreToolUse"][0]["hooks"][0]["command"] = "./scripts/safety-v2.sh"
+            agy_path.write_text(json.dumps(agy_cfg), encoding="utf-8")
+
+            # Read back hooks inventory -> should report drifted
+            payload = harness.get_json("/api/hooks")
+            entry = next(e for e in payload["entries"] if e["id"] == "safety-check")
+            self.assertEqual(entry["kind"], "managed")
+            agy_sighting = next(s for s in entry["sightings"] if s["harness"] == "agy")
+            self.assertEqual(agy_sighting["state"], "drifted")
+
+            # Resolve drift by adopting target modification into store
+            resolved = harness.post_json(
+                "/api/hooks/review/resolve",
+                {
+                    "harness": "agy",
+                    "id": "safety-check",
+                    "action": "adopt_target",
+                },
+            )
+            self.assertTrue(resolved["ok"])
+
+            # Verify store now has updated command
+            updated_payload = harness.get_json("/api/hooks")
+            updated_entry = next(e for e in updated_payload["entries"] if e["id"] == "safety-check")
+            self.assertEqual(updated_entry["spec"]["command"], "./scripts/safety-v2.sh")
+            updated_sighting = next(s for s in updated_entry["sightings"] if s["harness"] == "agy")
+            self.assertEqual(updated_sighting["state"], "managed")
+
 
 if __name__ == "__main__":
     unittest.main()

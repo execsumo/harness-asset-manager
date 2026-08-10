@@ -452,7 +452,7 @@ Hooks are stored as normalized Harness Asset Manager records using **canonical e
 - Codex writes inline `[hooks]` tables into `~/.codex/config.toml` (same event schema as Claude).
 - Cursor writes `~/.cursor/hooks.json`, expressing each tool category as its dedicated event (`beforeShellExecution`, `afterFileEdit`, `beforeMCPExecution`, and so on).
 - OpenCode writes `experimental.hook` entries in `opencode.json` — limited to `file_edited` (post-edit on write) and `session_completed` (stop), so coverage is partial.
-- Antigravity (agy) writes a name-keyed `~/.gemini/config/hooks.json`, matching against its own tool names (`run_command`, `view_file`, …); it covers tool, stop, and (via `PreInvocation`) prompt-submit hooks, so coverage is partial.
+- Antigravity (agy) writes a name-keyed `~/.gemini/config/hooks.json` (discovering entries across user-level `~/.gemini/*/hooks.json` and project-level `.agents/hooks.json`), matching against tool names (`run_command`, `view_file`, …); it covers tool, stop, and (via `PreInvocation`) prompt-submit hooks, so coverage is partial.
 
 Because harnesses differ, not every canonical event maps to every harness. Harness Asset Manager exposes a **representability matrix** showing where each hook can sync and where it cannot, including caveats — for example, an Antigravity `user_prompt_submit` hook maps to `PreInvocation`, which fires before every model invocation rather than only on prompt submit.
 

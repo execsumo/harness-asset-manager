@@ -212,6 +212,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
             ),
             "hooks": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".gemini" / "config" / "hooks.json",
+                discovery_config_path_resolvers=(
+                    lambda context: context.home / ".gemini" / "antigravity-cli" / "hooks.json",
+                    lambda context: context.home / ".gemini" / "antigravity" / "hooks.json",
+                    lambda context: context.home / ".gemini" / "antigravity-ide" / "hooks.json",
+                    lambda context: context.home / ".agents" / "hooks.json",
+                ),
                 file_format="json",
                 subtree_path=(),
                 codec="antigravity-hooks",
