@@ -633,6 +633,32 @@ npm run build
 - [x] Package-based storage (portable resource bundles)
 - [ ] Plugin support
 
+### Cross-device sync — planned, not yet started
+
+Harness Asset Manager collapses *many harnesses → one store*. The next major piece adds
+*many machines → one store*: adopt a Skill on your desktop and have it be there, wired into
+the right harnesses, on your laptop and in your containers.
+
+The unit of sync is the Harness Asset Manager store, not the harness directories — those
+hold symlinks, per-harness translations, and config files you also own, none of which
+survive being copied between machines. Canonical records travel; each machine recomputes
+its own bindings on arrival, so a machine without Cursor simply does not bind Cursor.
+
+Planned shape:
+
+- a private git remote you own — no accounts, no hosted service, nothing leaves your
+  control
+- MCP credential **values are never transported**; the receiving machine reports which
+  credentials it still needs
+- conflicts are preserved and reported, never auto-resolved by timestamp
+- one-way `pull` for ephemeral and headless machines (containers, VPS, CI), which should
+  inherit a portfolio and never push back
+
+Multi-person and team distribution are **not** in scope — that is what the published
+Plugin versions are for.
+
+Design and sequencing: [`plan-cross-device-sync.md`](plan-cross-device-sync.md).
+
 ## Community
 
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.

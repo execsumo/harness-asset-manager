@@ -1,6 +1,6 @@
 # Recommendations
 
-> Review of 2026-07-25, refreshed against `main` on 2026-08-10 (`2195a84`). Verified suites on
+> Review of 2026-07-25, refreshed on 2026-08-10. Verified suites on
 > earlier same-tree commits: backend unit (496) + integration (169) pass, `npm run typecheck` is
 > clean, `npm run build` succeeds, `ruff check harness_asset_manager tests scripts` is clean,
 > `pyright` completes with its current basic-mode warning baseline, and `npm run lint:frontend`
@@ -42,6 +42,26 @@
 
 ---
 
+## Tier 1 — High value, moderate effort
+
+### 1.4 `--state-dir` does not isolate the store, but the README says it does — S
+
+Found 2026-08-09 during cross-device sync planning (`plan-cross-device-sync.md` §13).
+
+The README's Scripting section says `--state-dir` "isolates a run, which is how you keep CI or
+a throwaway sandbox from touching the real store." It does not. `paths.py:77-98` uses
+`STATE_DIR_ENV` only for `state_dir` (`runtime.json`, `server.log`); `config_dir` and `data_dir`
+still resolve from XDG or the macOS default. **A user following that advice writes to their real
+store** — the exact outcome the sentence promises to prevent. Effort is Tier-3-sized; the
+consequence is not, which is why it sits here.
+
+**Action:** either correct the sentence (isolation needs `XDG_DATA_HOME` + `XDG_CONFIG_HOME`,
+plus `HOME` for harness roots — what `tests/support/fake_home.py` already does), or make
+`--state-dir` mean what it says by having it override all three base dirs. Prefer the latter if
+cross-device sync proceeds, since its two-machine test strategy leans on real isolation.
+
+---
+
 ## Tier 2 — Strategic investments
 
 ### 2.2 Coverage measurement with a ratchet — S–M
@@ -63,7 +83,7 @@ is deliberate and has real benefits (families evolve independently), but the *kn
 a conforming family needs exists only in the plans and handoffs.
 
 **Action:** write `docs/adding-a-family.md` + `docs/adding-a-harness.md` checklists (the harness
-one pairs with §1.3's verification checklist). Only after that, evaluate extracting a shared
+one pairs with a repeatable new-harness verification checklist). Only after that, evaluate extracting a shared
 "family framework" for the truly invariant parts (manifest store, matrix read model) — with the
 checklist as the spec it must satisfy. Do not extract first: the agents rebuild shows the cost of
 a bespoke abstraction that had to be torn out.
