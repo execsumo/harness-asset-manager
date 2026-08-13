@@ -41,6 +41,23 @@ export default defineConfig(({ mode }) => {
       testTimeout: 10000,
       setupFiles: ["./src/test/setup.ts"],
       include: ["src/**/*.test.{ts,tsx}"],
+      coverage: {
+        provider: "v8",
+        reporter: ["text", "json-summary", "lcov"],
+        include: ["src/**/*.{ts,tsx}"],
+        exclude: [
+          "src/**/*.test.{ts,tsx}",
+          "src/test/**",
+          "src/api/generated.ts",
+          "src/main.tsx",
+        ],
+        thresholds: {
+          statements: 60,
+          branches: 55,
+          functions: 55,
+          lines: 60,
+        },
+      },
     },
   };
 });

@@ -27,6 +27,7 @@
 > 2026-08-12 (`~/.harnessam` store rename, safe legacy migration, and housekeeping);
 > 2026-08-12 (extension-family and harness contribution checklists).
 > 2026-08-12 (machine-readable API error envelopes and frontend `ApiError` handling).
+> 2026-08-12 (backend and frontend coverage ratchets).
 > Partially-shipped items below keep their number and describe only the remaining scope.
 > See `handoff.md` for the full chronological record.
 
@@ -44,35 +45,17 @@
 
 ---
 
-## Tier 2 — Strategic investments
-
-### 2.2 Coverage measurement with a ratchet — S–M
-
-496 backend unit tests, 169 integration tests, and 62 frontend test files (278 tests) exist, but
-nothing measures what they cover, so gaps are invisible — the unknown-field data loss fixed by
-PR #30 lived in well-tested-looking code for months.
-
-**Action:** add `coverage.py` to `scripts/test_backend.sh` and `vitest --coverage` to CI; report
-per-package coverage and ratchet the threshold (fail if it drops). The point is trend, not a
-vanity number.
-
----
-
 ## Suggested sequencing
 
-## Suggested sequencing
-
-1. **Next:** §2.2, coverage measurement with a ratchet. It is the best follow-on for keeping
-   the newly expanded auto-adoption behavior honest across the priority harnesses.
-2. **Closed recently:** `--state-dir` full isolation (2026-08-12), Codex lossless adoption and configurable auto-adopt defaults (2026-08-10),
+1. **Closed recently:** coverage measurement with a ratchet (2026-08-12),
+   `--state-dir` full isolation (2026-08-12), Codex lossless adoption and configurable auto-adopt defaults (2026-08-10),
    §1.1 (PR #30, 2026-08-06), §2.1 activity view (2026-08-07), §1.2
    static-analysis (2026-08-08), family-wide auto-adoption (2026-08-08), slash-command drift
    auto-repair / `plan-auto-adoption.md` Stage 4 (2026-08-09).
-3. **Auto-adoption plan remainder:** Stages 1–4 shipped; skills new-directory adoption shipped
+2. **Auto-adoption plan remainder:** Stages 1–4 shipped; skills new-directory adoption shipped
    opt-in (plan §7 / former Stage 5). The Codex gate and default-harness follow-up are now shipped.
-4. **When planning the next family or harness:** use the new family/harness checklists first;
-   then use the shipped activity journal for
-   traceability, and add 2.2 to keep coverage honest.
-5. **Housekeeping closed:** documentation is under `docs/`, Windows import boundaries and socket
+3. **When planning the next family or harness:** use the new family/harness checklists first;
+   then use the shipped activity journal for traceability.
+4. **Housekeeping closed:** documentation is under `docs/`, Windows import boundaries and socket
    binding are hardened, frontend tests are green locally, and `scripts/clean-local-caches.sh`
    handles reproducible local scratch.

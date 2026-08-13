@@ -121,8 +121,8 @@ jobs:
       - name: OpenAPI codegen drift check
         run: npm run codegen:check
 
-      - name: Frontend tests
-        run: npm test
+      - name: Frontend tests and coverage ratchet
+        run: npm run test:coverage
 
       - name: Frontend build
         run: npm run build

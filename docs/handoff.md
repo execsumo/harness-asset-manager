@@ -2,6 +2,22 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-12 — Coverage measurement and ratchets shipped
+
+Closed `RECOMMENDATIONS.md` §2.2. Added:
+
+- `coverage.py` to `requirements-dev.txt` and `scripts/test_backend.sh`, measuring
+  combined unit and integration coverage for `harness_asset_manager` with branch
+  coverage and an 80% minimum.
+- Vitest V8 coverage via `@vitest/coverage-v8`, with `npm run test:coverage`
+  enforcing 60% statements/lines and 55% branches/functions.
+- CI enforcement in the frontend validation job; generated coverage artifacts
+  remain ignored local output.
+
+The thresholds start just below the current baseline so the ratchet prevents
+regressions without pretending coverage is a quality score. The reports show
+per-file coverage so future threshold increases can be evidence-based.
+
 ## 2026-08-12 — Machine-readable API error codes shipped
 
 Closed the API error-code recommendation. Unsuccessful API responses now use a
