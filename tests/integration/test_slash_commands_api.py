@@ -14,7 +14,7 @@ class SlashCommandApiTests(unittest.TestCase):
 
             self.assertEqual(payload["commands"], [])
             target_ids = [target["id"] for target in payload["targets"]]
-            self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "hermes"])
+            self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "droid", "hermes"])
             self.assertIn("codex", payload["defaultTargets"])
             self.assertTrue(all("enabled" in target for target in payload["targets"]))
             self.assertTrue(str(harness.spec.xdg_data_home / APP_NAME) in payload["storePath"])

@@ -5064,7 +5064,8 @@
               "agy",
               "cursor",
               "opencode",
-              "hermes"
+              "hermes",
+              "droid"
             ],
             "title": "Target",
             "type": "string"
@@ -5094,7 +5095,8 @@
                 "agy",
                 "cursor",
                 "opencode",
-                "hermes"
+                "hermes",
+                "droid"
               ],
               "type": "string"
             },
@@ -5162,7 +5164,8 @@
                     "agy",
                     "cursor",
                     "opencode",
-                    "hermes"
+                    "hermes",
+                    "droid"
                   ],
                   "type": "string"
                 },
@@ -5238,7 +5241,8 @@
               "agy",
               "cursor",
               "opencode",
-              "hermes"
+              "hermes",
+              "droid"
             ],
             "title": "Target",
             "type": "string"
@@ -5353,7 +5357,8 @@
               "agy",
               "cursor",
               "opencode",
-              "hermes"
+              "hermes",
+              "droid"
             ],
             "title": "Target",
             "type": "string"
@@ -5401,7 +5406,8 @@
                     "agy",
                     "cursor",
                     "opencode",
-                    "hermes"
+                    "hermes",
+                    "droid"
                   ],
                   "type": "string"
                 },
@@ -5459,7 +5465,8 @@
               "agy",
               "cursor",
               "opencode",
-              "hermes"
+              "hermes",
+              "droid"
             ],
             "title": "Target",
             "type": "string"
@@ -5485,7 +5492,8 @@
                     "agy",
                     "cursor",
                     "opencode",
-                    "hermes"
+                    "hermes",
+                    "droid"
                   ],
                   "type": "string"
                 },
@@ -5530,7 +5538,8 @@
               "agy",
               "cursor",
               "opencode",
-              "hermes"
+              "hermes",
+              "droid"
             ],
             "title": "Id",
             "type": "string"

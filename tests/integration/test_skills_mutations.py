@@ -219,7 +219,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertEqual(len(policy["cells"]), len(skills["harnessColumns"]))
             self.assertEqual(len(detail["harnessCells"]), len(skills["harnessColumns"]))
             self.assertIn("codex", [cell["harness"] for cell in policy["cells"]])
-            self.assertEqual(len(skills["harnessColumns"]), 6)
+            self.assertEqual(len(skills["harnessColumns"]), 7)
 
     def test_enable_allows_harnesses_other_than_origin(self) -> None:
         with AppTestHarness(fixture_factory=seed_origin_shared_fixture) as harness:

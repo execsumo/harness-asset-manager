@@ -94,6 +94,12 @@ class CursorMapper(_TypedMcpServersMapper):
     observed_harness = "cursor"
 
 
+class DroidMapper(_TypedMcpServersMapper):
+    """Factory Droid's ~/.factory/mcp.json mcpServers entries."""
+
+    observed_harness = "droid"
+
+
 # OpenCode -----------------------------------------------------------------
 
 
@@ -358,6 +364,7 @@ def _extras(
 _MAPPERS: dict[str, TransportMapper] = {
     "claude-code": ClaudeCodeMapper(),
     "cursor": CursorMapper(),
+    "droid": DroidMapper(),
     "opencode": OpenCodeMapper(),
     "codex": CodexMapper(),
     "hermes": HermesMapper(),
@@ -376,6 +383,7 @@ __all__ = [
     "ClaudeCodeMapper",
     "CodexMapper",
     "CursorMapper",
+    "DroidMapper",
     "HermesMapper",
     "OpenCodeMapper",
     "TransportMapper",

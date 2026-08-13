@@ -32,7 +32,7 @@ class HttpApiTests(unittest.TestCase):
                 settings["storage"]["settingsPath"],
                 str(harness.spec.xdg_config_home / APP_NAME / "settings.json"),
             )
-            self.assertEqual(len(settings["harnesses"]), 6)
+            self.assertEqual(len(settings["harnesses"]), 7)
             opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
             self.assertTrue(opencode["installed"])
             self.assertTrue(opencode["supportEnabled"])
@@ -88,7 +88,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(detail["displayStatus"], "Managed")
             self.assertEqual(
                 [cell["label"] for cell in detail["harnessCells"]],
-                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Hermes Agent"],
+                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Factory Droid", "Hermes Agent"],
             )
             self.assertNotIn("updateStatus", detail["actions"])
             self.assertEqual(source_status["updateStatus"], "no_update_available")

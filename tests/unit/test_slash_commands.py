@@ -176,7 +176,7 @@ class SlashCommandStoreTests(unittest.TestCase):
 
             defaults = {target.id for target in targets if target.default_selected}
             self.assertEqual(defaults, {"claude", "codex"})
-            self.assertEqual(set(kernel.enabled_harness_ids_for_family("slash_commands")), {"opencode", "claude", "agy", "cursor", "codex", "hermes"})
+            self.assertEqual(set(kernel.enabled_harness_ids_for_family("slash_commands")), {"opencode", "claude", "agy", "cursor", "codex", "hermes", "droid"})
 
     def test_disabled_harness_is_excluded_from_target_actions(self) -> None:
         with TemporaryDirectory() as tmp:

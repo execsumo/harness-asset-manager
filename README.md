@@ -88,9 +88,8 @@ Harness Asset Manager supports **7 AI agent harnesses** across **6 asset familie
       <a href="https://hermes-agent.nousresearch.com/docs">Docs</a>
     </td>
     <td align="center" valign="middle">
-      <img src="assets/harness-logos/openclaw-logo.svg" alt="OpenClaw" height="56" /><br />
-      <strong>OpenClaw</strong><br />
-      <a href="https://docs.openclaw.ai/start/getting-started">Docs</a>
+      <strong>Factory Droid</strong><br />
+      <a href="https://docs.factory.ai/droid-cli/overview">Docs</a>
     </td>
   </tr>
 </table>
@@ -107,13 +106,17 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 | **Cursor** | Yes | Yes | Yes | Yes | Yes | Planned |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
 | **Hermes Agent** | Yes | Not Installable¹ | Yes | Yes² (Provisional) | Not Yet | No |
-| **OpenClaw** | Yes | Not Yet | Not Yet³ | Not Yet | Not Yet | No |
+| **Factory Droid** | Yes | Yes | Yes | Yes | Not Yet | No |
 
 <small>
 ¹ <strong>Hermes Agent</strong> spawns subagents dynamically and has no static agent-definition file format to install into; UI/CLI cell status explicitly explains why.<br />
 ² <strong>Hermes slash-command</strong> support is provisional. Its command directory (<code>~/.hermes/commands</code>, frontmatter Markdown) follows common conventions but is not yet verified against a shipping Hermes build.<br />
-³ <strong>OpenClaw MCP</strong> config writes are not yet supported.
+Factory Droid hooks and permissions are not currently mapped because its hook scopes and command policy do not match HAM's global hook and denylist contracts.
 </small>
+
+Factory Droid support is currently best-effort and targets the personal/global
+configuration under `~/.factory`. See [Factory Droid support](docs/factory-droid.md)
+for the supported asset paths, project-scope boundaries, and documentation basis.
 
 ---
 
@@ -294,7 +297,7 @@ MCP servers are stored as normalized Harness Asset Manager records, then transla
 - OpenCode uses typed local/remote MCP entries.
 - Antigravity (agy) uses `mcpServers` JSON entries with `serverUrl` for HTTP transports and `command`/`args`/`env` for stdio.
 - Hermes Agent uses YAML under `mcp_servers` in `~/.hermes/config.yaml` (or `$HERMES_HOME/config.yaml`).
-- OpenClaw MCP writes are not yet supported.
+- Factory Droid uses JSON under `mcpServers` in `~/.factory/mcp.json`.
 
 When Harness Asset Manager finds different configs for the same MCP server, it asks you to resolve the source of truth first.
 
@@ -309,7 +312,7 @@ Slash commands are stored as TOML records under Harness Asset Manager app storag
 - Cursor writes plain text command files under `~/.cursor/commands` and invokes them with `/`.
 - OpenCode writes Markdown command files under `~/.config/opencode/commands` and invokes them with `/`.
 - Antigravity (agy) writes Markdown command files under `~/.gemini/antigravity-cli/commands` and invokes them with `/`.
-- OpenClaw slash command writes are not yet supported.
+- Factory Droid writes Markdown command files under `~/.factory/commands` and invokes them with `/`.
 
 Disabling a harness in Settings removes its column here immediately, without a restart. Command files already written to that harness and their sync records are left alone — re-enabling it restores the column and its sync state unchanged.
 
@@ -324,6 +327,7 @@ Hooks are stored as normalized Harness Asset Manager records using **canonical e
 - Cursor writes `~/.cursor/hooks.json`, expressing each tool category as its dedicated event (`beforeShellExecution`, `afterFileEdit`, `beforeMCPExecution`, and so on).
 - OpenCode writes `experimental.hook` entries in `opencode.json` — limited to `file_edited` (post-edit on write) and `session_completed` (stop), so coverage is partial.
 - Antigravity (agy) writes a name-keyed `~/.gemini/config/hooks.json` (discovering entries across user-level `~/.gemini/*/hooks.json` and project-level `.agents/hooks.json`), matching against tool names (`run_command`, `view_file`, …); it covers tool, stop, and (via `PreInvocation`) prompt-submit hooks, so coverage is partial.
+- Factory Droid hooks are not currently managed. Droid has user, project, enterprise, and legacy hook scopes with lifecycle and matcher semantics that do not map safely to HAM's canonical hook model.
 
 Because harnesses differ, not every canonical event maps to every harness. Harness Asset Manager exposes a **representability matrix** showing where each hook can sync and where it cannot, including caveats — for example, an Antigravity `user_prompt_submit` hook maps to `PreInvocation`, which fires before every model invocation rather than only on prompt submit.
 
@@ -345,6 +349,7 @@ The agents matrix shows the same harnesses as every other family — whichever y
 | OpenCode | `$XDG_CONFIG_HOME/opencode/agents/` | symlink |
 | Codex | `~/.codex/agents/` | rendered TOML |
 | Hermes | — | not installable |
+| Factory Droid | `~/.factory/droids/` | symlink |
 
 Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** keeps a column for consistency but spawns subagents dynamically and has no agent-definition file to install into, so its cells say so rather than offering a toggle that cannot work.
 
@@ -378,7 +383,7 @@ Cursor has a mapper implemented against `~/.cursor/cli-config.json` (`Shell()`, 
 
 ### Native Config Snapshots
 
-Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harnessam/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
+Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harnessam/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support. Droid snapshots cover the selected global MCP file; project-level `.factory/` files remain outside HAM's managed boundary.
 
 ### Mutation Audit Journal
 
@@ -425,7 +430,7 @@ Every asset family the Web UI manages is also available as a CLI command. Nothin
 
 ### Command Reference
 
-Every command takes `--json` and `--state-dir`. `--harness` names a harness id (`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `openclaw`), and `set-harnesses --target enabled|disabled` applies one state to every interactive cell in that row. Run `harnessam <group> <verb> --help` for the full flag list.
+Every command takes `--json` and `--state-dir`. `--harness` names a harness id (`claude`, `codex`, `agy`, `cursor`, `opencode`, `hermes`, `droid`), and `set-harnesses --target enabled|disabled` applies one state to every interactive cell in that row. Run `harnessam <group> <verb> --help` for the full flag list.
 
 **`skills`** — Skills inventory and the skills marketplace.
 
@@ -598,7 +603,7 @@ If you manage skills in a custom environment, you can override individual skill 
 | Cursor | `HARNESS_ASSET_MANAGER_CURSOR_ROOT` | `~/.cursor/skills` |
 | OpenCode | `HARNESS_ASSET_MANAGER_OPENCODE_ROOT` | `~/.config/opencode/skills` |
 | Hermes Agent | `HARNESS_ASSET_MANAGER_HERMES_ROOT` | `${HERMES_HOME:-~/.hermes}/skills` |
-| OpenClaw | `n/a` | `~/.openclaw/skills` |
+| Factory Droid | `HARNESS_ASSET_MANAGER_FACTORY_ROOT` | `~/.factory/skills` |
 | Antigravity (agy) | `HARNESS_ASSET_MANAGER_AGY_ROOT` | `~/.gemini/antigravity-cli/skills` |
 
 Note: Legacy `SKILL_MANAGER_*` env var spellings are still read as fallbacks but are deprecated.

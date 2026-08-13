@@ -1,4 +1,4 @@
-export type SlashTargetId = "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes";
+export type SlashTargetId = "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes" | "droid";
 export type SlashRenderFormat = "frontmatter_markdown" | "cursor_plaintext";
 export type SlashCommandScope = "global" | "project";
 
