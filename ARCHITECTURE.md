@@ -2,6 +2,11 @@
 
 This document describes the high-level architecture, domain model, harness catalog, storage layout, and security design of **Harness Asset Manager (HAM)**.
 
+Contributor checklists for extending the product:
+
+- [Adding an asset family](docs/adding-a-family.md)
+- [Adding a harness](docs/adding-a-harness.md)
+
 ---
 
 ## 1. Overview & System Design

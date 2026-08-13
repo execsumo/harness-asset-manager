@@ -85,6 +85,8 @@ class AdoptAgentRequest(BaseModel):
 class AdoptAgentConflictResponse(BaseModel):
     """Body of the 409 an unresolved adopt returns. Nothing was mutated; the user decides."""
 
+    code: str = "agent_conflict"
+    error: str = "An agent with this name already exists in the store."
     conflict: Literal["store-name-exists"] = "store-name-exists"
     slug: str
     storePath: str

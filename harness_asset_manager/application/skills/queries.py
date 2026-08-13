@@ -77,7 +77,11 @@ class SkillsQueryService:
     def require_entry(self, skill_ref: str) -> InventoryEntry:
         entry = self.inventory().find(skill_ref)
         if entry is None:
-            raise MutationError(f"unknown skill ref: {skill_ref}", status=404)
+            raise MutationError(
+                f"unknown skill ref: {skill_ref}",
+                status=404,
+                code="skill_not_found",
+            )
         return entry
 
     def check_for_update(self, entry: InventoryEntry) -> bool | None:

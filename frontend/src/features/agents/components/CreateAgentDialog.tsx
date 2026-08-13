@@ -50,8 +50,8 @@ export function CreateAgentDialog({
       });
       toast(`Successfully created agent ${name.trim()}`);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.error ?? "An error occurred while creating the agent.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred while creating the agent.");
     }
   }
 

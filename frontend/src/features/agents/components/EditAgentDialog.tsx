@@ -58,8 +58,8 @@ export function EditAgentDialog({
       });
       toast(`Successfully updated ${name.trim()}`);
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.error || "An error occurred while updating the agent.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred while updating the agent.");
     }
   }
 

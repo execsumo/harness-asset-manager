@@ -4,7 +4,7 @@ from .cli_marketplace import (
     CliMarketplaceItemResponse,
     CliMarketplacePageResponse,
 )
-from .common import HarnessTarget, OkResponse, SetHarnessSupportRequest
+from .common import ErrorResponse, HarnessTarget, OkResponse, SetHarnessSupportRequest
 from .hooks import (
     AddHookRequest,
     DisableHookRequest,
@@ -142,6 +142,7 @@ __all__ = [
     "CliMarketplacePageResponse",
     "DisableMcpServerRequest",
     "DisableSkillRequest",
+    "ErrorResponse",
     "EnableMcpServerRequest",
     "EnableSkillRequest",
     "HarnessCellResponse",

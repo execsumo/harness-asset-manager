@@ -188,7 +188,11 @@ def set_agent_harnesses(
     )
 
 
-@router.post("/{agent_ref:path}/adopt", response_model=AdoptAgentResponse)
+@router.post(
+    "/{agent_ref:path}/adopt",
+    response_model=AdoptAgentResponse,
+    responses={409: {"model": AdoptAgentConflictResponse}},
+)
 def adopt_agent(
     agent_ref: str,
     body: AdoptAgentRequest,
@@ -202,6 +206,7 @@ def adopt_agent(
         return JSONResponse(
             status_code=409,
             content=AdoptAgentConflictResponse(
+                error="An agent with this name already exists in the store.",
                 slug=conflict.slug,
                 storePath=str(conflict.store_path),
                 harnessPath=str(conflict.harness_path),

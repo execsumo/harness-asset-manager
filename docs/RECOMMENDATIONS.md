@@ -24,7 +24,9 @@
 > 2026-08-08 `f9003b1` (family-wide opt-in auto-adoption + `harnessam refresh`);
 > 2026-08-09 `2195a84` (`plan-auto-adoption.md` Stage 4 — slash-command drift auto-repair);
 > 2026-08-10 (Codex lossless agent adoption/drift repair + configurable auto-adopt defaults);
-> 2026-08-12 (`~/.harnessam` store rename, safe legacy migration, and housekeeping).
+> 2026-08-12 (`~/.harnessam` store rename, safe legacy migration, and housekeeping);
+> 2026-08-12 (extension-family and harness contribution checklists).
+> 2026-08-12 (machine-readable API error envelopes and frontend `ApiError` handling).
 > Partially-shipped items below keep their number and describe only the remaining scope.
 > See `handoff.md` for the full chronological record.
 
@@ -54,29 +56,6 @@ PR #30 lived in well-tested-looking code for months.
 per-package coverage and ratchet the threshold (fail if it drops). The point is trend, not a
 vanity number.
 
-### 2.3 Document the family/harness template; then decide on extraction — M
-
-Each family (skills, MCP, hooks, permissions, agents, slash commands) re-implements the same
-octet: store / mappers / adapters / inventory / mutations / queries / read_models / harness
-application — e.g. `hooks/mappers.py` is 897 lines, `permissions/mappers.py` 683. The mirroring
-is deliberate and has real benefits (families evolve independently), but the *knowledge* of what
-a conforming family needs exists only in the plans and handoffs.
-
-**Action:** write `docs/adding-a-family.md` + `docs/adding-a-harness.md` checklists (the harness
-one pairs with a repeatable new-harness verification checklist). Only after that, evaluate extracting a shared
-"family framework" for the truly invariant parts (manifest store, matrix read model) — with the
-checklist as the spec it must satisfy. Do not extract first: the agents rebuild shows the cost of
-a bespoke abstraction that had to be torn out.
-
-### 2.4 Machine-readable API error codes — S–M
-
-Every error is `{"error": "<human string>"}` (`api/errors.py`), so the frontend can only branch
-on message text — brittle under rewording and under i18n (several features already have `i18n.ts`
-modules).
-
-**Action:** add a stable `code` field (`"skill_not_found"`, `"harness_unavailable"`, …) alongside
-`error`; adopt incrementally in the frontend where behavior branches on errors today.
-
 ---
 
 ## Suggested sequencing
@@ -91,7 +70,8 @@ modules).
    auto-repair / `plan-auto-adoption.md` Stage 4 (2026-08-09).
 3. **Auto-adoption plan remainder:** Stages 1–4 shipped; skills new-directory adoption shipped
    opt-in (plan §7 / former Stage 5). The Codex gate and default-harness follow-up are now shipped.
-4. **When planning the next family or harness:** 2.3 first; use the shipped activity journal for
+4. **When planning the next family or harness:** use the new family/harness checklists first;
+   then use the shipped activity journal for
    traceability, and add 2.2 to keep coverage honest.
 5. **Housekeeping closed:** documentation is under `docs/`, Windows import boundaries and socket
    binding are hardened, frontend tests are green locally, and `scripts/clean-local-caches.sh`

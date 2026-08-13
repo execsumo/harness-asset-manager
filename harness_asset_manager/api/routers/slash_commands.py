@@ -28,7 +28,10 @@ def list_slash_commands(container: BackendContainer = Depends(get_container)) ->
 def get_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.slash_command_queries.get_command(name)
     if payload is None:
-        raise HTTPException(status_code=404, detail=f"unknown slash command: {name}")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "slash_command_not_found", "error": f"unknown slash command: {name}"},
+        )
     return payload
 
 

@@ -128,7 +128,23 @@ class HttpApiTests(unittest.TestCase):
     def test_unknown_skill_detail_returns_404_payload(self) -> None:
         with AppTestHarness() as harness:
             payload = harness.get_json("/api/skills/missing-entry", expected_status=404)
+            self.assertEqual(payload["code"], "skill_not_found")
             self.assertIn("unknown skill ref", payload["error"])
+
+    def test_validation_error_payload_has_stable_code(self) -> None:
+        with AppTestHarness() as harness:
+            payload = harness.put_json(
+                "/api/settings/auto-adopt/agents",
+                {},
+                expected_status=422,
+            )
+            self.assertEqual(payload["code"], "validation_error")
+            self.assertIn("enabled", payload["error"])
+
+    def test_unknown_api_path_has_not_found_code(self) -> None:
+        with AppTestHarness() as harness:
+            payload = harness.get_json("/api/no-such-resource", expected_status=404)
+            self.assertEqual(payload["code"], "not_found")
 
     def test_frontend_routes_return_spa_shell_when_dist_is_present(self) -> None:
         with TemporaryDirectory(prefix="harness-asset-manager-dist-") as tempdir:

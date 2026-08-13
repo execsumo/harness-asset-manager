@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
+from harness_asset_manager.api.schemas import ErrorResponse
 from harness_asset_manager.application import BackendContainer
 
 from .errors import install_error_handlers
@@ -31,7 +32,20 @@ def create_app(
     frontend_dist: Path | None = None,
     allow_remote: bool = False,
 ) -> FastAPI:
-    app = FastAPI(title="harness-asset-manager", docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(
+        title="harness-asset-manager",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url="/api/openapi.json",
+        responses={
+            400: {"model": ErrorResponse},
+            404: {"model": ErrorResponse},
+            409: {"model": ErrorResponse},
+            422: {"model": ErrorResponse},
+            500: {"model": ErrorResponse},
+            503: {"model": ErrorResponse},
+        },
+    )
     app.state.container = container
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
     app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
@@ -52,7 +66,10 @@ def create_app(
     @app.get("/{full_path:path}", include_in_schema=False, response_model=None)
     def serve_frontend(full_path: str):
         if full_path.startswith("api/"):
-            return JSONResponse(status_code=404, content={"error": f"unknown api path: /{full_path}"})
+            return JSONResponse(
+                status_code=404,
+                content={"code": "not_found", "error": f"unknown api path: /{full_path}"},
+            )
         dist = app.state.frontend_dist
         if dist is None:
             return HTMLResponse("<html><body><h1>harness-asset-manager</h1><p>Frontend build missing.</p></body></html>")

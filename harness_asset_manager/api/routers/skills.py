@@ -28,7 +28,10 @@ def list_skills(container: BackendContainer = Depends(get_container)) -> dict[st
 def get_skill_source_status(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_queries.get_skill_source_status(skill_ref)
     if payload is None:
-        raise HTTPException(status_code=404, detail=f"unknown skill ref: {skill_ref}")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "skill_not_found", "error": f"unknown skill ref: {skill_ref}"},
+        )
     return payload
 
 
@@ -36,7 +39,10 @@ def get_skill_source_status(skill_ref: str, container: BackendContainer = Depend
 def get_skill_detail(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_queries.get_skill_detail(skill_ref)
     if payload is None:
-        raise HTTPException(status_code=404, detail=f"unknown skill ref: {skill_ref}")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "skill_not_found", "error": f"unknown skill ref: {skill_ref}"},
+        )
     return payload
 
 

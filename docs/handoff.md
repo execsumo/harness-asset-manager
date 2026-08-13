@@ -2,6 +2,40 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-12 — Machine-readable API error codes shipped
+
+Closed the API error-code recommendation. Unsuccessful API responses now use a
+documented `{code, error}` envelope:
+
+- Added the `ErrorResponse` OpenAPI schema and applied it to common 400, 404,
+  409, 422, 500, and 503 responses.
+- Centralized stable fallback codes (`not_found`, `conflict`,
+  `validation_error`, `request_failed`, `internal_error`) in the API handlers.
+- Added semantic codes for skill, slash-command, and marketplace-item lookups,
+  plus `agent_conflict`.
+- Added frontend `ApiError` with preserved `code` and HTTP `status`, while
+  retaining compatibility with legacy `detail` and validation payloads.
+- Corrected agent mutation UI catches that were reading a nonexistent
+  `error.error` property.
+
+Validation: 526 backend unit tests, 182 backend integration tests, 281 frontend
+tests, frontend typecheck, production build, Ruff, and deterministic OpenAPI
+regeneration all pass.
+
+## 2026-08-12 — Family and harness extension checklists documented
+
+Closed `RECOMMENDATIONS.md` §2.3. Added:
+
+- `docs/adding-a-family.md`, covering canonical storage, binding shapes, mappers,
+  adapters, preservation and ownership rules, application/API/CLI/frontend wiring,
+  catalog updates, tests, and validation.
+- `docs/adding-a-harness.md`, covering live product research, catalog registration,
+  support tiers, per-family verification, fake-home detection tests, capability
+  behavior, and evidence requirements.
+
+`ARCHITECTURE.md` now links both guides, and `RECOMMENDATIONS.md` records the
+checklists as shipped. No runtime behavior changed.
+
 > **Priority scope (2026-08-10):** Focus active work on Claude Code, Codex, Antigravity (agy),
 > and Cursor. Hermes, OpenCode, and OpenClaw are low/no priority and have no remaining roadmap
 > work. Historical entries below may mention them for context, but do not resume those items.

@@ -35,7 +35,10 @@ def search_marketplace(
 def get_marketplace_document(item_id: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_marketplace_queries.get_item_document(item_id)
     if payload is None:
-        raise HTTPException(status_code=404, detail=f"unknown marketplace item: {item_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "marketplace_item_not_found", "error": f"unknown marketplace item: {item_id}"},
+        )
     return payload
 
 
@@ -43,7 +46,10 @@ def get_marketplace_document(item_id: str, container: BackendContainer = Depends
 def get_marketplace_detail(item_id: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_marketplace_queries.get_item_detail(item_id)
     if payload is None:
-        raise HTTPException(status_code=404, detail=f"unknown marketplace item: {item_id}")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "marketplace_item_not_found", "error": f"unknown marketplace item: {item_id}"},
+        )
     return payload
 
 

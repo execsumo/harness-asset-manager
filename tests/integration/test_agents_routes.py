@@ -132,6 +132,7 @@ class AgentRoutesTests(unittest.TestCase):
                 "/api/agents/claude/stray/adopt", {}, expected_status=409
             )
 
+            self.assertEqual(conflict["code"], "agent_conflict")
             self.assertEqual(conflict["conflict"], "store-name-exists")
             self.assertEqual(conflict["slug"], "stray")
             self.assertTrue(conflict["storePath"].endswith("/agents/stray.md"))

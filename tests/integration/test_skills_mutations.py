@@ -461,6 +461,7 @@ class SkillsMutationTests(unittest.TestCase):
     def test_manage_unknown_skill_returns_404(self) -> None:
         with AppTestHarness() as harness:
             result = harness.post_json("/api/skills/missing-ref/manage", expected_status=404)
+            self.assertEqual(result["code"], "skill_not_found")
             self.assertIn("unknown skill ref", result["error"])
 
     def test_update_refuses_locally_modified_managed_skill(self) -> None:

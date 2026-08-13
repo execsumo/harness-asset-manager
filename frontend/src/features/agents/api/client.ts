@@ -1,4 +1,4 @@
-import { fetchJson, postJson, putJson, deleteJson } from "../../../api/http";
+import { ApiError, deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
 import { apiPath } from "../../../api/paths";
 import type {
   AgentInventoryDto,
@@ -48,8 +48,18 @@ export async function adoptAgent(
     return (await response.json()) as AgentAdoptConflict;
   }
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error ?? "Failed to adopt agent");
+    const payload = await response.json().catch(() => ({}));
+    const message =
+      payload && typeof payload === "object" && typeof payload.error === "string"
+        ? payload.error
+        : "Failed to adopt agent";
+    const code =
+      payload && typeof payload === "object" && typeof payload.code === "string"
+        ? payload.code
+        : response.status === 404
+          ? "not_found"
+          : "request_failed";
+    throw new ApiError(message, code, response.status);
   }
 }
 

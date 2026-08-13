@@ -9,8 +9,9 @@ MARKETPLACE_UNAVAILABLE_MESSAGE = (
 class MutationError(Exception):
     """Raised when a user-visible mutation or lookup is refused."""
 
-    def __init__(self, message: str, status: int = 409) -> None:
+    def __init__(self, message: str, status: int = 409, *, code: str | None = None) -> None:
         self.status = status
+        self.code = code
         super().__init__(message)
 
 
@@ -18,6 +19,7 @@ class MarketplaceUpstreamError(Exception):
     """Raised when the external marketplace cannot be reached or parsed safely."""
 
     status = 503
+    code = "marketplace_unavailable"
 
     def __init__(
         self,
