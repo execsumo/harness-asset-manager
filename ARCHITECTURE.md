@@ -62,6 +62,9 @@ Harness Asset Manager manages six core extension families:
   - **Antigravity (AGY)**: JSON under `mcpServers` in `mcp_config.json` (`serverUrl` or `command`/`args`/`env`).
   - **Codex**: TOML tables under `[mcp_servers]`.
   - **Hermes**: YAML under `mcp_servers` in `~/.hermes/config.yaml`.
+  - **Factory Droid**: JSON under `mcpServers` in `~/.factory/mcp.json`.
+    HAM manages the personal/global file only; project `.factory/mcp.json` and
+    plugin-provided MCP configurations are outside its boundary.
   - **OpenCode**: Typed local/remote MCP definitions in `opencode.jsonc`.
 
 ### 3. Slash Commands
@@ -70,6 +73,8 @@ Harness Asset Manager manages six core extension families:
   - **Claude Code / OpenCode / Hermes**: Frontmatter Markdown files in `commands/`.
   - **Codex**: Custom prompt files in `prompts/` (`/prompts:` invocation prefix).
   - **Cursor**: Plaintext prompt files in `commands/`.
+  - **Factory Droid**: Frontmatter Markdown files in `~/.factory/commands/`.
+    Project `.factory/commands/` and plugin commands are not managed.
 
 ### 4. Hooks
 - **Storage**: Event-driven hook records (`hooks/manifest.json`).
@@ -81,6 +86,7 @@ Harness Asset Manager manages six core extension families:
 - **Storage**: Markdown files with YAML frontmatter (`name`, `description`, system prompt body) under `agents/`. Unrecognized frontmatter keys are preserved byte-for-byte on edit.
 - **Harness Integration**:
   - **Claude, Cursor, AGY, OpenCode**: Installed via direct symlinks. Unrecognized frontmatter keys (`model`, `permissionMode`, `hooks`) are preserved on write.
+  - **Factory Droid**: Installed via direct symlinks into `~/.factory/droids/`; Droid frontmatter keys are preserved.
   - **Codex**: Rendered into TOML agent files (`.codex/agents/*.toml`) carrying a `# harness-asset-manager:generated` header.
 
 ### 6. Permissions (Denylist-ONLY Model)
@@ -110,6 +116,7 @@ Harness definitions are declared centrally in `harness_asset_manager/harness/cat
 | 4 | Cursor | `cursor` | core |
 | 5 | OpenCode | `opencode` | best effort |
 | 6 | Hermes Agent | `hermes` | best effort |
+| 7 | Factory Droid | `droid` | best effort |
 
 Every resource family resolves enabled harnesses dynamically from `catalog.py` and `settings.json`. Disabling a harness in Settings drops its column across all family matrices without requiring an app restart.
 
@@ -123,6 +130,11 @@ Every resource family resolves enabled harnesses dynamically from `catalog.py` a
 The tier is declared once and derived everywhere else, the same way column ordering is. `core_harness_ids()` is the single accessor. `tests/unit/test_harness_support_tiers.py` pins the core set and each core harness's family coverage, so a gap must be declared in `KNOWN_CORE_GAPS` with a justification rather than passing unnoticed; the CI job `core-harness-gate` runs it on its own for a fast, separately-named signal.
 
 **OpenClaw (`openclaw`) was retired on 2026-08-09.** It declared only Skills and MCP, and its MCP writes were never implemented, so it was a skills-only integration carrying a column in every matrix. Its mapper, capability probe, binding profile, and logo are removed. Harness Asset Manager no longer touches `~/.openclaw`; pre-existing files there are left alone, consistent with only ever removing files it owns.
+
+Factory Droid hooks and permissions remain intentionally unbound. Droid's
+multi-scope hook configuration does not match HAM's canonical hook model, and its
+allowlist/denylist/blocklist command settings do not match HAM's denylist-only
+permission model.
 
 ---
 
@@ -142,7 +154,8 @@ directory into this shape on startup).
 │   ├── agy/                            # mcp_config.json, settings.json, hooks.json
 │   ├── cursor/                         # mcp.json, hooks.json
 │   ├── opencode/                       # opencode.jsonc
-│   └── hermes/                         # config.yaml
+│   ├── hermes/                         # config.yaml
+│   └── droid/                          # mcp.json
 ├── permissions/
 │   └── manifest.json                   # Denylist permissions manifest
 ├── mcp/

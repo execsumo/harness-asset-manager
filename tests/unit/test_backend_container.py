@@ -145,7 +145,7 @@ class BackendContainerServiceTests(unittest.TestCase):
                 settings["storage"]["marketplaceCachePath"],
                 str(spec.xdg_data_home / APP_NAME / "marketplace"),
             )
-            self.assertEqual(len(settings["harnesses"]), 6)
+            self.assertEqual(len(settings["harnesses"]), 7)
             codex = next(item for item in settings["harnesses"] if item["harness"] == "codex")
             self.assertIn("managedLocation", codex)
             self.assertIn("installed", codex)

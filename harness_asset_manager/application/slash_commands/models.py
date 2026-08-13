@@ -9,7 +9,7 @@ from harness_asset_manager.harness.contracts import (
     CommandFileScope,
 )
 
-SlashTargetId = Literal["claude", "codex", "agy", "cursor", "opencode", "hermes"]
+SlashTargetId = Literal["claude", "codex", "agy", "cursor", "opencode", "hermes", "droid"]
 SlashSyncStatus = Literal[
     "synced",
     "removed",

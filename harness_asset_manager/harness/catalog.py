@@ -9,6 +9,7 @@ from harness_asset_manager.env_names import (
     CURSOR_ROOT_ENV,
     HERMES_HOME_ENV,
     HERMES_ROOT_ENV,
+    FACTORY_ROOT_ENV,
     OPENCODE_ROOT_ENV,
     env_get,
 )
@@ -37,6 +38,11 @@ def _hermes_skills_root(context) -> Path:
 
 def _hermes_config_path(context) -> Path:
     return _hermes_home(context) / "config.yaml"
+
+
+def _factory_home(context) -> Path:
+    override = env_get(context.env, FACTORY_ROOT_ENV)
+    return Path(override) if override else context.home / ".factory"
 
 
 def supported_harness_definitions() -> tuple[HarnessDefinition, ...]:
@@ -370,6 +376,40 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 render_format="frontmatter_markdown",
                 scope="global",
                 docs_url="https://opencode.ai/docs/commands/",
+                file_glob="*.md",
+                supports_frontmatter=True,
+            ),
+        },
+    ),
+    HarnessDefinition(
+        harness="droid",
+        label="Factory Droid",
+        logo_key=None,
+        install_probe="droid",
+        support_tier="best_effort",
+        bindings={
+            "skills": FileTreeBindingProfile(
+                managed_env=FACTORY_ROOT_ENV,
+                managed_default=lambda context: _factory_home(context) / "skills",
+            ),
+            "mcp": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: _factory_home(context) / "mcp.json",
+                file_format="json",
+                subtree_path=("mcpServers",),
+                codec="droid",
+            ),
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=_factory_home,
+                output_dir_resolver=lambda context: _factory_home(context) / "droids",
+                docs_url="https://docs.factory.ai/harness/subagents.md",
+            ),
+            "slash_commands": CommandFileBindingProfile(
+                root_path_resolver=_factory_home,
+                output_dir_resolver=lambda context: _factory_home(context) / "commands",
+                invocation_prefix="/",
+                render_format="frontmatter_markdown",
+                scope="global",
+                docs_url="https://docs.factory.ai/harness/custom-slash-commands.md",
                 file_glob="*.md",
                 supports_frontmatter=True,
             ),
