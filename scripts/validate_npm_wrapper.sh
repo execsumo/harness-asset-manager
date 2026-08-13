@@ -45,8 +45,8 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 cleanup() {
-  if [[ -x "$TMP_DIR/node_modules/.bin/harness-asset-manager" ]]; then
-    "$TMP_DIR/node_modules/.bin/harness-asset-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null 2>&1 || true
+  if [[ -x "$TMP_DIR/node_modules/.bin/harnessam" ]]; then
+    "$TMP_DIR/node_modules/.bin/harnessam" stop --state-dir "$TMP_DIR/runtime" >/dev/null 2>&1 || true
   fi
   if [[ -n "$FIXTURE_PID" ]]; then
     kill "$FIXTURE_PID" >/dev/null 2>&1 || true
@@ -60,7 +60,7 @@ cd "$TMP_DIR"
 npm init -y >/dev/null 2>&1
 
 PACK_OUTPUT="$(npm pack --json "$REPO_ROOT/packaging/npm")"
-PACK_FILE="$(printf '%s' "$PACK_OUTPUT" | "$PYTHON_BIN" -c 'import json, sys; print(json.load(sys.stdin)[0]["filename"])')"
+PACK_FILE="$(printf '%s' "$PACK_OUTPUT" | "$PYTHON_BIN" -c 'import json, sys; payload = json.load(sys.stdin); package = payload[0] if isinstance(payload, list) else next(iter(payload.values())); print(package["filename"])')"
 if [[ ! -f "$PACK_FILE" ]]; then
   echo "npm pack did not produce an archive: $PACK_OUTPUT" >&2
   exit 1
@@ -101,20 +101,20 @@ SSL_CERT_FILE="$("$PYTHON_BIN" -c 'import json, sys; print(json.load(open(sys.ar
 export HARNESS_ASSET_MANAGER_LOCAL_ARTIFACT_PATH="$ARTIFACT_PATH"
 npm install --no-package-lock "./$PACK_FILE" >/dev/null
 
-VERSION_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" --version)"
+VERSION_OUTPUT="$("$TMP_DIR/node_modules/.bin/harnessam" --version)"
 if [[ ! "$VERSION_OUTPUT" =~ ^harness-asset-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
   echo "Unexpected npm wrapper version output: $VERSION_OUTPUT" >&2
   exit 1
 fi
 
 mkdir -p "$TMP_DIR/runtime"
-START_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" start --state-dir "$TMP_DIR/runtime" --no-open-browser --port 0)"
+START_OUTPUT="$("$TMP_DIR/node_modules/.bin/harnessam" start --state-dir "$TMP_DIR/runtime" --no-open-browser --port 0)"
 if [[ "$START_OUTPUT" != *"harness-asset-manager started at http://127.0.0.1:"* ]]; then
   echo "Unexpected npm wrapper start output: $START_OUTPUT" >&2
   exit 1
 fi
 
-STATUS_OUTPUT="$("$TMP_DIR/node_modules/.bin/harness-asset-manager" status --state-dir "$TMP_DIR/runtime")"
+STATUS_OUTPUT="$("$TMP_DIR/node_modules/.bin/harnessam" status --state-dir "$TMP_DIR/runtime")"
 if [[ "$STATUS_OUTPUT" != *"harness-asset-manager is running at http://127.0.0.1:"* ]]; then
   echo "Unexpected npm wrapper status output: $STATUS_OUTPUT" >&2
   exit 1
@@ -229,4 +229,4 @@ EOF
   fi
 fi
 
-"$TMP_DIR/node_modules/.bin/harness-asset-manager" stop --state-dir "$TMP_DIR/runtime" >/dev/null
+"$TMP_DIR/node_modules/.bin/harnessam" stop --state-dir "$TMP_DIR/runtime" >/dev/null
