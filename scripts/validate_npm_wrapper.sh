@@ -221,7 +221,7 @@ EOF
 
   TAPPED_VERSION_OUTPUT="$(
     PATH="$TAPPED_BIN_DIR:$PATH" \
-    "$TMP_DIR/tapped-global-prefix/bin/harness-asset-manager" --version
+    "$TMP_DIR/tapped-global-prefix/bin/harnessam" --version
   )"
   if [[ ! "$TAPPED_VERSION_OUTPUT" =~ ^harness-asset-manager[[:space:]][0-9]+\.[0-9]+\.[0-9]+ ]]; then
     echo "Tapped-but-uninstalled Homebrew case unexpectedly blocked npm wrapper: $TAPPED_VERSION_OUTPUT" >&2
