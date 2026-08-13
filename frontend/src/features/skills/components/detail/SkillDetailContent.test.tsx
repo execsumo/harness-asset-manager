@@ -23,7 +23,6 @@ const unmanagedDetail: SkillDetail = {
     { harness: "claude", label: "Claude", state: "empty", interactive: false },
     { harness: "cursor", label: "Cursor", state: "empty", interactive: false },
     { harness: "opencode", label: "OpenCode", state: "empty", interactive: false },
-    { harness: "openclaw", label: "OpenClaw", state: "empty", interactive: false },
   ],
   locations: [],
   sourceLinks: {

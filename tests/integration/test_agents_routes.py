@@ -30,7 +30,9 @@ class AgentRoutesTests(unittest.TestCase):
             skills = [
                 c["harness"] for c in harness.get_json("/api/skills")["harnessColumns"]
             ]
-            # Agents is a subset: openclaw has a skills root but no agent-file format.
+            # Subset, not equality: every harness declaring agents also declares skills,
+            # but not the reverse — a harness can have a skills root and no agent-file
+            # format. (OpenClaw was the standing example until it was retired 2026-08-09.)
             self.assertTrue(set(agents) <= set(skills), f"{agents} not within {skills}")
             # Same relative order, so the two matrices read the same left to right.
             self.assertEqual(agents, [h for h in skills if h in set(agents)])

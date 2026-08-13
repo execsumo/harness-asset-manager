@@ -62,7 +62,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         *,
         frontend_dist: Path | None = None,
         mixed: bool = False,
-        seed_openclaw: bool = True,
+        omit_clis: tuple[str, ...] = (),
         fixture_factory: Callable[[FakeHomeSpec], None] | None = None,
         marketplace: MarketplaceCatalog | None = None,
         mcp_marketplace: McpMarketplaceCatalog | None = None,
@@ -72,7 +72,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         allow_remote: bool = False,
     ) -> None:
         self._tempdir = TemporaryDirectory(prefix="harness-asset-manager-tests-")
-        self.spec = create_fake_home_spec(Path(self._tempdir.name), seed_openclaw_state=seed_openclaw)
+        self.spec = create_fake_home_spec(Path(self._tempdir.name), omit_clis=omit_clis)
         if mixed and fixture_factory is not None:
             raise ValueError("pass either mixed=True or fixture_factory, not both")
         seeder = fixture_factory or (seed_mixed_fixture if mixed else None)

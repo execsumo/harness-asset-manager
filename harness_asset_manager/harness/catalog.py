@@ -47,6 +47,18 @@ def supported_harness_ids() -> tuple[str, ...]:
     return tuple(definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS)
 
 
+def core_harness_ids() -> tuple[str, ...]:
+    """The harnesses this tool is built for — see ``SupportTier``.
+
+    Derived from the catalog rather than listed anywhere else, so promoting or
+    demoting a harness is a one-line change in ``SUPPORTED_HARNESS_DEFINITIONS`` and
+    the release gates, the coverage ratchet, and the docs follow.
+    """
+    return tuple(
+        definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS if definition.is_core
+    )
+
+
 def harness_definitions_for_family(family: FamilyKey) -> tuple[HarnessDefinition, ...]:
     return tuple(
         definition for definition in SUPPORTED_HARNESS_DEFINITIONS if definition.supports_family(family)
@@ -59,6 +71,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="Claude",
         logo_key="claude",
         install_probe="claude",
+        support_tier="core",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=CLAUDE_ROOT_ENV,
@@ -109,6 +122,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="Codex",
         logo_key="codex",
         install_probe="codex",
+        support_tier="core",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=CODEX_ROOT_ENV,
@@ -171,6 +185,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="Antigravity",
         logo_key="agy",
         install_probe="agy",
+        support_tier="core",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=AGY_ROOT_ENV,
@@ -248,6 +263,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="Cursor",
         logo_key="cursor",
         install_probe="cursor-agent",
+        support_tier="core",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=CURSOR_ROOT_ENV,
@@ -300,6 +316,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="OpenCode",
         logo_key="opencode",
         install_probe="opencode",
+        support_tier="best_effort",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=OPENCODE_ROOT_ENV,
@@ -363,6 +380,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         label="Hermes Agent",
         logo_key="hermes",
         install_probe="hermes",
+        support_tier="best_effort",
         bindings={
             "skills": FileTreeBindingProfile(
                 managed_env=HERMES_ROOT_ENV,
@@ -407,40 +425,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
             ),
         },
     ),
-    HarnessDefinition(
-        harness="openclaw",
-        label="OpenClaw",
-        logo_key="openclaw",
-        install_probe="openclaw",
-        bindings={
-            "skills": FileTreeBindingProfile(
-                managed_default=lambda context: context.home / ".openclaw" / "skills",
-                discovery_roots=(
-                    FileTreeDiscoveryRoot(
-                        kind="personal-root",
-                        scope="personal-agent",
-                        label="Personal agent skills root",
-                        path_resolver=lambda context: context.home / ".agents" / "skills",
-                    ),
-                ),
-            ),
-            "mcp": ConfigSubtreeBindingProfile(
-                config_path_resolver=lambda context: context.home / ".openclaw" / "openclaw.json",
-                file_format="json",
-                subtree_path=("mcp", "servers"),
-                codec="openclaw",
-                capability_probe="openclaw-mcp-command",
-                capability_unavailable_reason=(
-                    "Installed OpenClaw does not expose MCP config support"
-                ),
-            ),
-        },
-    ),
 )
 
 
 __all__ = [
     "SUPPORTED_HARNESS_DEFINITIONS",
+    "core_harness_ids",
     "harness_definitions_for_family",
     "supported_harness_definitions",
     "supported_harness_ids",

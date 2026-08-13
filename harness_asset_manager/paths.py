@@ -75,26 +75,28 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
 
 
 def _base_dirs(context: PlatformContext) -> tuple[Path, Path, Path]:
+    # --state-dir / STATE_DIR_ENV is documented (README, --help) as isolating a run so
+    # CI or a throwaway sandbox never touches the real store. That promise only holds if
+    # it overrides all three base dirs, not just the runtime-state one: config_dir holds
+    # settings.json and data_dir holds every asset family's manifests and skill/agent
+    # files. Collapsing all three into one directory when the override is set mirrors
+    # the macOS default below, where they already collapse to one directory absent any
+    # XDG override — this is that same shape, requested explicitly instead of by default.
     state_override = env_get(context.env, STATE_DIR_ENV)
+    if state_override:
+        override_dir = Path(state_override)
+        return override_dir, override_dir, override_dir
 
     if context.platform == "macos":
         legacy_dir = context.home / "Library" / "Application Support" / APP_NAME
         default_macos = legacy_dir if legacy_dir.is_dir() else context.home / f".{APP_NAME}"
         config_dir = _xdg_dir(context.env, "XDG_CONFIG_HOME", default_macos)
         data_dir = _xdg_dir(context.env, "XDG_DATA_HOME", default_macos)
-        state_dir = (
-            Path(state_override)
-            if state_override
-            else _xdg_dir(context.env, "XDG_STATE_HOME", default_macos)
-        )
+        state_dir = _xdg_dir(context.env, "XDG_STATE_HOME", default_macos)
     else:
         config_dir = _xdg_dir(context.env, "XDG_CONFIG_HOME", context.xdg_config_home / APP_NAME)
         data_dir = _xdg_dir(context.env, "XDG_DATA_HOME", context.xdg_data_home / APP_NAME)
-        state_dir = (
-            Path(state_override)
-            if state_override
-            else _xdg_dir(context.env, "XDG_STATE_HOME", context.xdg_state_home / APP_NAME)
-        )
+        state_dir = _xdg_dir(context.env, "XDG_STATE_HOME", context.xdg_state_home / APP_NAME)
     return config_dir, data_dir, state_dir
 
 

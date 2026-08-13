@@ -97,15 +97,27 @@ Harness Asset Manager manages six core extension families:
 
 Harness definitions are declared centrally in `harness_asset_manager/harness/catalog.py` in `SUPPORTED_HARNESS_DEFINITIONS`:
 
-1. **Claude Code** (`claude`)
-2. **Codex CLI** (`codex`)
-3. **Antigravity** (`agy`)
-4. **Cursor** (`cursor`)
-5. **OpenCode** (`opencode`)
-6. **Hermes Agent** (`hermes`)
-7. **OpenClaw** (`openclaw`)
+| # | Harness | Id | Support tier |
+|---|---|---|---|
+| 1 | Claude Code | `claude` | core |
+| 2 | Codex CLI | `codex` | core |
+| 3 | Antigravity | `agy` | core |
+| 4 | Cursor | `cursor` | core |
+| 5 | OpenCode | `opencode` | best effort |
+| 6 | Hermes Agent | `hermes` | best effort |
 
 Every resource family resolves enabled harnesses dynamically from `catalog.py` and `settings.json`. Disabling a harness in Settings drops its column across all family matrices without requiring an app restart.
+
+### Support tiers
+
+`HarnessDefinition.support_tier` (`harness/contracts.py`) declares how much support a harness is committed to. It is a statement about investment, not a property of the harness.
+
+- **`core`** — every family the harness can support is implemented or verifiably impossible; behaviour is verified against a live CLI with the evidence recorded in `handoff.md`; a gap blocks a release.
+- **`best_effort`** — kept working, not invested in; may ship on documented assumptions carrying a `support_note`; never blocks a release.
+
+The tier is declared once and derived everywhere else, the same way column ordering is. `core_harness_ids()` is the single accessor. `tests/unit/test_harness_support_tiers.py` pins the core set and each core harness's family coverage, so a gap must be declared in `KNOWN_CORE_GAPS` with a justification rather than passing unnoticed; the CI job `core-harness-gate` runs it on its own for a fast, separately-named signal.
+
+**OpenClaw (`openclaw`) was retired on 2026-08-09.** It declared only Skills and MCP, and its MCP writes were never implemented, so it was a skills-only integration carrying a column in every matrix. Its mapper, capability probe, binding profile, and logo are removed. Harness Asset Manager no longer touches `~/.openclaw`; pre-existing files there are left alone, consistent with only ever removing files it owns.
 
 ---
 
@@ -125,8 +137,7 @@ directory into this shape on startup).
 │   ├── agy/                            # mcp_config.json, settings.json, hooks.json
 │   ├── cursor/                         # mcp.json, hooks.json
 │   ├── opencode/                       # opencode.jsonc
-│   ├── hermes/                         # config.yaml
-│   └── openclaw/                       # openclaw.json
+│   └── hermes/                         # config.yaml
 ├── permissions/
 │   └── manifest.json                   # Denylist permissions manifest
 ├── mcp/

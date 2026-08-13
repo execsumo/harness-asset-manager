@@ -6,7 +6,6 @@ from harness_asset_manager.application.mcp import (
     ClaudeCodeMapper,
     CodexMapper,
     CursorMapper,
-    OpenClawMapper,
     OpenCodeMapper,
 )
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
@@ -135,16 +134,6 @@ class CodexMapperTests(unittest.TestCase):
         round_trip = mapper.dict_to_spec("remote", d)
         self.assertEqual(round_trip.transport, "http")
         self.assertEqual(round_trip.url, "https://mcp.example.com")
-
-
-class OpenClawMapperTests(unittest.TestCase):
-    def test_http_uses_streamable_http_transport(self) -> None:
-        mapper = OpenClawMapper()
-        d = mapper.spec_to_dict(_http())
-        self.assertEqual(d["transport"], "streamable-http")
-        self.assertEqual(d["url"], "https://mcp.example.com")
-        round_trip = mapper.dict_to_spec("remote", d)
-        self.assertEqual(round_trip.transport, "http")
 
 
 if __name__ == "__main__":

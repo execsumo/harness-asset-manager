@@ -158,7 +158,7 @@ class McpRoutesTests(unittest.TestCase):
             payload = harness.get_json("/api/mcp/servers")
             assert isinstance(payload, dict)
             self.assertEqual(payload.get("entries"), [])
-            # Columns reflect enabled harnesses (codex, claude, cursor, opencode, hermes, openclaw)
+            # Columns reflect enabled harnesses (codex, claude, cursor, opencode, hermes, agy)
             cols = [col["harness"] for col in payload["columns"]]
             self.assertIn("codex", cols)
             self.assertIn("claude", cols)
@@ -244,12 +244,6 @@ class McpRoutesTests(unittest.TestCase):
                     transport="http",
                     url="https://mcp.example.com",
                 )
-            )
-            openclaw_cfg = harness.spec.home / ".openclaw" / "openclaw.json"
-            openclaw_cfg.parent.mkdir(parents=True, exist_ok=True)
-            openclaw_cfg.write_text(
-                json.dumps({"mcp": {"remote": {"type": "remote", "url": "https://mcp.example.com"}}}),
-                encoding="utf-8",
             )
             harness.container.mcp_read_models.invalidate()
 
@@ -425,14 +419,13 @@ class McpRoutesTests(unittest.TestCase):
                 "/api/mcp/servers/exa/set-harnesses", {"target": "enabled"}
             )
             self.assertTrue(response["ok"])
-            self.assertEqual(set(response["succeeded"]), {"codex", "claude", "cursor", "opencode", "openclaw", "agy", "hermes"})
+            self.assertEqual(set(response["succeeded"]), {"codex", "claude", "cursor", "opencode", "agy", "hermes"})
 
             # Verify each config file
             self.assertTrue((harness.spec.home / ".cursor" / "mcp.json").is_file())
             self.assertTrue((harness.spec.home / ".claude.json").is_file())
             self.assertTrue((harness.spec.home / ".codex" / "config.toml").is_file())
             self.assertTrue((harness.spec.home / ".opencode" / "opencode.jsonc").is_file())
-            self.assertTrue((harness.spec.home / ".openclaw" / "openclaw.json").is_file())
             self.assertTrue((harness.spec.home / ".gemini" / "config" / "mcp_config.json").is_file())
             self.assertTrue(harness.spec.hermes_config_path.is_file())
 

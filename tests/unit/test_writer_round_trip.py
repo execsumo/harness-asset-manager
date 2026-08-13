@@ -8,7 +8,6 @@ from harness_asset_manager.application.mcp.mappers import (
     CodexMapper,
     CursorMapper,
     HermesMapper,
-    OpenClawMapper,
     OpenCodeMapper,
     TransportMapper,
 )
@@ -178,10 +177,6 @@ class CodexMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittest.TestCas
 
 class HermesMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittest.TestCase):
     mapper = HermesMapper()
-
-
-class OpenClawMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittest.TestCase):
-    mapper = OpenClawMapper()
 
 
 class AntigravityCliMapperRoundTripTests(_StdioHttpMapperRoundTripMixin, unittest.TestCase):

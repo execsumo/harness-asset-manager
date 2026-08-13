@@ -9,6 +9,20 @@ from harness_asset_manager.env_names import env_get
 from .resolution import ResolutionContext
 
 FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents"]
+
+#: How much support a harness is committed to, which is a statement about *our*
+#: investment rather than a property of the harness itself.
+#:
+#: - ``core`` — the harnesses this tool is actually built for. Every family the harness
+#:   can support is implemented or verifiably impossible, behaviour is checked against a
+#:   live CLI with the evidence recorded in ``handoff.md``, and a gap blocks a release.
+#: - ``best_effort`` — kept working, not invested in. May ship on documented assumptions
+#:   carrying a ``support_note``; bugs are fixed when someone hits them. Never blocks a
+#:   release.
+#:
+#: Declared once per harness in ``catalog.py`` and derived from everywhere else, the same
+#: way column ordering already is. See ``docs`` in ``README.md`` under Supported harnesses.
+SupportTier = Literal["core", "best_effort"]
 AgentRenderFormat = Literal["markdown", "codex_toml"]
 CommandFileRenderFormat = Literal["frontmatter_markdown", "cursor_plaintext"]
 CommandFileScope = Literal["global", "project"]
@@ -182,6 +196,7 @@ class HarnessDefinition:
     label: str
     logo_key: str | None
     install_probe: str
+    support_tier: SupportTier = "best_effort"
     bindings: Mapping[FamilyKey, BindingProfile] = field(default_factory=dict)
 
     def supports_family(self, family: FamilyKey) -> bool:
@@ -189,6 +204,10 @@ class HarnessDefinition:
 
     def binding_for(self, family: FamilyKey) -> BindingProfile | None:
         return self.bindings.get(family)
+
+    @property
+    def is_core(self) -> bool:
+        return self.support_tier == "core"
 
 
 @dataclass(frozen=True)
@@ -218,4 +237,5 @@ __all__ = [
     "PathResolver",
     "SubtreePath",
     "SubtreePathResolver",
+    "SupportTier",
 ]

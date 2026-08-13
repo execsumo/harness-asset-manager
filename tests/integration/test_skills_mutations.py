@@ -66,7 +66,6 @@ def seed_delete_fixture(spec):
         spec.codex_root / "shared-audit",
         spec.claude_root / "shared-audit",
         spec.opencode_root / "shared-audit",
-        spec.openclaw_managed_root / "shared-audit",
     ):
         path.symlink_to(target)
 
@@ -220,7 +219,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertEqual(len(policy["cells"]), len(skills["harnessColumns"]))
             self.assertEqual(len(detail["harnessCells"]), len(skills["harnessColumns"]))
             self.assertIn("codex", [cell["harness"] for cell in policy["cells"]])
-            self.assertEqual(len(skills["harnessColumns"]), 7)
+            self.assertEqual(len(skills["harnessColumns"]), 6)
 
     def test_enable_allows_harnesses_other_than_origin(self) -> None:
         with AppTestHarness(fixture_factory=seed_origin_shared_fixture) as harness:
@@ -248,13 +247,12 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(
                 set(result["succeeded"]),
-                {"codex", "claude", "cursor", "opencode", "openclaw", "hermes", "agy"},
+                {"codex", "claude", "cursor", "opencode", "hermes", "agy"},
             )
             self.assertTrue((harness.spec.codex_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.claude_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.cursor_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.opencode_root / "policy-kit").is_symlink())
-            self.assertTrue((harness.spec.openclaw_managed_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.hermes_skills_root / "harness-asset-manager" / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.agy_root / "policy-kit").is_symlink())
 
@@ -364,7 +362,7 @@ class SkillsMutationTests(unittest.TestCase):
         with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
             # Simulate missing non-core CLIs by removing their stubs from the
             # fake PATH. Cursor may still be available through its app probe.
-            for cli in ("cursor-agent", "opencode", "hermes", "openclaw", "agy"):
+            for cli in ("cursor-agent", "opencode", "hermes", "agy"):
                 stub = harness.spec.bin_dir / cli
                 if stub.exists():
                     stub.unlink()
@@ -380,7 +378,6 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(installed_by_harness["claude"])
             self.assertFalse(installed_by_harness["opencode"])
             self.assertFalse(installed_by_harness["hermes"])
-            self.assertFalse(installed_by_harness["openclaw"])
             self.assertFalse(installed_by_harness["agy"])
 
             result = harness.post_json(
@@ -405,7 +402,6 @@ class SkillsMutationTests(unittest.TestCase):
             # Unavailable harness folders remain untouched.
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
             self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
-            self.assertFalse((harness.spec.openclaw_managed_root / "shared-audit").exists())
 
     def test_manage_skill_replaces_found_local_copy_with_managed_links(self) -> None:
         with AppTestHarness(mixed=True) as harness:
@@ -544,7 +540,6 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertFalse((harness.spec.claude_root / "shared-audit").exists())
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
             self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
-            self.assertFalse((harness.spec.openclaw_managed_root / "shared-audit").exists())
 
             refreshed = harness.get_json("/api/skills")
             self.assertNotIn(shared_entry["skillRef"], [row["skillRef"] for row in refreshed["rows"]])
@@ -572,13 +567,13 @@ class SkillsMutationTests(unittest.TestCase):
         with AppTestHarness(fixture_factory=seed_delete_fixture) as harness:
             skills = harness.get_json("/api/skills")
             shared_entry = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
-            harness.put_json("/api/settings/harnesses/openclaw/support", {"enabled": False})
+            harness.put_json("/api/settings/harnesses/opencode/support", {"enabled": False})
 
             result = harness.post_json(f"/api/skills/{shared_entry['skillRef']}/delete", expected_status=409)
 
             self.assertIn("disabled harnesses still have bindings", result["error"])
             self.assertTrue((harness.spec.skills_store_root / "shared-audit").is_dir())
-            self.assertTrue((harness.spec.openclaw_managed_root / "shared-audit").exists())
+            self.assertTrue((harness.spec.opencode_root / "shared-audit").exists())
 
     def test_delete_aborts_before_mutation_when_any_target_is_real_directory(self) -> None:
         with AppTestHarness(fixture_factory=seed_delete_preflight_failure_fixture) as harness:

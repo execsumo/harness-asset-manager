@@ -9,13 +9,13 @@ function columns(): McpInventoryColumnDto[] {
     { harness: "codex", label: "Codex", logoKey: "codex", installed: true, configPresent: true, mcpWritable: true },
     { harness: "claude", label: "Claude", logoKey: "claude", installed: true, configPresent: true, mcpWritable: true },
     {
-      harness: "openclaw",
-      label: "OpenClaw",
-      logoKey: "openclaw",
+      harness: "hermes",
+      label: "Hermes Agent",
+      logoKey: "hermes",
       installed: true,
       configPresent: false,
       mcpWritable: false,
-      mcpUnavailableReason: "OpenClaw MCP writes are unavailable",
+      mcpUnavailableReason: "Hermes Agent MCP writes are unavailable",
     },
   ];
 }
@@ -44,7 +44,7 @@ function entries(): McpInventoryEntryDto[] {
       sightings: [
         { harness: "codex", state: "managed" },
         { harness: "claude", state: "missing" },
-        { harness: "openclaw", state: "missing" },
+        { harness: "hermes", state: "missing" },
       ],
     },
     {
@@ -134,9 +134,9 @@ describe("McpServerMatrixView", () => {
   it("exposes unavailable harness reasons without allowing mutation", () => {
     renderMatrix();
 
-    const unavailable = screen.getByLabelText("Exa Search on OpenClaw is unavailable");
+    const unavailable = screen.getByLabelText("Exa Search on Hermes Agent is unavailable");
     expect(unavailable).toHaveAttribute("aria-disabled", "true");
-    expect(unavailable).toHaveAttribute("title", "OpenClaw MCP writes are unavailable");
+    expect(unavailable).toHaveAttribute("title", "Hermes Agent MCP writes are unavailable");
   });
 
   it("routes different configs to detail instead of mutating harness state", () => {

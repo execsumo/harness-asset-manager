@@ -23,7 +23,7 @@ class SkillsAdapterTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
             seed_skill_package(spec.codex_legacy_root, "trace-lens", "Trace Lens")
-            seed_skill_package(spec.openclaw_managed_root, "watch", "Workspace Watch")
+            seed_skill_package(spec.opencode_root, "watch", "Workspace Watch")
             seed_skill_package(spec.hermes_skills_root / "debugging", "trace", "Hermes Trace")
             hub_lock = spec.hermes_skills_root / ".hub" / "lock.json"
             hub_lock.parent.mkdir(parents=True, exist_ok=True)
@@ -45,21 +45,21 @@ class SkillsAdapterTests(unittest.TestCase):
 
             codex = _adapter("codex", spec)
             claude = _adapter("claude", spec)
-            openclaw = _adapter("openclaw", spec)
+            opencode = _adapter("opencode", spec)
             hermes = _adapter("hermes", spec)
 
             codex_scan = codex.scan()
             claude_scan = claude.scan()
-            openclaw_scan = openclaw.scan()
+            opencode_scan = opencode.scan()
             hermes_scan = hermes.scan()
 
             self.assertTrue(codex_scan.installed)
             self.assertEqual(codex_scan.skills[0].package.declared_name, "Trace Lens")
             self.assertTrue(claude_scan.installed)
             self.assertEqual(claude_scan.skills, ())
-            self.assertTrue(openclaw_scan.installed)
+            self.assertTrue(opencode_scan.installed)
             self.assertEqual(
-                [skill.package.declared_name for skill in openclaw_scan.skills],
+                [skill.package.declared_name for skill in opencode_scan.skills],
                 ["Workspace Watch"],
             )
             self.assertTrue(hermes_scan.installed)
@@ -149,12 +149,12 @@ class SkillsAdapterTests(unittest.TestCase):
 
     def test_adapter_reports_missing_cli_as_not_installed(self) -> None:
         with TemporaryDirectory() as temp_dir:
-            spec = create_fake_home_spec(Path(temp_dir), seed_openclaw_state=False)
+            spec = create_fake_home_spec(Path(temp_dir), omit_clis=("opencode",))
 
-            openclaw = _adapter("openclaw", spec)
+            opencode = _adapter("opencode", spec)
 
-            self.assertFalse(openclaw.status().installed)
-            self.assertEqual(openclaw.scan().skills, ())
+            self.assertFalse(opencode.status().installed)
+            self.assertEqual(opencode.scan().skills, ())
 
     def test_cursor_skills_use_skills_root_and_ignore_skills_cursor(self) -> None:
         with TemporaryDirectory() as temp_dir:

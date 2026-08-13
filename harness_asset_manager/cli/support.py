@@ -21,7 +21,7 @@ def asset_flags() -> argparse.ArgumentParser:
         dest="json_output",
         help="Emit the raw JSON payload instead of a table.",
     )
-    parent.add_argument("--state-dir", help="Override the runtime state directory.")
+    parent.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
     return parent
 
 

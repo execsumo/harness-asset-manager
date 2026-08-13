@@ -111,35 +111,72 @@ class ResolveAppPathsTests(unittest.TestCase):
             })
             self.assertEqual(paths_both.settings_path, new_custom)
 
-    def test_state_dir_env_overrides_state_paths(self) -> None:
+    def test_state_dir_env_isolates_config_data_and_state_together(self) -> None:
+        """--state-dir / STATE_DIR_ENV is a full isolation root, not just the runtime-state
+        subdirectory.
+
+        This is the fix for the defect recorded in RECOMMENDATIONS.md #1.4: the README
+        promises it "isolates a run... so CI or a throwaway sandbox never touches the real
+        store," which was false when the override reached only ``state_dir``. Settings and
+        every asset family's manifests live under ``config_dir``/``data_dir``, so isolation
+        requires all three to collapse into the override, exactly as they already do by
+        default on macOS when no XDG variable is set.
+        """
         with isolated_env("darwin"), TemporaryDirectory() as temp:
             new_state = Path(temp) / "new_runtime"
             legacy_state = Path(temp) / "legacy_runtime"
 
-            # Case 1: new name alone -> honored
+            # Case 1: new name alone -> honored, and it is config_dir/data_dir/state_dir alike.
             paths_new = resolve_app_paths({
                 "HOME": str(Path(temp) / "home"),
                 STATE_DIR_ENV: str(new_state),
             })
+            self.assertEqual(paths_new.config_dir, new_state)
+            self.assertEqual(paths_new.data_dir, new_state)
             self.assertEqual(paths_new.state_dir, new_state)
             self.assertEqual(paths_new.runtime_state_path, new_state / "runtime.json")
+            self.assertEqual(paths_new.settings_path, new_state / "settings.json")
+            self.assertEqual(paths_new.skills_store_root, new_state / "skills")
+            self.assertEqual(paths_new.mutation_audit_path, new_state / "audit.log")
 
-            # Case 2: legacy name alone -> honored
+            # Case 2: legacy name alone -> honored the same way.
             paths_legacy = resolve_app_paths({
                 "HOME": str(Path(temp) / "home"),
                 legacy_name(STATE_DIR_ENV): str(legacy_state),
             })
+            self.assertEqual(paths_legacy.config_dir, legacy_state)
+            self.assertEqual(paths_legacy.data_dir, legacy_state)
             self.assertEqual(paths_legacy.state_dir, legacy_state)
             self.assertEqual(paths_legacy.runtime_state_path, legacy_state / "runtime.json")
 
-            # Case 3: both set -> new name wins
+            # Case 3: both set -> new name wins, for all three dirs.
             paths_both = resolve_app_paths({
                 "HOME": str(Path(temp) / "home"),
                 STATE_DIR_ENV: str(new_state),
                 legacy_name(STATE_DIR_ENV): str(legacy_state),
             })
+            self.assertEqual(paths_both.config_dir, new_state)
+            self.assertEqual(paths_both.data_dir, new_state)
             self.assertEqual(paths_both.state_dir, new_state)
-            self.assertEqual(paths_both.runtime_state_path, new_state / "runtime.json")
+
+    def test_state_dir_env_overrides_xdg_variables_too(self) -> None:
+        # A full isolation root has to win over XDG variables, not just the platform
+        # default -- otherwise setting both leaves data_dir/config_dir pointed at the
+        # real XDG location while only state_dir is isolated, the exact bug being fixed.
+        with isolated_env("linux"), TemporaryDirectory() as temp:
+            root = Path(temp)
+            isolated = root / "isolated"
+            env = {
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(root / "cfg"),
+                "XDG_DATA_HOME": str(root / "data"),
+                "XDG_STATE_HOME": str(root / "state"),
+                STATE_DIR_ENV: str(isolated),
+            }
+            paths = resolve_app_paths(env)
+            self.assertEqual(paths.config_dir, isolated)
+            self.assertEqual(paths.data_dir, isolated)
+            self.assertEqual(paths.state_dir, isolated)
 
     def test_linux_defaults_use_xdg_basedir_layout(self) -> None:
         with isolated_env("linux"), TemporaryDirectory() as temp:
