@@ -378,7 +378,7 @@ Cursor has a mapper implemented against `~/.cursor/cli-config.json` (`Shell()`, 
 
 ### Native Config Snapshots
 
-Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harness-asset-manager/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
+Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harnessam/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support.
 
 ### Mutation Audit Journal
 
@@ -415,7 +415,7 @@ Automatic adoption is opt-in per asset family, except for the existing safe Agen
 
 These checks run while reading the relevant inventory or detail view, so a setting change takes effect on the next read; there is no background watcher. Codex rendered-agent adoption remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is closed, run `harnessam refresh` for one read and reconciliation pass across all asset families; use `harnessam refresh --json` for automation.
 
-App-owned files live under `~/.harness-asset-manager` on macOS (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists) and XDG base directories on Linux.
+App-owned files live under `~/.harnessam` on macOS and under the `harnessam` directory beneath each XDG base directory on Linux. Existing `~/.harness-asset-manager` and `~/Library/Application Support/harness-asset-manager` stores are migrated automatically.
 
 ---
 
@@ -528,7 +528,10 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 - `--json` on any command prints the exact payload returned by the corresponding API route — stdout stays clean for `jq`, while errors go to stderr.
 - Exit codes: `0` success, `1` a refused or partly-applied mutation, `2` bad usage. A fan-out like `set-harnesses` exits `1` when any harness rejects the change; check `succeeded`/`failed` in JSON when partial application is acceptable.
 - Destructive commands (`delete`, `uninstall`) prompt when stdin is a terminal and refuse otherwise — pass `--yes` in scripts.
-- `--state-dir` isolates a run, ensuring CI or throwaway sandboxes do not touch the primary store.
+- `--state-dir` isolates a run, including HAM's store, settings, runtime files, and
+  catalog-resolved harness paths, ensuring CI or throwaway sandboxes do not touch the
+  primary store or native harness configuration. It overrides `HOME` and the XDG base
+  directories for that invocation.
 
 ```bash
 harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanaged") | .skillRef'
@@ -551,38 +554,38 @@ A missing `frontend/dist` is fine — the API serves normally and only the HTML 
 
 ## Configuration
 
-On macOS, app-owned files live under `~/.harness-asset-manager` (with a legacy fallback to `~/Library/Application Support/harness-asset-manager` if it already exists). On Linux, app-owned files use XDG base directories.
+On macOS, app-owned files live under `~/.harnessam`. On Linux, app-owned files use XDG base directories under `harnessam`. Existing `harness-asset-manager` directories are migrated automatically on first use.
 
 ### Path Locations
 
 Useful macOS paths:
 
-- skills store: `~/.harness-asset-manager/skills`
-- agents store: `~/.harness-asset-manager/agents`
-- agent binding ledger: `~/.harness-asset-manager/bindings.json`
-- agent repair audit log: `~/.harness-asset-manager/agents-audit.json`
-- mutation audit journal: `~/.harness-asset-manager/audit.log` (append-only JSON Lines)
-- preserved conflicting agent copies: `~/.harness-asset-manager/agents/conflicts`
-- MCP manifest: `~/.harness-asset-manager/mcp/manifest.json`
-- hooks manifest: `~/.harness-asset-manager/hooks/manifest.json`
-- slash command library: `~/.harness-asset-manager/slash-commands/commands`
-- slash command sync state: `~/.harness-asset-manager/slash-commands/sync-state.json`
-- marketplace cache: `~/.harness-asset-manager/marketplace`
-- app settings: `~/.harness-asset-manager/settings.json`
+- skills store: `~/.harnessam/skills`
+- agents store: `~/.harnessam/agents`
+- agent binding ledger: `~/.harnessam/bindings.json`
+- agent repair audit log: `~/.harnessam/agents-audit.json`
+- mutation audit journal: `~/.harnessam/audit.log` (append-only JSON Lines)
+- preserved conflicting agent copies: `~/.harnessam/agents/conflicts`
+- MCP manifest: `~/.harnessam/mcp/manifest.json`
+- hooks manifest: `~/.harnessam/hooks/manifest.json`
+- slash command library: `~/.harnessam/slash-commands/commands`
+- slash command sync state: `~/.harnessam/slash-commands/sync-state.json`
+- marketplace cache: `~/.harnessam/marketplace`
+- app settings: `~/.harnessam/settings.json`
 
 Useful Linux paths:
 
-- skills store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/skills`
-- agents store: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents`
-- agent binding ledger: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/bindings.json`
-- agent repair audit log: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/agents-audit.json`
-- mutation audit journal: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/audit.log`
-- MCP manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/mcp/manifest.json`
-- hooks manifest: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/hooks/manifest.json`
-- slash command library: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/slash-commands/commands`
-- slash command sync state: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/slash-commands/sync-state.json`
-- marketplace cache: `${XDG_DATA_HOME:-~/.local/share}/harness-asset-manager/marketplace`
-- app settings: `${XDG_CONFIG_HOME:-~/.config}/harness-asset-manager/settings.json`
+- skills store: `${XDG_DATA_HOME:-~/.local/share}/harnessam/skills`
+- agents store: `${XDG_DATA_HOME:-~/.local/share}/harnessam/agents`
+- agent binding ledger: `${XDG_DATA_HOME:-~/.local/share}/harnessam/bindings.json`
+- agent repair audit log: `${XDG_DATA_HOME:-~/.local/share}/harnessam/agents-audit.json`
+- mutation audit journal: `${XDG_DATA_HOME:-~/.local/share}/harnessam/audit.log`
+- MCP manifest: `${XDG_DATA_HOME:-~/.local/share}/harnessam/mcp/manifest.json`
+- hooks manifest: `${XDG_DATA_HOME:-~/.local/share}/harnessam/hooks/manifest.json`
+- slash command library: `${XDG_DATA_HOME:-~/.local/share}/harnessam/slash-commands/commands`
+- slash command sync state: `${XDG_DATA_HOME:-~/.local/share}/harnessam/slash-commands/sync-state.json`
+- marketplace cache: `${XDG_DATA_HOME:-~/.local/share}/harnessam/marketplace`
+- app settings: `${XDG_CONFIG_HOME:-~/.config}/harnessam/settings.json`
 
 ### Environment Variable Overrides
 

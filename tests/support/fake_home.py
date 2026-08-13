@@ -9,6 +9,7 @@ from harness_asset_manager.application.skills.manifest import (
     write_skill_store_manifest,
 )
 from harness_asset_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.paths import APP_NAME
 
 
 @dataclass(frozen=True)
@@ -21,19 +22,19 @@ class FakeHomeSpec:
 
     @property
     def legacy_packages_skills_store_root(self) -> Path:
-        return self.xdg_data_home / "harness-asset-manager" / "packages" / "local" / "skills"
+        return self.xdg_data_home / APP_NAME / "packages" / "local" / "skills"
 
     @property
     def skills_store_root(self) -> Path:
-        return self.xdg_data_home / "harness-asset-manager" / "skills"
+        return self.xdg_data_home / APP_NAME / "skills"
 
     @property
     def agents_root(self) -> Path:
-        return self.xdg_data_home / "harness-asset-manager" / "agents"
+        return self.xdg_data_home / APP_NAME / "agents"
 
     @property
     def legacy_skills_store_root(self) -> Path:
-        return self.xdg_data_home / "harness-asset-manager" / "shared"
+        return self.xdg_data_home / APP_NAME / "shared"
 
     @property
     def codex_root(self) -> Path:

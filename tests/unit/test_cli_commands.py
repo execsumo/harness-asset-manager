@@ -17,6 +17,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from harness_asset_manager.cli.main import build_parser, main, normalize_argv
+from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import create_fake_home_spec
 
 
@@ -179,7 +180,7 @@ class AgentCommandTests(CliCommandTestCase):
         )
         self.assertEqual(code, 0, msg=err)
 
-        audit_path = self.spec.xdg_data_home / "harness-asset-manager" / "audit.log"
+        audit_path = self.spec.xdg_data_home / APP_NAME / "audit.log"
         event = json.loads(audit_path.read_text(encoding="utf-8").splitlines()[-1])
         self.assertEqual(event["family"], "agents")
         self.assertEqual(event["operation"], "create")

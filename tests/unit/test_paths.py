@@ -12,7 +12,7 @@ from harness_asset_manager.env_names import (
     STATE_DIR_ENV,
     legacy_name,
 )
-from harness_asset_manager.paths import APP_NAME, resolve_app_paths
+from harness_asset_manager.paths import APP_NAME, LEGACY_APP_NAME, resolve_app_paths
 
 
 @contextmanager
@@ -59,12 +59,32 @@ class ResolveAppPathsTests(unittest.TestCase):
     def test_macos_default_layout_falls_back_to_legacy_application_support_if_exists(self) -> None:
         with isolated_env("darwin"), TemporaryDirectory() as temp:
             home = Path(temp) / "home"
-            legacy_dir = home / "Library" / "Application Support" / APP_NAME
+            legacy_dir = home / "Library" / "Application Support" / LEGACY_APP_NAME
             legacy_dir.mkdir(parents=True)
             paths = resolve_app_paths({"HOME": str(home)})
-            self.assertEqual(paths.config_dir, legacy_dir)
-            self.assertEqual(paths.data_dir, legacy_dir)
-            self.assertEqual(paths.state_dir, legacy_dir)
+            new_dir = home / f".{APP_NAME}"
+            self.assertEqual(paths.config_dir, new_dir)
+            self.assertEqual(paths.data_dir, new_dir)
+            self.assertEqual(paths.state_dir, new_dir)
+            self.assertTrue(new_dir.is_dir())
+            self.assertTrue(legacy_dir.is_symlink())
+            self.assertEqual(legacy_dir.resolve(), new_dir.resolve())
+
+    def test_macos_default_layout_migrates_short_legacy_store(self) -> None:
+        with isolated_env("darwin"), TemporaryDirectory() as temp:
+            home = Path(temp) / "home"
+            legacy_dir = home / f".{LEGACY_APP_NAME}"
+            legacy_dir.mkdir(parents=True)
+            (legacy_dir / "skills").mkdir()
+            (legacy_dir / "settings.json").write_text("{}", encoding="utf-8")
+
+            paths = resolve_app_paths({"HOME": str(home)})
+
+            new_dir = home / f".{APP_NAME}"
+            self.assertEqual(paths.data_dir, new_dir)
+            self.assertEqual((new_dir / "settings.json").read_text(encoding="utf-8"), "{}")
+            self.assertTrue(legacy_dir.is_symlink())
+            self.assertEqual(legacy_dir.resolve(), new_dir.resolve())
 
     def test_xdg_overrides_each_dir_independently(self) -> None:
         with isolated_env("darwin"), TemporaryDirectory() as temp:
@@ -185,6 +205,26 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.config_dir, home / ".config" / APP_NAME)
             self.assertEqual(paths.data_dir, home / ".local" / "share" / APP_NAME)
             self.assertEqual(paths.state_dir, home / ".local" / "state" / APP_NAME)
+
+    def test_linux_xdg_override_migrates_legacy_store_name(self) -> None:
+        with isolated_env("linux"), TemporaryDirectory() as temp:
+            root = Path(temp)
+            legacy_data = root / "data" / LEGACY_APP_NAME
+            legacy_data.mkdir(parents=True)
+            (legacy_data / "skills").mkdir()
+
+            paths = resolve_app_paths(
+                {
+                    "HOME": str(root / "home"),
+                    "XDG_DATA_HOME": str(root / "data"),
+                }
+            )
+
+            new_data = root / "data" / APP_NAME
+            self.assertEqual(paths.data_dir, new_data)
+            self.assertTrue((new_data / "skills").is_dir())
+            self.assertTrue(legacy_data.is_symlink())
+            self.assertEqual(legacy_data.resolve(), new_data.resolve())
 
     def test_unsupported_platform_fails_clearly(self) -> None:
         with isolated_env("win32"), TemporaryDirectory() as temp:

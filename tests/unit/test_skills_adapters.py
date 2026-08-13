@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from harness_asset_manager.application.skills.adapters import build_skills_adapters
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import create_fake_home_spec, seed_skill_package
 
 
@@ -309,7 +310,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             # Create symlink in harness pointing to OLD location
             link = spec.codex_root / "audit"
             link.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / APP_NAME)
 
             # Should heal without raising
             codex.enable_shared_package(new_pkg)
@@ -328,7 +329,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             link = spec.codex_root / "audit"
             link.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / APP_NAME)
 
             codex.enable_shared_package(new_pkg)
 
@@ -346,7 +347,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             link = spec.codex_root / "audit"
             link.symlink_to(foreign_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / APP_NAME)
 
             with self.assertRaises(MutationError) as ctx:
                 codex.enable_shared_package(new_pkg)
@@ -361,7 +362,7 @@ class StaleTargetHealingTests(unittest.TestCase):
             new_pkg = seed_skill_package(spec.skills_store_root, "audit", "Audit", body="new")
             harness_dir = spec.codex_root / "audit"
             harness_dir.symlink_to(stale_dir.resolve())
-            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / "harness-asset-manager")
+            codex = _adapter("codex", spec, data_dir=spec.xdg_data_home / APP_NAME)
 
             codex.adopt_local_copy(harness_dir, new_pkg)
 

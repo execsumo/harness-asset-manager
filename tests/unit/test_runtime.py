@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from harness_asset_manager.runtime import process as runtime_process
 from harness_asset_manager.runtime.assets import resolve_frontend_dist
-from harness_asset_manager.runtime.server import choose_port
+from harness_asset_manager.runtime.server import bind_socket, choose_port
 from harness_asset_manager.runtime.startup import (
     PACKAGED_STARTUP_TIMEOUT_SECONDS,
     SOURCE_STARTUP_TIMEOUT_SECONDS,
@@ -63,6 +63,15 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertNotEqual(chosen, busy_port)
         self.assertGreater(chosen, 0)
+
+    def test_bind_socket_keeps_the_port_it_successfully_acquires(self) -> None:
+        first, _, busy_port = bind_socket("127.0.0.1", 0)
+        try:
+            second, _, actual_port = bind_socket("127.0.0.1", busy_port)
+            second.close()
+            self.assertNotEqual(actual_port, busy_port)
+        finally:
+            first.close()
 
     def test_process_command_falls_back_to_system_ps_when_path_is_isolated(self) -> None:
         with patch.dict(os.environ, {"PATH": "/tmp/harness-asset-manager-fake-bin"}):

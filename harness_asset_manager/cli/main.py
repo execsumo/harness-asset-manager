@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
 import subprocess
 import sys
 import time
 from typing import TYPE_CHECKING, Callable
 
 from harness_asset_manager import __version__
-from harness_asset_manager.paths import STATE_DIR_ENV
+from harness_asset_manager.platform_context import _isolate_state_dir_environment
 from harness_asset_manager.runtime.browser import maybe_open_browser
 from harness_asset_manager.runtime.process import (
     is_owned_runtime_process,
@@ -101,6 +102,7 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
+    parser.add_argument("--socket-fd", type=int, help=argparse.SUPPRESS)
 
 
 def normalize_argv(argv: list[str] | None) -> list[str]:
@@ -193,6 +195,7 @@ def serve_command(args: argparse.Namespace) -> int:
         return refusal
     env = runtime_env(args.state_dir)
     container = build_backend_container(env)
+    prebound_socket = socket.socket(fileno=args.socket_fd) if args.socket_fd is not None else None
     return serve_foreground(
         container,
         host=args.host,
@@ -200,11 +203,12 @@ def serve_command(args: argparse.Namespace) -> int:
         frontend_dist=args.frontend_dist,
         open_browser=args.open_browser,
         allow_remote=args.allow_remote,
+        prebound_socket=prebound_socket,
     )
 
 
 def start_command(args: argparse.Namespace) -> int:
-    from harness_asset_manager.runtime.server import choose_port
+    from harness_asset_manager.runtime.server import bind_socket
 
     refusal = guard_remote_host(args)
     if refusal is not None:
@@ -218,8 +222,8 @@ def start_command(args: argparse.Namespace) -> int:
     if existing is not None:
         clear_runtime_state(env)
 
-    port = choose_port(args.host, args.port)
-    url = f"http://{args.host}:{port}"
+    socket_handle, actual_host, port = bind_socket(args.host, args.port)
+    url = f"http://{actual_host}:{port}"
     log_path = runtime_log_path(env)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     command = self_command(
@@ -228,21 +232,27 @@ def start_command(args: argparse.Namespace) -> int:
         args.host,
         "--port",
         str(port),
+        "--socket-fd",
+        str(socket_handle.fileno()),
         "--no-open-browser",
         *(["--allow-remote"] if args.allow_remote else []),
         *frontend_dist_args(args.frontend_dist),
         *state_dir_args(args.state_dir),
     )
-    with log_path.open("ab") as log_file:
-        process = subprocess.Popen(
-            command,
-            stdout=log_file,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL,
-            cwd=os.getcwd(),
-            env=env,
-            start_new_session=True,
-        )
+    try:
+        with log_path.open("ab") as log_file:
+            process = subprocess.Popen(
+                command,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                cwd=os.getcwd(),
+                env=env,
+                pass_fds=(socket_handle.fileno(),),
+                start_new_session=True,
+            )
+    finally:
+        socket_handle.close()
     timeout_seconds = startup_timeout_seconds()
     if not wait_for_health(url, timeout_seconds=timeout_seconds):
         terminate_process(process.pid)
@@ -302,7 +312,7 @@ def status_command(args: argparse.Namespace) -> int:
 def runtime_env(state_dir: str | None) -> dict[str, str]:
     env = dict(os.environ)
     if state_dir:
-        env[STATE_DIR_ENV] = state_dir
+        env = _isolate_state_dir_environment(env, state_dir)
     return env
 
 

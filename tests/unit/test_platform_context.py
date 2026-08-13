@@ -4,6 +4,11 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from harness_asset_manager.env_names import (
+    CLAUDE_ROOT_ENV,
+    SETTINGS_PATH_ENV,
+    STATE_DIR_ENV,
+)
 from harness_asset_manager.platform_context import resolve_platform_context
 
 
@@ -50,6 +55,31 @@ class PlatformContextTests(unittest.TestCase):
         context = resolve_platform_context({"HOME": "/tmp/home"}, sys_platform="linux2")
 
         self.assertEqual(context.platform, "linux")
+
+    def test_state_dir_isolates_home_xdg_and_explicit_harness_paths(self) -> None:
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            isolated = root / "isolated"
+            context = resolve_platform_context(
+                {
+                    "HOME": str(root / "real-home"),
+                    "XDG_CONFIG_HOME": str(root / "real-config"),
+                    "XDG_DATA_HOME": str(root / "real-data"),
+                    "XDG_STATE_HOME": str(root / "real-state"),
+                    STATE_DIR_ENV: str(isolated),
+                    SETTINGS_PATH_ENV: str(root / "real-settings.json"),
+                    CLAUDE_ROOT_ENV: str(root / "real-claude"),
+                },
+                sys_platform="linux",
+            )
+
+            self.assertEqual(context.home, isolated)
+            self.assertEqual(context.xdg_config_home, isolated)
+            self.assertEqual(context.xdg_data_home, isolated)
+            self.assertEqual(context.xdg_state_home, isolated)
+            self.assertEqual(context.env["HOME"], str(isolated))
+            self.assertNotIn(SETTINGS_PATH_ENV, context.env)
+            self.assertNotIn(CLAUDE_ROOT_ENV, context.env)
 
     def test_unsupported_platform_fails_clearly(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "unsupported platform: win32"):

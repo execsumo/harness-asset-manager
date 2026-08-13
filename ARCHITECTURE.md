@@ -29,7 +29,7 @@ Harness Asset Manager is a local-first control center for AI developer extension
                  +---------------------+---------------------+
                  |                                           |
         Store & Manifest Storage                 Harness Adapters & Mappers
-     (~/.harness-asset-manager/)              (Claude, Codex, AGY, Cursor, etc.)
+     (~/.harnessam/)                          (Claude, Codex, AGY, Cursor, etc.)
                  |                                           |
     Atomic File Writes & Locks                    Harness Native Config Files
 ```
@@ -129,7 +129,7 @@ rebuild, and `container.py` migrates any surviving `shared/` or `packages/local/
 directory into this shape on startup).
 
 ```
-~/.harness-asset-manager/ (macOS) or $XDG_DATA_HOME/harness-asset-manager/ (Linux)
+~/.harnessam/ (macOS) or $XDG_DATA_HOME/harnessam/ (Linux)
 ├── settings.json                       # Global settings, harness toggles, autoAdopt
 ├── configs/                            # Canonical native harness config baselines & snapshots
 │   ├── claude/                         # .claude.json, settings.json

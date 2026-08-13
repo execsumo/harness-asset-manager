@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from harness_asset_manager.cli.main import runtime_env
-from harness_asset_manager.env_names import STATE_DIR_ENV, legacy_name
+from harness_asset_manager.env_names import CLAUDE_ROOT_ENV, STATE_DIR_ENV, legacy_name
 from harness_asset_manager.paths import resolve_app_paths
 from tests.unit.test_paths import isolated_env
 
@@ -33,6 +33,26 @@ class CliMainTests(unittest.TestCase):
             self.assertEqual(paths.config_dir, flag_dir)
             self.assertEqual(paths.data_dir, flag_dir)
             self.assertEqual(paths.state_dir, flag_dir)
+            self.assertEqual(env["HOME"], str(flag_dir))
+            self.assertEqual(env["XDG_CONFIG_HOME"], str(flag_dir))
+            self.assertEqual(env["XDG_DATA_HOME"], str(flag_dir))
+            self.assertEqual(env["XDG_STATE_HOME"], str(flag_dir))
+
+    def test_state_dir_flag_clears_explicit_harness_root_overrides(self) -> None:
+        with TemporaryDirectory() as temp:
+            flag_dir = Path(temp) / "isolated"
+            with mock.patch.dict(
+                "os.environ",
+                {
+                    "HOME": str(Path(temp) / "home"),
+                    CLAUDE_ROOT_ENV: str(Path(temp) / "real-claude"),
+                },
+                clear=True,
+            ):
+                env = runtime_env(str(flag_dir))
+
+            self.assertNotIn(CLAUDE_ROOT_ENV, env)
+            self.assertEqual(env["HOME"], str(flag_dir))
 
 
 if __name__ == "__main__":

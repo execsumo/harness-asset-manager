@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.request import urlopen
 
+from harness_asset_manager.paths import APP_NAME
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
     seed_divergent_source_fixture,
@@ -25,11 +26,11 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(settings["storage"]["skillsStorePath"], str(harness.spec.skills_store_root))
             self.assertEqual(
                 settings["storage"]["marketplaceCachePath"],
-                str(harness.spec.xdg_data_home / "harness-asset-manager" / "marketplace"),
+                str(harness.spec.xdg_data_home / APP_NAME / "marketplace"),
             )
             self.assertEqual(
                 settings["storage"]["settingsPath"],
-                str(harness.spec.xdg_config_home / "harness-asset-manager" / "settings.json"),
+                str(harness.spec.xdg_config_home / APP_NAME / "settings.json"),
             )
             self.assertEqual(len(settings["harnesses"]), 6)
             opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")

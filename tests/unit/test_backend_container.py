@@ -9,6 +9,7 @@ from harness_asset_manager.application.agents.parser import parse_agent_file
 from harness_asset_manager.application.container import _migrate_legacy_layouts
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.paths import APP_NAME
 from harness_asset_manager.sources import ResolvedGitHubSkill
 from tests.support.fake_home import (
     create_fake_home_spec,
@@ -142,7 +143,7 @@ class BackendContainerServiceTests(unittest.TestCase):
             self.assertEqual(settings["storage"]["skillsStorePath"], str(spec.skills_store_root))
             self.assertEqual(
                 settings["storage"]["marketplaceCachePath"],
-                str(spec.xdg_data_home / "harness-asset-manager" / "marketplace"),
+                str(spec.xdg_data_home / APP_NAME / "marketplace"),
             )
             self.assertEqual(len(settings["harnesses"]), 6)
             codex = next(item for item in settings["harnesses"] if item["harness"] == "codex")
@@ -335,7 +336,7 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
         """Pre-package shape: data_dir/shared → data_dir/skills"""
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
-            data_dir = spec.xdg_data_home / "harness-asset-manager"
+            data_dir = spec.xdg_data_home / APP_NAME
             legacy_dir = data_dir / "shared"
             legacy_dir.mkdir(parents=True)
             (legacy_dir / "audit").mkdir()
@@ -354,7 +355,7 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
         """Package-layout shape: data_dir/packages/local/skills → data_dir/skills"""
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
-            data_dir = spec.xdg_data_home / "harness-asset-manager"
+            data_dir = spec.xdg_data_home / APP_NAME
             legacy_dir = data_dir / "packages" / "local" / "skills"
             legacy_dir.mkdir(parents=True)
             (legacy_dir / "audit").mkdir()
@@ -368,7 +369,7 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
         """Legacy manifest.json is copied to skills-manifest.json."""
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
-            data_dir = spec.xdg_data_home / "harness-asset-manager"
+            data_dir = spec.xdg_data_home / APP_NAME
             legacy_dir = data_dir / "shared"
             legacy_dir.mkdir(parents=True)
             (legacy_dir / "audit").mkdir()
@@ -392,7 +393,7 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
         """
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
-            data_dir = spec.xdg_data_home / "harness-asset-manager"
+            data_dir = spec.xdg_data_home / APP_NAME
             legacy_agents = data_dir / "packages" / "local" / "agents"
             legacy_agents.mkdir(parents=True)
             agent_doc = (

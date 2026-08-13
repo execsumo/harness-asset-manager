@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-import fcntl
 import os
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 
 def atomic_write_text(path: Path, content: str, *, follow_symlinks: bool = False) -> None:
@@ -46,9 +50,22 @@ def atomic_write_text(path: Path, content: str, *, follow_symlinks: bool = False
 @contextmanager
 def file_lock(lock_path: Path) -> Iterator[None]:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock_path, "w") as lock_fd:
-        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+    if os.name == "nt":
+        with open(lock_path, "a+b") as lock_fd:
+            lock_fd.seek(0)
+            lock_fd.write(b"\0")
+            lock_fd.flush()
+            lock_fd.seek(0)
+            msvcrt.locking(lock_fd.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                yield
+            finally:
+                lock_fd.seek(0)
+                msvcrt.locking(lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        with open(lock_path, "w") as lock_fd:
+            fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)

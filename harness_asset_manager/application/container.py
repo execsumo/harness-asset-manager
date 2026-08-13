@@ -404,7 +404,7 @@ def build_backend_container(
         agents_store, resolve_agents_snapshot, agent_bindings
     )
 
-    config_snapshots = ConfigSnapshotService(paths)
+    config_snapshots = ConfigSnapshotService(paths, context=harness_kernel.context)
     config_snapshots.capture_all_external_changes()
 
     skills_auto_adopt = SkillsAutoAdoptService(

@@ -40,10 +40,16 @@ def choose_port(host: str, preferred_port: int) -> int:
 
 
 def bind_socket(host: str, port: int) -> tuple[socket.socket, str, int]:
-    chosen_port = choose_port(host, port)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((host, chosen_port))
+    try:
+        sock.bind((host, port))
+    except OSError:
+        if port != 0:
+            sock.bind((host, 0))
+        else:
+            sock.close()
+            raise
     sock.listen(2048)
     actual_host, actual_port = sock.getsockname()[:2]
     return sock, str(actual_host), int(actual_port)
@@ -69,11 +75,18 @@ def serve_foreground(
     frontend_dist: str | Path | None = None,
     open_browser: bool = True,
     allow_remote: bool = False,
+    prebound_socket: socket.socket | None = None,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
     app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote)
-    sock, actual_host, actual_port = bind_socket(host, port)
+    if prebound_socket is None:
+        sock, actual_host, actual_port = bind_socket(host, port)
+    else:
+        sock = prebound_socket
+        actual_host, actual_port = sock.getsockname()[:2]
+        actual_host = str(actual_host)
+        actual_port = int(actual_port)
     url = f"http://{actual_host}:{actual_port}"
     print(url, flush=True)
     maybe_open_browser(url, enabled=open_browser)

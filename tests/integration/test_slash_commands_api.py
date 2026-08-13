@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
+from harness_asset_manager.paths import APP_NAME
 from tests.support.app_harness import AppTestHarness
 
 
@@ -16,7 +17,7 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "hermes"])
             self.assertIn("codex", payload["defaultTargets"])
             self.assertTrue(all("enabled" in target for target in payload["targets"]))
-            self.assertTrue(str(harness.spec.xdg_data_home / "harness-asset-manager") in payload["storePath"])
+            self.assertTrue(str(harness.spec.xdg_data_home / APP_NAME) in payload["storePath"])
 
     def test_disabled_harness_is_omitted_without_restart(self) -> None:
         with AppTestHarness() as harness:
@@ -85,7 +86,7 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertTrue(update["ok"])
             self.assertFalse(codex_path.exists())
             self.assertTrue(claude_path.is_file())
-            state_path = harness.spec.xdg_data_home / "harness-asset-manager" / "slash-commands" / "sync-state.json"
+            state_path = harness.spec.xdg_data_home / APP_NAME / "slash-commands" / "sync-state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(set(state["commands"]["code-review"]), {"claude"})
 
@@ -94,7 +95,7 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertTrue(deleted["ok"])
             self.assertFalse(claude_path.exists())
             self.assertFalse(
-                (harness.spec.xdg_data_home / "harness-asset-manager" / "slash-commands" / "commands" / "code-review.toml").exists()
+                (harness.spec.xdg_data_home / APP_NAME / "slash-commands" / "commands" / "code-review.toml").exists()
             )
 
     def test_manual_file_conflict_is_returned_as_target_failure(self) -> None:

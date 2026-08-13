@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
 from .env_names import SETTINGS_PATH_ENV, STATE_DIR_ENV, env_get
 from .platform_context import PlatformContext, resolve_platform_context
 
-APP_NAME = "harness-asset-manager"
+APP_NAME = "harnessam"
+LEGACY_APP_NAME = "harness-asset-manager"
 
-__all__ = ["APP_NAME", "SETTINGS_PATH_ENV", "STATE_DIR_ENV", "AppPaths", "resolve_app_paths"]
+__all__ = [
+    "APP_NAME",
+    "LEGACY_APP_NAME",
+    "SETTINGS_PATH_ENV",
+    "STATE_DIR_ENV",
+    "AppPaths",
+    "resolve_app_paths",
+]
 
 
 @dataclass(frozen=True)
@@ -51,8 +60,8 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
         skills_store_root=data_dir / "skills",
         skills_store_manifest=data_dir / "skills-manifest.json",
         agents_root=data_dir / "agents",
-        # Resolved from data_dir rather than hardcoded, so it moves with the pending
-        # ~/.skill-manager retirement instead of needing a second migration.
+        # Resolved from data_dir rather than hardcoded, so store migrations move the
+        # complete central store without another family-specific path.
         bindings_ledger_path=data_dir / "bindings.json",
         agents_audit_path=data_dir / "agents-audit.json",
         # A subdirectory, deliberately: AgentStore.scan() globs the agents root's top
@@ -88,23 +97,79 @@ def _base_dirs(context: PlatformContext) -> tuple[Path, Path, Path]:
         return override_dir, override_dir, override_dir
 
     if context.platform == "macos":
-        legacy_dir = context.home / "Library" / "Application Support" / APP_NAME
-        default_macos = legacy_dir if legacy_dir.is_dir() else context.home / f".{APP_NAME}"
+        default_macos = _resolve_default_store(
+            context.home,
+            context.home / "Library" / "Application Support" / LEGACY_APP_NAME,
+        )
         config_dir = _xdg_dir(context.env, "XDG_CONFIG_HOME", default_macos)
         data_dir = _xdg_dir(context.env, "XDG_DATA_HOME", default_macos)
         state_dir = _xdg_dir(context.env, "XDG_STATE_HOME", default_macos)
     else:
-        config_dir = _xdg_dir(context.env, "XDG_CONFIG_HOME", context.xdg_config_home / APP_NAME)
-        data_dir = _xdg_dir(context.env, "XDG_DATA_HOME", context.xdg_data_home / APP_NAME)
-        state_dir = _xdg_dir(context.env, "XDG_STATE_HOME", context.xdg_state_home / APP_NAME)
+        config_dir = _xdg_dir(
+            context.env,
+            "XDG_CONFIG_HOME",
+            _resolve_default_store(context.xdg_config_home, context.xdg_config_home / LEGACY_APP_NAME),
+        )
+        data_dir = _xdg_dir(
+            context.env,
+            "XDG_DATA_HOME",
+            _resolve_default_store(context.xdg_data_home, context.xdg_data_home / LEGACY_APP_NAME),
+        )
+        state_dir = _xdg_dir(
+            context.env,
+            "XDG_STATE_HOME",
+            _resolve_default_store(context.xdg_state_home, context.xdg_state_home / LEGACY_APP_NAME),
+        )
     return config_dir, data_dir, state_dir
+
+
+def _resolve_default_store(home: Path, legacy_application_support: Path) -> Path:
+    """Return the short store path, migrating the previous name once if needed."""
+    is_macos = legacy_application_support.parent.name == "Application Support"
+    new_store = home / f".{APP_NAME}" if is_macos else home / APP_NAME
+    legacy_candidates = (
+        (legacy_application_support, home / f".{LEGACY_APP_NAME}")
+        if is_macos
+        else (legacy_application_support,)
+    )
+    if new_store.exists():
+        return new_store
+    for legacy_store in legacy_candidates:
+        if not legacy_store.is_dir() or legacy_store.is_symlink():
+            continue
+        try:
+            new_store.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(legacy_store), str(new_store))
+            # Existing harness bindings can contain absolute links into the old
+            # store. Keep a compatibility alias so those links continue resolving
+            # while the canonical location is the new short path.
+            legacy_store.symlink_to(new_store, target_is_directory=True)
+            return new_store
+        except OSError:
+            if new_store.exists():
+                return new_store
+            return legacy_store
+    return new_store
 
 
 def _xdg_dir(env: dict[str, str], xdg_key: str, fallback: Path) -> Path:
     override = env.get(xdg_key)
     if override:
-        return Path(override) / APP_NAME
+        root = Path(override)
+        return _migrate_store(root / APP_NAME, root / LEGACY_APP_NAME)
     return fallback
+
+
+def _migrate_store(new_store: Path, legacy_store: Path) -> Path:
+    if new_store.exists() or not legacy_store.is_dir() or legacy_store.is_symlink():
+        return new_store
+    try:
+        new_store.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(legacy_store), str(new_store))
+        legacy_store.symlink_to(new_store, target_is_directory=True)
+        return new_store
+    except OSError:
+        return new_store if new_store.exists() else legacy_store
 
 
 def _active_env(env: dict[str, str] | None) -> dict[str, str]:

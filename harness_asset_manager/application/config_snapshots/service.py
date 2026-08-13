@@ -11,6 +11,7 @@ from harness_asset_manager.harness import (
     HarnessDefinition,
     supported_harness_definitions,
 )
+from harness_asset_manager.harness.resolution import ResolutionContext
 from harness_asset_manager.paths import AppPaths
 from harness_asset_manager.platform_context import resolve_platform_context
 
@@ -18,8 +19,9 @@ from .model import ConfigSnapshot, HarnessConfigTarget, SnapshotTrigger
 
 
 class ConfigSnapshotService:
-    def __init__(self, paths: AppPaths) -> None:
+    def __init__(self, paths: AppPaths, context: ResolutionContext | None = None) -> None:
         self.paths = paths
+        self.context = context
         self.configs_root = paths.configs_dir
 
     def resolve_target_configs(
@@ -27,7 +29,7 @@ class ConfigSnapshotService:
     ) -> tuple[HarnessConfigTarget, ...]:
         """Resolve all target user-level native config files across supported harnesses."""
         definitions = harnesses or supported_harness_definitions()
-        context = resolve_platform_context()
+        context = self.context or resolve_platform_context()
         targets: list[HarnessConfigTarget] = []
         seen_paths: set[Path] = set()
 
@@ -132,7 +134,7 @@ class ConfigSnapshotService:
 
         atomic_write_text(snapshot_path, content)
 
-        # Also update the canonical baseline file (e.g. ~/.harness-asset-manager/configs/claude/settings.json)
+        # Also update the canonical baseline file (e.g. ~/.harnessam/configs/claude/settings.json)
         canonical_path = harness_dir / target.config_name
         atomic_write_text(canonical_path, content)
 
