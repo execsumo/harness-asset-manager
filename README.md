@@ -38,7 +38,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 | **MCP Servers** | Manage normalized MCP server configurations and translate them into native harness shapes (JSON, TOML, YAML). |
 | **Slash Commands** | Maintain a single reusable prompt library and sync rendered command files into supported harness formats. |
 | **Hooks** | Configure normalized event and tool category hook records, synced into native harness settings with drift detection and review for unmanaged entries. |
-| **Permissions** | Enforce strict denylists across supported harnesses (Claude Code, Antigravity, and Codex) to restrict shell commands, file paths, web domains, and MCP tools in a unified view. |
+| **Permissions** | Enforce strict denylists across supported harnesses (Claude Code, Codex, Antigravity, and Cursor) to restrict shell commands, file paths, web domains, and MCP tools in a unified view. |
 | **Snapshots & Audit** | Capture native config snapshots across all 7 supported harnesses with automatic drift detection, SHA-256 deduplication, and secret redaction, backed by an append-only JSON Lines audit journal. |
 | **Marketplace** | Discover and preview Skills, MCP servers, and external CLI tools from marketplace hubs. |
 | **Headless / CLI** | Drive all features headlessly via CLI commands with `--json` output—ideal for VPS environments, containers, or Linux sandboxes with no browser required. |
@@ -103,7 +103,7 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 | **Claude Code** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **Codex CLI** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
-| **Cursor** | Yes | Yes | Yes | Yes | Yes | Planned |
+| **Cursor** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
 | **Hermes Agent** | Yes | Best effort¹ | Yes | Yes² (Provisional) | Not Yet | No |
 | **Factory Droid** | Yes | Yes | Yes | Yes | Not Yet | No |
@@ -379,7 +379,7 @@ Every automatic action is appended to the Activity audit log: repair you cannot 
 
 Denylist rules strictly restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. `--scope` values include `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and `--pattern` matches according to scope (`shell` → `git push`, `file_*` → `~/.zshrc`, `web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only. Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default. Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules.
 
-Cursor has a mapper implemented against `~/.cursor/cli-config.json` (`Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()` deny tokens — multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either), but it deliberately does **not** flip a no-prompt execution mode like the other three harnesses do: Cursor's `cli-config.json` has a persistent `approvalMode` setting, but nothing in Cursor's docs ties any of its values to guaranteed deny-rule enforcement the way `--force`/`--yolo` are documented to, and the CLI's own changelog shows this exact area changing release to release. Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model. The capability matrix keeps Cursor as `Planned` until this is verified against an installed `cursor-agent` rather than documentation alone.
+Cursor has a mapper implemented against `~/.cursor/cli-config.json` (`Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()` deny tokens — multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either). Enabling a Cursor rule writes `approvalMode = "unrestricted"` and disabling the final rule cleans it up. Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model. The capability matrix keeps Cursor as `Planned` until this is verified against an installed `cursor-agent` rather than documentation alone.
 
 ### Native Config Snapshots
 

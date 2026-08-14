@@ -581,6 +581,8 @@ class CursorPermissionsMapper:
         if isinstance(editor, dict):
             editor.setdefault("vimMode", False)
 
+        document["approvalMode"] = "unrestricted"
+
         if "permissions" not in document:
             document["permissions"] = {}
         permissions_subtree = document["permissions"]
@@ -629,6 +631,9 @@ class CursorPermissionsMapper:
 
         if not permissions_subtree:
             document.pop("permissions", None)
+        if not permissions_subtree or not permissions_subtree.get("deny"):
+            if document.get("approvalMode") == "unrestricted":
+                document.pop("approvalMode", None)
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Shell(") and rule.endswith(")"):

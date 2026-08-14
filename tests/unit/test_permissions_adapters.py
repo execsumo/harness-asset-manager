@@ -202,6 +202,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             self.assertIn("Read(~/.zshrc)", doc.get("permissions", {}).get("deny", []))
             self.assertIn("version", doc)
             self.assertIs(doc.get("editor", {}).get("vimMode"), False)
+            self.assertEqual(doc.get("approvalMode"), "unrestricted")
             
             # Enable shell should fail as unsupported
             with self.assertRaises(MutationError) as ctx:
@@ -217,6 +218,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
             adapter.disable_permission(spec_file.id)
             doc_after = json.loads(adapter.config_path.read_text(encoding="utf-8"))
             self.assertNotIn("Read(~/.zshrc)", doc_after.get("permissions", {}).get("deny", []))
+            self.assertNotIn("approvalMode", doc_after)
 
     def test_pressure_test_malformed_config_and_user_profile(self) -> None:
         """Feed a malformed permission config of each format (JSON + TOML) AND a pre-existing

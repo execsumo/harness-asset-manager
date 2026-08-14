@@ -2,7 +2,17 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-12 — Coverage measurement and ratchets shipped
+## 2026-08-14 — Cursor permissions approval mode set to unrestricted
+
+Configured `CursorPermissionsMapper` to write `approvalMode = "unrestricted"` into `~/.cursor/cli-config.json` upon enabling a HAM denylist permission, aligning Cursor with Claude, Antigravity, and Codex.
+
+- **What shipped**:
+  - `CursorPermissionsMapper.enable_permission` sets `document["approvalMode"] = "unrestricted"`.
+  - `CursorPermissionsMapper.disable_permission` pops `"approvalMode"` when no deny rules remain in `permissions.deny` and `approvalMode == "unrestricted"`.
+  - Kept `version: 1` and `editor.vimMode: false` setdefault seeding for from-empty configs as planned.
+  - Re-enabling an existing permission repairs and upgrades an older native approval mode (e.g. `auto-review` → `unrestricted`).
+  - Added unit test `test_enable_sets_approval_mode_and_disable_cleans_it_up` in `test_permissions_mappers.py`, updated `test_cursor_round_trip_and_unsupported` in `test_permissions_adapters.py`, and updated `test_enable_and_disable_across_harnesses` in `test_permissions_routes.py`.
+- **Capability Matrix**: Promoted Cursor Permissions to `Yes (Denylist)` in `README.md` and `ARCHITECTURE.md`.
 
 Closed `RECOMMENDATIONS.md` §2.2. Added:
 

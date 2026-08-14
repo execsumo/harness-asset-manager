@@ -219,6 +219,7 @@ class CursorPermissionsMapperTests(unittest.TestCase):
         ])
         self.assertEqual(doc["version"], 1)
         self.assertIs(doc["editor"]["vimMode"], False)
+        self.assertEqual(doc["approvalMode"], "unrestricted")
 
         entries = mapper.read_entries(doc, specs)
         self.assertEqual(len(entries), len(specs))
@@ -233,6 +234,7 @@ class CursorPermissionsMapperTests(unittest.TestCase):
             mapper.disable_permission(doc, spec.id, spec.pattern)
 
         self.assertNotIn("permissions", doc)
+        self.assertNotIn("approvalMode", doc)
         self.assertEqual(doc["version"], 1)
         self.assertIs(doc["editor"]["vimMode"], False)
 
@@ -249,6 +251,21 @@ class CursorPermissionsMapperTests(unittest.TestCase):
         self.assertEqual(doc["version"], 2)
         self.assertIs(doc["editor"]["vimMode"], True)
         self.assertEqual(doc["somethingElse"], "keep-me")
+        self.assertEqual(doc["approvalMode"], "unrestricted")
+
+    def test_enable_sets_approval_mode_and_disable_cleans_it_up(self) -> None:
+        mapper = CursorPermissionsMapper()
+        doc = {
+            "version": 1,
+            "approvalMode": "auto-review",
+        }
+        spec = PermissionSpec("p-read", "deny", "file_read", "~/.zshrc")
+        mapper.enable_permission(doc, spec)
+        self.assertEqual(doc["approvalMode"], "unrestricted")
+
+        mapper.disable_permission(doc, spec.id, spec.pattern)
+        self.assertNotIn("permissions", doc)
+        self.assertNotIn("approvalMode", doc)
 
     def test_unmanaged_manual_rule_is_readable(self) -> None:
         mapper = CursorPermissionsMapper()

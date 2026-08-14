@@ -140,6 +140,14 @@ class PermissionRoutesTests(unittest.TestCase):
             self.assertTrue(cursor_path.is_file())
             cursor_settings = json.loads(cursor_path.read_text(encoding="utf-8"))
             self.assertIn("Read(~/.zshrc)", cursor_settings["permissions"]["deny"])
+            self.assertEqual(cursor_settings["approvalMode"], "unrestricted")
+
+            # Re-enabling an existing binding upgrades an older native approval mode
+            cursor_settings["approvalMode"] = "auto-review"
+            cursor_path.write_text(json.dumps(cursor_settings), encoding="utf-8")
+            harness.post_json("/api/permissions/my-file-perm/enable", {"harness": "cursor"})
+            cursor_settings = json.loads(cursor_path.read_text(encoding="utf-8"))
+            self.assertEqual(cursor_settings["approvalMode"], "unrestricted")
 
             # Disable on all four
             self.assertTrue(harness.post_json("/api/permissions/my-perm/disable", {"harness": "claude"})["ok"])
@@ -153,7 +161,9 @@ class PermissionRoutesTests(unittest.TestCase):
             with open(codex_path, "rb") as f:
                 codex_cfg2 = tomllib.load(f)
             self.assertNotIn("permissions", codex_cfg2)
-            self.assertNotIn("permissions", json.loads(cursor_path.read_text(encoding="utf-8")))
+            cursor_final = json.loads(cursor_path.read_text(encoding="utf-8"))
+            self.assertNotIn("permissions", cursor_final)
+            self.assertNotIn("approvalMode", cursor_final)
 
 
     def test_unmanaged_rule_is_readable_and_promotable(self) -> None:
