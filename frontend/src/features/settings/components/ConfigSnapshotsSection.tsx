@@ -29,7 +29,7 @@ export function ConfigSnapshotsSection() {
             Native Config Snapshots
           </h2>
           <p className="muted-text" style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
-            Local canonical backups of native harness config files stored in <code>~/.harness-asset-manager/configs/</code>
+            Local canonical backups of native harness config files stored in <code>~/.harnessam/configs/</code>
           </p>
         </div>
         <button

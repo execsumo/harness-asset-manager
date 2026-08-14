@@ -147,7 +147,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(payload["code"], "not_found")
 
     def test_frontend_routes_return_spa_shell_when_dist_is_present(self) -> None:
-        with TemporaryDirectory(prefix="harness-asset-manager-dist-") as tempdir:
+        with TemporaryDirectory(prefix="harnessam-dist-") as tempdir:
             dist = Path(tempdir)
             (dist / "index.html").write_text("<!doctype html><html><body><div id='root'>harness-asset-manager</div></body></html>", encoding="utf-8")
 

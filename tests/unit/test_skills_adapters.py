@@ -254,10 +254,37 @@ class SkillsAdapterTests(unittest.TestCase):
 
             hermes.enable_shared_package(package)
 
-            link = spec.hermes_skills_root / "harness-asset-manager" / "audit"
+            link = spec.hermes_skills_root / "harnessam" / "audit"
             self.assertTrue(link.is_symlink())
             self.assertEqual(link.resolve(), package.resolve())
             self.assertTrue(hermes.has_binding("audit"))
+
+    def test_legacy_hermes_category_remains_discoverable(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            legacy_category = spec.hermes_skills_root / "harness-asset-manager"
+            legacy_category.mkdir(parents=True)
+            legacy_link = legacy_category / "audit"
+            legacy_link.symlink_to(package)
+
+            hermes = _adapter("hermes", spec)
+            self.assertTrue(hermes.has_binding("audit"))
+            self.assertEqual(hermes._binding_path("audit"), legacy_link)
+
+    def test_legacy_hermes_binding_is_not_replaced_when_enabling(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            legacy_category = spec.hermes_skills_root / "harness-asset-manager"
+            legacy_category.mkdir(parents=True)
+            legacy_link = legacy_category / "audit"
+            legacy_link.symlink_to(package)
+
+            hermes = _adapter("hermes", spec)
+            hermes.enable_shared_package(package)
+            self.assertTrue(legacy_link.is_symlink())
+            self.assertFalse((spec.hermes_skills_root / "harnessam" / "audit").exists())
 
     def test_hermes_enable_ignores_real_directory_in_existing_category(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -274,7 +301,7 @@ class SkillsAdapterTests(unittest.TestCase):
 
             hermes.enable_shared_package(package)
 
-            link = spec.hermes_skills_root / "harness-asset-manager" / "audit"
+            link = spec.hermes_skills_root / "harnessam" / "audit"
             self.assertTrue(link.is_symlink())
             self.assertEqual(link.resolve(), package.resolve())
             self.assertTrue((hermes_owned / "SKILL.md").is_file())

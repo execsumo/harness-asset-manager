@@ -7,9 +7,9 @@ from harness_asset_manager.env_names import (
     CLAUDE_ROOT_ENV,
     CODEX_ROOT_ENV,
     CURSOR_ROOT_ENV,
+    FACTORY_ROOT_ENV,
     HERMES_HOME_ENV,
     HERMES_ROOT_ENV,
-    FACTORY_ROOT_ENV,
     OPENCODE_ROOT_ENV,
     env_get,
 )
@@ -426,7 +426,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 managed_env=HERMES_ROOT_ENV,
                 managed_default=_hermes_skills_root,
                 layout="categorized",
-                default_category="harness-asset-manager",
+                default_category="harnessam",
             ),
             "mcp": ConfigSubtreeBindingProfile(
                 config_path_resolver=_hermes_config_path,
@@ -434,16 +434,13 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=("mcp_servers",),
                 codec="hermes",
             ),
-            # Hermes delegates to dynamically spawned subagents (config.yaml
-            # `orchestrator`/`subagent_*` keys) and has no agent-definition file format
-            # to bind to. It keeps a column for parity; every cell reports why.
+            # Hermes does not currently document a native static-agent loader, but HAM
+            # can maintain the conventional directory for separate Hermes-side support
+            # (or other tooling) through the same Markdown symlink/adoption workflow.
             "agents": AgentFileBindingProfile(
                 root_path_resolver=_hermes_home,
                 output_dir_resolver=lambda context: _hermes_home(context) / "agents",
-                unavailable_reason=(
-                    "Hermes spawns subagents dynamically and has no agent-definition "
-                    "file format to install into"
-                ),
+                docs_url="https://hermes-agent.nousresearch.com/docs/user-guide/features/delegation",
             ),
             "slash_commands": CommandFileBindingProfile(
                 root_path_resolver=_hermes_home,

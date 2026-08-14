@@ -15,7 +15,7 @@ See §12.
 
 ## 1. The store is the sync unit — not the harness directories
 
-**Decision: sync `~/.harness-asset-manager/`, recompute bindings locally on arrival.
+**Decision: sync `~/.harnessam/` (or the XDG `harnessam` data/config roots), recompute bindings locally on arrival.
 Settled — do not re-litigate.**
 
 The obvious cheap alternative is "point Dropbox/iCloud/Syncthing at `~/.claude`". It
@@ -29,7 +29,7 @@ cannot work, and the reasons are the same reasons HAM exists:
 | MCP | translated into JSON / TOML / YAML / JSONC per harness | five different config shapes, none of them the canonical record |
 | Hooks, Permissions | **merged into** config files the user also owns | overwrites the receiving machine's own unmanaged keys |
 
-`paths.py:80-98` already diverges macOS (`~/.harness-asset-manager`) from Linux (XDG),
+`paths.py:80-98` already diverges macOS (`~/.harnessam`) from Linux (XDG),
 so absolute paths differ between machines even for the same user. Anything that
 transports resolved paths is wrong on arrival.
 

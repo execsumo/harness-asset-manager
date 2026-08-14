@@ -11,8 +11,8 @@ describe("capability overview model", () => {
         rows: [],
       },
       {
-        storePath: "/tmp/harness-asset-manager/slash-commands/commands",
-        syncStatePath: "/tmp/harness-asset-manager/slash-commands/sync-state.json",
+        storePath: "/tmp/harnessam/slash-commands/commands",
+        syncStatePath: "/tmp/harnessam/slash-commands/sync-state.json",
         targets: [],
         defaultTargets: [],
         commands: [

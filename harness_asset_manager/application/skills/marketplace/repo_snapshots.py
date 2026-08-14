@@ -86,7 +86,7 @@ class GitHubRepoSnapshotService:
     ) -> None:
         self._cache = cache or MarketplaceCache()
         self._metadata_client = metadata_client or GitHubRepoMetadataClient()
-        self._refresh_executor = ThreadPoolExecutor(max_workers=self._REFRESH_WORKERS, thread_name_prefix="harness-asset-manager-github")
+        self._refresh_executor = ThreadPoolExecutor(max_workers=self._REFRESH_WORKERS, thread_name_prefix="harnessam-github")
         self._refreshing: set[str] = set()
         self._refresh_lock = Lock()
         self._closed = False

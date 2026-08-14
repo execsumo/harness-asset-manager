@@ -71,7 +71,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         source_fetcher: SourceFetchService | None = None,
         allow_remote: bool = False,
     ) -> None:
-        self._tempdir = TemporaryDirectory(prefix="harness-asset-manager-tests-")
+        self._tempdir = TemporaryDirectory(prefix="harnessam-tests-")
         self.spec = create_fake_home_spec(Path(self._tempdir.name), omit_clis=omit_clis)
         if mixed and fixture_factory is not None:
             raise ValueError("pass either mixed=True or fixture_factory, not both")

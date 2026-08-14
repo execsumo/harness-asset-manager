@@ -19,7 +19,7 @@ from harness_asset_manager.application.skills.marketplace import (
 
 def main() -> int:
     catalog = MarketplaceCatalog(warm_on_init=False)
-    with TemporaryDirectory(prefix="harness-asset-manager-openapi-") as tempdir:
+    with TemporaryDirectory(prefix="harnessam-openapi-") as tempdir:
         env = {
             "HOME": tempdir,
             "XDG_CONFIG_HOME": tempdir,

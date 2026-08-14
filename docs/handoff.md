@@ -75,9 +75,11 @@ Validation: 523 backend tests, 279 frontend tests, Ruff across application/tests
 frontend typecheck, production build, and `git diff --check` all pass. Pyright was unavailable
 in the local virtualenv and was not run.
 
-## 2026-08-12 (latest) — Store renamed to `~/.harnessam`; housekeeping closed
+## 2026-08-14 (latest) — Short `harnessam` paths and Hermes best-effort agents
 
-The central store now uses the short `harnessam` name:
+The central store uses the short `harnessam` name, while product/distribution names,
+Python imports, persisted Codex keys, generated markers, and legacy migration paths
+retain `harness-asset-manager` for compatibility:
 
 - macOS: `~/.harnessam`
 - Linux: `$XDG_CONFIG_HOME/harnessam`, `$XDG_DATA_HOME/harnessam`, and
@@ -94,9 +96,14 @@ now live under `docs/` with root pointers, `atomic_files.py` gates its platform 
 server startup passes one bound socket through to the child process, frontend tests are green,
 and `scripts/clean-local-caches.sh` handles reproducible local caches.
 
-Validation: 526 backend unit tests, 180 backend integration tests, 279 frontend tests,
-frontend typecheck, production build, Ruff across application/tests/scripts, and
-`git diff --check` all pass. Pyright remains unavailable in the local virtualenv.
+Hermes agent files are managed best-effort under `$HERMES_HOME/agents/` (normally
+`~/.hermes/agents/`) so separate Hermes-side support can consume the shared Markdown
+definitions. HAM does not claim that Hermes loads those files natively.
+
+Validation: 528 backend unit tests, 182 backend integration tests, backend coverage at
+81%, frontend typecheck, production build, Ruff, and `git diff --check` pass. The local
+frontend test dependency set still fails before assertions because React 19.2.8 exports
+no `act` function for the installed React Testing Library (`React.act is not a function`).
 
 ## 2026-08-10 — Cursor permissions mapper shipped, denylist-only, matrix stays `Planned`
 
@@ -800,7 +807,7 @@ matches its manifest entry.
 ### Symlinks repointed
 
 `~/.claude/skills/{compress-text,delegate,distill-decision}` now point at
-`~/.harness-asset-manager/skills/<name>`, matching what `FileTreeSkillsAdapter`
+`~/.harnessam/skills/<name>`, matching what `FileTreeSkillsAdapter`
 (`enable_shared_package` → `managed_root/<name>` → `store/<name>`) builds itself. Verified
 the app **claims** them rather than merely tolerating them: `/api/skills` reports
 `displayStatus: "Managed"` with `claude: "enabled"`, not unmanaged.
@@ -1267,7 +1274,7 @@ longer points at.
 
 **Shipped on `main`**. All backend services, CLI commands, Web UI controls, unit/integration tests, and documentation are complete.
 
-- **Storage Location**: Canonical baselines and timestamped snapshots stored under `~/.harness-asset-manager/configs/<harness_id>/`.
+- **Storage Location**: Canonical baselines and timestamped snapshots stored under `~/.harnessam/configs/<harness_id>/`.
 - **Target Harness Config Matrix**:
   - `claude`: `~/.claude.json`, `~/.claude/settings.json`
   - `codex`: `~/.codex/config.toml`
@@ -1603,7 +1610,7 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
   (standalone `HermesMapper`). Adds `ruamel.yaml`; `FileBackedMcpAdapter` mutates in place
   (`_ensure_subtree`) so YAML comments survive — **write path changed for all config-subtree
   MCP harnesses** (claude/cursor/codex/opencode), all re-tested green.
-- **Skills**: categorized `~/.hermes/skills/<category>/<skill>/`, shared under `harness-asset-manager`.
+- **Skills**: categorized `~/.hermes/skills/<category>/<skill>/`, shared under `harnessam`; the legacy `harness-asset-manager` category remains readable.
 - **Hub-awareness**: reads `.hub/lock.json` + `.bundled_manifest`; excludes
   official/builtin/optional + self-learned; adopts only external-hub; `origin_harness` provenance
   threaded through the store manifest.

@@ -105,11 +105,11 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 | **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
 | **Cursor** | Yes | Yes | Yes | Yes | Yes | Planned |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
-| **Hermes Agent** | Yes | Not Installable¹ | Yes | Yes² (Provisional) | Not Yet | No |
+| **Hermes Agent** | Yes | Best effort¹ | Yes | Yes² (Provisional) | Not Yet | No |
 | **Factory Droid** | Yes | Yes | Yes | Yes | Not Yet | No |
 
 <small>
-¹ <strong>Hermes Agent</strong> spawns subagents dynamically and has no static agent-definition file format to install into; UI/CLI cell status explicitly explains why.<br />
+¹ <strong>Hermes Agent</strong> does not currently document a native static-agent loader, but Harness Asset Manager can adopt, store, and symlink Markdown agent files under <code>$HERMES_HOME/agents/</code> for separate Hermes-side support or other tooling; Hermes will not consume them automatically.<br />
 ² <strong>Hermes slash-command</strong> support is provisional. Its command directory (<code>~/.hermes/commands</code>, frontmatter Markdown) follows common conventions but is not yet verified against a shipping Hermes build.<br />
 Factory Droid hooks and permissions are not currently mapped because its hook scopes and command policy do not match HAM's global hook and denylist contracts.
 </small>
@@ -284,7 +284,7 @@ Before adoption, each harness points at its own local skill folder. After adopti
 
 Harness Asset Manager treats managed Skills as portable by default: once a Skill is adopted into the shared store, it can be enabled for any supported harness. `originHarness` is retained only as provenance.
 
-Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harness-asset-manager` category by default. Harness Asset Manager only imports Hermes Skills that Hermes itself installed from external hub provenance (`.hub/lock.json` entries that are not official/builtin/optional). Hermes self-learned/local Skills, bundled Skills tracked by `.bundled_manifest`, and official optional Skills recorded in Hermes hub provenance are excluded from Harness Asset Manager inventory and bulk actions; Harness Asset Manager leaves those folders untouched so `hermes update` and Hermes-owned Skill sync keep their normal ownership.
+Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager only imports Hermes Skills that Hermes itself installed from external hub provenance (`.hub/lock.json` entries that are not official/builtin/optional). Hermes self-learned/local Skills, bundled Skills tracked by `.bundled_manifest`, and official optional Skills recorded in Hermes hub provenance are excluded from Harness Asset Manager inventory and bulk actions; Harness Asset Manager leaves those folders untouched so `hermes update` and Hermes-owned Skill sync keep their normal ownership.
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
@@ -348,10 +348,10 @@ The agents matrix shows the same harnesses as every other family — whichever y
 | Antigravity | `~/.gemini/antigravity-cli/agents/` | symlink |
 | OpenCode | `$XDG_CONFIG_HOME/opencode/agents/` | symlink |
 | Codex | `~/.codex/agents/` | rendered TOML |
-| Hermes | — | not installable |
+| Hermes | `$HERMES_HOME/agents/` (normally `~/.hermes/agents/`) | symlink; best effort¹ |
 | Factory Droid | `~/.factory/droids/` | symlink |
 
-Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** keeps a column for consistency but spawns subagents dynamically and has no agent-definition file to install into, so its cells say so rather than offering a toggle that cannot work.
+Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** is best effort: HAM can manage the files in its conventional agents directory, but Hermes does not consume them automatically without separate Hermes-side support.
 
 Harness Asset Manager only ever removes files it owns — a symlink into its store, or a file carrying its generated marker. Anything else in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store (converting Codex TOML to Markdown) and installs it back. If the name is already taken in the store, Harness Asset Manager refuses to guess and asks which version to keep.
 
@@ -420,7 +420,7 @@ Automatic adoption is opt-in per asset family, except for the existing safe Agen
 
 These checks run while reading the relevant inventory or detail view, so a setting change takes effect on the next read; there is no background watcher. Codex rendered-agent adoption remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is closed, run `harnessam refresh` for one read and reconciliation pass across all asset families; use `harnessam refresh --json` for automation.
 
-App-owned files live under `~/.harnessam` on macOS and under the `harnessam` directory beneath each XDG base directory on Linux. Existing `~/.harness-asset-manager` and `~/Library/Application Support/harness-asset-manager` stores are migrated automatically.
+App-owned files live under `~/.harnessam` on macOS and under the `harnessam` directory beneath each XDG base directory on Linux. Existing `~/.harness-asset-manager` and `~/Library/Application Support/harness-asset-manager` stores are migrated automatically and retained as compatibility aliases.
 
 ---
 

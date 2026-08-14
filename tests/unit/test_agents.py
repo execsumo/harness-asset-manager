@@ -359,8 +359,8 @@ class CodexAgentTests(unittest.TestCase):
         self.assertEqual([i.name for i in issues], ["codex/broken"])
 
 
-class UnsupportedHarnessTests(unittest.TestCase):
-    """A harness with no agent-file format keeps its column and says why."""
+class HermesBestEffortHarnessTests(unittest.TestCase):
+    """HAM can manage Hermes agent files for separate Hermes-side support."""
 
     def setUp(self) -> None:
         self._tmp = TemporaryDirectory()
@@ -379,7 +379,6 @@ class UnsupportedHarnessTests(unittest.TestCase):
             render_format="markdown",
             docs_url="",
             installed=True,
-            unavailable_reason="Hermes spawns subagents dynamically",
         )
         self.store = AgentStore(self.store_root)
         adapters = {"hermes": AgentHarnessAdapter(self.target, self.store_root)}
@@ -388,18 +387,24 @@ class UnsupportedHarnessTests(unittest.TestCase):
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
-    def test_column_is_present_but_every_cell_is_unsupported(self) -> None:
+    def test_enabling_creates_a_symlink_into_the_store(self) -> None:
         self.store.create(name="Red Team", description="d", prompt="p")
-        entry = self.inventory.build().entries[0]
-        binding = entry.bindings[0]
-        self.assertEqual(binding.state, "unsupported")
-        self.assertEqual(binding.detail, "Hermes spawns subagents dynamically")
+        self.mutations.enable("red-team", "hermes")
+        link = self.target.output_dir / "red-team.md"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(self.inventory.build().entries[0].bindings[0].state, "enabled")
 
-    def test_enabling_is_refused_with_the_reason(self) -> None:
-        self.store.create(name="Red Team", description="d", prompt="p")
-        with self.assertRaises(MutationError) as caught:
-            self.mutations.enable("red-team", "hermes")
-        self.assertIn("spawns subagents dynamically", str(caught.exception))
+    def test_adopting_an_unmanaged_file_works(self) -> None:
+        _write(
+            self.target.output_dir / "red-team.md",
+            "---\nname: Red Team\ndescription: d\n---\np\n",
+        )
+        entry = self.inventory.build().entries[0]
+        self.assertEqual(entry.kind, "unmanaged")
+        self.assertTrue(entry.can_adopt)
+        self.mutations.adopt("hermes/red-team")
+        self.assertTrue((self.store_root / "red-team.md").is_file())
+        self.assertTrue((self.target.output_dir / "red-team.md").is_symlink())
 
 
 class AgentBindingTests(AgentsFixture):

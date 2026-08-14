@@ -20,6 +20,9 @@ from .identity import SourceDescriptor
 from .observations import SkillObservation, SkillsHarnessScan
 from .package import SkillParseError, find_skill_roots, parse_skill_package
 
+DEFAULT_HERMES_MANAGED_CATEGORY = "harnessam"
+LEGACY_HERMES_MANAGED_CATEGORY = "harness-asset-manager"
+
 
 class FileTreeSkillsAdapter(SkillsHarnessAdapter):
     def __init__(
@@ -48,7 +51,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         self._availability = availability
         self._app_probe_paths = app_probe_paths
         self._layout = layout
-        self._default_category = default_category or "harness-asset-manager"
+        self._default_category = default_category or DEFAULT_HERMES_MANAGED_CATEGORY
         self._data_dir = data_dir
 
     def status(self) -> SkillsHarnessStatus:
@@ -327,7 +330,7 @@ def _scan_skill_roots(
     roots: tuple[_ResolvedRoot, ...],
     excluded_skill_names: frozenset[str] = frozenset(),
     hermes_policy: _HermesScanPolicy | None = None,
-    managed_category: str = "harness-asset-manager",
+    managed_category: str = DEFAULT_HERMES_MANAGED_CATEGORY,
 ) -> tuple[list[SkillObservation], set[str]]:
     observations: list[SkillObservation] = []
     skipped_skill_names: set[str] = set()
@@ -506,7 +509,12 @@ def _is_harness_asset_manager_hermes_binding(
     locator_name: str,
     managed_category: str,
 ) -> bool:
-    return skill_root.is_symlink() and locator_name.startswith(f"{managed_category}/")
+    if not skill_root.is_symlink():
+        return False
+    return any(
+        locator_name.startswith(f"{category}/")
+        for category in {managed_category, LEGACY_HERMES_MANAGED_CATEGORY}
+    )
 
 
 def _record_excluded_skill(

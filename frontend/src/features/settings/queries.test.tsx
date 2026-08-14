@@ -47,12 +47,12 @@ describe("settings queries", () => {
     queryClient.setQueryData(settingsKeys.detail(), {
       storage: {
         platform: "linux",
-        configDir: "/tmp/config/harness-asset-manager",
-        dataDir: "/tmp/data/harness-asset-manager",
-        stateDir: "/tmp/state/harness-asset-manager",
-        skillsStorePath: "/tmp/data/harness-asset-manager/shared",
-        marketplaceCachePath: "/tmp/data/harness-asset-manager/marketplace",
-        settingsPath: "/tmp/config/harness-asset-manager/settings.json",
+        configDir: "/tmp/config/harnessam",
+        dataDir: "/tmp/data/harnessam",
+        stateDir: "/tmp/state/harnessam",
+        skillsStorePath: "/tmp/data/harnessam/shared",
+        marketplaceCachePath: "/tmp/data/harnessam/marketplace",
+        settingsPath: "/tmp/config/harnessam/settings.json",
       },
       harnesses: [
         {

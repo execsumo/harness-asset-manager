@@ -253,7 +253,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue((harness.spec.claude_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.cursor_root / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.opencode_root / "policy-kit").is_symlink())
-            self.assertTrue((harness.spec.hermes_skills_root / "harness-asset-manager" / "policy-kit").is_symlink())
+            self.assertTrue((harness.spec.hermes_skills_root / "harnessam" / "policy-kit").is_symlink())
             self.assertTrue((harness.spec.agy_root / "policy-kit").is_symlink())
 
     def test_manage_records_origin_only(self) -> None:
@@ -401,7 +401,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertFalse((harness.spec.agy_root / "shared-audit").exists())
             # Unavailable harness folders remain untouched.
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
-            self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
+            self.assertFalse((harness.spec.hermes_skills_root / "harnessam" / "shared-audit").exists())
 
     def test_manage_skill_replaces_found_local_copy_with_managed_links(self) -> None:
         with AppTestHarness(mixed=True) as harness:
@@ -540,7 +540,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertFalse((harness.spec.codex_root / "shared-audit").exists())
             self.assertFalse((harness.spec.claude_root / "shared-audit").exists())
             self.assertFalse((harness.spec.opencode_root / "shared-audit").exists())
-            self.assertFalse((harness.spec.hermes_skills_root / "harness-asset-manager" / "shared-audit").exists())
+            self.assertFalse((harness.spec.hermes_skills_root / "harnessam" / "shared-audit").exists())
 
             refreshed = harness.get_json("/api/skills")
             self.assertNotIn(shared_entry["skillRef"], [row["skillRef"] for row in refreshed["rows"]])

@@ -28,7 +28,7 @@ def fixture_marketplace_search(query: str, limit: int) -> list[SkillsShSkill]:
 
 
 def create_fixture_marketplace_service() -> MarketplaceCatalog:
-    cache_root = Path(mkdtemp(prefix="harness-asset-manager-marketplace-cache-"))
+    cache_root = Path(mkdtemp(prefix="harnessam-marketplace-cache-"))
     cache = MarketplaceCache(cache_root)
     skills = [item_from_payload(item) for item in FIXTURE_SKILLS]
     cache.write("leaderboard", "all-time", [skill_to_dict(item) for item in skills])

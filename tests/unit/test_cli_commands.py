@@ -25,7 +25,7 @@ class CliCommandTestCase(unittest.TestCase):
     """Runs commands against an isolated fake home."""
 
     def setUp(self) -> None:
-        self._tempdir = TemporaryDirectory(prefix="harness-asset-manager-cli-tests-")
+        self._tempdir = TemporaryDirectory(prefix="harnessam-cli-tests-")
         self.addCleanup(self._tempdir.cleanup)
         self.spec = create_fake_home_spec(Path(self._tempdir.name))
         env_patch = mock.patch.dict("os.environ", self.spec.env(), clear=True)

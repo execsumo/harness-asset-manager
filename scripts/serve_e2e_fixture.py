@@ -17,7 +17,7 @@ from tests.support.marketplace_fixture import create_fixture_marketplace_service
 
 
 def main() -> int:
-    with TemporaryDirectory(prefix="harness-asset-manager-e2e-") as temp_dir:
+    with TemporaryDirectory(prefix="harnessam-e2e-") as temp_dir:
         spec = create_fake_home_spec(Path(temp_dir))
         seed_mixed_fixture(spec)
         env = dict(os.environ)

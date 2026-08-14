@@ -49,20 +49,20 @@ class AgentRoutesTests(unittest.TestCase):
             after = [c["harness"] for c in harness.get_json("/api/agents")["columns"]]
             self.assertNotIn("cursor", after)
 
-    def test_hermes_keeps_a_column_but_reports_why_it_cannot_install(self) -> None:
+    def test_hermes_keeps_a_column_and_supports_best_effort_files(self) -> None:
         with AppTestHarness() as harness:
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
             entry = self._entry(harness, "red-team")
             hermes = next(b for b in entry["bindings"] if b["harness"] == "hermes")
-            self.assertEqual(hermes["state"], "unsupported")
-            self.assertIn("dynamically", hermes["detail"])
+            self.assertEqual(hermes["state"], "disabled")
+            self.assertIsNone(hermes["detail"])
 
-            payload = harness.post_json(
-                "/api/agents/red-team/enable", {"harness": "hermes"}, expected_status=400
-            )
-            self.assertIn("does not support installable agents", payload["error"])
+            harness.post_json("/api/agents/red-team/enable", {"harness": "hermes"})
+            link = harness.spec.home / ".hermes" / "agents" / "red-team.md"
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(self._state(self._entry(harness, "red-team"), "hermes"), "enabled")
 
     def test_codex_gets_a_rendered_toml_not_a_symlink(self) -> None:
         with AppTestHarness() as harness:
@@ -270,9 +270,9 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(by_harness["codex"]["installMethod"], "rendered")
             self.assertTrue(by_harness["codex"]["path"].endswith(".codex/agents/red-team.toml"))
 
-            self.assertEqual(by_harness["hermes"]["state"], "unsupported")
-            self.assertEqual(by_harness["hermes"]["installMethod"], "none")
-            self.assertIn("dynamically", by_harness["hermes"]["detail"])
+            self.assertEqual(by_harness["hermes"]["state"], "disabled")
+            self.assertEqual(by_harness["hermes"]["installMethod"], "symlink")
+            self.assertTrue(by_harness["hermes"]["path"].endswith(".hermes/agents/red-team.md"))
 
     def test_detail_surfaces_frontmatter_and_an_edit_preserves_it(self) -> None:
         """Adopt a real-shaped Claude agent, read its config, edit, config survives."""

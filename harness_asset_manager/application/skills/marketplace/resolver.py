@@ -52,7 +52,7 @@ class GitHubSkillResolver:
     def github_folder_url(self, repo: str, skill_id: str, *, default_branch: str | None = None) -> str | None:
         owner, repo_name = repo.split("/", 1)
         locator = f"{owner}/{repo_name}/{skill_id}"
-        with TemporaryDirectory(prefix="harness-asset-manager-marketplace-") as temp_dir:
+        with TemporaryDirectory(prefix="harnessam-marketplace-") as temp_dir:
             work_dir = Path(temp_dir)
             resolved = GitHubSource().resolve(locator, work_dir)
         return build_github_folder_url(
