@@ -46,7 +46,7 @@ describe("mcpServerSourceLinks", () => {
       hasRegistryIdentity: true,
       githubUrl: null,
       websiteUrl: null,
-      copy: mcpCopy.en.detail,
+      copy: mcpCopy.detail,
     });
 
     expect(registry.href).toBe("https://registry.modelcontextprotocol.io/?q=ai.31st%2Fmcp");
@@ -59,7 +59,7 @@ describe("mcpServerSourceLinks", () => {
       hasRegistryIdentity: false,
       githubUrl: null,
       websiteUrl: null,
-      copy: mcpCopy.en.detail,
+      copy: mcpCopy.detail,
     });
 
     expect(registry.href).toBeNull();

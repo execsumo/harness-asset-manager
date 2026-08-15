@@ -127,7 +127,7 @@ export function matrixColumns(inventory: { columns: McpInventoryColumnDto[] } | 
 export function matrixCellFor(
   entry: McpInventoryEntryDto,
   column: McpInventoryColumnDto,
-  copy: McpCopy = mcpCopy.en,
+  copy: McpCopy = mcpCopy,
 ): McpMatrixCellModel {
   const binding = entry.sightings.find((candidate) => candidate.harness === column.harness) ?? null;
   const writable = isMcpHarnessAddressable(column);

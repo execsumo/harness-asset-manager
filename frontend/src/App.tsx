@@ -11,7 +11,7 @@ import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session"
 import SkillsNeedsReviewPage from "./features/skills/screens/SkillsNeedsReviewPage";
 import SkillsInUsePage from "./features/skills/screens/SkillsInUsePage";
 import SkillsWorkspacePage from "./features/skills/screens/SkillsWorkspacePage";
-import { LocaleProvider, useCommonCopy } from "./i18n";
+import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
 import { ThemeProvider } from "./lib/theme";
@@ -45,15 +45,13 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <LocaleProvider>
-          <ToastProvider>
-            <UiTooltipProvider>
-              <HomeDirProvider>
-                <AppContent />
-              </HomeDirProvider>
-            </UiTooltipProvider>
-          </ToastProvider>
-        </LocaleProvider>
+        <ToastProvider>
+          <UiTooltipProvider>
+            <HomeDirProvider>
+              <AppContent />
+            </HomeDirProvider>
+          </UiTooltipProvider>
+        </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

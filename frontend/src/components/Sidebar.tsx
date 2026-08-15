@@ -7,13 +7,10 @@ import {
   useRef,
   useState,
 } from "react";
-import * as Popover from "@radix-ui/react-popover";
 import {
   BookOpen,
-  Check,
   ChevronDown,
   Command,
-  Languages,
   LayoutDashboard,
   Moon,
   RefreshCw,
@@ -30,7 +27,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { useSidebarModel, type SidebarIconKey } from "../app/capability-registry";
 import { LoadingSpinner } from "./LoadingSpinner";
-import { useCommonCopy, useLocale } from "../i18n";
+import { useCommonCopy } from "../i18n";
 import { useTheme } from "../lib/theme";
 
 interface SidebarProps {
@@ -101,7 +98,6 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
           {theme === "light" ? <Moon size={16} /> : <SunMedium size={16} />}
           <span>{theme === "light" ? common.nav.dark : common.nav.light}</span>
         </button>
-        <SidebarLanguageMenu />
         <NavLink
           to="/settings"
           className={({ isActive }) => `sidebar-footer-btn${isActive ? " is-active" : ""}`}
@@ -111,65 +107,6 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
         </NavLink>
       </div>
     </aside>
-  );
-}
-
-function SidebarLanguageMenu() {
-  const common = useCommonCopy();
-  const { locale, setLocale, supportedLocales } = useLocale();
-  const activeLabel = supportedLocales.find((option) => option.value === locale)?.nativeLabel ?? locale;
-
-  return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="sidebar-footer-btn"
-          aria-label={common.language.ariaLabel(activeLabel)}
-          aria-haspopup="menu"
-        >
-          <Languages size={16} />
-          <span>{activeLabel}</span>
-          <ChevronDown className="sidebar-footer-btn__chevron" size={14} aria-hidden="true" />
-        </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="ui-popup ui-popup--menu ui-menu"
-          side="right"
-          align="end"
-          sideOffset={8}
-        >
-          <ul className="ui-menu__list" role="menu" aria-label={common.language.label}>
-            {supportedLocales.map((option) => {
-              const selected = option.value === locale;
-              return (
-                <li key={option.value}>
-                  <Popover.Close asChild>
-                    <button
-                      type="button"
-                      className="ui-menu__item"
-                      data-selected={selected || undefined}
-                      role="menuitemradio"
-                      aria-checked={selected}
-                      onClick={() => setLocale(option.value)}
-                    >
-                      <span className="ui-menu__icon" aria-hidden="true">
-                        {selected ? <Check size={14} /> : null}
-                      </span>
-                      <span className="ui-menu__label">{option.nativeLabel}</span>
-                      <span className="ui-menu__meta">
-                        {selected ? common.language.selected : option.label}
-                      </span>
-                    </button>
-                  </Popover.Close>
-                </li>
-              );
-            })}
-          </ul>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
   );
 }
 

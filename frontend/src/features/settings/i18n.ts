@@ -1,4 +1,3 @@
-import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "../../i18n";
 
 const englishSettingsCopy = {
   title: "Settings",
@@ -58,69 +57,10 @@ const englishSettingsCopy = {
   },
 } as const;
 
-export type SettingsCopy = CopyShape<typeof englishSettingsCopy>;
+export type SettingsCopy = typeof englishSettingsCopy;
 
-export const settingsCopy = {
-  en: englishSettingsCopy,
-  "zh-CN": {
-    title: "设置",
-    subtitle: "本地路径和每个 harness 的发现设置。",
-    loading: "正在加载设置",
-    storage: {
-      heading: "本地存储",
-      storeTitle: "Harness Asset Manager 存储",
-      storeSubtitle: "使用中的 Skill 会以规范副本保存在这里。",
-      cacheTitle: "商城缓存",
-      cacheSubtitle: "已下载的预览和安装包。",
-    },
-    harnesses: {
-      heading: "Harness 根目录",
-      detectedHeading: "已检测到的 Harness",
-      notDetectedHeading: "未检测到的 Harness",
-      enableSupport: (label: string) => `启用 ${label} 支持`,
-      saving: "保存中...",
-    },
-    autoAdopt: {
-      heading: "自动采纳",
-      enableAll: "启用全部自动维护",
-      agents: {
-        label: "自动修复偏离的 Agent 绑定",
-        short: "修复偏移",
-        sub: "只有在能证明它是唯一编辑时，才将 harness 副本折叠回存储。",
-      },
-      skills: {
-        label: "自动采用新的本地 Skill",
-        short: "Skill",
-        sub: "采用内容相同的未托管 Skill 文件夹，并替换为存储链接。",
-      },
-      slash_commands: {
-        label: "自动采用新的斜杠命令",
-        short: "命令",
-        sub: "采用内容相同的未托管命令文件，不覆盖其内容。",
-      },
-      mcp: {
-        label: "自动采用 MCP 配置",
-        short: "MCP",
-        sub: "只有所有 harness 配置完全一致时才采用。",
-      },
-      hooks: {
-        label: "自动采用 Hooks",
-        short: "Hooks",
-        sub: "将内容相同的未托管 Hook 提升到共享清单。",
-      },
-      permissions: {
-        label: "自动采用权限规则",
-        short: "权限",
-        sub: "将内容相同的未托管拒绝规则提升到共享清单。",
-      },
-    },
-    errors: {
-      unableToLoad: "无法加载设置。",
-      unableToUpdateHarnessSupport: "无法更新 harness 支持状态。",
-    },
-  },
-} satisfies LocalizedCopy<SettingsCopy>;
+export const settingsCopy = englishSettingsCopy;
 
 export function useSettingsCopy(): SettingsCopy {
-  return useLocalizedCopy(settingsCopy);
+  return settingsCopy;
 }

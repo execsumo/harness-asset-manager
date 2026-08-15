@@ -4,7 +4,7 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatusBadge, type StatusBadgeTone } from "../../../components/ui/StatusBadge";
-import { useCommonCopy, useLocale } from "../../../i18n";
+import { useCommonCopy } from "../../../i18n";
 import { useFormatPath } from "../../../lib/paths";
 import type { ActivityEvent } from "../api/types";
 import { useActivityCopy } from "../i18n";
@@ -16,7 +16,6 @@ export default function ActivityPage() {
   const query = useActivityQuery();
   const copy = useActivityCopy();
   const common = useCommonCopy();
-  const { locale } = useLocale();
   const formatPath = useFormatPath();
   const events = query.data?.events ?? [];
 
@@ -67,7 +66,6 @@ export default function ActivityPage() {
             <ActivityRow
               key={`${event.timestamp}-${event.family}-${event.operation}-${index}`}
               event={event}
-              locale={locale}
               formatPath={formatPath}
             />
           ))}
@@ -79,11 +77,9 @@ export default function ActivityPage() {
 
 function ActivityRow({
   event,
-  locale,
   formatPath,
 }: {
   event: ActivityEvent;
-  locale: string;
   formatPath: (path: string) => string;
 }) {
   const copy = useActivityCopy();
@@ -104,7 +100,7 @@ function ActivityRow({
           </div>
         </div>
         <time className="activity-event__time" dateTime={event.timestamp} title={event.timestamp}>
-          {formatTimestamp(event.timestamp, locale)}
+          {formatTimestamp(event.timestamp)}
         </time>
         <StatusBadge label={copy.outcomes[event.outcome]} tone={outcomeTone(event.outcome)} />
 
@@ -173,10 +169,10 @@ function formatParameter(value: ActivityEvent["parameters"][string]): string {
   return String(value);
 }
 
-function formatTimestamp(value: string, locale: string): string {
+function formatTimestamp(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
 
 function outcomeTone(outcome: ActivityEvent["outcome"]): StatusBadgeTone {

@@ -5,7 +5,6 @@ import { MemoryRouter } from "react-router-dom";
 
 import { ToastProvider } from "../components/Toast";
 import { UiTooltipProvider } from "../components/ui/UiTooltipProvider";
-import { LocaleProvider } from "../i18n";
 
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({
@@ -30,13 +29,11 @@ export function renderWithAppProviders(
   const result = render(ui, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>
-        <LocaleProvider>
-          <UiTooltipProvider delayDuration={0} skipDelayDuration={0}>
-            <ToastProvider>
-              <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
-            </ToastProvider>
-          </UiTooltipProvider>
-        </LocaleProvider>
+        <UiTooltipProvider delayDuration={0} skipDelayDuration={0}>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+          </ToastProvider>
+        </UiTooltipProvider>
       </QueryClientProvider>
     ),
     ...renderOptions,

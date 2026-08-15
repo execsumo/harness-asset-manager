@@ -10,7 +10,7 @@ describe("mcpStatusReason", () => {
         kind: "connection_issue",
         reason: "HTTP 403 Forbidden",
       },
-      mcpCopy.en,
+      mcpCopy,
     );
 
     expect(reason).toBe("Access refused. Check credentials, permissions, or quota.");
@@ -23,7 +23,7 @@ describe("mcpStatusReason", () => {
         kind: "connection_issue",
         reason: "HTTP 401 Unauthorized",
       },
-      mcpCopy.en,
+      mcpCopy,
       { documentationLinks: "available" },
     );
 
@@ -37,7 +37,7 @@ describe("mcpStatusReason", () => {
         kind: "connection_issue",
         reason: "HTTP 401 Unauthorized",
       },
-      mcpCopy.en,
+      mcpCopy,
       { documentationLinks: "missing" },
     );
 

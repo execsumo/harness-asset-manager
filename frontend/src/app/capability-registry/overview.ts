@@ -182,7 +182,7 @@ export function buildOverviewModel(
   hooks: HookInventoryDto | null | undefined,
   permissions: PermissionInventoryDto | null | undefined,
   agents: AgentInventoryDto | null | undefined,
-  copy: OverviewCopy = overviewCopy.en,
+  copy: OverviewCopy = overviewCopy,
 ): OverviewModel {
   const inUseSkills = skills?.summary.managed ?? null;
   const skillsToReview = skills?.summary.unmanaged ?? null;

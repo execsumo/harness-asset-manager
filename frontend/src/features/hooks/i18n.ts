@@ -1,4 +1,3 @@
-import { useLocalizedCopy } from "../../i18n";
 
 const englishHooksCopy = {
   inUse: {
@@ -70,11 +69,8 @@ const englishHooksCopy = {
 
 export type HooksCopy = typeof englishHooksCopy;
 
-export const hooksCopy = {
-  en: englishHooksCopy,
-  "zh-CN": englishHooksCopy,
-};
+export const hooksCopy = englishHooksCopy;
 
 export function useHooksCopy(): HooksCopy {
-  return useLocalizedCopy(hooksCopy);
+  return hooksCopy;
 }

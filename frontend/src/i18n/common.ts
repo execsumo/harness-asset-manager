@@ -1,4 +1,3 @@
-import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "./locales";
 
 const englishCommonCopy = {
   actions: {
@@ -32,11 +31,6 @@ const englishCommonCopy = {
     dark: "Dark",
     lightComingSoon: "Light theme — coming soon",
   },
-  language: {
-    label: "Language",
-    selected: "Selected",
-    ariaLabel: (current: string) => `Language: ${current}`,
-  },
   productLanguage: {
     inUse: "In use",
     needsReview: "Unmanaged",
@@ -68,79 +62,10 @@ const englishCommonCopy = {
   },
 } as const;
 
-export type CommonCopy = CopyShape<typeof englishCommonCopy>;
+export type CommonCopy = typeof englishCommonCopy;
 
-export const commonCopy = {
-  en: englishCommonCopy,
-  "zh-CN": {
-    actions: {
-      cancel: "取消",
-      refresh: "刷新",
-      refreshing: "刷新中",
-      clearFilters: "清除筛选",
-      clearSearch: "清除搜索",
-      clearSelection: "清除选择",
-      enableAll: "全部启用",
-      disableAll: "全部停用",
-      enabling: "启用中",
-      disabling: "停用中",
-      delete: "删除",
-      browseMarketplace: "浏览商城",
-      openMarketplace: "打开商城",
-      reviewItems: "查看待确认项",
-    },
-    nav: {
-      primary: "主导航",
-      overview: "总览",
-      skills: "Skill",
-      slashCommands: "Slash command",
-      mcpServers: "MCP 服务器",
-      marketplace: "商城",
-      clis: "CLI",
-      permissions: "权限",
-      activity: "活动",
-      settings: "设置",
-      light: "浅色",
-      dark: "深色",
-      lightComingSoon: "浅色主题即将推出",
-    },
-    language: {
-      label: "语言",
-      selected: "当前语言",
-      ariaLabel: (current: string) => `语言：${current}`,
-    },
-    productLanguage: {
-      inUse: "使用中",
-      needsReview: "未托管",
-      review: "确认",
-      discover: "发现",
-    },
-    loading: {
-      overview: "正在加载总览",
-      mcp: "正在加载 MCP",
-      marketplace: "正在加载商城",
-      slashCommands: "正在加载 Slash command",
-      settings: "正在加载设置",
-      activity: "正在加载活动",
-      document: "正在加载文档",
-    },
-    search: {
-      placeholder: "搜索...",
-      label: "筛选搜索",
-      filterOptions: "筛选选项",
-    },
-    bulk: {
-      ariaLabel: "批量操作",
-      selected: (count: number) => `已选择 ${count} 项`,
-      selectedAction: (action: string, count: number) => `${action}已选择的 ${count} 项`,
-    },
-    status: {
-      noMatches: "没有匹配结果",
-      unknownError: "未知错误",
-    },
-  },
-} satisfies LocalizedCopy<CommonCopy>;
+export const commonCopy = englishCommonCopy;
 
 export function useCommonCopy(): CommonCopy {
-  return useLocalizedCopy(commonCopy);
+  return commonCopy;
 }

@@ -1,4 +1,3 @@
-import { useLocalizedCopy, type CopyShape, type LocalizedCopy } from "../../i18n";
 import type { SlashCommandReviewDto, SlashReviewAction } from "./api/types";
 
 const englishSlashCommandsCopy = {
@@ -113,119 +112,10 @@ const englishSlashCommandsCopy = {
   },
 } as const;
 
-export type SlashCommandsCopy = CopyShape<typeof englishSlashCommandsCopy>;
+export type SlashCommandsCopy = typeof englishSlashCommandsCopy;
 
-export const slashCommandsCopy = {
-  en: englishSlashCommandsCopy,
-  "zh-CN": {
-    inUse: {
-      title: "Slash command",
-      subtitle: "创建一个全局 prompt，并同步到本地 slash command 文件夹。",
-      newCommand: "新建 command",
-      searchPlaceholder: "搜索 Slash command",
-      searchLabel: "搜索 Slash command",
-      loading: "正在加载 Slash command",
-      unableToLoad: "无法加载 Slash command。",
-      deleteTitle: (name: string) => `删除 ${name}？`,
-      deleteDescription: "这会移除源 command，以及每个已同步目标中的生成 command 文件。",
-      deleting: "删除中",
-      bulkDeleteTitle: (count: number) => `删除 ${count} 个 Slash command？`,
-      bulkDeleteDescription: "这会移除所有已选择 Slash command 的源 command 和生成文件。",
-    },
-    review: {
-      title: "待确认的 Slash command",
-      subtitle: (count: number) =>
-        count > 0 ? `${count} 个 command 处于非正常托管状态。` : "没有发现未托管、已变更或缺失的 slash command 文件。",
-      adoptAllEligible: "采用全部可用项",
-      adoptingAllCommands: "正在采用全部 command",
-      searchPlaceholder: "搜索待确认的 Slash command",
-      searchLabel: "搜索待确认的 Slash command",
-      loading: "正在加载待确认的 Slash command",
-      listAria: "待确认的 Slash command 列表",
-      emptyTitle: "没有需要确认的内容",
-      emptyBody: "目标文件夹中的 Slash command 文件已被托管，或支持的目标文件夹中没有 command。",
-      cannotUpdate: "无法更新",
-      actionLabel: (action: SlashReviewAction | null) => {
-        if (action === "restore_managed") return "恢复";
-        if (action === "adopt_target") return "采用";
-        if (action === "remove_binding") return "移除绑定";
-        if (action === "import") return "采用";
-        return "确认";
-      },
-      actionTitle: (action: SlashReviewAction) => {
-        if (action === "restore_managed") return "将托管 command 内容恢复到此 harness";
-        if (action === "adopt_target") return "使用此 harness command 作为托管内容";
-        if (action === "remove_binding") return "停止跟踪此 harness command，但不删除文件";
-        return "将此 command 采用到 Harness Asset Manager";
-      },
-      metaText: (row: SlashCommandReviewDto) => {
-        if (row.kind === "drifted") return `${row.targetLabel} 中有变更`;
-        if (row.kind === "missing") return `${row.targetLabel} 中缺失`;
-        return `发现于 ${row.targetLabel}`;
-      },
-    },
-    detail: {
-      delete: "删除",
-      enableTargetFor: (target: string, name: string) => `为 ${name} 启用 ${target}`,
-      disableTargetFor: (target: string, name: string) => `为 ${name} 停用 ${target}`,
-      close: "关闭 Slash command 详情",
-      actionsAria: "Slash command 操作",
-      edit: "编辑",
-      harnesses: "Harness",
-      harnessesFor: (name: string) => `${name} 的 harness`,
-      enabled: "已启用",
-      disabled: "已停用",
-      enable: "启用",
-      disable: "停用",
-      locations: "位置",
-      noHarnessLocations: "没有已启用的 harness 位置。",
-      written: "已写入",
-      description: "描述",
-      prompt: "Prompt",
-      noDescription: "没有提供描述。",
-      noPrompt: "没有 prompt 内容。",
-      form: {
-        createTitle: "新建 Slash command",
-        editTitle: "编辑 command",
-        description: "保存一个 prompt，并同步到所选全局 command 文件夹。",
-        close: "关闭",
-        name: "名称",
-        nameError: "请使用小写字母、数字和连字符，例如 code-review。",
-        descriptionLabel: "描述",
-        descriptionPlaceholder: "检查代码中的 bug 和安全风险",
-        prompt: "Prompt",
-        promptPlaceholder: "Review the following content:\n\n$ARGUMENTS",
-        harnesses: "Harness",
-        cancel: "取消",
-        create: "创建",
-        save: "保存",
-      },
-      review: {
-        actionsAria: "Slash command 确认操作",
-        conflictNotice:
-          "已有托管 Slash command 使用此名称。采用 harness command 会替换 Harness Asset Manager 来源。",
-        driftedNotice:
-          "此 harness command 在 Harness Asset Manager 上次同步后发生变化。恢复会把 Harness Asset Manager 来源写回 harness；采用会用此 harness command 更新 Harness Asset Manager。",
-        canonicalGapNotice:
-          "确认条目显示此 command 已托管，但当前 Slash command 列表中没有规范 command。",
-        harnessContext: (name: string) => `${name} 的 harness 确认上下文`,
-        noDescriptionParsed: "没有解析到描述。",
-        noPromptParsed: "没有解析到 prompt 内容。",
-        skillManagerSource: "Harness Asset Manager 来源",
-        noCanonicalContent: "没有可用的规范 command 内容。",
-        harnessCommand: "Harness command",
-        path: "路径",
-        notPresent: "不存在",
-        adoptHint: "采用此 command 以开始管理",
-        resolveHint: "从底部操作中解决",
-        changedInHarness: "Harness 中有变更",
-        missingFromHarness: "Harness 中缺失",
-        foundInHarness: "Harness 中发现",
-      },
-    },
-  },
-} satisfies LocalizedCopy<SlashCommandsCopy>;
+export const slashCommandsCopy = englishSlashCommandsCopy;
 
 export function useSlashCommandsCopy(): SlashCommandsCopy {
-  return useLocalizedCopy(slashCommandsCopy);
+  return slashCommandsCopy;
 }

@@ -1,4 +1,3 @@
-import { useLocalizedCopy } from "../../i18n";
 
 const englishPermissionsCopy = {
   inUse: {
@@ -69,11 +68,8 @@ const englishPermissionsCopy = {
 
 export type PermissionsCopy = typeof englishPermissionsCopy;
 
-export const permissionsCopy = {
-  en: englishPermissionsCopy,
-  "zh-CN": englishPermissionsCopy,
-};
+export const permissionsCopy = englishPermissionsCopy;
 
 export function usePermissionsCopy(): PermissionsCopy {
-  return useLocalizedCopy(permissionsCopy);
+  return permissionsCopy;
 }
