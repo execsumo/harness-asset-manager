@@ -26,7 +26,11 @@ export function HarnessAvatar({
 
   return (
     <span className={classes} aria-hidden="true">
-      <img className="harness-avatar__logo" src={presentation.logoSrc} alt="" />
+      <img
+        className={`harness-avatar__logo${presentation.variant === "hermes" ? " harness-avatar__logo--hermes" : ""}${presentation.variant === "droid" ? " harness-avatar__logo--droid" : ""}`}
+        src={presentation.logoSrc}
+        alt=""
+      />
     </span>
   );
 }

@@ -12,7 +12,7 @@ export function MatrixHarnessIcon({ label, logoKey, harness }: MatrixHarnessIcon
   if (presentation) {
     return (
       <img
-        className="matrix-harness-target__logo"
+        className={`matrix-harness-target__logo${presentation.variant === "hermes" ? " matrix-harness-target__logo--hermes" : ""}${presentation.variant === "droid" ? " matrix-harness-target__logo--droid" : ""}`}
         src={presentation.logoSrc}
         alt=""
         aria-hidden="true"

@@ -15,6 +15,37 @@
   display: block;
 }
 
+/* Nous Research's source mark is black; invert it only on dark surfaces. */
+:root:not([data-theme="light"]) .harness-avatar__logo--hermes,
+:root:not([data-theme="light"]) .matrix-harness-target__logo--hermes {
+  filter: invert(1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .harness-avatar__logo--hermes,
+  :root:not([data-theme="dark"]) .matrix-harness-target__logo--hermes {
+    filter: none;
+  }
+}
+
+/* Factory Droid's source mark is normalized to black on light surfaces and white on dark ones. */
+:root[data-theme="light"] .harness-avatar__logo--droid,
+:root[data-theme="light"] .matrix-harness-target__logo--droid {
+  filter: brightness(0);
+}
+
+:root:not([data-theme="light"]) .harness-avatar__logo--droid,
+:root:not([data-theme="light"]) .matrix-harness-target__logo--droid {
+  filter: brightness(0) invert(1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .harness-avatar__logo--droid,
+  :root:not([data-theme="dark"]) .matrix-harness-target__logo--droid {
+    filter: brightness(0);
+  }
+}
+
 .harness-avatar__fallback {
   width: 100%;
   height: 100%;
