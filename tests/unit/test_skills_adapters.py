@@ -97,9 +97,6 @@ class SkillsAdapterTests(unittest.TestCase):
                 "community-helper",
                 "Community Helper",
             )
-            (bundled / "SKILL.md").write_bytes(b"\xff")
-            (official / "SKILL.md").write_bytes(b"\xff")
-            (local / "SKILL.md").write_bytes(b"\xff")
             (spec.hermes_skills_root / ".bundled_manifest").write_text(
                 "Bundled Core:0123456789abcdef\n",
                 encoding="utf-8",
@@ -134,13 +131,15 @@ class SkillsAdapterTests(unittest.TestCase):
 
             self.assertEqual(
                 [skill.package.declared_name for skill in scan.skills],
-                ["Community Helper"],
+                ["Community Helper", "User Helper"],
             )
             self.assertEqual(scan.skills[0].package.source.kind, "github")
             self.assertEqual(scan.skills[0].package.source.locator, "github/example/community-helper")
+            self.assertEqual(scan.skills[1].package.source.kind, "harness-local")
+            self.assertEqual(scan.skills[1].package.source.locator, "hermes:canonical:local/user-helper")
             self.assertIn("Bundled Core", scan.excluded_skill_names)
             self.assertIn("official-helper", scan.excluded_skill_names)
-            self.assertIn("user-helper", scan.excluded_skill_names)
+            self.assertNotIn("user-helper", scan.excluded_skill_names)
             self.assertTrue((bundled / "SKILL.md").is_file())
             self.assertTrue((official / "SKILL.md").is_file())
             self.assertFalse(bundled.is_symlink())

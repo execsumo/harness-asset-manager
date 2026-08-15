@@ -1621,9 +1621,10 @@ landed on `main` as `3c9beb2` via a verified cherry-pick reconciled with fork-on
   (`_ensure_subtree`) so YAML comments survive — **write path changed for all config-subtree
   MCP harnesses** (claude/cursor/codex/opencode), all re-tested green.
 - **Skills**: categorized `~/.hermes/skills/<category>/<skill>/`, shared under `harnessam`; the legacy `harness-asset-manager` category remains readable.
-- **Hub-awareness**: reads `.hub/lock.json` + `.bundled_manifest`; excludes
-  official/builtin/optional + self-learned; adopts only external-hub; `origin_harness` provenance
-  threaded through the store manifest.
+- **Hermes skill discovery**: reads `.hub/lock.json` + `.bundled_manifest`; excludes
+  bundled/official/optional skills, while unclassified local/self-learned skills remain
+  discoverable and adoptable; external hub provenance is retained when available.
+  `origin_harness` provenance is threaded through the store manifest.
 - **Home override**: `SKILL_MANAGER_HERMES_HOME` → `HERMES_HOME` → `~/.hermes`.
 - **Kept fork-only**: our Hermes slash-command binding (still **provisional** — upstream omits it),
   `agy` harness, `hermes-logo.svg` (dropped upstream png).

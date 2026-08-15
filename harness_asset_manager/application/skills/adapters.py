@@ -350,7 +350,12 @@ def _scan_skill_roots(
                     managed_category=managed_category,
                 )
             )
-            if hermes_policy is not None and hermes_source is None and not is_harness_asset_manager_binding:
+            if hermes_policy is not None and not is_harness_asset_manager_binding and _is_excluded_skill(
+                package_name=None,
+                package_dir=skill_root.name,
+                locator_name=locator_name,
+                excluded_skill_names=excluded_skill_names,
+            ):
                 _record_excluded_skill(
                     skipped_skill_names,
                     package_name=None,

@@ -53,7 +53,7 @@ Harness Asset Manager manages six core extension families:
 ### 1. Skills
 - **Storage**: Portable Markdown skill folders (`SKILL.md` + scripts/resources) under `skills/<package>/`, with source and revision tracked in `skills-manifest.json`.
 - **Harness Integration**: Installed via local filesystem links (`symlink`) into each harness's skills directory (`~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, etc.).
-- **Hermes Support**: Categorized under `~/.hermes/skills/harnessam/`. Hub-installed skills are tracked while local/learned skills remain untouched. The legacy `harness-asset-manager` category remains readable for migration.
+- **Hermes Support**: Categorized under `~/.hermes/skills/harnessam/`. Hub provenance is retained when available; bundled/official skills remain excluded, while other valid local or self-learned skills are discoverable and adoptable. The legacy `harness-asset-manager` category remains readable for migration.
 
 ### 2. MCP Servers
 - **Storage**: Normalized JSON records in `mcp/manifest.json`.

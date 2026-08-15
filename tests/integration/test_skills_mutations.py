@@ -193,19 +193,19 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertTrue((harness.spec.codex_root / "external-helper").is_symlink())
 
-    def test_hermes_owned_skills_are_hidden_and_manage_all_leaves_files_alone(self) -> None:
+    def test_hermes_bundled_skills_stay_hidden_but_local_skills_are_adoptable(self) -> None:
         with AppTestHarness(fixture_factory=seed_hermes_bundled_exclusion_fixture) as harness:
             skills = harness.get_json("/api/skills")
 
             self.assertNotIn("Bundled Core", [row["name"] for row in skills["rows"]])
-            self.assertNotIn("User Helper", [row["name"] for row in skills["rows"]])
+            self.assertIn("User Helper", [row["name"] for row in skills["rows"]])
 
             result = harness.post_json("/api/skills/manage-all")
             refreshed = harness.get_json("/api/skills")
 
             self.assertTrue(result["ok"])
             self.assertNotIn("Bundled Core", [row["name"] for row in refreshed["rows"]])
-            self.assertNotIn("User Helper", [row["name"] for row in refreshed["rows"]])
+            self.assertIn("User Helper", [row["name"] for row in refreshed["rows"]])
             bundled_dir = harness.spec.hermes_skills_root / "builtin" / "bundled-core"
             self.assertTrue((bundled_dir / "SKILL.md").is_file())
             self.assertFalse(bundled_dir.is_symlink())
