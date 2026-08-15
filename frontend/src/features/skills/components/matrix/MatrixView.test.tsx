@@ -87,6 +87,33 @@ describe("Skills MatrixView", () => {
 
     expect(onToggleCell).toHaveBeenCalledWith(rows[0], rows[0].cells[0]);
   });
+
+  it("keeps an undetected harness visible but not actionable", () => {
+    render(
+      <MatrixView
+        rows={[{
+          ...rows[0],
+          cells: [{
+            harness: "opencode",
+            label: "OpenCode",
+            logoKey: "opencode",
+            state: "disabled",
+            interactive: false,
+          }],
+        }]}
+        harnessColumns={[{ harness: "opencode", label: "OpenCode", logoKey: "opencode", installed: false }]}
+        checkedRefs={new Set()}
+        selectedSkillRef={null}
+        pendingToggleKeys={new Set()}
+        onOpenSkill={vi.fn()}
+        onToggleChecked={vi.fn()}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Enable Alpha on OpenCode" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("OpenCode unavailable")).toHaveTextContent("—");
+  });
 });
 
 function rowNames(): string[] {

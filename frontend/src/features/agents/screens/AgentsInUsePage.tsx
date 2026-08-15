@@ -183,6 +183,12 @@ export default function AgentsInUsePage() {
                         }
                       }
 
+                      if (!column.installed) {
+                        state = "unavailable";
+                        tooltip = `${column.label} is not detected`;
+                        action = null;
+                      }
+
                       return (
                         <td key={column.harness} className="matrix-table__cell matrix-table__cell--harness">
                           <UiTooltip content={tooltip}>

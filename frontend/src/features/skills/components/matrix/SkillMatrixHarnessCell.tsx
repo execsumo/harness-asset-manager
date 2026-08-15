@@ -18,9 +18,18 @@ export function SkillMatrixHarnessCell({
   pending = false,
   onToggle,
 }: SkillMatrixHarnessCellProps) {
-  if (cell.state === "empty" || cell.state === "found") {
+  // The inventory keeps undetected harnesses in the matrix so the column set
+  // stays stable, but those cells are status-only. `interactive` already
+  // includes harness availability; do not let an unavailable managed cell
+  // look actionable just because its persisted state is "disabled".
+  if (!cell.interactive || cell.state === "empty" || cell.state === "found") {
     return (
-      <span className="matrix-harness-target" data-state="empty" aria-hidden="true">
+      <span
+        className="matrix-harness-target"
+        data-state={cell.interactive ? "empty" : "disabled"}
+        aria-label={!cell.interactive && cell.state === "disabled" ? `${cell.label} unavailable` : undefined}
+        aria-hidden={cell.interactive ? true : undefined}
+      >
         —
       </span>
     );
