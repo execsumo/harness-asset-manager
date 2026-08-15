@@ -88,6 +88,7 @@ describe("SettingsPage", () => {
     const unavailableToggle = screen.getByRole("switch", { name: "Enable OpenCode support" });
     expect(unavailableToggle).not.toBeChecked();
     expect(unavailableToggle).toBeDisabled();
+    expect(screen.queryAllByText("Saving...")).toHaveLength(0);
     const harnessRow = unavailableToggle.closest(".settings-maintenance__harness");
     expect(harnessRow).toBeInTheDocument();
     expect(harnessRow?.querySelector(".settings-row__sub")).not.toBeInTheDocument();

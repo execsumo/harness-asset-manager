@@ -137,7 +137,7 @@ function HarnessMaintenanceRow({
           disabled={isHarnessPending(harness.harness) || !harness.installed}
           label=""
           ariaLabel={harnessCopy.enableSupport(harness.label)}
-          pendingLabel={harnessCopy.saving}
+          pendingLabel={harness.installed ? harnessCopy.saving : undefined}
           onCheckedChange={(checked) => onHarnessSupportToggle(harness.harness, checked)}
         />
       </th>
