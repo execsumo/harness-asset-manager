@@ -111,7 +111,7 @@
 
 .settings-maintenance__table {
   width: 100%;
-  min-width: 66rem;
+  min-width: 60rem;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -123,7 +123,7 @@
 }
 
 .settings-maintenance__table thead th {
-  width: 9rem;
+  width: 7rem;
   padding: var(--space-2);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
@@ -134,7 +134,7 @@
 }
 
 .settings-maintenance__table thead th:first-child {
-  width: 12rem;
+  width: 18rem;
   text-align: left;
   text-transform: uppercase;
 }

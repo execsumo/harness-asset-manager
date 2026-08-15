@@ -57,7 +57,7 @@ export function SettingsHarnessMaintenanceMatrix({
                 return (
                   <th scope="col" id={`settings-maintenance-${family}`} key={family}>
                     <span className="settings-maintenance__family-label" title={option.sub}>
-                      {option.label}
+                      {option.short}
                     </span>
                   </th>
                 );

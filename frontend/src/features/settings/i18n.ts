@@ -19,30 +19,36 @@ const englishSettingsCopy = {
     saving: "Saving...",
   },
   autoAdopt: {
-    heading: "Automatic maintenance",
+    heading: "Automatic Adoption",
     enableAll: "Enable all auto-maintenance",
     agents: {
       label: "Repair drifted Agent bindings",
+      short: "Repair Drift",
       sub: "Fold an edited harness copy back into the store only when it is provably the only edit.",
     },
     skills: {
       label: "Adopt new local Skills",
+      short: "Skills",
       sub: "Adopt equivalent unmanaged Skill folders and replace them with store links.",
     },
     slash_commands: {
       label: "Adopt new slash commands",
+      short: "Commands",
       sub: "Adopt equivalent unmanaged command files without overwriting their contents.",
     },
     mcp: {
       label: "Adopt MCP configurations",
+      short: "MCP",
       sub: "Adopt only when all observed harness configurations are identical.",
     },
     hooks: {
       label: "Adopt Hooks",
+      short: "Hooks",
       sub: "Promote equivalent unmanaged Hooks into the shared manifest.",
     },
     permissions: {
       label: "Adopt Permissions",
+      short: "Permissions",
       sub: "Promote equivalent unmanaged deny rules into the shared manifest.",
     },
   },
@@ -75,30 +81,36 @@ export const settingsCopy = {
       saving: "保存中...",
     },
     autoAdopt: {
-      heading: "自动维护",
+      heading: "自动采纳",
       enableAll: "启用全部自动维护",
       agents: {
         label: "自动修复偏离的 Agent 绑定",
+        short: "修复偏移",
         sub: "只有在能证明它是唯一编辑时，才将 harness 副本折叠回存储。",
       },
       skills: {
         label: "自动采用新的本地 Skill",
+        short: "Skill",
         sub: "采用内容相同的未托管 Skill 文件夹，并替换为存储链接。",
       },
       slash_commands: {
         label: "自动采用新的斜杠命令",
+        short: "命令",
         sub: "采用内容相同的未托管命令文件，不覆盖其内容。",
       },
       mcp: {
         label: "自动采用 MCP 配置",
+        short: "MCP",
         sub: "只有所有 harness 配置完全一致时才采用。",
       },
       hooks: {
         label: "自动采用 Hooks",
+        short: "Hooks",
         sub: "将内容相同的未托管 Hook 提升到共享清单。",
       },
       permissions: {
         label: "自动采用权限规则",
+        short: "权限",
         sub: "将内容相同的未托管拒绝规则提升到共享清单。",
       },
     },

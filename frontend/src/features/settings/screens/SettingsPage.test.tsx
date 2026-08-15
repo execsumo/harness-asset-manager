@@ -45,7 +45,7 @@ describe("SettingsPage", () => {
 
     expect(await screen.findByText("/tmp/data/harnessam/shared")).toBeInTheDocument();
     expect(screen.getByText("/tmp/data/harnessam/marketplace")).toBeInTheDocument();
-    expect(screen.getByText("Repair drifted Agent bindings")).toBeInTheDocument();
+    expect(screen.getByText("Repair Drift")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enable all auto-maintenance" })).toBeInTheDocument();
   });
 
