@@ -420,7 +420,7 @@ Automatic adoption is opt-in per asset family, except for the existing safe Agen
 
 These checks run while reading the relevant inventory or detail view, so a setting change takes effect on the next read; there is no background watcher. Codex rendered-agent adoption remains excluded because its TOML-to-Markdown conversion is not lossless. When the UI is closed, run `harnessam refresh` for one read and reconciliation pass across all asset families; use `harnessam refresh --json` for automation.
 
-App-owned files live under `~/.harnessam` on macOS and under the `harnessam` directory beneath each XDG base directory on Linux. Existing `~/.harness-asset-manager` and `~/Library/Application Support/harness-asset-manager` stores are migrated automatically and retained as compatibility aliases.
+App-owned files live under `~/.harnessam` on macOS and Linux. Existing XDG `harnessam` and `harness-asset-manager` stores are migrated automatically and retained as compatibility aliases.
 
 ---
 
@@ -559,7 +559,7 @@ A missing `frontend/dist` is fine — the API serves normally and only the HTML 
 
 ## Configuration
 
-On macOS, app-owned files live under `~/.harnessam`. On Linux, app-owned files use XDG base directories under `harnessam`. Existing `harness-asset-manager` directories are migrated automatically on first use.
+On macOS and Linux, app-owned files live under `~/.harnessam`. Explicit XDG overrides remain supported for isolated/test runs. Existing `harnessam` and `harness-asset-manager` directories are migrated automatically on first use.
 
 ### Path Locations
 
@@ -580,17 +580,17 @@ Useful macOS paths:
 
 Useful Linux paths:
 
-- skills store: `${XDG_DATA_HOME:-~/.local/share}/harnessam/skills`
-- agents store: `${XDG_DATA_HOME:-~/.local/share}/harnessam/agents`
-- agent binding ledger: `${XDG_DATA_HOME:-~/.local/share}/harnessam/bindings.json`
-- agent repair audit log: `${XDG_DATA_HOME:-~/.local/share}/harnessam/agents-audit.json`
-- mutation audit journal: `${XDG_DATA_HOME:-~/.local/share}/harnessam/audit.log`
-- MCP manifest: `${XDG_DATA_HOME:-~/.local/share}/harnessam/mcp/manifest.json`
-- hooks manifest: `${XDG_DATA_HOME:-~/.local/share}/harnessam/hooks/manifest.json`
-- slash command library: `${XDG_DATA_HOME:-~/.local/share}/harnessam/slash-commands/commands`
-- slash command sync state: `${XDG_DATA_HOME:-~/.local/share}/harnessam/slash-commands/sync-state.json`
-- marketplace cache: `${XDG_DATA_HOME:-~/.local/share}/harnessam/marketplace`
-- app settings: `${XDG_CONFIG_HOME:-~/.config}/harnessam/settings.json`
+- skills store: `~/.harnessam/skills`
+- agents store: `~/.harnessam/agents`
+- agent binding ledger: `~/.harnessam/bindings.json`
+- agent repair audit log: `~/.harnessam/agents-audit.json`
+- mutation audit journal: `~/.harnessam/audit.log`
+- MCP manifest: `~/.harnessam/mcp/manifest.json`
+- hooks manifest: `~/.harnessam/hooks/manifest.json`
+- slash command library: `~/.harnessam/slash-commands/commands`
+- slash command sync state: `~/.harnessam/slash-commands/sync-state.json`
+- marketplace cache: `~/.harnessam/marketplace`
+- app settings: `~/.harnessam/settings.json`
 
 ### Environment Variable Overrides
 

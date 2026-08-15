@@ -30,7 +30,6 @@ class SettingsQueryService:
                 family: tuple(
                     binding.definition.harness
                     for binding in self.harness_kernel.bindings_for_family(family)
-                    if binding.definition.harness in {"claude", "codex", "agy", "cursor"}
                 )
                 for family in self.auto_adopt_store.default_harnesses()
             },

@@ -24,6 +24,7 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
   const autoAdoptMutation = useAutoAdoptMutation();
   const autoAdoptHarnessesMutation = useAutoAdoptHarnessesMutation();
   const pendingRegistry = usePendingRegistry<string>();
+  const data = settingsQuery.data ?? null;
 
   async function handleSupportToggle(harness: string, nextEnabled: boolean) {
     setErrorMessage("");
@@ -37,24 +38,17 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
     }
   }
 
-  async function handleAutoAdoptToggle(family: string, nextEnabled: boolean) {
-    setErrorMessage("");
-    try {
-      await pendingRegistry.run(
-        `auto-adopt-${family}`,
-        () => autoAdoptMutation.mutateAsync({ family, enabled: nextEnabled }),
-      );
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Unable to update auto-adopt settings.");
-    }
-  }
 
-  async function handleAutoAdoptHarnesses(family: string, harnesses: string[]) {
+  async function handleAutoAdoptHarnessToggle(family: string, harness: string, enabled: boolean) {
     setErrorMessage("");
+    const currentHarnesses = data?.autoAdoptHarnesses?.[family] ?? [];
+    const nextHarnesses = enabled
+      ? Array.from(new Set([...currentHarnesses, harness]))
+      : currentHarnesses.filter((item) => item !== harness);
     try {
       await pendingRegistry.run(
         `auto-adopt-defaults-${family}`,
-        () => autoAdoptHarnessesMutation.mutateAsync({ family, harnesses }),
+        () => autoAdoptHarnessesMutation.mutateAsync({ family, harnesses: nextHarnesses }),
       );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Unable to update auto-adopt defaults.");
@@ -78,16 +72,14 @@ export function useSettingsPageController(copy: SettingsPageControllerCopy = def
   }
 
   return {
-    data: settingsQuery.data ?? null,
+    data,
     errorMessage: errorMessage || (settingsQuery.error instanceof Error ? settingsQuery.error.message : ""),
     isPending: settingsQuery.isPending,
     isHarnessPending: (harness: string) => pendingRegistry.isPending(settingsSupportActionKey(harness)),
-    isAutoAdoptPending: (family: string) => pendingRegistry.isPending(`auto-adopt-${family}`),
     isAutoAdoptHarnessesPending: (family: string) => pendingRegistry.isPending(`auto-adopt-defaults-${family}`),
     setErrorMessage,
     handleSupportToggle,
-    handleAutoAdoptToggle,
-    handleAutoAdoptHarnesses,
+    handleAutoAdoptHarnessToggle,
     handleEnableAllAutoAdopt,
   };
 }

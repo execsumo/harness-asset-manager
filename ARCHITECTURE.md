@@ -146,7 +146,7 @@ rebuild, and `container.py` migrates any surviving `shared/` or `packages/local/
 directory into this shape on startup).
 
 ```
-~/.harnessam/ (macOS) or $XDG_DATA_HOME/harnessam/ (Linux)
+~/.harnessam/ (macOS and Linux; explicit XDG overrides remain supported)
 ├── settings.json                       # Global settings, harness toggles, autoAdopt
 ├── configs/                            # Canonical native harness config baselines & snapshots
 │   ├── claude/                         # .claude.json, settings.json

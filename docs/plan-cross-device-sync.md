@@ -29,7 +29,7 @@ cannot work, and the reasons are the same reasons HAM exists:
 | MCP | translated into JSON / TOML / YAML / JSONC per harness | five different config shapes, none of them the canonical record |
 | Hooks, Permissions | **merged into** config files the user also owns | overwrites the receiving machine's own unmanaged keys |
 
-`paths.py:80-98` already diverges macOS (`~/.harnessam`) from Linux (XDG),
+`paths.py` uses the same default store on macOS and Linux (`~/.harnessam`),
 so absolute paths differ between machines even for the same user. Anything that
 transports resolved paths is wrong on arrival.
 

@@ -4,6 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from harness_asset_manager.application.settings.auto_adopt import (
@@ -53,23 +54,23 @@ class SharedSettingsFileTests(unittest.TestCase):
         self.auto_adopt = AutoAdoptStore(self.path)
 
     def test_toggling_a_harness_does_not_wipe_the_auto_adopt_setting(self) -> None:
-        self.auto_adopt.set_enabled("agents", False)
+        self.auto_adopt.set_default_harnesses("agents", ("claude",))
         self.support.set_enabled("cursor", False)
 
-        self.assertFalse(self.auto_adopt.is_enabled("agents"))
+        self.assertTrue(self.auto_adopt.is_enabled("agents"))
         self.assertEqual(self.support.load().disabled_harnesses, ("cursor",))
 
     def test_toggling_auto_adopt_does_not_wipe_disabled_harnesses(self) -> None:
         self.support.set_enabled("cursor", False)
-        self.auto_adopt.set_enabled("skills", False)
+        self.auto_adopt.set_default_harnesses("skills", ("claude",))
 
         self.assertEqual(self.support.load().disabled_harnesses, ("cursor",))
-        self.assertFalse(self.auto_adopt.is_enabled("skills"))
+        self.assertTrue(self.auto_adopt.is_enabled("skills"))
 
     def test_unrelated_keys_survive_both_writers(self) -> None:
         self.path.write_text(json.dumps({"userTheme": "light"}), encoding="utf-8")
         self.support.set_enabled("cursor", False)
-        self.auto_adopt.set_enabled("agents", False)
+        self.auto_adopt.set_default_harnesses("agents", ("claude",))
         stored = json.loads(self.path.read_text(encoding="utf-8"))
         self.assertEqual(stored["userTheme"], "light")
 
@@ -82,34 +83,33 @@ class AutoAdoptStoreTests(unittest.TestCase):
         self.store = AutoAdoptStore(self.path)
 
     def test_defaults_when_nothing_is_stored(self) -> None:
-        """Agents on (every action it can take is provable); skills off (rmtree)."""
-        self.assertEqual(self.store.preferences(), dict(DEFAULTS))
-        self.assertTrue(self.store.is_enabled("agents"))
+        self.assertEqual(self.store.preferences(), {family: False for family in DEFAULTS})
+        self.assertFalse(self.store.is_enabled("agents"))
         self.assertFalse(self.store.is_enabled("skills"))
 
     def test_round_trips_a_change(self) -> None:
-        self.store.set_enabled("agents", False)
-        self.assertFalse(AutoAdoptStore(self.path).is_enabled("agents"))
+        self.store.set_default_harnesses("agents", ("claude",))
+        self.assertTrue(AutoAdoptStore(self.path).is_enabled("agents"))
 
     def test_enabling_skills_is_supported(self) -> None:
-        prefs = self.store.set_enabled("skills", True)
-        self.assertTrue(prefs["skills"])
+        self.store.set_default_harnesses("skills", ("claude",))
+        self.assertTrue(self.store.is_enabled("skills"))
 
     def test_disabling_skills_succeeds(self) -> None:
-        prefs = self.store.set_enabled("skills", False)
-        self.assertFalse(prefs["skills"])
+        self.store.set_default_harnesses("skills", ())
+        self.assertFalse(self.store.is_enabled("skills"))
 
     def test_agents_unaffected_both_ways(self) -> None:
-        prefs_off = self.store.set_enabled("agents", False)
-        self.assertFalse(prefs_off["agents"])
-        prefs_on = self.store.set_enabled("agents", True)
-        self.assertTrue(prefs_on["agents"])
+        self.store.set_default_harnesses("agents", ("claude",))
+        self.assertTrue(self.store.is_enabled("agents"))
+        self.store.set_default_harnesses("agents", ())
+        self.assertFalse(self.store.is_enabled("agents"))
 
     def test_an_unreadable_settings_file_falls_back_to_defaults(self) -> None:
         """The kill switch must never fail *open* because of a broken file — but it
         must not fail closed on a typo either. Declared defaults win."""
         self.path.write_text("{broken", encoding="utf-8")
-        self.assertEqual(self.store.preferences(), dict(DEFAULTS))
+        self.assertEqual(self.store.preferences(), {family: False for family in DEFAULTS})
 
     def test_junk_values_are_ignored_per_family(self) -> None:
         self.path.write_text(
@@ -117,22 +117,17 @@ class AutoAdoptStoreTests(unittest.TestCase):
             encoding="utf-8",
         )
         preferences = self.store.preferences()
-        self.assertTrue(preferences["agents"])  # non-bool ignored, default stands
-        self.assertTrue(preferences["skills"])
+        self.assertFalse(preferences["agents"])
+        self.assertFalse(preferences["skills"])
         self.assertNotIn("bogus", preferences)
 
-    def test_an_unknown_family_is_refused(self) -> None:
-        with self.assertRaises(KeyError):
-            self.store.set_enabled("unknown", True)
-
     def test_auto_adopt_harness_defaults_round_trip_without_wiping_other_settings(self) -> None:
-        self.store.set_enabled("agents", False)
         defaults = self.store.set_default_harnesses("agents", ("claude", "codex", "claude"))
 
         self.assertEqual(defaults["agents"], ("claude", "codex"))
         reloaded = AutoAdoptStore(self.path)
         self.assertEqual(reloaded.default_harnesses()["agents"], ("claude", "codex"))
-        self.assertFalse(reloaded.is_enabled("agents"))
+        self.assertTrue(reloaded.is_enabled("agents"))
 
     def test_auto_adopt_harness_defaults_ignore_malformed_entries(self) -> None:
         self.path.write_text(
@@ -151,8 +146,14 @@ class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
         self.path = Path(self._tmp.name) / "settings.json"
         self.auto_adopt_store = AutoAdoptStore(self.path)
         self.support_store = HarnessSupportStore(self.path)
+        self.kernel = MagicMock()
+        self.kernel.harness_statuses.return_value = (
+            SimpleNamespace(harness="claude", installed=True),
+            SimpleNamespace(harness="codex", installed=True),
+        )
+        self.kernel.enabled_harness_ids_for_family.return_value = ("claude", "codex")
         self.service = SettingsMutationService(
-            harness_kernel=MagicMock(),
+            harness_kernel=self.kernel,
             support_store=self.support_store,
             invalidation=MagicMock(),
             auto_adopt_store=self.auto_adopt_store,
@@ -166,21 +167,18 @@ class SettingsMutationServiceAutoAdoptTests(unittest.TestCase):
     def test_disabling_skills_succeeds(self) -> None:
         result = self.service.set_auto_adopt("skills", False)
         self.assertTrue(result["ok"])
-        self.assertEqual(result["autoAdopt"], dict(DEFAULTS))
+        self.assertFalse(result["autoAdopt"]["skills"])
 
     def test_agents_unaffected_both_ways(self) -> None:
         res_off = self.service.set_auto_adopt("agents", False)
         self.assertTrue(res_off["ok"])
-        expected = dict(DEFAULTS)
-        expected["agents"] = False
-        self.assertEqual(res_off["autoAdopt"], expected)
+        self.assertFalse(res_off["autoAdopt"]["agents"])
 
         res_on = self.service.set_auto_adopt("agents", True)
         self.assertTrue(res_on["ok"])
-        expected["agents"] = True
-        self.assertEqual(res_on["autoAdopt"], expected)
+        self.assertTrue(res_on["autoAdopt"]["agents"])
 
-    def test_unknown_family_raises_mutation_error_404(self) -> None:
+    def test_enabling_any_known_family_selects_eligible_harnesses(self) -> None:
         result = self.service.set_auto_adopt("slash_commands", True)
         self.assertTrue(result["autoAdopt"]["slash_commands"])
 

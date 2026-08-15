@@ -92,8 +92,7 @@ Python imports, persisted Codex keys, generated markers, and legacy migration pa
 retain `harness-asset-manager` for compatibility:
 
 - macOS: `~/.harnessam`
-- Linux: `$XDG_CONFIG_HOME/harnessam`, `$XDG_DATA_HOME/harnessam`, and
-  `$XDG_STATE_HOME/harnessam`
+- Linux: `~/.harnessam` (unless explicit XDG overrides are set)
 
 On first resolution, existing `harness-asset-manager` stores are moved into the new location
 without deleting content, and a compatibility symlink remains at the old location so existing

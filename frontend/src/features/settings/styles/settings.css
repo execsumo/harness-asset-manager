@@ -82,15 +82,133 @@
   color: var(--color-text);
 }
 
-.settings-select {
-  min-width: 8rem;
-  min-height: 2.2rem;
-  padding: var(--space-1) var(--space-2);
+.settings-harness-group__heading {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-maintenance {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-maintenance__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.settings-maintenance__scroll {
+  overflow-x: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+}
+
+.settings-maintenance__table {
+  width: 100%;
+  min-width: 66rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.settings-maintenance__table th,
+.settings-maintenance__table td {
+  min-height: 3.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-maintenance__table thead th {
+  width: 9rem;
+  padding: var(--space-2);
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.settings-maintenance__table thead th:first-child {
+  width: 12rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.settings-maintenance__table thead th:not(:first-child) {
+  display: table-cell;
+}
+
+.settings-maintenance__family-label {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-maintenance__group-heading th {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.settings-maintenance__harness {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.settings-maintenance__harness-info {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.settings-maintenance__harness-name {
+  overflow: hidden;
   color: var(--color-text);
-  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-maintenance__harness-path {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-maintenance__cell {
+  padding: var(--space-2);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.settings-maintenance__cell input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-accent);
+}
+
+.settings-maintenance__unsupported {
+  color: var(--color-text-muted);
 }
 
 }

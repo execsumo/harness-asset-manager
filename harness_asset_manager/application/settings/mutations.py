@@ -23,19 +23,32 @@ class SettingsMutationService:
     def set_harness_support(self, harness: str, enabled: bool) -> dict[str, object]:
         if not self.harness_kernel.is_known_harness(harness):
             raise MutationError(f"unknown harness: {harness}", status=404)
+        status = next(item for item in self.harness_kernel.harness_statuses() if item.harness == harness)
+        if enabled and not status.installed:
+            raise MutationError(f"cannot enable undetected harness: {harness}", status=400)
         self.support_store.set_enabled(harness, enabled)
         self.invalidation.invalidate_all()
         return {"ok": True, "enabled": enabled}
 
     def set_auto_adopt(self, family: str, enabled: bool) -> dict[str, object]:
-        try:
-            preferences = self.auto_adopt_store.set_enabled(family, enabled)
-        except KeyError:
-            raise MutationError(f"unknown asset family: {family}", status=404) from None
-        except ValueError as error:
-            raise MutationError(str(error), status=400) from error
+        if family not in self.auto_adopt_store.default_harnesses():
+            raise MutationError(f"unknown asset family: {family}", status=404)
+        harnesses = list(self._eligible_harnesses_for_family(family)) if enabled else []
+        defaults = self.auto_adopt_store.set_default_harnesses(family, tuple(harnesses))
         self.invalidation.invalidate_all()
-        return {"ok": True, "autoAdopt": preferences}
+        return {
+            "ok": True,
+            "autoAdopt": self.auto_adopt_store.preferences(),
+            "autoAdoptHarnesses": {key: list(items) for key, items in defaults.items()},
+        }
+
+    def _eligible_harnesses_for_family(self, family: str) -> tuple[str, ...]:
+        installed = {status.harness for status in self.harness_kernel.harness_statuses() if status.installed}
+        return tuple(
+            harness
+            for harness in self.harness_kernel.enabled_harness_ids_for_family(family)
+            if harness in installed
+        )
 
     def set_auto_adopt_harnesses(self, family: str, harnesses: list[str]) -> dict[str, object]:
         if family not in self.auto_adopt_store.default_harnesses():
@@ -53,6 +66,7 @@ class SettingsMutationService:
         self.invalidation.invalidate_all()
         return {
             "ok": True,
+            "autoAdopt": self.auto_adopt_store.preferences(),
             "autoAdoptHarnesses": {
                 key: list(items) for key, items in defaults.items()
             },

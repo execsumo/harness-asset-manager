@@ -11,12 +11,11 @@ from harness_asset_manager.settings_file import (
 AutoAdoptFamily = Literal["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"]
 AUTO_ADOPT_FAMILIES = tuple(("agents", "skills", "slash_commands", "mcp", "hooks", "permissions"))
 
-# Agents default **on**: every repair it takes is provable. The remaining families
-# default **off** because adoption changes ownership of user-created files or
-# config entries. They can be enabled independently once the user has reviewed the
-# family-specific safety rules.
+# No family is active until at least one eligible harness target is selected. The
+# boolean map is retained as the family catalog for API compatibility; effective
+# state is derived exclusively from ``autoAdoptHarnesses`` below.
 DEFAULTS: Mapping[str, bool] = {
-    "agents": True,
+    "agents": False,
     "skills": False,
     "slash_commands": False,
     "mcp": False,
@@ -28,7 +27,6 @@ DEFAULT_HARNESSES: Mapping[str, tuple[str, ...]] = {
 }
 IMPLEMENTED: set[str] = set(DEFAULTS)
 
-SETTINGS_KEY = "autoAdopt"
 HARNESS_DEFAULTS_KEY = "autoAdoptHarnesses"
 
 
@@ -45,13 +43,9 @@ class AutoAdoptStore:
         self.path = path
 
     def preferences(self) -> dict[str, bool]:
-        stored = load_settings_document(self.path).get(SETTINGS_KEY)
-        values = dict(DEFAULTS)
-        if isinstance(stored, dict):
-            for family, value in stored.items():
-                if family in values and isinstance(value, bool):
-                    values[family] = value
-        return values
+        """Return effective state derived solely from configured target harnesses."""
+        harnesses = self.default_harnesses()
+        return {family: bool(harnesses.get(family)) for family in AUTO_ADOPT_FAMILIES}
 
     def is_enabled(self, family: AutoAdoptFamily) -> bool:
         return self.preferences().get(family, DEFAULTS.get(family, False))
@@ -81,26 +75,12 @@ class AutoAdoptStore:
         )
         return values
 
-    def set_enabled(self, family: str, enabled: bool) -> dict[str, bool]:
-        if family not in DEFAULTS:
-            raise KeyError(family)
-        if family not in IMPLEMENTED and enabled:
-            raise ValueError(f"auto-adopt for '{family}' is not implemented yet")
-        values = self.preferences()
-        values[family] = enabled
-        update_settings_document(
-            self.path, lambda document: document.update({SETTINGS_KEY: dict(values)})
-        )
-        return values
-
-
 __all__ = [
     "AUTO_ADOPT_FAMILIES",
     "DEFAULTS",
     "DEFAULT_HARNESSES",
     "HARNESS_DEFAULTS_KEY",
     "IMPLEMENTED",
-    "SETTINGS_KEY",
     "AutoAdoptFamily",
     "AutoAdoptStore",
 ]

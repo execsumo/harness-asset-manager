@@ -13,8 +13,8 @@ const englishSettingsCopy = {
   },
   harnesses: {
     heading: "Harness roots",
-    detected: "Detected on this machine",
-    notDetected: "Not detected on this machine",
+    detectedHeading: "Detected harnesses",
+    notDetectedHeading: "Not detected harnesses",
     enableSupport: (label: string) => `Enable ${label} support`,
     saving: "Saving...",
   },
@@ -69,8 +69,8 @@ export const settingsCopy = {
     },
     harnesses: {
       heading: "Harness 根目录",
-      detected: "已在这台机器上检测到",
-      notDetected: "未在这台机器上检测到",
+      detectedHeading: "已检测到的 Harness",
+      notDetectedHeading: "未检测到的 Harness",
       enableSupport: (label: string) => `启用 ${label} 支持`,
       saving: "保存中...",
     },

@@ -69,8 +69,8 @@ describe("AgentsNeedsReviewPage", () => {
 
     const okRow = screen.getByText("OK Agent").closest("tr");
     expect(okRow).not.toBeNull();
-    expect(okRow).toHaveTextContent("Cursor");
-    expect(okRow).toHaveTextContent("Claude Code");
+    expect(okRow?.querySelector('[aria-label="Discovered in Cursor"]')).not.toBeNull();
+    expect(okRow?.querySelector('[aria-label="Not found in Claude Code"]')).not.toBeNull();
     expect(okRow?.querySelectorAll('[aria-label^="Discovered in"]').length).toBe(1);
   });
 

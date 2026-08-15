@@ -198,13 +198,26 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.data_dir, isolated)
             self.assertEqual(paths.state_dir, isolated)
 
-    def test_linux_defaults_use_xdg_basedir_layout(self) -> None:
+    def test_linux_defaults_use_hidden_harnessam_store(self) -> None:
         with isolated_env("linux"), TemporaryDirectory() as temp:
             home = Path(temp) / "home"
             paths = resolve_app_paths({"HOME": str(home)})
-            self.assertEqual(paths.config_dir, home / ".config" / APP_NAME)
-            self.assertEqual(paths.data_dir, home / ".local" / "share" / APP_NAME)
-            self.assertEqual(paths.state_dir, home / ".local" / "state" / APP_NAME)
+            self.assertEqual(paths.config_dir, home / ".harnessam")
+            self.assertEqual(paths.data_dir, home / ".harnessam")
+            self.assertEqual(paths.state_dir, home / ".harnessam")
+
+    def test_linux_defaults_migrate_previous_xdg_data_store(self) -> None:
+        with isolated_env("linux"), TemporaryDirectory() as temp:
+            home = Path(temp) / "home"
+            previous = home / ".local" / "share" / APP_NAME
+            previous.mkdir(parents=True)
+            (previous / "skills").mkdir()
+            paths = resolve_app_paths({"HOME": str(home)})
+            new_store = home / ".harnessam"
+            self.assertEqual(paths.data_dir, new_store)
+            self.assertTrue((new_store / "skills").is_dir())
+            self.assertTrue(previous.is_symlink())
+            self.assertEqual(previous.resolve(), new_store.resolve())
 
     def test_linux_xdg_override_migrates_legacy_store_name(self) -> None:
         with isolated_env("linux"), TemporaryDirectory() as temp:

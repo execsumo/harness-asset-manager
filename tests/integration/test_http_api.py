@@ -52,8 +52,18 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(skills["rows"], [])
             opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
             self.assertFalse(opencode["installed"])
-            self.assertTrue(opencode["supportEnabled"])
+            self.assertFalse(opencode["supportEnabled"])
             self.assertEqual(opencode["managedLocation"], str(harness.spec.opencode_root.parent))
+
+    def test_undetected_harness_cannot_be_enabled(self) -> None:
+        with AppTestHarness(omit_clis=("opencode",)) as harness:
+            harness.put_json(
+                "/api/settings/harnesses/opencode/support",
+                {"enabled": True},
+                expected_status=400,
+            )
+            opencode = next(item for item in harness.get_json("/api/settings")["harnesses"] if item["harness"] == "opencode")
+            self.assertFalse(opencode["supportEnabled"])
 
     def test_settings_support_toggle_hides_disabled_harness_from_skills_inventory(self) -> None:
         with AppTestHarness(mixed=True) as harness:
@@ -199,11 +209,28 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(result["autoAdoptHarnesses"]["agents"], ["claude", "codex"])
             settings = harness.get_json("/api/settings")
             self.assertEqual(settings["autoAdoptHarnesses"]["agents"], ["claude", "codex"])
+            self.assertTrue(settings["autoAdopt"]["agents"])
+
+            harness.put_json(
+                "/api/settings/auto-adopt/agents/harnesses",
+                {"harnesses": []},
+            )
+            settings = harness.get_json("/api/settings")
+            self.assertFalse(settings["autoAdopt"]["agents"])
 
             harness.put_json(
                 "/api/settings/auto-adopt/agents/harnesses",
                 {"harnesses": ["not-a-harness"]},
                 expected_status=404,
+            )
+
+    def test_auto_adopt_options_include_every_agent_binding_in_catalog_order(self) -> None:
+        with AppTestHarness() as harness:
+            settings = harness.get_json("/api/settings")
+
+            self.assertEqual(
+                settings["autoAdoptHarnessOptions"]["agents"],
+                ["claude", "codex", "agy", "cursor", "opencode", "droid", "hermes"],
             )
 
 

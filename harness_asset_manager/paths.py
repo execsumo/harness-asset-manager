@@ -105,20 +105,29 @@ def _base_dirs(context: PlatformContext) -> tuple[Path, Path, Path]:
         data_dir = _xdg_dir(context.env, "XDG_DATA_HOME", default_macos)
         state_dir = _xdg_dir(context.env, "XDG_STATE_HOME", default_macos)
     else:
+        explicit_xdg = any(
+            context.env.get(key)
+            for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME")
+        )
+        default_linux = (
+            context.home / f".{APP_NAME}"
+            if explicit_xdg
+            else _resolve_linux_default_store(context.home, context.xdg_data_home / APP_NAME)
+        )
         config_dir = _xdg_dir(
             context.env,
             "XDG_CONFIG_HOME",
-            _resolve_default_store(context.xdg_config_home, context.xdg_config_home / LEGACY_APP_NAME),
+            default_linux,
         )
         data_dir = _xdg_dir(
             context.env,
             "XDG_DATA_HOME",
-            _resolve_default_store(context.xdg_data_home, context.xdg_data_home / LEGACY_APP_NAME),
+            default_linux,
         )
         state_dir = _xdg_dir(
             context.env,
             "XDG_STATE_HOME",
-            _resolve_default_store(context.xdg_state_home, context.xdg_state_home / LEGACY_APP_NAME),
+            default_linux,
         )
     return config_dir, data_dir, state_dir
 
@@ -143,6 +152,27 @@ def _resolve_default_store(home: Path, legacy_application_support: Path) -> Path
             # Existing harness bindings can contain absolute links into the old
             # store. Keep a compatibility alias so those links continue resolving
             # while the canonical location is the new short path.
+            legacy_store.symlink_to(new_store, target_is_directory=True)
+            return new_store
+        except OSError:
+            if new_store.exists():
+                return new_store
+            return legacy_store
+    return new_store
+
+
+def _resolve_linux_default_store(home: Path, previous_store: Path) -> Path:
+    """Use one hidden Linux store, migrating the former XDG data store."""
+    new_store = home / f".{APP_NAME}"
+    legacy_stores = (previous_store, previous_store.parent / LEGACY_APP_NAME)
+    if new_store.exists():
+        return new_store
+    for legacy_store in legacy_stores:
+        if not legacy_store.is_dir() or legacy_store.is_symlink():
+            continue
+        try:
+            new_store.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(legacy_store), str(new_store))
             legacy_store.symlink_to(new_store, target_is_directory=True)
             return new_store
         except OSError:

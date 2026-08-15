@@ -22,7 +22,10 @@ def settings_payload(
     return {
         "storage": storage_payload(paths, platform=platform),
         "harnesses": [
-            harness_payload(status, support_enabled=status.harness in enabled_set)
+            harness_payload(
+                status,
+                support_enabled=status.installed and status.harness in enabled_set,
+            )
             for status in harness_statuses
         ],
         "autoAdopt": dict(auto_adopt),

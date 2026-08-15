@@ -1,16 +1,13 @@
-import { Archive, Database, Wrench } from "lucide-react";
+import { Archive, Database } from "lucide-react";
 
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
-import { ToggleSwitch } from "../../../components/ToggleSwitch";
 import { useFormatPath } from "../../../lib/paths";
 import { ConfigSnapshotsSection } from "../components/ConfigSnapshotsSection";
-import { SettingsHarnessCard } from "../components/SettingsHarnessCard";
+import { SettingsHarnessMaintenanceMatrix } from "../components/SettingsHarnessMaintenanceMatrix";
 import { useSettingsCopy } from "../i18n";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
-
-const autoAdoptFamilies = ["agents", "skills", "slash_commands", "mcp", "hooks", "permissions"] as const;
 
 export default function SettingsPage() {
   const copy = useSettingsCopy();
@@ -68,70 +65,18 @@ export default function SettingsPage() {
 
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.harnesses.heading}</h2>
-            {controller.data.harnesses.map((harness) => (
-              <SettingsHarnessCard
-                key={harness.harness}
-                harness={harness}
-                pending={controller.isHarnessPending(harness.harness)}
-                copy={copy.harnesses}
-                onToggle={controller.handleSupportToggle}
-              />
-            ))}
-          </section>
-
-          <section className="settings-section">
-            <div className="settings-section__header-row">
-              <h2 className="settings-section__heading">{copy.autoAdopt.heading}</h2>
-              <button
-                type="button"
-                className="action-pill"
-                onClick={controller.handleEnableAllAutoAdopt}
-              >
-                {copy.autoAdopt.enableAll}
-              </button>
-            </div>
-            {autoAdoptFamilies.map((family) => {
-              const option = copy.autoAdopt[family];
-              return (
-                <div className="settings-row" key={family}>
-                  <span className="settings-row__icon">
-                    <Wrench size={15} />
-                  </span>
-                  <div className="settings-row__body">
-                    <p className="settings-row__title">{option.label}</p>
-                    <p className="settings-row__sub">{option.sub}</p>
-                  </div>
-                  <div className="settings-row__controls">
-                    <ToggleSwitch
-                      checked={controller.data?.autoAdopt?.[family] ?? false}
-                      disabled={controller.isAutoAdoptPending(family)}
-                      label=""
-                      ariaLabel={option.label}
-                      onCheckedChange={(checked) => controller.handleAutoAdoptToggle(family, checked)}
-                    />
-                    <select
-                      className="settings-select"
-                      multiple
-                      value={controller.data?.autoAdoptHarnesses?.[family] ?? []}
-                      disabled={controller.isAutoAdoptHarnessesPending(family)}
-                      aria-label={`Default harnesses for ${option.label}`}
-                      onChange={(event) =>
-                        controller.handleAutoAdoptHarnesses(
-                          family,
-                          Array.from(event.currentTarget.selectedOptions, (item) => item.value),
-                        )
-                      }
-                    >
-                      {(controller.data?.autoAdoptHarnessOptions?.[family] ?? []).map((harness) => (
-                        <option key={harness} value={harness}>
-                          {harness}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              );
-            })}
+            <SettingsHarnessMaintenanceMatrix
+              harnesses={[...controller.data.harnesses].sort((left, right) => Number(right.installed) - Number(left.installed))}
+              autoAdoptHarnesses={controller.data.autoAdoptHarnesses ?? {}}
+              autoAdoptHarnessOptions={controller.data.autoAdoptHarnessOptions ?? {}}
+              harnessCopy={copy.harnesses}
+              copy={copy.autoAdopt}
+              isAutoAdoptHarnessesPending={controller.isAutoAdoptHarnessesPending}
+              isHarnessPending={controller.isHarnessPending}
+              onAutoAdoptHarnessToggle={controller.handleAutoAdoptHarnessToggle}
+              onHarnessSupportToggle={controller.handleSupportToggle}
+              onEnableAllAutoAdopt={controller.handleEnableAllAutoAdopt}
+            />
           </section>
 
           <ConfigSnapshotsSection />
