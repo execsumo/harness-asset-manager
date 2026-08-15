@@ -12,6 +12,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
   return {
     columns: [
       { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true },
+      { harness: "claude", label: "Claude Code", logoKey: "claude", installed: true },
     ],
     issues: [],
     entries: [
@@ -65,6 +66,12 @@ describe("AgentsNeedsReviewPage", () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole("table", { name: /Agents to review/i })).toBeInTheDocument());
     expect(screen.getByText("OK Agent")).toBeInTheDocument();
+
+    const okRow = screen.getByText("OK Agent").closest("tr");
+    expect(okRow).not.toBeNull();
+    expect(okRow).toHaveTextContent("Cursor");
+    expect(okRow).toHaveTextContent("Claude Code");
+    expect(okRow?.querySelectorAll('[aria-label^="Discovered in"]').length).toBe(1);
   });
 
   it("renders each issue's name and reason verbatim when issues are present", async () => {

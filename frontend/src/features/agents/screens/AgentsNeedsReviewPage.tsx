@@ -285,7 +285,7 @@ export default function AgentsNeedsReviewPage() {
                   </td>
                   {columns.map((column) => {
                     const discovered = entry.bindings.some(
-                      (b) => b.harness === column.harness && entry.harnessPath
+                      (b) => b.harness === column.harness && b.state === "enabled"
                     );
                     return (
                       <td key={column.harness} className="matrix-table__cell matrix-table__cell--harness">
