@@ -75,13 +75,13 @@ class SkillsAutoAdoptService:
                     skipped.append((entry.skill_ref, reason))
                     continue
                 try:
-                    self.mutations.manage_entry(entry)
+                    package_path = self.mutations.manage_entry(entry)
                     enabled = {
                         adapter.harness for adapter in self.read_models.enabled_installed_adapters()
                     }
                     for harness in self.default_harnesses():
                         if harness in enabled:
-                            self.mutations.enable_skill(entry.skill_ref, harness)
+                            self.mutations.enable_managed_package(package_path, harness)
                 except Exception as error:  # noqa: BLE001 — keep one bad skill from blocking the inventory
                     skipped.append((entry.skill_ref, str(error)))
                     record_auto_adopt(
