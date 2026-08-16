@@ -11,6 +11,7 @@ import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session"
 import SkillsNeedsReviewPage from "./features/skills/screens/SkillsNeedsReviewPage";
 import SkillsInUsePage from "./features/skills/screens/SkillsInUsePage";
 import SkillsWorkspacePage from "./features/skills/screens/SkillsWorkspacePage";
+import { getHooksRouteElements } from "./features/hooks/routes";
 import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
@@ -25,7 +26,6 @@ const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsRev
 const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
 const AgentsInUsePage = lazy(() => import("./features/agents/screens/AgentsInUsePage"));
 const AgentsNeedsReviewPage = lazy(() => import("./features/agents/screens/AgentsNeedsReviewPage"));
-const HooksInUsePage = lazy(() => import("./features/hooks/screens/HooksInUsePage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
 const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
@@ -130,20 +130,7 @@ function AppContent() {
           <Route path="mcp/managed" element={<Navigate to="/mcp/use" replace />} />
           <Route path="mcp/unmanaged" element={<Navigate to="/mcp/review" replace />} />
 
-          <Route
-            path="hooks"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label="Loading hooks..." />}>
-                <HooksInUsePage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="hooks/use"
-            element={<Navigate to="/hooks" replace />}
-          />
-          <Route path="hooks/review" element={<Navigate to="/hooks?status=untracked" replace />} />
-          <Route path="hooks/unmanaged" element={<Navigate to="/hooks?status=untracked" replace />} />
+          {getHooksRouteElements()}
 
           <Route
             path="permissions"

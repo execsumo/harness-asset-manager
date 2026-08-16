@@ -1,9 +1,10 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
+import { getHooksRouteElements } from "../routes";
 import HooksPage from "./HooksInUsePage";
 
 const fetchMock = vi.fn();
@@ -60,17 +61,6 @@ function renderPage(route = "/hooks?status=untracked") {
   return renderWithAppProviders(<HooksPage />, { route });
 }
 
-function HooksRouteTree() {
-  return (
-    <Routes>
-      <Route path="hooks" element={<HooksPage />} />
-      <Route path="hooks/use" element={<Navigate to="/hooks" replace />} />
-      <Route path="hooks/review" element={<Navigate to="/hooks?status=untracked" replace />} />
-      <Route path="hooks/unmanaged" element={<Navigate to="/hooks?status=untracked" replace />} />
-    </Routes>
-  );
-}
-
 function LocationProbe() {
   const location = useLocation();
   return <output data-testid="hooks-location">{location.pathname}{location.search}</output>;
@@ -79,7 +69,7 @@ function LocationProbe() {
 function renderRoutes(route: string) {
   return renderWithAppProviders(
     <>
-      <HooksRouteTree />
+      <Routes>{getHooksRouteElements()}</Routes>
       <LocationProbe />
     </>,
     { route },
