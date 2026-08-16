@@ -110,14 +110,25 @@ class SkillsMutationService:
         self.read_models.invalidate()
         return {"ok": True}
 
-    def manage_entry(self, entry: InventoryEntry) -> None:
+    def manage_entry(self, entry: InventoryEntry) -> Path:
         """Adopt an already-scanned unmanaged entry.
 
         The auto-adoption reconciler uses this after it has made its own safety
         decision. Keeping the filesystem operation here ensures manual and
         automatic adoption use the same ingest-and-bind semantics.
         """
-        self._manage_entry(entry)
+        return self._manage_entry(entry)
+
+    def enable_managed_package(self, package_path: Path, harness: str) -> None:
+        """Bind a package already established as managed by the caller.
+
+        Auto-adoption calls this while holding its reconciliation lock. Re-querying
+        inventory there would recursively invoke reconciliation and deadlock on the
+        same lock, so this path uses the package path returned by adoption instead.
+        """
+        adapter = self.read_models.require_enabled_adapter(harness)
+        adapter.enable_shared_package(package_path)
+        self.read_models.invalidate()
 
     def manage_all_skills(self) -> dict[str, object]:
         inventory = self.queries.inventory()
@@ -270,7 +281,7 @@ class SkillsMutationService:
         self.read_models.invalidate()
         return {"ok": True}
 
-    def _manage_entry(self, entry: InventoryEntry) -> None:
+    def _manage_entry(self, entry: InventoryEntry) -> Path:
         harness_sightings = [s for s in entry.sightings if s.kind == "harness" and s.path is not None]
         if not harness_sightings:
             raise MutationError("no local skill copy found to manage", status=400)
@@ -307,6 +318,7 @@ class SkillsMutationService:
             adapter = self.read_models.require_enabled_adapter(sighting.harness)
             adapter.enable_shared_package(ingested)
             canonical_bound_harnesses.add(sighting.harness)
+        return ingested
 
     def _partition_bound_adapters(
         self,
