@@ -1723,3 +1723,65 @@ open remainders). Full suite green at commit time: backend unit 385 + integratio
   verified (suite green). The combined/auto fixes were not kept.
 - `requirements-dev.txt` is new; the runtime `requirements.txt` is unchanged, so `pip-audit` scope
   is unchanged.
+
+## 2026-08-16 — Asset-family page consolidation (shipped), sidebar consolidation (NEXT STEP)
+
+Merged at `8a65135`. Five of six families now use **one inventory page** with a URL-backed `?status=`
+filter instead of separate "In Use" and "Needs Review" pages: permissions (pre-existing), hooks
+(pilot), agents, skills, slash-commands. Validation on merged `main`: frontend **300/300**, backend
+suite **exit 0 / 81% coverage**, typecheck + build clean, lint 0 errors.
+
+This also resolves the open question recorded on 2026-07-24 (see the `permissions-ux-redesign` triage
+entry above), which asked that a single-page inventory be "a cross-family design decision to make
+deliberately, not a branch to merge". It was made deliberately; this is the record.
+
+**MCP is deliberately excluded.** Its review view is not the same inventory filtered by `entry.kind` —
+it hits `GET /mcp/unmanaged/by-server`, returning identity-grouped *sightings* with an `identical`
+flag, and adopts via `POST /mcp/unmanaged/adopt` with a config-choice dialog for conflicting configs.
+Unifying it requires reshaping the backend response, not a UI refactor. Start there, not in the frontend.
+
+### The established pattern
+
+1. One page per family at `/<family>`; status in the URL so views stay deep-linkable.
+2. Bulk adopt kept and **untracked-only** — checkbox renders only on `kind === "unmanaged"` rows; the
+   dock appears only when ≥1 is selected. (The permissions merge had dropped bulk-select entirely.)
+3. One row component switching on **cell state**, not row kind — untracked cells stay clickable
+   (`state: "observed"`), not dead disabled markers.
+4. Routes live in `features/<family>/routes.tsx`, imported by **both** `App.tsx` and the routing
+   tests, so a changed redirect target fails a test instead of drifting silently.
+5. Untracked rows visible under `status=all` and `status=untracked` only.
+
+### NEXT STEP — collapse the sidebar to one entry per family
+
+Consolidation currently stops at the page. The sidebar still shows a two-child group per family
+(`In Use` / `Needs Review`), which now deep-links into the *same* page with different filters. Both
+children were kept deliberately, to preserve the "N need review" count badge that the permissions
+merge had silently lost (`sidebar.ts` surfaces only `total` for permissions).
+
+That is now the wrong shape, and it carries a live inconsistency:
+
+```ts
+{ key: "hooks-use", to: hooksRoutes.inUse, label: productLanguage.inUse, count: hooksCounts.inUse }
+// hooksRoutes.inUse === "/hooks"  -> page defaults to status "all"  -> renders managed + untracked
+// hooksCounts.inUse  === entries.filter(kind === "managed").length  -> counts managed only
+```
+
+So the badge says e.g. 10 while the view it opens shows 13 rows. The label promises "In Use" and
+delivers everything. Same in all four families.
+
+**The intended end state:** one sidebar entry per family. The **group heading itself becomes the
+link** — clicking "Skills" loads `/skills` showing *all* skills, not just managed. No child rows.
+
+Work required:
+
+- `app/capability-registry/sidebar.ts` — make the family group a link rather than a container of two
+  children; drop `*-use` / `*-review` child entries for the five consolidated families.
+- Decide what count the single entry shows. `total` matches the default view; if the needs-review
+  count is still worth surfacing, it needs a second badge or affordance on the same row — **do not
+  simply drop it**, that regression is the reason the two-child group existed at all.
+- `features/<family>/public.ts` — `*Routes.inUse` / `.needsReview` become redundant once nothing links
+  to them; keep whatever the legacy redirects in `routes.tsx` still need.
+- Leave MCP's genuine two-page group alone.
+- Sidebar rendering is shared, so verify the group-as-link change does not disturb families that are
+  legitimately still grouped.
+
