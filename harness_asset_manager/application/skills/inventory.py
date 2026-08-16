@@ -114,7 +114,6 @@ class SkillInventory:
                 name=package.declared_name,
                 package_dir=package.root_path.name,
                 origin_harness=store_package.origin_harness,
-                source_kind=package.source.kind,
                 excluded_hermes_names=excluded_hermes_names,
             ):
                 continue
@@ -216,17 +215,15 @@ def _is_excluded_hermes_store_package(
     name: str,
     package_dir: str,
     origin_harness: str | None,
-    source_kind: str,
     excluded_hermes_names: set[str],
 ) -> bool:
     if origin_harness != "hermes":
         return False
-    if name in excluded_hermes_names or package_dir in excluded_hermes_names:
-        return True
-    # Legacy pre-policy Hermes self-learned skills were centralized when
-    # managed. Keep them out; only non-official Hermes hub provenance should
-    # be portable through Harness Asset Manager.
-    return source_kind == "centralized"
+    # A manifest entry records a package that is already managed by the shared
+    # store, even when its originating Hermes installation is remote or absent
+    # on this machine. Only explicitly identified Hermes-owned packages should
+    # be hidden from the shared inventory.
+    return name in excluded_hermes_names or package_dir in excluded_hermes_names
 
 
 def _unmanaged_entry_key(declared_name: str, source: SourceDescriptor, revision: str) -> str:
