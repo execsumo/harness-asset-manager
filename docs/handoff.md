@@ -1815,8 +1815,14 @@ server.** Check process start time against the relevant commit before diagnosing
 
 `main` = `836b655`. Working tree clean, no delegate worktrees or branches outstanding.
 
-**Validation on `836b655`:** backend `exit 0` / 81% coverage; frontend typecheck `0`, build `0`,
-lint `0 errors` (12 warnings, was 17 pre-consolidation); `frontend/dist` rebuilt to match.
+**Validation on `836b655`:** frontend `npm test` **300/300 (62 files) exit 0**; backend `exit 0` /
+81% coverage; typecheck `0`, build `0`, lint `0 errors` (12 warnings, was 17 pre-consolidation);
+`frontend/dist` rebuilt to match.
+
+A first run of the frontend suite showed 299/300 while a backend suite, a production build and two
+server restarts were running alongside it. Re-run on an idle machine: 300/300. The two usual suspects
+(`MarketplaceCliPage`, `SkillDetailContent`) and all 12 skills test files also passed in isolation.
+This is the load flakiness described under "Gotchas" below, not a defect.
 
 **Running instance:** served from the repo checkout on `0.0.0.0:8000` with `--allow-remote`, reachable
 at `http://vibebox.goose-marlin.ts.net:8000/`. Note the API is **unauthenticated** — anyone who can
