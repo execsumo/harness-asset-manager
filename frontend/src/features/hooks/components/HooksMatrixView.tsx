@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
@@ -29,6 +29,7 @@ interface HooksMatrixViewProps {
   onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
+  onAdopt: (id: string) => void;
 }
 
 export function HooksMatrixView({
@@ -41,6 +42,7 @@ export function HooksMatrixView({
   onToggleChecked,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
 }: HooksMatrixViewProps) {
   const copy = useHooksCopy();
   const displayColumns = matrixColumns({ columns });
@@ -84,6 +86,7 @@ export function HooksMatrixView({
             onToggleChecked={onToggleChecked}
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
+            onAdopt={onAdopt}
             copy={copy}
           />
         ))}
@@ -102,6 +105,7 @@ function HooksMatrixRow({
   onToggleChecked,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
   copy,
 }: {
   entry: HookInventoryEntryDto;
@@ -113,19 +117,23 @@ function HooksMatrixRow({
   onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
+  onAdopt: (id: string) => void;
   copy: HooksCopy;
 }) {
   const coverage = matrixCoverage(entry, columns);
+  const isUntracked = entry.kind === "unmanaged";
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
       <td className="matrix-table__cell matrix-table__cell--checkbox">
-        <CardSelectCheckbox
-          checked={checked}
-          label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
-          onToggle={() => onToggleChecked(entry.id)}
-          disabled={pendingHook}
-        />
+        {isUntracked ? (
+          <CardSelectCheckbox
+            checked={checked}
+            label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
+            onToggle={() => onToggleChecked(entry.id)}
+            disabled={pendingHook}
+          />
+        ) : null}
       </td>
       <td
         className="matrix-table__cell matrix-table__cell--identity"
@@ -160,16 +168,28 @@ function HooksMatrixRow({
         <HooksHarnessLogoStack bindings={entry.sightings} columns={columns} />
       </td>
       <td className="matrix-table__cell matrix-table__cell--coverage">
-        <span
-          className="matrix-table__coverage"
-          aria-label={`Coverage: ${coverage.enabled} / ${coverage.writable}`}
-        >
-          <span className="matrix-table__coverage-count">{coverage.enabled}</span>
-          <span className="matrix-table__coverage-total" aria-hidden="true">
-            {" / "}
-            {coverage.writable}
+        {isUntracked ? (
+          <button
+            type="button"
+            className="action-pill action-pill--accent permission-adopt-btn"
+            disabled={pendingHook}
+            onClick={() => onAdopt(entry.id)}
+          >
+            {pendingHook ? <Loader2 size={12} className="card-action-spinner" aria-hidden="true" /> : null}
+            {copy.inUse.adopt}
+          </button>
+        ) : (
+          <span
+            className="matrix-table__coverage"
+            aria-label={`Coverage: ${coverage.enabled} / ${coverage.writable}`}
+          >
+            <span className="matrix-table__coverage-count">{coverage.enabled}</span>
+            <span className="matrix-table__coverage-total" aria-hidden="true">
+              {" / "}
+              {coverage.writable}
+            </span>
           </span>
-        </span>
+        )}
       </td>
     </tr>
   );

@@ -26,7 +26,6 @@ const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
 const AgentsInUsePage = lazy(() => import("./features/agents/screens/AgentsInUsePage"));
 const AgentsNeedsReviewPage = lazy(() => import("./features/agents/screens/AgentsNeedsReviewPage"));
 const HooksInUsePage = lazy(() => import("./features/hooks/screens/HooksInUsePage"));
-const HooksNeedsReviewPage = lazy(() => import("./features/hooks/screens/HooksNeedsReviewPage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
 const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
@@ -131,9 +130,8 @@ function AppContent() {
           <Route path="mcp/managed" element={<Navigate to="/mcp/use" replace />} />
           <Route path="mcp/unmanaged" element={<Navigate to="/mcp/review" replace />} />
 
-          <Route path="hooks" element={<Navigate to="/hooks/use" replace />} />
           <Route
-            path="hooks/use"
+            path="hooks"
             element={
               <Suspense fallback={<RouteLoadingPanel label="Loading hooks..." />}>
                 <HooksInUsePage />
@@ -141,13 +139,11 @@ function AppContent() {
             }
           />
           <Route
-            path="hooks/review"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label="Loading hooks..." />}>
-                <HooksNeedsReviewPage />
-              </Suspense>
-            }
+            path="hooks/use"
+            element={<Navigate to="/hooks" replace />}
           />
+          <Route path="hooks/review" element={<Navigate to="/hooks?status=untracked" replace />} />
+          <Route path="hooks/unmanaged" element={<Navigate to="/hooks?status=untracked" replace />} />
 
           <Route
             path="permissions"

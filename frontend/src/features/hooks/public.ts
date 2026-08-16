@@ -22,6 +22,7 @@ export type {
 export { isHooksHarnessAddressable } from "./model/selectors";
 
 export const hooksRoutes = {
-  inUse: "/hooks/use",
-  needsReview: "/hooks/review",
+  index: "/hooks",
+  inUse: "/hooks",
+  needsReview: "/hooks?status=untracked",
 } as const;

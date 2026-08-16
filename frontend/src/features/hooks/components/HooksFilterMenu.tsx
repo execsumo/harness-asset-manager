@@ -1,13 +1,13 @@
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
-import type { InUsePillValue } from "../model/selectors";
+import type { HooksStatusFilter } from "../model/selectors";
 import { useHooksCopy } from "../i18n";
 
-const OPTIONS: InUsePillValue[] = ["all", "enabled", "all-harnesses", "unbound", "drifted"];
+const OPTIONS: HooksStatusFilter[] = ["all", "enabled", "all-harnesses", "unbound", "drifted", "untracked"];
 
 interface HooksFilterMenuProps {
-  pill: InUsePillValue;
-  counts: Record<InUsePillValue, number>;
-  onChange: (next: InUsePillValue) => void;
+  pill: HooksStatusFilter;
+  counts: Record<HooksStatusFilter, number>;
+  onChange: (next: HooksStatusFilter) => void;
 }
 
 export function HooksFilterMenu({ pill, counts, onChange }: HooksFilterMenuProps) {
@@ -29,10 +29,11 @@ export function HooksFilterMenu({ pill, counts, onChange }: HooksFilterMenuProps
   );
 }
 
-function pillLabel(copy: ReturnType<typeof useHooksCopy>, value: InUsePillValue): string {
+function pillLabel(copy: ReturnType<typeof useHooksCopy>, value: HooksStatusFilter): string {
   if (value === "all") return copy.inUse.filters.all;
   if (value === "enabled") return copy.inUse.filters.enabled;
   if (value === "all-harnesses") return copy.inUse.filters.allHarnesses;
   if (value === "unbound") return copy.inUse.filters.unbound;
-  return copy.inUse.filters.drifted;
+  if (value === "drifted") return copy.inUse.filters.drifted;
+  return copy.inUse.filters.untracked;
 }

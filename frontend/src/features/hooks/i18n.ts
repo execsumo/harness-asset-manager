@@ -10,12 +10,16 @@ const englishHooksCopy = {
     noMatchesBody: "Adjust the search or filter to see other hooks.",
     emptyTitle: "No hooks in use yet",
     emptyBody: "Add a hook or enable one to see it here.",
+    adopt: "Adopt",
+    adoptSelected: "Adopt selected",
+    adoptingSelected: "Adopting selected hooks...",
     filters: {
       all: "All",
       enabled: "Enabled",
       allHarnesses: "Enabled on all",
       unbound: "Unbound",
       drifted: "Different config",
+      untracked: "Needs review",
       aria: (label: string) => `Filter: ${label}`,
     },
     uninstall: {

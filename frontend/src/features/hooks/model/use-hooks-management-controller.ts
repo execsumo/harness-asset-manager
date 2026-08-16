@@ -6,6 +6,7 @@ import {
   useDisableHookMutation,
   useEnableHookMutation,
   useHooksInventoryQuery,
+  usePromoteHookMutation,
   useReconcileHookMutation,
   useSetHookHarnessesMutation,
   useUninstallHookMutation,
@@ -21,6 +22,7 @@ export function useHooksManagementController() {
   const enableMutation = useEnableHookMutation();
   const disableMutation = useDisableHookMutation();
   const createMutation = useCreateHookMutation();
+  const promoteMutation = usePromoteHookMutation();
 
   const pendingHookRegistry = usePendingRegistry<string>();
   const pendingPerHarnessRegistry = usePendingRegistry<string>(); // key: id:harness
@@ -140,6 +142,19 @@ export function useHooksManagementController() {
     [createMutation],
   );
 
+  const handlePromoteHook = useCallback(
+    async (id: string, observedHarness?: string | null): Promise<void> => {
+      try {
+        await pendingHookRegistry.run(id, async () => {
+          await promoteMutation.mutateAsync({ id, observedHarness: observedHarness ?? null });
+        });
+      } catch (error) {
+        setActionErrorMessage(error instanceof Error ? error.message : "Could not adopt hook");
+      }
+    },
+    [pendingHookRegistry, promoteMutation],
+  );
+
   const clearActionError = useCallback(() => {
     setActionErrorMessage("");
   }, []);
@@ -160,6 +175,7 @@ export function useHooksManagementController() {
     handleToggleHarness,
     handleReconcileHook,
     handleCreateHook,
+    handlePromoteHook,
   };
 }
 export type HooksManagementController = ReturnType<typeof useHooksManagementController>;

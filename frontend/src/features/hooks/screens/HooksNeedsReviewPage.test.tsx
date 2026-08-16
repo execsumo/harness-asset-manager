@@ -3,26 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
-import HooksNeedsReviewPage from "./HooksNeedsReviewPage";
+import HooksPage from "./HooksInUsePage";
 
 const fetchMock = vi.fn();
 
+function columnsFixture() {
+  return [
+    { harness: "cursor", label: "Cursor", logoKey: "cursor" },
+    { harness: "claude", label: "Claude", logoKey: "claude" },
+  ];
+}
+
 function emptyInventoryFixture() {
-  return {
-    columns: [
-      { harness: "cursor", label: "Cursor", logoKey: "cursor" },
-      { harness: "claude", label: "Claude", logoKey: "claude" },
-    ],
-    entries: [],
-  };
+  return { columns: columnsFixture(), entries: [] };
 }
 
 function unmanagedHooksInventoryFixture() {
   return {
-    columns: [
-      { harness: "cursor", label: "Cursor", logoKey: "cursor" },
-      { harness: "claude", label: "Claude", logoKey: "claude" },
-    ],
+    columns: columnsFixture(),
     entries: [
       {
         id: "hook-1",
@@ -35,19 +33,33 @@ function unmanagedHooksInventoryFixture() {
           command: "npm test",
           description: "Run tests before commit",
         },
-        sightings: [
-          { harness: "cursor", state: "unmanaged" },
-        ],
+        sightings: [{ harness: "cursor", state: "unmanaged" }],
       },
     ],
   };
 }
 
-function renderPage() {
-  return renderWithAppProviders(<HooksNeedsReviewPage />, { route: "/hooks/review" });
+function mixedHooksInventoryFixture() {
+  return {
+    columns: columnsFixture(),
+    entries: [
+      {
+        id: "managed-hook",
+        displayName: "Managed Hook",
+        kind: "managed",
+        canEnable: true,
+        sightings: [{ harness: "cursor", state: "managed" }],
+      },
+      ...unmanagedHooksInventoryFixture().entries,
+    ],
+  };
 }
 
-describe("HooksNeedsReviewPage", () => {
+function renderPage(route = "/hooks?status=untracked") {
+  return renderWithAppProviders(<HooksPage />, { route });
+}
+
+describe("Hooks unified inventory page", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -78,7 +90,7 @@ describe("HooksNeedsReviewPage", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByRole("table", { name: /hooks to review/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("table", { name: /hooks matrix/i })).toBeInTheDocument());
     expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Adopt$/i })).toBeInTheDocument();
   });
@@ -96,12 +108,49 @@ describe("HooksNeedsReviewPage", () => {
 
     renderPage();
     await waitFor(() => expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument());
-    const adoptButton = screen.getByRole("button", { name: /^Adopt$/i });
-    fireEvent.click(adoptButton);
+    fireEvent.click(screen.getByRole("button", { name: /^Adopt$/i }));
     await waitFor(() =>
-      expect(
-        fetchMock.mock.calls.some((call) => String(call[0]).includes("/promote")),
-      ).toBe(true),
+      expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/promote"))).toBe(true),
     );
+  });
+
+  it("deep-link status=untracked renders only untracked rows", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/hooks")) return okJson(mixedHooksInventoryFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/hooks?status=untracked");
+    await waitFor(() => expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument());
+    expect(screen.queryByText("Managed Hook")).not.toBeInTheDocument();
+  });
+
+  it("does not render checkboxes on managed rows", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/hooks")) return okJson(mixedHooksInventoryFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/hooks");
+    await waitFor(() => expect(screen.getByText("Managed Hook")).toBeInTheDocument());
+    expect(screen.getByRole("checkbox", { name: /select pre-commit check/i })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /managed hook/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the bulk dock only after an untracked row is selected", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/hooks")) return okJson(mixedHooksInventoryFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/hooks");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /select pre-commit check/i })).toBeInTheDocument());
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /select pre-commit check/i }));
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adopt selected/i })).toBeInTheDocument();
   });
 });

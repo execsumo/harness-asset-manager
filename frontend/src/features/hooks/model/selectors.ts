@@ -6,11 +6,17 @@ import type {
 } from "../api/management-types";
 import { hooksCopy, type HooksCopy } from "../i18n";
 
-export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted";
+export type HooksStatusFilter = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked";
+export type InUsePillValue = Exclude<HooksStatusFilter, "untracked">;
 
 export interface HooksInUseFilters {
   search: string;
   pill: InUsePillValue;
+}
+
+export interface HooksFilters {
+  search: string;
+  status: HooksStatusFilter;
 }
 
 export type HooksMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
@@ -86,6 +92,39 @@ export function filterHooksInUse(
   });
 }
 
+/** Unified inventory filter for managed and unmanaged hooks. */
+export function filterHooks(
+  inventory: HookInventoryDto | null,
+  filters: HooksFilters,
+): HookInventoryEntryDto[] {
+  if (!inventory) return [];
+  const addressable = addressableHarnesses(inventory);
+  const harnessCount = addressable.size;
+  const needle = filters.search.trim();
+
+  return inventory.entries.filter((entry) => {
+    if (!matchesSearch(entry, needle)) return false;
+    if (filters.status === "untracked") return entry.kind === "unmanaged";
+    if (entry.kind !== "managed") return filters.status === "all";
+
+    const enabledCount = inUseBindingCount(entry, addressable);
+    switch (filters.status) {
+      case "all":
+        return true;
+      case "enabled":
+        return enabledCount > 0;
+      case "all-harnesses":
+        return harnessCount > 0 && enabledCount === harnessCount;
+      case "unbound":
+        return enabledCount === 0 && !hasDrift(entry, addressable);
+      case "drifted":
+        return hasDrift(entry, addressable);
+      default:
+        return true;
+    }
+  });
+}
+
 export function filterHooksNeedsReview(
   inventory: HookInventoryDto | null,
   search = "",
@@ -114,6 +153,20 @@ export function pillCounts(inventory: HookInventoryDto | null): Record<InUsePill
       (e) => inUseBindingCount(e, addressable) === 0 && !hasDrift(e, addressable),
     ).length,
     drifted: inUseEntries.filter((entry) => hasDrift(entry, addressable)).length,
+  };
+}
+
+export function hooksStatusCounts(inventory: HookInventoryDto | null): Record<HooksStatusFilter, number> {
+  if (!inventory) {
+    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0, untracked: 0 };
+  }
+  return {
+    all: inventory.entries.length,
+    enabled: filterHooks(inventory, { search: "", status: "enabled" }).length,
+    "all-harnesses": filterHooks(inventory, { search: "", status: "all-harnesses" }).length,
+    unbound: filterHooks(inventory, { search: "", status: "unbound" }).length,
+    drifted: filterHooks(inventory, { search: "", status: "drifted" }).length,
+    untracked: inventory.entries.filter((entry) => entry.kind === "unmanaged").length,
   };
 }
 
