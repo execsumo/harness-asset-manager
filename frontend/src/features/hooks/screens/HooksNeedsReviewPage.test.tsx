@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
@@ -57,6 +58,32 @@ function mixedHooksInventoryFixture() {
 
 function renderPage(route = "/hooks?status=untracked") {
   return renderWithAppProviders(<HooksPage />, { route });
+}
+
+function HooksRouteTree() {
+  return (
+    <Routes>
+      <Route path="hooks" element={<HooksPage />} />
+      <Route path="hooks/use" element={<Navigate to="/hooks" replace />} />
+      <Route path="hooks/review" element={<Navigate to="/hooks?status=untracked" replace />} />
+      <Route path="hooks/unmanaged" element={<Navigate to="/hooks?status=untracked" replace />} />
+    </Routes>
+  );
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="hooks-location">{location.pathname}{location.search}</output>;
+}
+
+function renderRoutes(route: string) {
+  return renderWithAppProviders(
+    <>
+      <HooksRouteTree />
+      <LocationProbe />
+    </>,
+    { route },
+  );
 }
 
 describe("Hooks unified inventory page", () => {
@@ -152,5 +179,43 @@ describe("Hooks unified inventory page", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /select pre-commit check/i }));
     expect(screen.getByRole("toolbar")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /adopt selected/i })).toBeInTheDocument();
+  });
+});
+
+describe("Hooks legacy route redirects", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/hooks")) return okJson(unmanagedHooksInventoryFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fetchMock.mockReset();
+  });
+
+  it("redirects /hooks/use to /hooks without a status filter", async () => {
+    renderRoutes("/hooks/use");
+    await waitFor(() => expect(screen.getByTestId("hooks-location")).toHaveTextContent("/hooks"));
+    expect(screen.getByTestId("hooks-location")).toHaveTextContent(/^\/hooks$/);
+  });
+
+  it("redirects /hooks/review to the untracked filter and renders untracked rows", async () => {
+    renderRoutes("/hooks/review");
+    await waitFor(() => {
+      expect(screen.getByTestId("hooks-location")).toHaveTextContent("/hooks?status=untracked");
+      expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
+    });
+  });
+
+  it("redirects /hooks/unmanaged to the untracked filter and renders untracked rows", async () => {
+    renderRoutes("/hooks/unmanaged");
+    await waitFor(() => {
+      expect(screen.getByTestId("hooks-location")).toHaveTextContent("/hooks?status=untracked");
+      expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
+    });
   });
 });
