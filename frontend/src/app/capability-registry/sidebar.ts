@@ -116,13 +116,13 @@ export function useSidebarModel(): SidebarModel {
           links: [
             {
               key: "slash-commands-use",
-              to: slashCommandRoutes.inUse,
+              to: slashCommandRoutes.index,
               label: common.productLanguage.inUse,
               count: slashCommandCount,
             },
             {
               key: "slash-commands-review",
-              to: slashCommandRoutes.needsReview,
+              to: slashCommandRoutes.untracked,
               label: common.productLanguage.needsReview,
               count: slashCommandReviewCount,
             },

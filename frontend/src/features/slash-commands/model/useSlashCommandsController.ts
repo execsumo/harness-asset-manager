@@ -5,15 +5,20 @@ import { useToast } from "../../../components/Toast";
 import {
   useCreateSlashCommandMutation,
   useDeleteSlashCommandMutation,
+  useImportSlashCommandMutation,
+  useResolveSlashCommandReviewMutation,
   useSlashCommandsQuery,
   useSyncSlashCommandMutation,
   useUpdateSlashCommandMutation,
 } from "../api/queries";
-import type { SlashCommandDto, SlashTargetDto, SlashTargetId } from "../api/types";
-import {
-  filterSlashCommands,
-  syncedTargetIds,
-} from "./selectors";
+import type {
+  SlashCommandDto,
+  SlashCommandReviewDto,
+  SlashReviewAction,
+  SlashTargetDto,
+  SlashTargetId,
+} from "../api/types";
+import { filterSlashCommands, filterSlashReviewRows, primaryReviewAction, reviewKey, slashCommandInventoryEntries, syncedTargetIds } from "./selectors";
 
 export function useSlashCommandsController() {
   const query = useSlashCommandsQuery();
@@ -21,6 +26,8 @@ export function useSlashCommandsController() {
   const updateMutation = useUpdateSlashCommandMutation();
   const syncMutation = useSyncSlashCommandMutation();
   const deleteMutation = useDeleteSlashCommandMutation();
+  const importMutation = useImportSlashCommandMutation();
+  const resolveMutation = useResolveSlashCommandReviewMutation();
   const { toast } = useToast();
 
   const [search, setSearch] = useState("");
@@ -33,6 +40,7 @@ export function useSlashCommandsController() {
   const [deleteCommand, setDeleteCommand] = useState<SlashCommandDto | null>(null);
   const [selectedCommandName, setSelectedCommandName] = useState<string | null>(null);
   const [savedCommandSnapshot, setSavedCommandSnapshot] = useState<SlashCommandDto | null>(null);
+  const [selectedReviewRef, setSelectedReviewRef] = useState<string | null>(null);
 
   const data = query.data;
   const listSelectedCommand = useMemo(
@@ -50,6 +58,26 @@ export function useSlashCommandsController() {
     () => filterSlashCommands(data?.commands ?? [], search),
     [data?.commands, search],
   );
+  const allReviewRows = useMemo(() => data?.reviewCommands ?? [], [data?.reviewCommands]);
+  const reviewRows = useMemo(() => filterSlashReviewRows(allReviewRows, search), [allReviewRows, search]);
+  const selectedReviewRow = useMemo(
+    () => allReviewRows.find((row) => row.reviewRef === selectedReviewRef) ?? null,
+    [allReviewRows, selectedReviewRef],
+  );
+  const selectedCanonicalCommand = useMemo(
+    () =>
+      selectedReviewRow?.commandExists
+        ? data?.commands.find((command) => command.name === selectedReviewRow.name) ?? null
+        : null,
+    [data?.commands, selectedReviewRow],
+  );
+  const eligibleImportRows = allReviewRows.filter((row) => row.actions.includes("import") && !row.error);
+  const pendingReviewKey =
+    importMutation.isPending && importMutation.variables
+      ? reviewKey(importMutation.variables.target, importMutation.variables.name, "import")
+      : resolveMutation.isPending && resolveMutation.variables
+        ? reviewKey(resolveMutation.variables.target, resolveMutation.variables.name, resolveMutation.variables.action)
+        : null;
   const pendingName = syncMutation.isPending
     ? syncMutation.variables?.name ?? null
     : updateMutation.isPending
@@ -82,6 +110,7 @@ export function useSlashCommandsController() {
   function openDetail(command: SlashCommandDto): void {
     setActionError("");
     setSelectedCommandName(command.name);
+    setSelectedReviewRef(null);
     setSavedCommandSnapshot(null);
     setEditingCommand(null);
     setFormMode(null);
@@ -90,6 +119,51 @@ export function useSlashCommandsController() {
   function closeDetail(): void {
     setSelectedCommandName(null);
     setSavedCommandSnapshot(null);
+  }
+
+  function openReviewDetail(row: SlashCommandReviewDto): void {
+    setActionError("");
+    setSelectedReviewRef(row.reviewRef);
+    setSelectedCommandName(null);
+  }
+
+  function closeReviewDetail(): void {
+    setActionError("");
+    setSelectedReviewRef(null);
+  }
+
+  async function handleReviewAction(
+    row: SlashCommandReviewDto,
+    action = primaryReviewAction(row),
+  ): Promise<boolean> {
+    if (!action) return false;
+    setActionError("");
+    try {
+      if (action === "import") {
+        await importMutation.mutateAsync({ target: row.target, name: row.name });
+      } else {
+        await resolveMutation.mutateAsync({ target: row.target, name: row.name, action });
+      }
+      toast(reviewSuccessMessage(action));
+      return true;
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to update slash command review item.");
+      return false;
+    }
+  }
+
+  async function handleImportAll(): Promise<void> {
+    if (eligibleImportRows.length === 0) return;
+    setActionError("");
+    const results = await Promise.allSettled(
+      eligibleImportRows.map((row) => importMutation.mutateAsync({ target: row.target, name: row.name })),
+    );
+    const failures = results.filter((result) => result.status === "rejected");
+    if (failures.length > 0) {
+      setActionError(`${failures.length} slash command adoption${failures.length === 1 ? "" : "s"} failed.`);
+    } else {
+      toast("Slash commands adopted");
+    }
   }
 
   function openEdit(command: SlashCommandDto): void {
@@ -258,6 +332,7 @@ export function useSlashCommandsController() {
     bulkPending,
     checkedNames,
     commands,
+    entries: slashCommandInventoryEntries(data),
     data,
     deleteCommand,
     deletePending: deleteMutation.isPending,
@@ -267,8 +342,15 @@ export function useSlashCommandsController() {
     pendingName,
     pendingTarget,
     query,
+    reviewRows,
     search,
     selectedCommand,
+    selectedCanonicalCommand,
+    selectedReviewRef,
+    selectedReviewRow,
+    eligibleImportRows,
+    importAllPending: importMutation.isPending,
+    pendingReviewKey,
     setActionError,
     setCheckedNames,
     setDeleteCommand,
@@ -282,8 +364,12 @@ export function useSlashCommandsController() {
     handleToggleChecked,
     handleToggleTarget,
     closeDetail,
+    closeReviewDetail,
+    handleImportAll,
+    handleReviewAction,
     openCreate,
     openDetail,
+    openReviewDetail,
     openEdit,
   };
 }
@@ -304,4 +390,11 @@ function commandSnapshotFromSubmit(
     prompt: value.prompt,
     syncTargets: result.sync,
   };
+}
+
+function reviewSuccessMessage(action: SlashReviewAction): string {
+  if (action === "restore_managed") return "Slash command restored";
+  if (action === "adopt_target") return "Slash command adopted";
+  if (action === "remove_binding") return "Slash command binding removed";
+  return "Slash command adopted";
 }

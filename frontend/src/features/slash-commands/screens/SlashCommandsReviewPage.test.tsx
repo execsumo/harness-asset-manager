@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createRouteFetchMock, okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
-import SlashCommandsReviewPage from "./SlashCommandsReviewPage";
+import SlashCommandsReviewPage from "./SlashCommandsPage";
 
 const fetchMock = vi.fn();
 
@@ -32,7 +32,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     await waitFor(() => expect(screen.getByText("code-review")).toBeInTheDocument());
     expect(screen.queryByText("/code-review")).not.toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     fireEvent.click(await screen.findByText("code-review"));
 
@@ -162,7 +162,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     await waitFor(() => expect(screen.getByText("Changed in Codex")).toBeInTheDocument());
     expect(screen.getByText("Missing from Claude Code")).toBeInTheDocument();
@@ -216,7 +216,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     fireEvent.click(await screen.findByText("code-review"));
     const dialog = screen.getByRole("dialog", { name: "Slash command to review code-review" });
@@ -280,7 +280,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     fireEvent.click(await screen.findByText("missing-command"));
     const dialog = screen.getByRole("dialog", { name: "Slash command to review missing-command" });
@@ -337,7 +337,7 @@ describe("SlashCommandsReviewPage", () => {
       ]),
     );
 
-    renderWithAppProviders(<SlashCommandsReviewPage />);
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
 
     fireEvent.click(await screen.findByText("code-review"));
     const dialog = screen.getByRole("dialog", { name: "Slash command to review code-review" });
@@ -360,6 +360,57 @@ describe("SlashCommandsReviewPage", () => {
     expect(within(dialog).getByText("Target prompt")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Adopt" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Remove binding" })).not.toBeInTheDocument();
+  });
+
+  it("deep-link status=untracked renders only untracked rows", async () => {
+    fetchMock.mockImplementation(
+      createRouteFetchMock([
+        {
+          match: "/api/slash-commands",
+          response: slashCommandsPayload({
+            commands: [{ name: "managed-command", description: "Managed", prompt: "Prompt", syncTargets: [] }],
+          }),
+        },
+      ]),
+    );
+
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands?status=untracked" });
+
+    await waitFor(() => expect(screen.getByText("code-review")).toBeInTheDocument());
+    expect(screen.queryByText("managed-command")).not.toBeInTheDocument();
+  });
+
+  it("does not render checkboxes on managed rows", async () => {
+    fetchMock.mockImplementation(
+      createRouteFetchMock([
+        {
+          match: "/api/slash-commands",
+          response: slashCommandsPayload({
+            commands: [{ name: "managed-command", description: "Managed", prompt: "Prompt", syncTargets: [] }],
+          }),
+        },
+      ]),
+    );
+
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands" });
+
+    await waitFor(() => expect(screen.getByText("managed-command")).toBeInTheDocument());
+    expect(screen.getByRole("checkbox", { name: /select code-review/i })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /managed-command/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the bulk dock only after an untracked row is selected", async () => {
+    fetchMock.mockImplementation(
+      createRouteFetchMock([{ match: "/api/slash-commands", response: slashCommandsPayload() }]),
+    );
+
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands" });
+
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /select code-review/i })).toBeInTheDocument());
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /select code-review/i }));
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adopt selected/i })).toBeInTheDocument();
   });
 });
 

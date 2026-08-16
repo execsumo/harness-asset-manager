@@ -13,8 +13,8 @@ import type { SlashCommandDto, SlashCommandReviewDto, SlashReviewAction, SlashTa
 import { useSlashCommandsCopy, type SlashCommandsCopy } from "../../i18n";
 import {
   primaryReviewAction,
+  reviewKey,
 } from "../../model/selectors";
-import { reviewKey } from "../../model/useSlashCommandsReviewController";
 import {
   SlashCommandContentSections,
   SlashCommandSourcePreview,

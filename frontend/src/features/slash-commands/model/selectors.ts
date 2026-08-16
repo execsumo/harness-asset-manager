@@ -8,9 +8,56 @@ import type {
 export type SlashMatrixSortKey = "name" | "coverage" | { target: string };
 export type SlashMatrixSortDirection = "asc" | "desc";
 
+export type SlashCommandsStatusFilter = "all" | "untracked";
+
+export type SlashCommandInventoryEntry =
+  | { id: string; kind: "managed"; command: SlashCommandDto }
+  | { id: string; kind: "unmanaged"; review: SlashCommandReviewDto };
+
 export interface SlashMatrixSortState {
   key: SlashMatrixSortKey;
   direction: SlashMatrixSortDirection;
+}
+
+export function slashCommandInventoryEntries(
+  data: { commands: SlashCommandDto[]; reviewCommands: SlashCommandReviewDto[] } | null | undefined,
+): SlashCommandInventoryEntry[] {
+  if (!data) return [];
+  return [
+    ...data.commands.map((command) => ({ id: command.name, kind: "managed" as const, command })),
+    ...data.reviewCommands.map((review) => ({ id: review.reviewRef, kind: "unmanaged" as const, review })),
+  ];
+}
+
+export function filterSlashCommandEntries(
+  entries: SlashCommandInventoryEntry[],
+  search: string,
+  status: SlashCommandsStatusFilter,
+): SlashCommandInventoryEntry[] {
+  const needle = search.trim().toLowerCase();
+  return entries.filter((entry) => {
+    if (status === "untracked" && entry.kind !== "unmanaged") return false;
+    if (status !== "untracked" && entry.kind === "unmanaged" && status !== "all") return false;
+    if (!needle) return true;
+    const value =
+      entry.kind === "managed"
+        ? `${entry.command.name} ${entry.command.description}`
+        : `${entry.review.name} ${entry.review.description ?? ""} ${entry.review.targetLabel} ${entry.review.path} ${entry.review.kind}`;
+    return value.toLowerCase().includes(needle);
+  });
+}
+
+export function slashCommandStatusCounts(
+  entries: SlashCommandInventoryEntry[],
+): Record<SlashCommandsStatusFilter, number> {
+  return {
+    all: entries.length,
+    untracked: entries.filter((entry) => entry.kind === "unmanaged").length,
+  };
+}
+
+export function reviewKey(target: string, name: string, action: SlashReviewAction): string {
+  return `${target}:${name}:${action}`;
 }
 
 export function syncedTargetIds(command: SlashCommandDto): Set<string> {
