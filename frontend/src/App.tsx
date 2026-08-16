@@ -11,6 +11,7 @@ import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session"
 import { getSkillsRouteElements } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
 import { getAgentsRouteElements } from "./features/agents/routes";
+import { getSlashCommandsRouteElements } from "./features/slash-commands/routes";
 import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
@@ -19,8 +20,6 @@ import { ThemeProvider } from "./lib/theme";
 const MarketplaceLayout = lazy(() => import("./features/marketplace/components/MarketplaceLayout"));
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
 const SettingsPage = lazy(() => import("./features/settings/screens/SettingsPage"));
-const SlashCommandsPage = lazy(() => import("./features/slash-commands/screens/SlashCommandsPage"));
-const SlashCommandsReviewPage = lazy(() => import("./features/slash-commands/screens/SlashCommandsReviewPage"));
 const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsReviewPage"));
 const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
@@ -137,23 +136,7 @@ function AppContent() {
             <Route path="clis" element={null} />
           </Route>
 
-          <Route path="slash-commands" element={<Navigate to="/slash-commands/use" replace />} />
-          <Route
-            path="slash-commands/use"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label={common.loading.slashCommands} />}>
-                <SlashCommandsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="slash-commands/review"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label={common.loading.slashCommands} />}>
-                <SlashCommandsReviewPage />
-              </Suspense>
-            }
-          />
+          {getSlashCommandsRouteElements()}
 
           <Route
             path="activity"
