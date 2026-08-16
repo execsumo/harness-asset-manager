@@ -1838,6 +1838,58 @@ exposure is wanted.
    spacing, empty states, or the bulk-adopt dock visually. `/hooks`, `/agents`, `/skills`,
    `/slash-commands`, plus each one's `?status=untracked` deep link.
 
+### OPEN BUG — settings path is environment-dependent; `disabledHarnesses` was silently lost
+
+**Not fixed. No delegate assigned.** Found 2026-08-16 while investigating the skills bulk adoption.
+
+**Symptom.** The user's stored settings — `disabledHarnesses: ["cursor", "opencode"]`,
+`autoAdoptHarnesses.agents: ["claude","codex","agy","cursor"]`, and the `autoAdopt` flags — silently
+stopped taking effect. The app now reads an entirely different settings file and falls back to
+defaults, with no error and no migration.
+
+**Two files exist, and the audit log shows the handover:**
+
+```
+~/.config/harnessam/settings.json   9 writes, 2026-08-15 06:35 → 19:09   ← the real settings
+~/.harnessam/settings.json          2 writes, 2026-08-16 21:54           ← what the app reads now
+```
+
+**Mechanism** — `harness_asset_manager/paths.py`. `settings_path = config_dir / "settings.json"`
+(line ~55), and `config_dir = _xdg_dir(env, "XDG_CONFIG_HOME", default_linux)` in `_base_dirs`. So the
+settings location depends on whether `XDG_CONFIG_HOME` is set **in the environment that launched the
+server**:
+
+```sh
+# XDG unset (e.g. a plain shell):
+./.venv/bin/python -c "from harness_asset_manager.paths import resolve_app_paths as r; print(r().settings_path)"
+#   -> /home/dev/.harnessam/settings.json
+
+# XDG_CONFIG_HOME set (e.g. a desktop session):
+XDG_CONFIG_HOME=/home/dev/.config ./.venv/bin/python -c "from harness_asset_manager.paths import resolve_app_paths as r; print(r().settings_path)"
+#   -> /home/dev/.config/harnessam/settings.json
+```
+
+This is **not** a one-time migration that was missed — it can flip back and forth depending on how the
+server is launched. Note `data_dir` does *not* drift the same way (`_resolve_linux_default_store` pins
+it), so `skills-manifest.json` and the stores stayed consistent throughout; only `config_dir` diverges.
+
+**Impact.** Low right now: `cursor` and `opencode` both report `installed: false` and their
+directories are absent, so nothing can be written to them. But a user who disabled a harness and later
+installs it would find it silently active again. The lost `autoAdopt` flags happen to have *reduced*
+risk here rather than increased it.
+
+**Fix directions** (pick deliberately — this is a data-location decision, not a bug-swat):
+
+- Resolve settings from `data_dir` rather than `config_dir`, so it tracks the same pinned store as
+  every manifest; or
+- Read the legacy `~/.config/<app>/settings.json` as a fallback and migrate it once, the way
+  `_resolve_linux_default_store` already does for the data store; or
+- Make the divergence loud — fail or warn when a settings file exists at the other candidate path.
+
+**Do not delete `~/.config/harnessam/settings.json`** — it is the only copy of the user's real
+settings. Restoring `disabledHarnesses` into the active file is a separate, pending decision; the user
+has been told and has not asked for it yet.
+
 ### Gotchas that cost time this session
 
 - **`npm test` flakes under load.** `MarketplaceCliPage.test.tsx` and `SkillDetailContent.test.tsx` fail
