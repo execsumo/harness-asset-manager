@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
-import AgentsNeedsReviewPage from "./AgentsNeedsReviewPage";
+import AgentsInUsePage from "./AgentsInUsePage";
 import type { AgentInventoryDto } from "../api/types";
 import { getAgentsRouteElements } from "../routes";
 
@@ -63,7 +63,7 @@ function mixedAgentsFixture(): AgentInventoryDto {
 }
 
 function renderPage() {
-  return renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents?status=untracked" });
+  return renderWithAppProviders(<AgentsInUsePage />, { route: "/agents?status=untracked" });
 }
 
 function LocationProbe() {
@@ -81,7 +81,7 @@ function renderRoutes(route: string) {
   );
 }
 
-describe("AgentsNeedsReviewPage", () => {
+describe("Agents unified inventory", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -281,7 +281,7 @@ describe("AgentsNeedsReviewPage", () => {
       throw new Error(`Unhandled URL ${url}`);
     });
 
-    renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents" });
+    renderWithAppProviders(<AgentsInUsePage />, { route: "/agents" });
     await waitFor(() => expect(screen.getByText("Managed Agent")).toBeInTheDocument());
     expect(screen.getByRole("checkbox", { name: /select ok agent/i })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: /managed agent/i })).not.toBeInTheDocument();
@@ -294,7 +294,7 @@ describe("AgentsNeedsReviewPage", () => {
       throw new Error(`Unhandled URL ${url}`);
     });
 
-    renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents" });
+    renderWithAppProviders(<AgentsInUsePage />, { route: "/agents" });
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /select ok agent/i })).toBeInTheDocument());
     expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /select ok agent/i }));
