@@ -1785,3 +1785,62 @@ Work required:
 - Sidebar rendering is shared, so verify the group-as-link change does not disturb families that are
   legitimately still grouped.
 
+### Also shipped 2026-08-16 — Hermes-origin skills were wrongly classified as unmanaged
+
+Merged at `836b655` (fix `157381e`). **This reclassified 55 of 69 manifest entries.** Live inventory
+went from `{"managed": 14, "unmanaged": 59}` to `{"managed": 69, "unmanaged": 4}` — verified against
+real data before and after, not predicted.
+
+**Symptom:** a skill the manifest already recorded as managed (`defuddle`) was shown as `Unmanaged`
+with an Adopt button; `POST /api/skills/{ref}/manage` returned `409 package already exists in store`.
+A closed loop with no exit from the UI.
+
+**Root cause:** `_is_excluded_hermes_store_package` in `application/skills/inventory.py` excluded any
+Hermes-origin package whose `source_kind == "centralized"`. Its own comment noted that self-learned
+Hermes skills *are* centralized once managed — so the rule excluded exactly the skills that
+`ARCHITECTURE.md:56` and `README.md:287` say must be "discoverable and adoptable". Only bundled/official
+Hermes packages should be hidden, and those are handled by `excluded_hermes_names`, which is retained.
+Every one of the 55 Hermes entries matched the deleted clause.
+
+Regression test: `test_existing_hermes_origin_package_is_managed_not_adoptable` in
+`tests/integration/test_skills_mutations.py` — verified to fail without the fix.
+
+**Operational lesson worth keeping.** The bug was first reported as "Adopt does nothing", and the first
+symptom found was `GET /api/skills` hanging while `/api/hooks` and `/api/agents` returned 200. That hang
+was a *stale server process* running pre-`4cc1ed2` code with the skills auto-adopt deadlock — not the
+reported bug. **Rebuilding `frontend/dist` updates the UI, but backend fixes require restarting the
+server.** Check process start time against the relevant commit before diagnosing.
+
+## State at end of session 2026-08-16 — resume here
+
+`main` = `836b655`. Working tree clean, no delegate worktrees or branches outstanding.
+
+**Validation on `836b655`:** backend `exit 0` / 81% coverage; frontend typecheck `0`, build `0`,
+lint `0 errors` (12 warnings, was 17 pre-consolidation); `frontend/dist` rebuilt to match.
+
+**Running instance:** served from the repo checkout on `0.0.0.0:8000` with `--allow-remote`, reachable
+at `http://vibebox.goose-marlin.ts.net:8000/`. Note the API is **unauthenticated** — anyone who can
+reach the port can mutate local harness config. Restart with `--host <tailscale-ip>` if tailnet-only
+exposure is wanted.
+
+### Next steps, in priority order
+
+1. **Sidebar consolidation** — the section immediately above. One entry per family, group heading
+   becomes the link, `/skills` shows all skills. Decide where the needs-review count goes; do not drop it.
+2. **MCP** — the last two-page family. Backend reshape first (see the exclusion rationale above).
+3. **Unverified in a browser.** The four consolidated pages have test coverage but nobody has confirmed
+   spacing, empty states, or the bulk-adopt dock visually. `/hooks`, `/agents`, `/skills`,
+   `/slash-commands`, plus each one's `?status=untracked` deep link.
+
+### Gotchas that cost time this session
+
+- **`npm test` flakes under load.** `MarketplaceCliPage.test.tsx` and `SkillDetailContent.test.tsx` fail
+  intermittently when several vitest runs share the machine (`environment` timings exceed 1500s and
+  `waitFor` expires). Both pass in isolation. **Run one suite at a time**; do not chase them.
+- **`ss` / `netstat` report nothing in this WSL environment.** Use `pgrep` and `curl` to check ports.
+  A `--port` that is already taken is silently ignored and the app binds a random port instead.
+- **`../` escapes the repo.** `harnessAM/checkout` is a symlink to `harness-asset-manager`, so a
+  relative worktree path lands in `/home/dev/projects/`. Use absolute paths for `git worktree add`.
+- **`.gitignore` trailing slashes match directories only.** `.venv/` and `node_modules/` did not match
+  the symlinks agents create; fixed in `5e76369`, but the same trap applies to any new entry.
+
