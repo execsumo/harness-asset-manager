@@ -153,7 +153,12 @@ describe("Skills unified inventory page", () => {
     expect(screen.getByRole("table", { name: "Skills harness matrix" })).toBeInTheDocument();
     expect(screen.getByText("Managed Skill")).toBeInTheDocument();
     expect(screen.getByText("Untracked Skill")).toBeInTheDocument();
+    expect(screen.getByLabelText("Search skills in use")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sort by Name" })).toBeInTheDocument();
+
+    for (const name of ["Grid", "Board", "Matrix", "Scan", "Table"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
   });
 
   it("deep-link status=untracked renders only untracked rows", () => {
@@ -174,7 +179,14 @@ describe("Skills unified inventory page", () => {
     );
   });
 
-  it("shows the untracked bulk dock only after an untracked row is selected", () => {
+  it("adopts an untracked skill from its row action", async () => {
+    renderPage("/skills?status=untracked");
+
+    fireEvent.click(screen.getByRole("button", { name: "Adopt" }));
+    await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:untracked-skill"));
+  });
+
+  it("shows the untracked bulk dock only after an untracked row is selected", async () => {
     renderPage();
 
     expect(screen.queryByRole("toolbar", { name: "Bulk actions" })).not.toBeInTheDocument();
@@ -182,6 +194,9 @@ describe("Skills unified inventory page", () => {
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
     expect(toolbar).toBeInTheDocument();
     expect(within(toolbar).getByRole("button", { name: "Adopt" })).toBeInTheDocument();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Adopt" }));
+    await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:untracked-skill"));
   });
 
 });
@@ -207,6 +222,6 @@ describe("Skills shared route fragment", () => {
     ["/skills/unmanaged", "/skills?status=untracked"],
   ])("redirects %s to %s", async (source, target) => {
     renderRoutes(source);
-    await waitFor(() => expect(screen.getByTestId("skills-location")).toHaveTextContent(target));
+    await waitFor(() => expect(screen.getByTestId("skills-location").textContent).toBe(target));
   });
 });

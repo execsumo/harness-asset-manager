@@ -8,16 +8,12 @@ import { ToastProvider } from "./components/Toast";
 import { UiTooltipProvider } from "./components/ui/UiTooltipProvider";
 import { invalidateCapabilityQueries } from "./app/capability-registry";
 import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session";
-import { getSkillsRouteElements, preloadSkillsRoute } from "./features/skills/routes";
+import { getSkillsRouteElements } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
 import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
 import { ThemeProvider } from "./lib/theme";
-
-// Keep the legacy route heading responsive while the shared route fragment
-// retains its Suspense boundary and lazy declaration.
-void preloadSkillsRoute();
 
 const MarketplaceLayout = lazy(() => import("./features/marketplace/components/MarketplaceLayout"));
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
