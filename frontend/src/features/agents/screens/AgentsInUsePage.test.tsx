@@ -74,7 +74,7 @@ function agentsInUseFixture(): AgentInventoryDto {
 }
 
 function renderPage() {
-  return renderWithAppProviders(<AgentsInUsePage />, { route: "/agents/use" });
+  return renderWithAppProviders(<AgentsInUsePage />, { route: "/agents" });
 }
 
 describe("AgentsInUsePage", () => {

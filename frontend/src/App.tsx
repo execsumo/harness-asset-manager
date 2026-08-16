@@ -12,6 +12,7 @@ import SkillsNeedsReviewPage from "./features/skills/screens/SkillsNeedsReviewPa
 import SkillsInUsePage from "./features/skills/screens/SkillsInUsePage";
 import SkillsWorkspacePage from "./features/skills/screens/SkillsWorkspacePage";
 import { getHooksRouteElements } from "./features/hooks/routes";
+import { getAgentsRouteElements } from "./features/agents/routes";
 import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
@@ -24,8 +25,6 @@ const SlashCommandsPage = lazy(() => import("./features/slash-commands/screens/S
 const SlashCommandsReviewPage = lazy(() => import("./features/slash-commands/screens/SlashCommandsReviewPage"));
 const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsReviewPage"));
 const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
-const AgentsInUsePage = lazy(() => import("./features/agents/screens/AgentsInUsePage"));
-const AgentsNeedsReviewPage = lazy(() => import("./features/agents/screens/AgentsNeedsReviewPage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
 const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
@@ -84,23 +83,7 @@ function AppContent() {
               </Suspense>
             }
           />
-          <Route path="agents" element={<Navigate to="/agents/use" replace />} />
-          <Route
-            path="agents/use"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label="Loading agents..." />}>
-                <AgentsInUsePage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="agents/review"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label="Loading agents..." />}>
-                <AgentsNeedsReviewPage />
-              </Suspense>
-            }
-          />
+          {getAgentsRouteElements()}
 
           <Route path="skills" element={<SkillsWorkspacePage />}>
             <Route index element={<Navigate to="use" replace />} />

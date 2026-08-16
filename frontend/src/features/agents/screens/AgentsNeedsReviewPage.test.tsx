@@ -1,10 +1,12 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
 import AgentsNeedsReviewPage from "./AgentsNeedsReviewPage";
 import type { AgentInventoryDto } from "../api/types";
+import { getAgentsRouteElements } from "../routes";
 
 const fetchMock = vi.fn();
 
@@ -42,8 +44,41 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
   };
 }
 
+function mixedAgentsFixture(): AgentInventoryDto {
+  return {
+    ...unmanagedAgentsFixture(),
+    entries: [
+      {
+        ref: "managed/agent",
+        name: "Managed Agent",
+        description: "Already tracked",
+        kind: "managed",
+        harnessPath: null,
+        bindings: [{ harness: "cursor", state: "enabled", detail: null }],
+        actions: { canAdopt: false, canDelete: true },
+      },
+      ...unmanagedAgentsFixture().entries,
+    ],
+  };
+}
+
 function renderPage() {
-  return renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents/review" });
+  return renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents?status=untracked" });
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="agents-location">{location.pathname}{location.search}</output>;
+}
+
+function renderRoutes(route: string) {
+  return renderWithAppProviders(
+    <>
+      <Routes>{getAgentsRouteElements()}</Routes>
+      <LocationProbe />
+    </>,
+    { route },
+  );
 }
 
 describe("AgentsNeedsReviewPage", () => {
@@ -64,14 +99,14 @@ describe("AgentsNeedsReviewPage", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByRole("table", { name: /Agents to review/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("table", { name: /Agents Matrix/i })).toBeInTheDocument());
     expect(screen.getByText("OK Agent")).toBeInTheDocument();
 
     const okRow = screen.getByText("OK Agent").closest("tr");
     expect(okRow).not.toBeNull();
-    expect(okRow?.querySelector('[aria-label="Discovered in Cursor"]')).not.toBeNull();
+    expect(okRow?.querySelector('[aria-label="Open details for OK Agent"]')).not.toBeNull();
     expect(okRow?.querySelector('[aria-label="Not found in Claude Code"]')).not.toBeNull();
-    expect(okRow?.querySelectorAll('[aria-label^="Discovered in"]').length).toBe(1);
+    expect(okRow?.querySelectorAll('[aria-label^="Open details for"]').length).toBe(1);
   });
 
   it("renders each issue's name and reason verbatim when issues are present", async () => {
@@ -225,5 +260,75 @@ describe("AgentsNeedsReviewPage", () => {
     fireEvent.click(adoptAllButton);
 
     await waitFor(() => expect(screen.getByText(/Skipped 1 agents due to conflicts/i)).toBeInTheDocument());
+  });
+
+  it("deep-link status=untracked renders only untracked rows", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(mixedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("OK Agent")).toBeInTheDocument());
+    expect(screen.queryByText("Managed Agent")).not.toBeInTheDocument();
+  });
+
+  it("does not render checkboxes on managed rows", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(mixedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents" });
+    await waitFor(() => expect(screen.getByText("Managed Agent")).toBeInTheDocument());
+    expect(screen.getByRole("checkbox", { name: /select ok agent/i })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /managed agent/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the bulk dock only after an untracked row is selected", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(mixedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<AgentsNeedsReviewPage />, { route: "/agents" });
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /select ok agent/i })).toBeInTheDocument());
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /select ok agent/i }));
+    expect(screen.getByRole("toolbar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adopt selected/i })).toBeInTheDocument();
+  });
+});
+
+describe("Agents legacy route redirects", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fetchMock.mockReset();
+  });
+
+  it("redirects /agents/use to /agents without a status filter", async () => {
+    renderRoutes("/agents/use");
+    await waitFor(() => expect(screen.getByTestId("agents-location")).toHaveTextContent("/agents"));
+    expect(screen.getByTestId("agents-location")).toHaveTextContent(/^\/agents$/);
+  });
+
+  it("redirects /agents/review to the untracked filter and renders untracked rows", async () => {
+    renderRoutes("/agents/review");
+    await waitFor(() => {
+      expect(screen.getByTestId("agents-location")).toHaveTextContent("/agents?status=untracked");
+      expect(screen.getByText("OK Agent")).toBeInTheDocument();
+    });
   });
 });
