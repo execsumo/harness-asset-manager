@@ -9,6 +9,7 @@ import { MatrixRow } from "./MatrixRow";
 import { sortRows, sortKeysEqual, type SortKey, type SortState } from "../../model/sortRows";
 import type { CellActionKey } from "../../model/pending";
 import type { HarnessCell, HarnessColumn, SkillListRow } from "../../model/types";
+import type { StructuralSkillAction } from "../../model/pending";
 
 interface MatrixViewProps {
   rows: SkillListRow[];
@@ -19,6 +20,9 @@ interface MatrixViewProps {
   onOpenSkill: (skillRef: string) => void;
   onToggleChecked: (skillRef: string) => void;
   onToggleCell: (row: SkillListRow, cell: HarnessCell) => void;
+  onManageSkill?: (skillRef: string) => void;
+  pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
+  untrackedSelectionOnly?: boolean;
 }
 
 const INITIAL_SORT: SortState = { key: "name", direction: "asc" };
@@ -32,6 +36,9 @@ export function MatrixView({
   onOpenSkill,
   onToggleChecked,
   onToggleCell,
+  onManageSkill,
+  pendingStructuralActions,
+  untrackedSelectionOnly = false,
 }: MatrixViewProps) {
   const [sort, setSort] = useState<SortState>(INITIAL_SORT);
 
@@ -109,6 +116,9 @@ export function MatrixView({
             onOpenSkill={onOpenSkill}
             onToggleChecked={onToggleChecked}
             onToggleCell={onToggleCell}
+            onManageSkill={onManageSkill}
+            pendingStructuralActions={pendingStructuralActions}
+            untrackedSelectionOnly={untrackedSelectionOnly}
           />
         ))}
       </tbody>

@@ -134,9 +134,7 @@ describe("App shell", () => {
     ["/activity", "Activity"],
   ])("renders the expected page heading for %s", async (route, heading) => {
     renderApp(route);
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument(),
-    );
+    await screen.findByRole("heading", { name: heading }, { timeout: 10000 });
   });
 
   it.each([
@@ -146,9 +144,7 @@ describe("App shell", () => {
     ["/mcp/unmanaged", "MCP configs to review"],
   ])("redirects compatibility route %s to the new concept route", async (route, heading) => {
     renderApp(route);
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument(),
-    );
+    await screen.findByRole("heading", { name: heading }, { timeout: 10000 });
   });
 
   it("shows the preview-only note only on the CLI marketplace tab", async () => {

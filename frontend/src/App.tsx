@@ -8,9 +8,7 @@ import { ToastProvider } from "./components/Toast";
 import { UiTooltipProvider } from "./components/ui/UiTooltipProvider";
 import { invalidateCapabilityQueries } from "./app/capability-registry";
 import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session";
-import SkillsNeedsReviewPage from "./features/skills/screens/SkillsNeedsReviewPage";
-import SkillsInUsePage from "./features/skills/screens/SkillsInUsePage";
-import SkillsWorkspacePage from "./features/skills/screens/SkillsWorkspacePage";
+import { getSkillsRouteElements } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
 import { getAgentsRouteElements } from "./features/agents/routes";
 import { useCommonCopy } from "./i18n";
@@ -85,13 +83,7 @@ function AppContent() {
           />
           {getAgentsRouteElements()}
 
-          <Route path="skills" element={<SkillsWorkspacePage />}>
-            <Route index element={<Navigate to="use" replace />} />
-            <Route path="use" element={<SkillsInUsePage />} />
-            <Route path="review" element={<SkillsNeedsReviewPage />} />
-            <Route path="managed" element={<Navigate to="/skills/use" replace />} />
-            <Route path="unmanaged" element={<Navigate to="/skills/review" replace />} />
-          </Route>
+          {getSkillsRouteElements()}
 
           <Route path="mcp" element={<Navigate to="/mcp/use" replace />} />
           <Route

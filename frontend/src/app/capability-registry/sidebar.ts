@@ -99,10 +99,10 @@ export function useSidebarModel(): SidebarModel {
           iconKey: "skills",
           count: sumLoadedCounts(inUseSkills, needsReviewSkills),
           links: [
-            { key: "skills-use", to: skillsRoutes.inUse, label: common.productLanguage.inUse, count: inUseSkills },
+            { key: "skills-use", to: skillsRoutes.index, label: common.productLanguage.inUse, count: inUseSkills },
             {
               key: "skills-review",
-              to: skillsRoutes.needsReview,
+              to: skillsRoutes.needsReviewFilter,
               label: common.productLanguage.needsReview,
               count: needsReviewSkills,
             },
