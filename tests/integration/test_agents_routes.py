@@ -382,6 +382,9 @@ class AgentRoutesTests(unittest.TestCase):
         has not moved since we linked, so that copy holds the only edit — folding it
         back in discards nothing, and Stage 3 does it without asking."""
         with AppTestHarness() as harness:
+            harness.put_json(
+                "/api/settings/auto-adopt/agents/harnesses", {"harnesses": ["claude"]}
+            )
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
@@ -494,6 +497,7 @@ class AgentRoutesTests(unittest.TestCase):
         discards the other's work, so nothing is adopted, nothing is deleted, and each
         divergent copy is preserved for the user to choose from."""
         with AppTestHarness() as harness:
+            harness.put_json("/api/settings/auto-adopt/agents", {"enabled": True})
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
