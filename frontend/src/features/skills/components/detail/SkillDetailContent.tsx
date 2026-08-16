@@ -1,6 +1,6 @@
-import { lazy, Suspense, useId } from "react";
+import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
-import { DetailDisclosure } from "../../../../components/detail/DetailDisclosure";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailNote } from "../../../../components/detail/DetailNote";
 import { DetailSection } from "../../../../components/detail/DetailSection";
@@ -16,8 +16,7 @@ import { SkillDetailHarnessMatrix } from "./SkillDetailHarnessMatrix";
 import { SkillDetailRemoveAction } from "./SkillDetailRemoveAction";
 import { SkillDetailUpdateControl } from "./SkillDetailUpdateControl";
 import { SkillDetailShell } from "./SkillDetailShell";
-
-const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
+import MarkdownDocument from "../../../../components/MarkdownDocument";
 
 interface SkillDetailContentProps {
   detail: SkillDetail;
@@ -98,23 +97,7 @@ export function SkillDetailContent({
           ) : null}
         </DetailSection>
 
-        <DetailDisclosure
-          title="SKILL.md"
-          defaultOpen={false}
-          className="skill-detail__disclosure skill-detail__disclosure--document"
-        >
-          <div className="skill-detail__document-surface">
-            {detail.documentMarkdown ? (
-              <Suspense fallback={<LoadingSpinner size="sm" label={copy.detail.loadingDocument} />}>
-                <MarkdownDocument markdown={detail.documentMarkdown} />
-              </Suspense>
-            ) : (
-              <p className="skill-detail__copy">
-                {copy.detail.noDocument}
-              </p>
-            )}
-          </div>
-        </DetailDisclosure>
+        <SkillDocumentDisclosure markdown={detail.documentMarkdown} />
 
         {showHarnessSection ? (
           <DetailSection heading={copy.detail.harnesses}>
@@ -228,6 +211,40 @@ function skillSourceLinks(sourceLinks: SkillSourceLinks, copy: SkillsCopy): Deta
     });
   }
   return links;
+}
+
+function SkillDocumentDisclosure({ markdown }: { markdown: string | null }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const panelId = useId();
+  const copy = useSkillsCopy();
+
+  return (
+    <section className={`skill-detail-disclosure${isOpen ? " is-open" : ""} skill-detail__disclosure skill-detail__disclosure--document`}>
+      <h3 className="skill-detail-disclosure__header">
+        <button
+          type="button"
+          className="skill-detail-disclosure__trigger"
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <span className="skill-detail-disclosure__heading">
+            <span className="skill-detail-disclosure__title">SKILL.md</span>
+          </span>
+          <ChevronDown className="skill-detail-disclosure__chevron" size={16} aria-hidden="true" />
+        </button>
+      </h3>
+      <div className="skill-detail-disclosure__frame" id={panelId}>
+        {isOpen ? (
+          <div className="skill-detail-disclosure__body">
+            <div className="skill-detail__document-surface">
+              {markdown ? <MarkdownDocument markdown={markdown} /> : <p className="skill-detail__copy">{copy.detail.noDocument}</p>}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 function computeShowFooter(detail: SkillDetail): boolean {

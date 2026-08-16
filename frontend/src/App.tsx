@@ -8,14 +8,16 @@ import { ToastProvider } from "./components/Toast";
 import { UiTooltipProvider } from "./components/ui/UiTooltipProvider";
 import { invalidateCapabilityQueries } from "./app/capability-registry";
 import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session";
-import SkillsNeedsReviewPage from "./features/skills/screens/SkillsNeedsReviewPage";
-import SkillsInUsePage from "./features/skills/screens/SkillsInUsePage";
-import SkillsWorkspacePage from "./features/skills/screens/SkillsWorkspacePage";
+import { getSkillsRouteElements, preloadSkillsRoute } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
 import { useCommonCopy } from "./i18n";
 
 import { HomeDirProvider } from "./lib/paths";
 import { ThemeProvider } from "./lib/theme";
+
+// Keep the legacy route heading responsive while the shared route fragment
+// retains its Suspense boundary and lazy declaration.
+void preloadSkillsRoute();
 
 const MarketplaceLayout = lazy(() => import("./features/marketplace/components/MarketplaceLayout"));
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
@@ -102,13 +104,7 @@ function AppContent() {
             }
           />
 
-          <Route path="skills" element={<SkillsWorkspacePage />}>
-            <Route index element={<Navigate to="use" replace />} />
-            <Route path="use" element={<SkillsInUsePage />} />
-            <Route path="review" element={<SkillsNeedsReviewPage />} />
-            <Route path="managed" element={<Navigate to="/skills/use" replace />} />
-            <Route path="unmanaged" element={<Navigate to="/skills/review" replace />} />
-          </Route>
+          {getSkillsRouteElements()}
 
           <Route path="mcp" element={<Navigate to="/mcp/use" replace />} />
           <Route

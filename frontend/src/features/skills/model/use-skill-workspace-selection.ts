@@ -10,9 +10,12 @@ export function useSkillWorkspaceSelection(data: SkillsWorkspaceData | null) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileDetail = useCompactDetailLayout();
-  const activeTab: SkillsWorkspaceTab = location.pathname.endsWith("/review") || location.pathname.endsWith("/unmanaged")
-    ? "needsReview"
-    : "inUse";
+  const activeTab: SkillsWorkspaceTab =
+    location.pathname.endsWith("/review") ||
+    location.pathname.endsWith("/unmanaged") ||
+    searchParams.get("status") === "untracked"
+      ? "needsReview"
+      : "inUse";
   const selectedSkillRef = searchParams.get("skill");
 
   const updateSelectedSkillRef = useCallback((skillRef: string | null, replace = false) => {

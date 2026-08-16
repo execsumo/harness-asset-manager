@@ -20,7 +20,11 @@ export type {
 } from "./model/types";
 
 export const skillsRoutes = {
+  index: "/skills",
+  // Keep the legacy values for overview/deep-link consumers; both routes
+  // redirect through the shared fragment below.
   inUse: "/skills/use",
   needsReview: "/skills/review",
+  needsReviewFilter: "/skills?status=untracked",
   marketplace: "/marketplace/skills",
 } as const;
