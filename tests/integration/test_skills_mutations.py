@@ -94,6 +94,35 @@ def seed_cursor_owned_skill_fixture(spec):
 def seed_auto_adopt_skill_fixture(spec):
     seed_skill_package(spec.claude_root, "auto-local", "Auto Local", body="from harness")
 
+
+def seed_existing_hermes_managed_package_fixture(spec):
+    package_root = seed_skill_package(
+        spec.skills_store_root,
+        "defuddle",
+        "defuddle",
+        body="Existing package from a remote Hermes origin.",
+    )
+    seed_skill_package(
+        spec.codex_root,
+        "defuddle",
+        "defuddle",
+        body="Existing package from a remote Hermes origin.",
+    )
+    revision, _ = fingerprint_package(package_root)
+    seed_store_manifest(
+        spec,
+        [
+            SkillStoreEntry(
+                package_dir="defuddle",
+                declared_name="defuddle",
+                source_kind="centralized",
+                source_locator="centralized:defuddle",
+                revision=revision,
+                origin_harness="hermes",
+            )
+        ],
+    )
+
 def seed_hermes_bundled_exclusion_fixture(spec):
     bundled = seed_skill_package(
         spec.hermes_skills_root / "builtin",
@@ -157,6 +186,20 @@ def seed_hermes_external_hub_fixture(spec):
 
 
 class SkillsMutationTests(unittest.TestCase):
+
+    def test_existing_hermes_origin_package_is_managed_not_adoptable(self) -> None:
+        with AppTestHarness(
+            fixture_factory=seed_existing_hermes_managed_package_fixture,
+            omit_clis=("hermes",),
+        ) as harness:
+            skills = harness.get_json("/api/skills")
+            defuddle = next(row for row in skills["rows"] if row["name"] == "defuddle")
+
+            self.assertEqual(defuddle["displayStatus"], "Managed")
+            self.assertEqual(
+                defuddle["actions"],
+                {"canManage": False, "canStopManaging": True, "canDelete": True},
+            )
 
     def test_auto_adopt_enabled_skill_moves_local_folder_into_store(self) -> None:
         with AppTestHarness(fixture_factory=seed_auto_adopt_skill_fixture) as harness:
