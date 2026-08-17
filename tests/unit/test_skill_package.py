@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Event, Lock
 from unittest.mock import patch
 
+import harness_asset_manager.application.skills.package as skill_package_module
 from harness_asset_manager.application.skills.identity import SourceDescriptor
 from harness_asset_manager.application.skills.package import (
     SkillPackageCache,
@@ -90,10 +93,11 @@ class SkillParsingTests(unittest.TestCase):
             cache = SkillPackageCache()
             source = SourceDescriptor(kind="shared-store", locator="fixture:policy-kit")
 
-            with patch(
-                "harness_asset_manager.application.skills.package.fingerprint_package",
-                wraps=fingerprint_package,
-            ) as fingerprint:
+            with patch.object(
+                skill_package_module,
+                "_read_stable_package",
+                wraps=skill_package_module._read_stable_package,
+            ) as package_read:
                 first_cycle = cache.new_validation_cycle()
                 direct = cache.parse(
                     package_root,
@@ -111,7 +115,7 @@ class SkillParsingTests(unittest.TestCase):
                     validation_cycle=cache.new_validation_cycle(),
                 )
 
-            self.assertEqual(fingerprint.call_count, 1)
+            self.assertEqual(package_read.call_count, 1)
             self.assertEqual(direct.revision, linked.revision)
             self.assertEqual(linked.revision, unchanged.revision)
             self.assertEqual(linked.root_path, binding)
@@ -230,6 +234,286 @@ class SkillParsingTests(unittest.TestCase):
 
             self.assertEqual(first.declared_name, "First")
             self.assertEqual(second.declared_name, "Second")
+
+    def test_file_symlink_is_re_fingerprinted_when_metadata_signature_is_stable(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package_root = seed_skill_package(root / "packages", "skill", "Skill")
+            external = root / "dynamic.txt"
+            external.write_text("first", encoding="utf-8")
+            link = package_root / "docs" / "dynamic.txt"
+            link.parent.mkdir()
+            link.symlink_to(external)
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+
+            with patch.object(
+                skill_package_module,
+                "_package_metadata_signature",
+                return_value=b"stable-metadata",
+            ):
+                first = cache.parse(
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+                external.write_text("second", encoding="utf-8")
+                second = cache.parse(
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+
+            self.assertNotEqual(first.revision, second.revision)
+
+    def test_directory_symlink_repoint_changes_topology_without_recursing(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package_root = seed_skill_package(root / "packages", "skill", "Skill")
+            first_target = root / "first-target"
+            second_target = root / "second-target"
+            first_target.mkdir()
+            second_target.mkdir()
+            (first_target / "ignored.txt").write_text("first", encoding="utf-8")
+            (second_target / "ignored.txt").write_text("second", encoding="utf-8")
+            link = package_root / "linked-directory"
+            link.symlink_to(first_target, target_is_directory=True)
+
+            first, first_files = fingerprint_package(package_root)
+            link.unlink()
+            link.symlink_to(second_target, target_is_directory=True)
+            second, second_files = fingerprint_package(package_root)
+
+            self.assertNotEqual(first, second)
+            self.assertIn("linked-directory", first_files)
+            self.assertEqual(first_files, second_files)
+            self.assertNotIn("linked-directory/ignored.txt", first_files)
+
+    def test_broken_symlink_add_repoint_and_remove_change_topology(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "Skill")
+            link = package_root / "missing-link"
+
+            original, original_files = fingerprint_package(package_root)
+            link.symlink_to("missing-one")
+            added, added_files = fingerprint_package(package_root)
+            link.unlink()
+            link.symlink_to("missing-two")
+            repointed, repointed_files = fingerprint_package(package_root)
+            link.unlink()
+            removed, removed_files = fingerprint_package(package_root)
+
+            self.assertNotEqual(original, added)
+            self.assertNotEqual(added, repointed)
+            self.assertEqual(original, removed)
+            self.assertNotIn("missing-link", original_files)
+            self.assertIn("missing-link", added_files)
+            self.assertEqual(added_files, repointed_files)
+            self.assertEqual(original_files, removed_files)
+
+    def test_package_cache_concurrent_same_key_performs_one_build(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "Skill")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+            cycle = cache.new_validation_cycle()
+            started = Event()
+            release = Event()
+            waiter_present = Event()
+            calls = 0
+            calls_lock = Lock()
+            original_read = skill_package_module._read_stable_package
+            original_wait = cache._condition.wait
+
+            def blocking_read(*args, **kwargs):
+                nonlocal calls
+                with calls_lock:
+                    calls += 1
+                started.set()
+                self.assertTrue(release.wait(timeout=5))
+                return original_read(*args, **kwargs)
+
+            def tracked_wait(*args, **kwargs):
+                waiter_present.set()
+                return original_wait(*args, **kwargs)
+
+            with (
+                patch.object(skill_package_module, "_read_stable_package", blocking_read),
+                patch.object(cache._condition, "wait", side_effect=tracked_wait),
+                ThreadPoolExecutor(max_workers=2) as executor,
+            ):
+                first = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cycle,
+                )
+                self.assertTrue(started.wait(timeout=2))
+                second = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cycle,
+                )
+                self.assertTrue(waiter_present.wait(timeout=2))
+                release.set()
+                first_result = first.result(timeout=5)
+                second_result = second.result(timeout=5)
+
+            self.assertEqual(calls, 1)
+            self.assertEqual(first_result.revision, second_result.revision)
+
+    def test_package_cache_invalidation_during_parse_does_not_publish_stale_data(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "First")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+            started = Event()
+            release = Event()
+            waiter_present = Event()
+            calls = 0
+            original_read = skill_package_module._read_stable_package
+            original_wait = cache._condition.wait
+
+            def blocking_first_read(*args, **kwargs):
+                nonlocal calls
+                calls += 1
+                result = original_read(*args, **kwargs)
+                if calls == 1:
+                    started.set()
+                    self.assertTrue(release.wait(timeout=5))
+                return result
+
+            def tracked_wait(*args, **kwargs):
+                waiter_present.set()
+                return original_wait(*args, **kwargs)
+
+            with (
+                patch.object(
+                    skill_package_module,
+                    "_read_stable_package",
+                    blocking_first_read,
+                ),
+                patch.object(cache._condition, "wait", side_effect=tracked_wait),
+                ThreadPoolExecutor(max_workers=2) as executor,
+            ):
+                first = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+                self.assertTrue(started.wait(timeout=2))
+                second = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+                self.assertTrue(waiter_present.wait(timeout=2))
+                (package_root / "SKILL.md").write_text(
+                    "---\nname: Second\n---\n\n# Second\n",
+                    encoding="utf-8",
+                )
+                cache.invalidate()
+                release.set()
+                stale_result = first.result(timeout=5)
+                fresh_result = second.result(timeout=5)
+
+            cached_result = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            self.assertEqual(stale_result.declared_name, "First")
+            self.assertEqual(fresh_result.declared_name, "Second")
+            self.assertEqual(cached_result.declared_name, "Second")
+            self.assertEqual(calls, 2)
+
+    def test_package_cache_exception_releases_waiter_and_retry_succeeds(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "Skill")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+            cycle = cache.new_validation_cycle()
+            started = Event()
+            release = Event()
+            waiter_present = Event()
+            calls = 0
+            original_read = skill_package_module._read_stable_package
+            original_wait = cache._condition.wait
+
+            def flaky_read(*args, **kwargs):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    started.set()
+                    self.assertTrue(release.wait(timeout=5))
+                    raise SkillParseError("fixture parse failure")
+                return original_read(*args, **kwargs)
+
+            def tracked_wait(*args, **kwargs):
+                waiter_present.set()
+                return original_wait(*args, **kwargs)
+
+            with (
+                patch.object(skill_package_module, "_read_stable_package", flaky_read),
+                patch.object(cache._condition, "wait", side_effect=tracked_wait),
+                ThreadPoolExecutor(max_workers=2) as executor,
+            ):
+                failed = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cycle,
+                )
+                self.assertTrue(started.wait(timeout=2))
+                retry = executor.submit(
+                    cache.parse,
+                    package_root,
+                    default_source=source,
+                    validation_cycle=cycle,
+                )
+                self.assertTrue(waiter_present.wait(timeout=2))
+                release.set()
+                with self.assertRaisesRegex(SkillParseError, "fixture parse failure"):
+                    failed.result(timeout=5)
+                result = retry.result(timeout=5)
+
+            self.assertEqual(result.declared_name, "Skill")
+            self.assertEqual(calls, 2)
+
+    def test_package_cache_enforces_lru_bound_and_reloads_evicted_entry(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            packages = [
+                seed_skill_package(root / str(index), "skill", f"Skill {index}")
+                for index in range(3)
+            ]
+            cache = SkillPackageCache(max_entries=2)
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+
+            with patch.object(
+                skill_package_module,
+                "_read_stable_package",
+                wraps=skill_package_module._read_stable_package,
+            ) as package_read:
+                for package_root in packages:
+                    cache.parse(
+                        package_root,
+                        default_source=source,
+                        validation_cycle=cache.new_validation_cycle(),
+                    )
+                self.assertEqual(len(cache._entries), 2)
+                self.assertNotIn(packages[0].resolve(), cache._entries)
+                cache.parse(
+                    packages[0],
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+
+            self.assertEqual(package_read.call_count, 4)
+            self.assertEqual(len(cache._entries), 2)
 
     def test_parse_skill_package_rejects_missing_skill_md(self) -> None:
         with TemporaryDirectory() as temp_dir:

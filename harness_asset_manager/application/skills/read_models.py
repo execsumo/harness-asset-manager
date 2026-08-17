@@ -4,7 +4,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Condition
+from threading import Condition, get_ident, local
 
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService
@@ -46,6 +46,8 @@ class SkillsReadModelService:
         self._cache: _CachedSnapshot | None = None
         self._condition = Condition()
         self._building = False
+        self._builder_thread_id: int | None = None
+        self._build_context = local()
         self._generation = 0
 
     @classmethod
@@ -110,6 +112,8 @@ class SkillsReadModelService:
         return tuple(scan for scan in current.harness_scans if scan.harness in visible)
 
     def snapshot(self) -> SkillsReadModelSnapshot:
+        if getattr(self._build_context, "active", False):
+            raise RuntimeError("skills snapshot construction is not reentrant")
         while True:
             with self._condition:
                 cached = self._cache
@@ -120,22 +124,24 @@ class SkillsReadModelService:
                 ):
                     return cached.snapshot
                 if self._building:
+                    if self._builder_thread_id == get_ident():
+                        raise RuntimeError("skills snapshot construction is not reentrant")
                     self._condition.wait()
                     continue
                 self._building = True
+                self._builder_thread_id = get_ident()
                 generation = self._generation
 
             try:
                 cache_cycle = self.package_cache.new_validation_cycle()
                 with ThreadPoolExecutor(max_workers=2) as executor:
                     store_future = executor.submit(
-                        self.store.scan,
-                        cache_cycle=cache_cycle,
+                        self._scan_store,
+                        cache_cycle,
                     )
                     adapters_future = executor.submit(
-                        scan_all_adapters,
-                        self.adapters,
-                        cache_cycle=cache_cycle,
+                        self._scan_adapters,
+                        cache_cycle,
                     )
                     snapshot = SkillsReadModelSnapshot(
                         store_scan=store_future.result(),
@@ -144,11 +150,13 @@ class SkillsReadModelService:
             except BaseException:
                 with self._condition:
                     self._building = False
+                    self._builder_thread_id = None
                     self._condition.notify_all()
                 raise
 
             with self._condition:
                 self._building = False
+                self._builder_thread_id = None
                 if generation == self._generation:
                     self._cache = _CachedSnapshot(
                         snapshot=snapshot,
@@ -157,6 +165,20 @@ class SkillsReadModelService:
                     self._condition.notify_all()
                     return snapshot
                 self._condition.notify_all()
+
+    def _scan_store(self, cache_cycle: int) -> SkillStoreScan:
+        self._build_context.active = True
+        try:
+            return self.store.scan(cache_cycle=cache_cycle)
+        finally:
+            self._build_context.active = False
+
+    def _scan_adapters(self, cache_cycle: int) -> tuple[SkillsHarnessScan, ...]:
+        self._build_context.active = True
+        try:
+            return scan_all_adapters(self.adapters, cache_cycle=cache_cycle)
+        finally:
+            self._build_context.active = False
 
     def invalidate(self) -> None:
         with self._condition:

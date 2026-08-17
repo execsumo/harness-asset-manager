@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from harness_asset_manager.application.skills.observations import SkillStoreScan
 from harness_asset_manager.application.skills.package import SkillPackageCache
@@ -32,6 +32,18 @@ class _BlockingStore:
         return SkillStoreScan(packages=(), issues=(str(call),))
 
 
+class _ReentrantStore:
+    def __init__(self) -> None:
+        self.package_cache = SkillPackageCache()
+        self.service: SkillsReadModelService | None = None
+
+    def scan(self, *, cache_cycle: int | None = None) -> SkillStoreScan:
+        del cache_cycle
+        assert self.service is not None
+        self.service.snapshot()
+        raise AssertionError("reentrant snapshot unexpectedly returned")
+
+
 class SkillsReadModelTests(unittest.TestCase):
     def _service(self, store: _BlockingStore) -> SkillsReadModelService:
         return SkillsReadModelService(
@@ -44,10 +56,30 @@ class SkillsReadModelTests(unittest.TestCase):
     def test_concurrent_cache_misses_build_one_snapshot(self) -> None:
         store = _BlockingStore()
         service = self._service(store)
+        waiters_present = Event()
+        waiter_count = 0
+        waiter_lock = Lock()
+        original_wait = service._condition.wait
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        def tracked_wait(*args, **kwargs):
+            nonlocal waiter_count
+            with waiter_lock:
+                waiter_count += 1
+                if waiter_count == 2:
+                    waiters_present.set()
+            return original_wait(*args, **kwargs)
+
+        with (
+            patch.object(
+                service._condition,
+                "wait",
+                side_effect=tracked_wait,
+            ),
+            ThreadPoolExecutor(max_workers=3) as executor,
+        ):
             futures = [executor.submit(service.snapshot) for _ in range(3)]
             self.assertTrue(store.started.wait(timeout=2))
+            self.assertTrue(waiters_present.wait(timeout=2))
             self.assertEqual(store.calls, 1)
             store.release.set()
             snapshots = [future.result(timeout=5) for future in futures]
@@ -69,17 +101,47 @@ class SkillsReadModelTests(unittest.TestCase):
         self.assertEqual(store.calls, 2)
         self.assertEqual(snapshot.store_scan.issues, ("2",))
 
-    def test_failed_build_releases_single_flight_for_retry(self) -> None:
+    def test_failed_build_releases_waiter_and_waiter_retry_succeeds(self) -> None:
         store = _BlockingStore(fail_first=True)
         service = self._service(store)
-        store.release.set()
+        waiter_present = Event()
+        original_wait = service._condition.wait
 
-        with self.assertRaisesRegex(RuntimeError, "scan failed"):
-            service.snapshot()
-        snapshot = service.snapshot()
+        def tracked_wait(*args, **kwargs):
+            waiter_present.set()
+            return original_wait(*args, **kwargs)
+
+        with (
+            patch.object(
+                service._condition,
+                "wait",
+                side_effect=tracked_wait,
+            ),
+            ThreadPoolExecutor(max_workers=2) as executor,
+        ):
+            failed = executor.submit(service.snapshot)
+            self.assertTrue(store.started.wait(timeout=2))
+            retry = executor.submit(service.snapshot)
+            self.assertTrue(waiter_present.wait(timeout=2))
+            store.release.set()
+            with self.assertRaisesRegex(RuntimeError, "scan failed"):
+                failed.result(timeout=5)
+            snapshot = retry.result(timeout=5)
 
         self.assertEqual(store.calls, 2)
         self.assertEqual(snapshot.store_scan.issues, ("2",))
+
+    def test_snapshot_reentrancy_is_rejected_instead_of_deadlocking(self) -> None:
+        store = _ReentrantStore()
+        service = SkillsReadModelService(
+            store=store,  # type: ignore[arg-type]
+            adapters=(),
+            kernel=Mock(),
+        )
+        store.service = service
+
+        with self.assertRaisesRegex(RuntimeError, "not reentrant"):
+            service.snapshot()
 
 
 if __name__ == "__main__":

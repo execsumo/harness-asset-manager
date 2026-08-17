@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import stat
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -42,6 +43,18 @@ class _PackageContents:
     manifest: SkillManifest
     relative_files: tuple[str, ...]
     revision: str
+    volatile: bool
+
+
+@dataclass(frozen=True)
+class _PackagePathEntry:
+    relative_path: str
+    path: Path
+    kind: str
+    link_stat: os.stat_result
+    target_stat: os.stat_result | None = None
+    link_target: str | None = None
+    resolved_target: str | None = None
 
 
 @dataclass(frozen=True)
@@ -114,6 +127,7 @@ class SkillPackageCache:
                     generation == self._generation
                     and cached is not None
                     and cached.signature == signature
+                    and not cached.contents.volatile
                 ):
                     contents = cached.contents
                 else:
@@ -160,22 +174,122 @@ def find_skill_roots(root: Path) -> tuple[Path, ...]:
 
 
 def fingerprint_package(root: Path) -> tuple[str, tuple[str, ...]]:
+    fingerprint, relative_files, _volatile = _fingerprint_package_details(root)
+    return fingerprint, relative_files
+
+
+def _fingerprint_package_details(
+    root: Path,
+) -> tuple[str, tuple[str, ...], bool]:
     if not root.is_dir():
         raise SkillParseError(f"skill root does not exist: {root}")
     digest = hashlib.sha256()
     relative_files: list[str] = []
-    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
-        if path.name == ".DS_Store":
-            continue
-        relative_path = path.relative_to(root).as_posix()
-        relative_files.append(relative_path)
-        digest.update(relative_path.encode("utf-8"))
+    volatile = False
+    for entry in _enumerate_package_entries(root):
+        relative_files.append(entry.relative_path)
+        digest.update(entry.relative_path.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(path.read_bytes())
+        if entry.kind in {"file", "file-symlink"}:
+            try:
+                digest.update(entry.path.read_bytes())
+            except OSError as error:
+                raise SkillParseError(f"unable to read {entry.path}: {error}") from error
+        else:
+            digest.update(b"harnessam-topology\0")
+            digest.update(entry.kind.encode("ascii"))
+            digest.update(b"\0")
+            if entry.link_target is not None:
+                digest.update(entry.link_target.encode("utf-8", errors="surrogateescape"))
+                digest.update(b"\0")
+            if entry.kind == "special":
+                digest.update(str(stat.S_IFMT(entry.link_stat.st_mode)).encode("ascii"))
+                digest.update(b"\0")
+                digest.update(str(entry.link_stat.st_rdev).encode("ascii"))
         digest.update(b"\0")
+        volatile = volatile or entry.kind != "file"
     if "SKILL.md" not in relative_files:
         raise SkillParseError(f"missing SKILL.md in {root}")
-    return digest.hexdigest(), tuple(relative_files)
+    return digest.hexdigest(), tuple(relative_files), volatile
+
+
+def _enumerate_package_entries(root: Path) -> tuple[_PackagePathEntry, ...]:
+    """Enumerate package entries with lstat, never following directory links."""
+    entries: list[_PackagePathEntry] = []
+
+    def walk(directory: Path, prefix: str) -> None:
+        try:
+            with os.scandir(directory) as iterator:
+                children = sorted(iterator, key=lambda child: child.name)
+        except OSError as error:
+            raise SkillParseError(f"unable to inspect {directory}: {error}") from error
+        for child in children:
+            if child.name == ".DS_Store":
+                continue
+            relative_path = f"{prefix}/{child.name}" if prefix else child.name
+            path = Path(child.path)
+            try:
+                link_stat = child.stat(follow_symlinks=False)
+            except OSError as error:
+                raise SkillParseError(f"unable to inspect {path}: {error}") from error
+            if stat.S_ISDIR(link_stat.st_mode):
+                walk(path, relative_path)
+                continue
+            if stat.S_ISREG(link_stat.st_mode):
+                entries.append(
+                    _PackagePathEntry(
+                        relative_path=relative_path,
+                        path=path,
+                        kind="file",
+                        link_stat=link_stat,
+                        target_stat=link_stat,
+                    )
+                )
+                continue
+            if stat.S_ISLNK(link_stat.st_mode):
+                try:
+                    link_target = os.readlink(path)
+                except OSError as error:
+                    raise SkillParseError(f"unable to read link {path}: {error}") from error
+                try:
+                    target_stat = child.stat(follow_symlinks=True)
+                except OSError:
+                    target_stat = None
+                if target_stat is None:
+                    kind = "broken-symlink"
+                elif stat.S_ISREG(target_stat.st_mode):
+                    kind = "file-symlink"
+                elif stat.S_ISDIR(target_stat.st_mode):
+                    kind = "directory-symlink"
+                else:
+                    kind = "special-symlink"
+                try:
+                    resolved_target = str(path.resolve(strict=False))
+                except (OSError, RuntimeError):
+                    resolved_target = None
+                entries.append(
+                    _PackagePathEntry(
+                        relative_path=relative_path,
+                        path=path,
+                        kind=kind,
+                        link_stat=link_stat,
+                        target_stat=target_stat,
+                        link_target=link_target,
+                        resolved_target=resolved_target,
+                    )
+                )
+                continue
+            entries.append(
+                _PackagePathEntry(
+                    relative_path=relative_path,
+                    path=path,
+                    kind="special",
+                    link_stat=link_stat,
+                )
+            )
+
+    walk(root, "")
+    return tuple(sorted(entries, key=lambda entry: entry.relative_path))
 
 
 def _package_metadata_signature(root: Path) -> bytes:
@@ -184,36 +298,34 @@ def _package_metadata_signature(root: Path) -> bytes:
         raise SkillParseError(f"skill root does not exist: {root}")
     digest = hashlib.sha256()
     relative_files: list[str] = []
-    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
-        if path.name == ".DS_Store":
-            continue
-        relative_path = path.relative_to(root).as_posix()
-        relative_files.append(relative_path)
-        try:
-            link_stat = path.lstat()
-            target_stat = path.stat()
-        except OSError as error:
-            raise SkillParseError(f"unable to inspect {path}: {error}") from error
-        digest.update(relative_path.encode("utf-8"))
+    for entry in _enumerate_package_entries(root):
+        relative_files.append(entry.relative_path)
+        digest.update(entry.relative_path.encode("utf-8"))
         digest.update(b"\0")
         for value in (
-            link_stat.st_mode,
-            link_stat.st_size,
-            link_stat.st_mtime_ns,
-            link_stat.st_ctime_ns,
-            link_stat.st_dev,
-            link_stat.st_ino,
+            entry.link_stat.st_mode,
+            entry.link_stat.st_size,
+            entry.link_stat.st_mtime_ns,
+            entry.link_stat.st_ctime_ns,
+            entry.link_stat.st_dev,
+            entry.link_stat.st_ino,
         ):
             digest.update(str(value).encode("ascii"))
             digest.update(b"\0")
-        if stat.S_ISLNK(link_stat.st_mode):
+        if entry.link_target is not None:
+            digest.update(entry.link_target.encode("utf-8", errors="surrogateescape"))
+            digest.update(b"\0")
+        if entry.resolved_target is not None:
+            digest.update(entry.resolved_target.encode("utf-8", errors="surrogateescape"))
+            digest.update(b"\0")
+        if entry.target_stat is not None and entry.kind != "file":
             for value in (
-                target_stat.st_mode,
-                target_stat.st_size,
-                target_stat.st_mtime_ns,
-                target_stat.st_ctime_ns,
-                target_stat.st_dev,
-                target_stat.st_ino,
+                entry.target_stat.st_mode,
+                entry.target_stat.st_size,
+                entry.target_stat.st_mtime_ns,
+                entry.target_stat.st_ctime_ns,
+                entry.target_stat.st_dev,
+                entry.target_stat.st_ino,
             ):
                 digest.update(str(value).encode("ascii"))
                 digest.update(b"\0")
@@ -238,7 +350,7 @@ def _read_stable_package(
         except (OSError, UnicodeError) as error:
             raise SkillParseError(f"unable to read {skill_path}: {error}") from error
         manifest = parse_skill_manifest_text(content)
-        fingerprint, relative_files = fingerprint_package(root)
+        fingerprint, relative_files, volatile = _fingerprint_package_details(root)
         following_signature = _package_metadata_signature(root)
         if signature == following_signature:
             return (
@@ -246,6 +358,7 @@ def _read_stable_package(
                     manifest=manifest,
                     relative_files=relative_files,
                     revision=fingerprint,
+                    volatile=volatile,
                 ),
                 following_signature,
             )
