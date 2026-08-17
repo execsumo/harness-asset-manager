@@ -1838,7 +1838,13 @@ exposure is wanted.
    spacing, empty states, or the bulk-adopt dock visually. `/hooks`, `/agents`, `/skills`,
    `/slash-commands`, plus each one's `?status=untracked` deep link.
 
-### OPEN BUG — settings path is environment-dependent; `disabledHarnesses` was silently lost
+### Settings path environment-dependence — resolved 2026-08-17
+
+**Resolved 2026-08-17 in merge commit `b3146d3`.** Without an explicit override, settings now resolve
+to `data_dir / "settings.json"`, so changing only `XDG_CONFIG_HOME` no longer changes the settings
+path. No live settings files were migrated, overwritten, or deleted.
+
+**Historical snapshot (recorded 2026-08-16; retained below):**
 
 **Not fixed. No delegate assigned.** Found 2026-08-16 while investigating the skills bulk adoption.
 
