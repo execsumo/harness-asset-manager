@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import shutil
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Executor, ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, ContextManager
 from uuid import uuid4
 
 from harness_asset_manager.errors import MutationError
@@ -18,7 +20,7 @@ from harness_asset_manager.harness import (
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
 from .identity import SourceDescriptor
 from .observations import SkillObservation, SkillsHarnessScan
-from .package import SkillParseError, find_skill_roots, parse_skill_package
+from .package import SkillPackageCache, SkillParseError, find_skill_roots
 
 DEFAULT_HERMES_MANAGED_CATEGORY = "harnessam"
 LEGACY_HERMES_MANAGED_CATEGORY = "harness-asset-manager"
@@ -40,6 +42,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         layout: FileTreeLayout = "flat",
         default_category: str | None = None,
         data_dir: Path | None = None,
+        package_cache: SkillPackageCache | None = None,
     ) -> None:
         self.harness = harness
         self.label = label
@@ -53,6 +56,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         self._layout = layout
         self._default_category = default_category or DEFAULT_HERMES_MANAGED_CATEGORY
         self._data_dir = data_dir
+        self._package_cache = package_cache or SkillPackageCache()
 
     def status(self) -> SkillsHarnessStatus:
         return SkillsHarnessStatus(
@@ -63,7 +67,12 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             managed_root=self.managed_root,
         )
 
-    def scan(self) -> SkillsHarnessScan:
+    def scan(
+        self,
+        *,
+        cache_cycle: int | None = None,
+        package_executor: Executor | None = None,
+    ) -> SkillsHarnessScan:
         hermes_policy = (
             _hermes_scan_policy(self.managed_root) if self.harness == "hermes" else None
         )
@@ -76,6 +85,9 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             ),
             hermes_policy=hermes_policy,
             managed_category=self._default_category,
+            package_cache=self._package_cache,
+            cache_cycle=cache_cycle,
+            package_executor=package_executor,
         )
         excluded_skill_names = set(skipped_skill_names)
         if hermes_policy is not None:
@@ -254,6 +266,16 @@ class _HermesScanPolicy:
     excluded_skill_names: frozenset[str]
 
 
+@dataclass(frozen=True)
+class _PackageScanCandidate:
+    root: _ResolvedRoot
+    skill_root: Path
+    locator_name: str
+    hermes_source: SourceDescriptor | None
+    is_harness_asset_manager_binding: bool
+    default_source: SourceDescriptor
+
+
 def _iter_skill_roots(root: _ResolvedRoot):
     if root.layout == "flat":
         for skill_root in find_skill_roots(root.path):
@@ -268,7 +290,13 @@ def _iter_skill_roots(root: _ResolvedRoot):
             yield skill_root, f"{category_dir.name}/{skill_root.name}"
 
 
-def build_skills_adapters(kernel: HarnessKernelService, *, data_dir: Path | None = None) -> tuple[FileTreeSkillsAdapter, ...]:
+def build_skills_adapters(
+    kernel: HarnessKernelService,
+    *,
+    data_dir: Path | None = None,
+    package_cache: SkillPackageCache | None = None,
+) -> tuple[FileTreeSkillsAdapter, ...]:
+    shared_package_cache = package_cache or SkillPackageCache()
     adapters: list[FileTreeSkillsAdapter] = []
     for binding in kernel.bindings_for_family("skills"):
         definition = binding.definition
@@ -311,16 +339,33 @@ def build_skills_adapters(kernel: HarnessKernelService, *, data_dir: Path | None
                 layout=profile.layout,
                 default_category=profile.default_category,
                 data_dir=data_dir,
+                package_cache=shared_package_cache,
             )
         )
     return tuple(adapters)
 
 
-def scan_all_adapters(adapters: tuple[SkillsHarnessAdapter, ...]) -> tuple[SkillsHarnessScan, ...]:
+def scan_all_adapters(
+    adapters: tuple[SkillsHarnessAdapter, ...],
+    *,
+    cache_cycle: int | None = None,
+    scan_guard: Callable[[], ContextManager[None]] | None = None,
+) -> tuple[SkillsHarnessScan, ...]:
     if not adapters:
         return ()
-    with ThreadPoolExecutor(max_workers=len(adapters)) as executor:
-        return tuple(executor.map(lambda adapter: adapter.scan(), adapters))
+    with (
+        ThreadPoolExecutor(max_workers=len(adapters)) as adapter_executor,
+        ThreadPoolExecutor(max_workers=16) as package_executor,
+    ):
+        def scan_adapter(adapter: SkillsHarnessAdapter) -> SkillsHarnessScan:
+            guard = scan_guard() if scan_guard is not None else nullcontext()
+            with guard:
+                return adapter.scan(
+                    cache_cycle=cache_cycle,
+                    package_executor=package_executor,
+                )
+
+        return tuple(adapter_executor.map(scan_adapter, adapters))
 
 
 def _scan_skill_roots(
@@ -331,9 +376,13 @@ def _scan_skill_roots(
     excluded_skill_names: frozenset[str] = frozenset(),
     hermes_policy: _HermesScanPolicy | None = None,
     managed_category: str = DEFAULT_HERMES_MANAGED_CATEGORY,
+    package_cache: SkillPackageCache,
+    cache_cycle: int | None,
+    package_executor: Executor | None,
 ) -> tuple[list[SkillObservation], set[str]]:
     observations: list[SkillObservation] = []
     skipped_skill_names: set[str] = set()
+    candidates: list[_PackageScanCandidate] = []
     for root in roots:
         for skill_root, locator_name in _iter_skill_roots(root):
             hermes_source = _hermes_external_source(
@@ -370,46 +419,80 @@ def _scan_skill_roots(
             )
             if hermes_source is not None:
                 default_source = hermes_source
-            try:
-                package = parse_skill_package(skill_root, default_source=default_source)
-            except SkillParseError:
-                continue
-
-            if hermes_policy is not None:
-                if not is_harness_asset_manager_binding and _is_excluded_skill(
-                    package_name=package.declared_name,
-                    package_dir=skill_root.name,
+            candidates.append(
+                _PackageScanCandidate(
+                    root=root,
+                    skill_root=skill_root,
                     locator_name=locator_name,
-                    excluded_skill_names=excluded_skill_names,
-                ):
-                    _record_excluded_skill(
-                        skipped_skill_names,
-                        package_name=package.declared_name,
-                        package_dir=skill_root.name,
-                        locator_name=locator_name,
-                    )
-                    continue
-
-                hermes_source = hermes_source or _hermes_external_source(
-                    hermes_policy,
-                    package_name=package.declared_name,
-                    package_dir=skill_root.name,
-                    locator_name=locator_name,
-                )
-                if hermes_source is not None and package.source.kind == "harness-local":
-                    try:
-                        package = parse_skill_package(skill_root, default_source=hermes_source)
-                    except SkillParseError:
-                        continue
-
-            observations.append(
-                SkillObservation(
-                    harness=harness,
-                    label=label,
-                    scope=root.scope,
-                    package=package,
+                    hermes_source=hermes_source,
+                    is_harness_asset_manager_binding=is_harness_asset_manager_binding,
+                    default_source=default_source,
                 )
             )
+
+    def parse_candidate(candidate: _PackageScanCandidate):
+        try:
+            return package_cache.parse(
+                candidate.skill_root,
+                default_source=candidate.default_source,
+                validation_cycle=cache_cycle,
+            )
+        except SkillParseError:
+            return None
+
+    packages = (
+        package_executor.map(parse_candidate, candidates)
+        if package_executor is not None
+        else map(parse_candidate, candidates)
+    )
+    for candidate, package in zip(candidates, packages, strict=True):
+        if package is None:
+            continue
+        root = candidate.root
+        skill_root = candidate.skill_root
+        locator_name = candidate.locator_name
+        hermes_source = candidate.hermes_source
+        is_harness_asset_manager_binding = candidate.is_harness_asset_manager_binding
+
+        if hermes_policy is not None:
+            if not is_harness_asset_manager_binding and _is_excluded_skill(
+                package_name=package.declared_name,
+                package_dir=skill_root.name,
+                locator_name=locator_name,
+                excluded_skill_names=excluded_skill_names,
+            ):
+                _record_excluded_skill(
+                    skipped_skill_names,
+                    package_name=package.declared_name,
+                    package_dir=skill_root.name,
+                    locator_name=locator_name,
+                )
+                continue
+
+            hermes_source = hermes_source or _hermes_external_source(
+                hermes_policy,
+                package_name=package.declared_name,
+                package_dir=skill_root.name,
+                locator_name=locator_name,
+            )
+            if hermes_source is not None and package.source.kind == "harness-local":
+                try:
+                    package = package_cache.parse(
+                        skill_root,
+                        default_source=hermes_source,
+                        validation_cycle=cache_cycle,
+                    )
+                except SkillParseError:
+                    continue
+
+        observations.append(
+            SkillObservation(
+                harness=harness,
+                label=label,
+                scope=root.scope,
+                package=package,
+            )
+        )
     return observations, skipped_skill_names
 
 

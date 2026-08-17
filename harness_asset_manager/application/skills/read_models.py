@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Lock
+from threading import Condition, get_ident, local
 
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService
@@ -11,6 +13,7 @@ from harness_asset_manager.harness import HarnessKernelService
 from .adapters import build_skills_adapters, scan_all_adapters
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
 from .observations import SkillsHarnessScan, SkillStoreScan
+from .package import SkillPackageCache
 from .store import SkillStore
 
 
@@ -34,13 +37,19 @@ class SkillsReadModelService:
         adapters: tuple[SkillsHarnessAdapter, ...],
         kernel: HarnessKernelService,
         snapshot_ttl_seconds: float = 1.0,
+        package_cache: SkillPackageCache | None = None,
     ) -> None:
         self.store = store
         self.adapters = adapters
         self.kernel = kernel
         self.snapshot_ttl_seconds = snapshot_ttl_seconds
+        self.package_cache = package_cache or store.package_cache
         self._cache: _CachedSnapshot | None = None
-        self._lock = Lock()
+        self._condition = Condition()
+        self._building = False
+        self._builder_thread_id: int | None = None
+        self._build_context = local()
+        self._generation = 0
 
     @classmethod
     def from_kernel(
@@ -50,10 +59,16 @@ class SkillsReadModelService:
         kernel: HarnessKernelService,
         data_dir: Path | None = None,
     ) -> "SkillsReadModelService":
+        package_cache = store.package_cache
         return cls(
             store=store,
-            adapters=build_skills_adapters(kernel, data_dir=data_dir),
+            adapters=build_skills_adapters(
+                kernel,
+                data_dir=data_dir,
+                package_cache=package_cache,
+            ),
             kernel=kernel,
+            package_cache=package_cache,
         )
 
     def find_adapter(self, harness: str) -> SkillsHarnessAdapter | None:
@@ -98,22 +113,87 @@ class SkillsReadModelService:
         return tuple(scan for scan in current.harness_scans if scan.harness in visible)
 
     def snapshot(self) -> SkillsReadModelSnapshot:
-        with self._lock:
-            cached = self._cache
-            if cached is not None and (time.time() - cached.captured_at) < self.snapshot_ttl_seconds:
-                return cached.snapshot
+        if getattr(self._build_context, "active", False):
+            raise RuntimeError("skills snapshot construction is not reentrant")
+        while True:
+            with self._condition:
+                cached = self._cache
+                if (
+                    cached is not None
+                    and (time.monotonic() - cached.captured_at)
+                    < self.snapshot_ttl_seconds
+                ):
+                    return cached.snapshot
+                if self._building:
+                    if self._builder_thread_id == get_ident():
+                        raise RuntimeError("skills snapshot construction is not reentrant")
+                    self._condition.wait()
+                    continue
+                self._building = True
+                self._builder_thread_id = get_ident()
+                generation = self._generation
 
-        snapshot = SkillsReadModelSnapshot(
-            store_scan=self.store.scan(),
-            harness_scans=scan_all_adapters(self.adapters),
-        )
-        with self._lock:
-            self._cache = _CachedSnapshot(snapshot=snapshot, captured_at=time.time())
-        return snapshot
+            try:
+                cache_cycle = self.package_cache.new_validation_cycle()
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    store_future = executor.submit(
+                        self._scan_store,
+                        cache_cycle,
+                    )
+                    adapters_future = executor.submit(
+                        self._scan_adapters,
+                        cache_cycle,
+                    )
+                    snapshot = SkillsReadModelSnapshot(
+                        store_scan=store_future.result(),
+                        harness_scans=adapters_future.result(),
+                    )
+            except BaseException:
+                with self._condition:
+                    self._building = False
+                    self._builder_thread_id = None
+                    self._condition.notify_all()
+                raise
+
+            with self._condition:
+                self._building = False
+                self._builder_thread_id = None
+                if generation == self._generation:
+                    self._cache = _CachedSnapshot(
+                        snapshot=snapshot,
+                        captured_at=time.monotonic(),
+                    )
+                    self._condition.notify_all()
+                    return snapshot
+                self._condition.notify_all()
+
+    def _scan_store(self, cache_cycle: int) -> SkillStoreScan:
+        with self._snapshot_build_guard():
+            return self.store.scan(cache_cycle=cache_cycle)
+
+    def _scan_adapters(self, cache_cycle: int) -> tuple[SkillsHarnessScan, ...]:
+        with self._snapshot_build_guard():
+            return scan_all_adapters(
+                self.adapters,
+                cache_cycle=cache_cycle,
+                scan_guard=self._snapshot_build_guard,
+            )
+
+    @contextmanager
+    def _snapshot_build_guard(self):
+        previous = getattr(self._build_context, "active", False)
+        self._build_context.active = True
+        try:
+            yield
+        finally:
+            self._build_context.active = previous
 
     def invalidate(self) -> None:
-        with self._lock:
+        with self._condition:
+            self._generation += 1
             self._cache = None
+            self._condition.notify_all()
+        self.package_cache.invalidate()
         for adapter in self.adapters:
             adapter.invalidate()
 

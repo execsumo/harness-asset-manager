@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from harness_asset_manager.atomic_files import file_lock
@@ -14,19 +15,26 @@ from .manifest import (
     write_skill_store_manifest,
 )
 from .observations import SkillStoreScan, StorePackageObservation
-from .package import find_skill_roots, fingerprint_package, parse_skill_package
+from .package import SkillPackageCache, find_skill_roots, fingerprint_package
 
 
 class SkillStore:
-    def __init__(self, root: Path, manifest_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        root: Path,
+        manifest_path: Path | None = None,
+        *,
+        package_cache: SkillPackageCache | None = None,
+    ) -> None:
         self.root = root
         self.manifest_path = manifest_path or root.parent / "manifest.json"
+        self.package_cache = package_cache or SkillPackageCache()
 
     @property
     def lock_path(self) -> Path:
         return self.manifest_path.with_suffix(".lock")
 
-    def scan(self) -> SkillStoreScan:
+    def scan(self, *, cache_cycle: int | None = None) -> SkillStoreScan:
         all_packages: list[StorePackageObservation] = []
         issues: list[str] = list(issue.message for issue in self.check_integrity())
 
@@ -36,22 +44,30 @@ class SkillStore:
         manifest = load_skill_store_manifest(self.manifest_path)
         manifest_index = {entry.package_dir: entry for entry in manifest.entries}
 
-        for path in find_skill_roots(self.root):
+        package_roots = find_skill_roots(self.root)
+
+        def observe(path: Path) -> StorePackageObservation:
             entry = manifest_index.get(path.name)
             source = SourceDescriptor(
                 kind=entry.source_kind if entry else "shared-store",
                 locator=entry.source_locator if entry else f"shared-store:{path.name}",
             )
-            pkg = parse_skill_package(path, default_source=source)
-            all_packages.append(
-                StorePackageObservation(
-                    package=pkg,
-                    recorded_revision=entry.revision if entry else None,
-                    recorded_source_ref=entry.source_ref if entry else None,
-                    recorded_source_path=entry.source_path if entry else None,
-                    origin_harness=entry.origin_harness if entry else None,
-                )
+            pkg = self.package_cache.parse(
+                path,
+                default_source=source,
+                validation_cycle=cache_cycle,
             )
+            return StorePackageObservation(
+                package=pkg,
+                recorded_revision=entry.revision if entry else None,
+                recorded_source_ref=entry.source_ref if entry else None,
+                recorded_source_path=entry.source_path if entry else None,
+                origin_harness=entry.origin_harness if entry else None,
+            )
+
+        if package_roots:
+            with ThreadPoolExecutor(max_workers=min(16, len(package_roots))) as executor:
+                all_packages.extend(executor.map(observe, package_roots))
 
         return SkillStoreScan(
             packages=tuple(all_packages),
