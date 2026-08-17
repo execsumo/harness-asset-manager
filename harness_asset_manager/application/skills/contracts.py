@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Executor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -24,7 +25,12 @@ class SkillsHarnessAdapter(Protocol):
 
     def status(self) -> SkillsHarnessStatus: ...
 
-    def scan(self) -> SkillsHarnessScan: ...
+    def scan(
+        self,
+        *,
+        cache_cycle: int | None = None,
+        package_executor: Executor | None = None,
+    ) -> SkillsHarnessScan: ...
 
     def enable_shared_package(self, package_path: Path) -> None: ...
 

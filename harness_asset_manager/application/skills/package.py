@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import stat
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Condition
 
 from .identity import SkillRef, SourceDescriptor
 
@@ -34,6 +37,122 @@ class SkillPackage:
         return SkillRef(source=self.source, declared_name=self.declared_name)
 
 
+@dataclass(frozen=True)
+class _PackageContents:
+    manifest: SkillManifest
+    relative_files: tuple[str, ...]
+    revision: str
+
+
+@dataclass(frozen=True)
+class _PackageCacheEntry:
+    signature: bytes
+    contents: _PackageContents
+    validation_cycle: int
+
+
+class SkillPackageCache:
+    """Thread-safe parsed-package cache keyed by a package's resolved identity.
+
+    A read-model snapshot allocates one validation cycle and shares it across the
+    store and every harness adapter. Each distinct package tree is therefore
+    inspected at most once per snapshot, including when several harness roots are
+    symlinks to the same shared package. A new cycle re-stats every file in the
+    tree, but unchanged packages avoid all content reads and manifest parsing.
+    """
+
+    def __init__(self, *, max_entries: int = 2048) -> None:
+        if max_entries < 1:
+            raise ValueError("max_entries must be positive")
+        self.max_entries = max_entries
+        self._entries: OrderedDict[Path, _PackageCacheEntry] = OrderedDict()
+        self._condition = Condition()
+        self._inflight: set[Path] = set()
+        self._generation = 0
+        self._next_validation_cycle = 0
+
+    def new_validation_cycle(self) -> int:
+        with self._condition:
+            self._next_validation_cycle += 1
+            return self._next_validation_cycle
+
+    def parse(
+        self,
+        root: Path,
+        *,
+        default_source: SourceDescriptor,
+        validation_cycle: int | None = None,
+    ) -> SkillPackage:
+        resolved_path = root.resolve(strict=False)
+
+        with self._condition:
+            while True:
+                cached = self._entries.get(resolved_path)
+                if (
+                    validation_cycle is not None
+                    and cached is not None
+                    and cached.validation_cycle == validation_cycle
+                ):
+                    self._entries.move_to_end(resolved_path)
+                    return _materialize_package(
+                        cached.contents,
+                        root=root,
+                        resolved_path=resolved_path,
+                        default_source=default_source,
+                    )
+                if resolved_path not in self._inflight:
+                    self._inflight.add(resolved_path)
+                    generation = self._generation
+                    break
+                self._condition.wait()
+
+        try:
+            signature = _package_metadata_signature(root)
+            with self._condition:
+                cached = self._entries.get(resolved_path)
+                if (
+                    generation == self._generation
+                    and cached is not None
+                    and cached.signature == signature
+                ):
+                    contents = cached.contents
+                else:
+                    contents = None
+
+            if contents is None:
+                contents, signature = _read_stable_package(root, initial_signature=signature)
+
+            with self._condition:
+                if generation == self._generation:
+                    self._entries[resolved_path] = _PackageCacheEntry(
+                        signature=signature,
+                        contents=contents,
+                        validation_cycle=(
+                            validation_cycle if validation_cycle is not None else -1
+                        ),
+                    )
+                    self._entries.move_to_end(resolved_path)
+                    while len(self._entries) > self.max_entries:
+                        self._entries.popitem(last=False)
+        finally:
+            with self._condition:
+                self._inflight.discard(resolved_path)
+                self._condition.notify_all()
+
+        return _materialize_package(
+            contents,
+            root=root,
+            resolved_path=resolved_path,
+            default_source=default_source,
+        )
+
+    def invalidate(self) -> None:
+        with self._condition:
+            self._generation += 1
+            self._entries.clear()
+            self._condition.notify_all()
+
+
 def find_skill_roots(root: Path) -> tuple[Path, ...]:
     if not root.exists() or not root.is_dir():
         return ()
@@ -59,6 +178,81 @@ def fingerprint_package(root: Path) -> tuple[str, tuple[str, ...]]:
     return digest.hexdigest(), tuple(relative_files)
 
 
+def _package_metadata_signature(root: Path) -> bytes:
+    """Hash topology and per-file metadata without reading package contents."""
+    if not root.is_dir():
+        raise SkillParseError(f"skill root does not exist: {root}")
+    digest = hashlib.sha256()
+    relative_files: list[str] = []
+    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+        if path.name == ".DS_Store":
+            continue
+        relative_path = path.relative_to(root).as_posix()
+        relative_files.append(relative_path)
+        try:
+            link_stat = path.lstat()
+            target_stat = path.stat()
+        except OSError as error:
+            raise SkillParseError(f"unable to inspect {path}: {error}") from error
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        for value in (
+            link_stat.st_mode,
+            link_stat.st_size,
+            link_stat.st_mtime_ns,
+            link_stat.st_ctime_ns,
+            link_stat.st_dev,
+            link_stat.st_ino,
+        ):
+            digest.update(str(value).encode("ascii"))
+            digest.update(b"\0")
+        if stat.S_ISLNK(link_stat.st_mode):
+            for value in (
+                target_stat.st_mode,
+                target_stat.st_size,
+                target_stat.st_mtime_ns,
+                target_stat.st_ctime_ns,
+                target_stat.st_dev,
+                target_stat.st_ino,
+            ):
+                digest.update(str(value).encode("ascii"))
+                digest.update(b"\0")
+    if "SKILL.md" not in relative_files:
+        raise SkillParseError(f"missing SKILL.md in {root}")
+    return digest.digest()
+
+
+def _read_stable_package(
+    root: Path,
+    *,
+    initial_signature: bytes,
+) -> tuple[_PackageContents, bytes]:
+    """Read a package whose metadata is stable across the content read."""
+    signature = initial_signature
+    for _attempt in range(3):
+        skill_path = root / "SKILL.md"
+        if not skill_path.is_file():
+            raise SkillParseError(f"missing SKILL.md in {root}")
+        try:
+            content = skill_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as error:
+            raise SkillParseError(f"unable to read {skill_path}: {error}") from error
+        manifest = parse_skill_manifest_text(content)
+        fingerprint, relative_files = fingerprint_package(root)
+        following_signature = _package_metadata_signature(root)
+        if signature == following_signature:
+            return (
+                _PackageContents(
+                    manifest=manifest,
+                    relative_files=relative_files,
+                    revision=fingerprint,
+                ),
+                following_signature,
+            )
+        signature = following_signature
+    raise SkillParseError(f"skill package changed while it was being read: {root}")
+
+
 def parse_skill_package(root: Path, *, default_source: SourceDescriptor) -> SkillPackage:
     skill_path = root / "SKILL.md"
     if not skill_path.is_file():
@@ -80,6 +274,31 @@ def parse_skill_package(root: Path, *, default_source: SourceDescriptor) -> Skil
         resolved_path=root.resolve(),
         relative_files=relative_files,
         revision=fingerprint,
+        source=source,
+    )
+
+
+def _materialize_package(
+    contents: _PackageContents,
+    *,
+    root: Path,
+    resolved_path: Path,
+    default_source: SourceDescriptor,
+) -> SkillPackage:
+    source = _resolve_source(
+        {
+            "source_kind": contents.manifest.source_kind or "",
+            "source_locator": contents.manifest.source_locator or "",
+        },
+        default_source=default_source,
+    )
+    return SkillPackage(
+        declared_name=contents.manifest.declared_name,
+        description=contents.manifest.description,
+        root_path=root,
+        resolved_path=resolved_path,
+        relative_files=contents.relative_files,
+        revision=contents.revision,
         source=source,
     )
 

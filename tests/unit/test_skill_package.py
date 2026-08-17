@@ -3,9 +3,11 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from harness_asset_manager.application.skills.identity import SourceDescriptor
 from harness_asset_manager.application.skills.package import (
+    SkillPackageCache,
     SkillParseError,
     fingerprint_package,
     parse_skill_manifest_text,
@@ -73,6 +75,161 @@ class SkillParsingTests(unittest.TestCase):
             (package_root / "notes.txt").write_text("second", encoding="utf-8")
             second, _ = fingerprint_package(package_root)
             self.assertNotEqual(first, second)
+
+    def test_package_cache_reuses_resolved_symlink_target_across_scan_cycles(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package_root = seed_skill_package(
+                root / "store",
+                "policy-kit",
+                "Policy Kit",
+                support_files={"docs/notes.txt": "first"},
+            )
+            binding = root / "binding"
+            binding.symlink_to(package_root)
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:policy-kit")
+
+            with patch(
+                "harness_asset_manager.application.skills.package.fingerprint_package",
+                wraps=fingerprint_package,
+            ) as fingerprint:
+                first_cycle = cache.new_validation_cycle()
+                direct = cache.parse(
+                    package_root,
+                    default_source=source,
+                    validation_cycle=first_cycle,
+                )
+                linked = cache.parse(
+                    binding,
+                    default_source=source,
+                    validation_cycle=first_cycle,
+                )
+                unchanged = cache.parse(
+                    binding,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+
+            self.assertEqual(fingerprint.call_count, 1)
+            self.assertEqual(direct.revision, linked.revision)
+            self.assertEqual(linked.revision, unchanged.revision)
+            self.assertEqual(linked.root_path, binding)
+            self.assertEqual(linked.resolved_path, package_root.resolve())
+
+    def test_package_cache_detects_nested_content_and_topology_changes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(
+                Path(temp_dir),
+                "policy-kit",
+                "Policy Kit",
+                support_files={"docs/notes.txt": "first"},
+            )
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:policy-kit")
+
+            original = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            notes = package_root / "docs" / "notes.txt"
+            notes.write_text("second", encoding="utf-8")
+            content_changed = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            added = package_root / "docs" / "added.txt"
+            added.write_text("new", encoding="utf-8")
+            file_added = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            added.rename(package_root / "docs" / "renamed.txt")
+            file_renamed = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            (package_root / "docs" / "renamed.txt").unlink()
+            file_removed = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+
+            self.assertNotEqual(original.revision, content_changed.revision)
+            self.assertIn("docs/added.txt", file_added.relative_files)
+            self.assertNotEqual(content_changed.revision, file_added.revision)
+            self.assertIn("docs/renamed.txt", file_renamed.relative_files)
+            self.assertNotEqual(file_added.revision, file_renamed.revision)
+            self.assertNotIn("docs/renamed.txt", file_removed.relative_files)
+            self.assertNotEqual(file_renamed.revision, file_removed.revision)
+
+    def test_package_cache_detects_manifest_and_symlink_target_changes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first_root = seed_skill_package(root / "one", "skill", "First")
+            second_root = seed_skill_package(root / "two", "skill", "Second")
+            binding = root / "binding"
+            binding.symlink_to(first_root)
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="harness-local", locator="fixture:skill")
+
+            first = cache.parse(
+                binding,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            (first_root / "SKILL.md").write_text(
+                "---\nname: Renamed\n---\n\n# Renamed\n",
+                encoding="utf-8",
+            )
+            renamed = cache.parse(
+                binding,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+            binding.unlink()
+            binding.symlink_to(second_root)
+            repointed = cache.parse(
+                binding,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+
+            self.assertEqual(first.declared_name, "First")
+            self.assertEqual(renamed.declared_name, "Renamed")
+            self.assertEqual(repointed.declared_name, "Second")
+            self.assertEqual(repointed.resolved_path, second_root.resolve())
+
+    def test_package_cache_explicit_invalidation_bypasses_same_cycle(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "First")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+            cycle = cache.new_validation_cycle()
+            first = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cycle,
+            )
+            (package_root / "SKILL.md").write_text(
+                "---\nname: Second\n---\n\n# Second\n",
+                encoding="utf-8",
+            )
+
+            cache.invalidate()
+            second = cache.parse(
+                package_root,
+                default_source=source,
+                validation_cycle=cycle,
+            )
+
+            self.assertEqual(first.declared_name, "First")
+            self.assertEqual(second.declared_name, "Second")
 
     def test_parse_skill_package_rejects_missing_skill_md(self) -> None:
         with TemporaryDirectory() as temp_dir:
