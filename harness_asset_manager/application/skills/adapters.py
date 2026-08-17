@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import shutil
 from concurrent.futures import Executor, ThreadPoolExecutor
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, ContextManager
 from uuid import uuid4
 
 from harness_asset_manager.errors import MutationError
@@ -347,6 +349,7 @@ def scan_all_adapters(
     adapters: tuple[SkillsHarnessAdapter, ...],
     *,
     cache_cycle: int | None = None,
+    scan_guard: Callable[[], ContextManager[None]] | None = None,
 ) -> tuple[SkillsHarnessScan, ...]:
     if not adapters:
         return ()
@@ -354,13 +357,15 @@ def scan_all_adapters(
         ThreadPoolExecutor(max_workers=len(adapters)) as adapter_executor,
         ThreadPoolExecutor(max_workers=16) as package_executor,
     ):
-        return tuple(adapter_executor.map(
-            lambda adapter: adapter.scan(
-                cache_cycle=cache_cycle,
-                package_executor=package_executor,
-            ),
-            adapters,
-        ))
+        def scan_adapter(adapter: SkillsHarnessAdapter) -> SkillsHarnessScan:
+            guard = scan_guard() if scan_guard is not None else nullcontext()
+            with guard:
+                return adapter.scan(
+                    cache_cycle=cache_cycle,
+                    package_executor=package_executor,
+                )
+
+        return tuple(adapter_executor.map(scan_adapter, adapters))
 
 
 def _scan_skill_roots(

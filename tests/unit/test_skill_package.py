@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -514,6 +515,111 @@ class SkillParsingTests(unittest.TestCase):
 
             self.assertEqual(package_read.call_count, 4)
             self.assertEqual(len(cache._entries), 2)
+
+    def test_root_symlink_repoint_during_read_cannot_cross_cache_identities(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            first_root = seed_skill_package(root / "first", "skill", "First")
+            second_root = seed_skill_package(root / "second", "skill", "Second")
+            binding = root / "binding"
+            binding.symlink_to(first_root)
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="harness-local", locator="fixture:skill")
+            read_started = Event()
+            release_read = Event()
+            original_signature = skill_package_module._package_metadata_signature
+
+            def blocking_signature(read_root: Path) -> bytes:
+                self.assertEqual(read_root, first_root.resolve())
+                read_started.set()
+                self.assertTrue(release_read.wait(timeout=5))
+                return original_signature(read_root)
+
+            with (
+                patch.object(
+                    skill_package_module,
+                    "_package_metadata_signature",
+                    blocking_signature,
+                ),
+                ThreadPoolExecutor(max_workers=1) as executor,
+            ):
+                first_future = executor.submit(
+                    cache.parse,
+                    binding,
+                    default_source=source,
+                    validation_cycle=cache.new_validation_cycle(),
+                )
+                self.assertTrue(read_started.wait(timeout=2))
+                binding.unlink()
+                binding.symlink_to(second_root)
+                release_read.set()
+                first = first_future.result(timeout=5)
+
+            second = cache.parse(
+                binding,
+                default_source=source,
+                validation_cycle=cache.new_validation_cycle(),
+            )
+
+            self.assertEqual(first.declared_name, "First")
+            self.assertEqual(first.root_path, binding)
+            self.assertEqual(first.resolved_path, first_root.resolve())
+            self.assertEqual(second.declared_name, "Second")
+            self.assertEqual(second.resolved_path, second_root.resolve())
+            self.assertEqual(
+                set(cache._entries),
+                {first_root.resolve(), second_root.resolve()},
+            )
+
+    def test_topology_only_symlinks_are_cacheable_across_cycles(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package_root = seed_skill_package(root / "packages", "skill", "Skill")
+            directory_target = root / "directory-target"
+            directory_target.mkdir()
+            (package_root / "directory-link").symlink_to(
+                directory_target,
+                target_is_directory=True,
+            )
+            (package_root / "broken-link").symlink_to("missing-target")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+
+            with patch.object(
+                skill_package_module,
+                "_read_stable_package",
+                wraps=skill_package_module._read_stable_package,
+            ) as package_read:
+                for _ in range(2):
+                    cache.parse(
+                        package_root,
+                        default_source=source,
+                        validation_cycle=cache.new_validation_cycle(),
+                    )
+
+            self.assertEqual(package_read.call_count, 1)
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "FIFO entries require os.mkfifo")
+    def test_special_entries_are_cacheable_across_cycles(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_root = seed_skill_package(Path(temp_dir), "skill", "Skill")
+            os.mkfifo(package_root / "events.fifo")
+            cache = SkillPackageCache()
+            source = SourceDescriptor(kind="shared-store", locator="fixture:skill")
+
+            with patch.object(
+                skill_package_module,
+                "_read_stable_package",
+                wraps=skill_package_module._read_stable_package,
+            ) as package_read:
+                for _ in range(2):
+                    cache.parse(
+                        package_root,
+                        default_source=source,
+                        validation_cycle=cache.new_validation_cycle(),
+                    )
+
+            self.assertEqual(package_read.call_count, 1)
 
     def test_parse_skill_package_rejects_missing_skill_md(self) -> None:
         with TemporaryDirectory() as temp_dir:

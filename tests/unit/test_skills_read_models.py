@@ -44,6 +44,21 @@ class _ReentrantStore:
         raise AssertionError("reentrant snapshot unexpectedly returned")
 
 
+class _ReentrantAdapter:
+    harness = "fixture"
+    label = "Fixture"
+    logo_key = None
+
+    def __init__(self) -> None:
+        self.service: SkillsReadModelService | None = None
+
+    def scan(self, *, cache_cycle=None, package_executor=None):
+        del cache_cycle, package_executor
+        assert self.service is not None
+        self.service.snapshot()
+        raise AssertionError("reentrant snapshot unexpectedly returned")
+
+
 class SkillsReadModelTests(unittest.TestCase):
     def _service(self, store: _BlockingStore) -> SkillsReadModelService:
         return SkillsReadModelService(
@@ -139,6 +154,20 @@ class SkillsReadModelTests(unittest.TestCase):
             kernel=Mock(),
         )
         store.service = service
+
+        with self.assertRaisesRegex(RuntimeError, "not reentrant"):
+            service.snapshot()
+
+    def test_adapter_worker_reentrancy_is_rejected_instead_of_deadlocking(self) -> None:
+        store = _BlockingStore()
+        store.release.set()
+        adapter = _ReentrantAdapter()
+        service = SkillsReadModelService(
+            store=store,  # type: ignore[arg-type]
+            adapters=(adapter,),  # type: ignore[arg-type]
+            kernel=Mock(),
+        )
+        adapter.service = service
 
         with self.assertRaisesRegex(RuntimeError, "not reentrant"):
             service.snapshot()

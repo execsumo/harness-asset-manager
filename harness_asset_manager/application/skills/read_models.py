@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Condition, get_ident, local
@@ -167,18 +168,25 @@ class SkillsReadModelService:
                 self._condition.notify_all()
 
     def _scan_store(self, cache_cycle: int) -> SkillStoreScan:
-        self._build_context.active = True
-        try:
+        with self._snapshot_build_guard():
             return self.store.scan(cache_cycle=cache_cycle)
-        finally:
-            self._build_context.active = False
 
     def _scan_adapters(self, cache_cycle: int) -> tuple[SkillsHarnessScan, ...]:
+        with self._snapshot_build_guard():
+            return scan_all_adapters(
+                self.adapters,
+                cache_cycle=cache_cycle,
+                scan_guard=self._snapshot_build_guard,
+            )
+
+    @contextmanager
+    def _snapshot_build_guard(self):
+        previous = getattr(self._build_context, "active", False)
         self._build_context.active = True
         try:
-            return scan_all_adapters(self.adapters, cache_cycle=cache_cycle)
+            yield
         finally:
-            self._build_context.active = False
+            self._build_context.active = previous
 
     def invalidate(self) -> None:
         with self._condition:

@@ -120,7 +120,7 @@ class SkillPackageCache:
                 self._condition.wait()
 
         try:
-            signature = _package_metadata_signature(root)
+            signature = _package_metadata_signature(resolved_path)
             with self._condition:
                 cached = self._entries.get(resolved_path)
                 if (
@@ -134,7 +134,10 @@ class SkillPackageCache:
                     contents = None
 
             if contents is None:
-                contents, signature = _read_stable_package(root, initial_signature=signature)
+                contents, signature = _read_stable_package(
+                    resolved_path,
+                    initial_signature=signature,
+                )
 
             with self._condition:
                 if generation == self._generation:
@@ -207,7 +210,7 @@ def _fingerprint_package_details(
                 digest.update(b"\0")
                 digest.update(str(entry.link_stat.st_rdev).encode("ascii"))
         digest.update(b"\0")
-        volatile = volatile or entry.kind != "file"
+        volatile = volatile or entry.kind == "file-symlink"
     if "SKILL.md" not in relative_files:
         raise SkillParseError(f"missing SKILL.md in {root}")
     return digest.hexdigest(), tuple(relative_files), volatile
