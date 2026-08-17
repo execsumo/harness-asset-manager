@@ -86,9 +86,9 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
 def _base_dirs(context: PlatformContext) -> tuple[Path, Path, Path]:
     # --state-dir / STATE_DIR_ENV is documented (README, --help) as isolating a run so
     # CI or a throwaway sandbox never touches the real store. That promise only holds if
-    # it overrides all three base dirs, not just the runtime-state one: config_dir holds
-    # settings.json and data_dir holds every asset family's manifests and skill/agent
-    # files. Collapsing all three into one directory when the override is set mirrors
+    # it overrides all three base dirs, not just the runtime-state one: data_dir holds
+    # settings.json, every asset family's manifests, and skill/agent files. Collapsing
+    # all three into one directory when the override is set mirrors
     # the macOS default below, where they already collapse to one directory absent any
     # XDG override — this is that same shape, requested explicitly instead of by default.
     state_override = env_get(context.env, STATE_DIR_ENV)
