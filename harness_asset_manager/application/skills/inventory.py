@@ -106,6 +106,7 @@ class SkillInventory:
         entries: list[InventoryEntry] = []
         shared_path_index: dict[Path, InventoryEntry] = {}
         shared_match_index: dict[str, InventoryEntry] = {}
+        hermes_local_match_index: dict[tuple[str, str], InventoryEntry] = {}
         excluded_hermes_names = _excluded_hermes_names(harness_scans)
 
         for store_package in store_scan.packages:
@@ -145,6 +146,8 @@ class SkillInventory:
             entries.append(entry)
             shared_path_index[package.resolved_path] = entry
             shared_match_index[_managed_entry_key(entry)] = entry
+            if store_package.origin_harness == "hermes":
+                hermes_local_match_index[_hermes_local_match_key(entry)] = entry
 
         unmanaged_entries: dict[str, InventoryEntry] = {}
 
@@ -164,6 +167,14 @@ class SkillInventory:
                     shared_entry.add_sighting(sighting)
                     continue
                 shared_match = shared_match_index.get(_observation_match_key(observation.package))
+                if (
+                    shared_match is None
+                    and scan.harness == "hermes"
+                    and observation.package.source.kind == "harness-local"
+                ):
+                    shared_match = hermes_local_match_index.get(
+                        _hermes_local_observation_match_key(observation.package)
+                    )
                 if shared_match is not None:
                     shared_match.add_sighting(sighting)
                     continue
@@ -242,3 +253,11 @@ def _observation_match_key(package) -> str:
     if package.source.is_source_backed:
         return stable_id("managed", package.source.kind, package.source.locator, package.declared_name, package.revision)
     return stable_id("managed-centralized", package.declared_name, package.revision)
+
+
+def _hermes_local_match_key(entry: InventoryEntry) -> tuple[str, str]:
+    return (entry.name.casefold(), (entry.package_dir or "").casefold())
+
+
+def _hermes_local_observation_match_key(package) -> tuple[str, str]:
+    return (package.declared_name.casefold(), package.root_path.name.casefold())

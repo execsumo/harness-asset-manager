@@ -123,6 +123,36 @@ def seed_existing_hermes_managed_package_fixture(spec):
         ],
     )
 
+
+def seed_hermes_category_duplicate_fixture(spec):
+    managed_copy = seed_skill_package(
+        spec.skills_store_root,
+        "xurl",
+        "xurl",
+        body="The managed copy was adopted before the Hermes source changed.",
+    )
+    seed_skill_package(
+        spec.hermes_skills_root / "social-media",
+        "xurl",
+        "xurl",
+        body="The current Hermes source copy has newer guidance.",
+    )
+    revision, _ = fingerprint_package(managed_copy)
+    seed_store_manifest(
+        spec,
+        [
+            SkillStoreEntry(
+                package_dir="xurl",
+                declared_name="xurl",
+                source_kind="centralized",
+                source_locator="centralized:xurl",
+                revision=revision,
+                origin_harness="hermes",
+            )
+        ],
+    )
+
+
 def seed_hermes_bundled_exclusion_fixture(spec):
     bundled = seed_skill_package(
         spec.hermes_skills_root / "builtin",
@@ -198,6 +228,18 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertEqual(defuddle["displayStatus"], "Managed")
             self.assertEqual(
                 defuddle["actions"],
+                {"canManage": False, "canStopManaging": True, "canDelete": True},
+            )
+
+    def test_hermes_category_source_matches_existing_managed_skill(self) -> None:
+        with AppTestHarness(fixture_factory=seed_hermes_category_duplicate_fixture) as harness:
+            skills = harness.get_json("/api/skills")
+            xurl_rows = [row for row in skills["rows"] if row["name"] == "xurl"]
+
+            self.assertEqual(len(xurl_rows), 1)
+            self.assertEqual(xurl_rows[0]["displayStatus"], "Managed")
+            self.assertEqual(
+                xurl_rows[0]["actions"],
                 {"canManage": False, "canStopManaging": True, "canDelete": True},
             )
 
