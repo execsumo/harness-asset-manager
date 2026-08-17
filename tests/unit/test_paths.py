@@ -102,7 +102,38 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.skills_store_root, root / "data" / APP_NAME / "skills")
             self.assertEqual(paths.mutation_audit_path, root / "data" / APP_NAME / "audit.log")
             self.assertEqual(paths.slash_command_store_root, root / "data" / APP_NAME / "slash-commands")
-            self.assertEqual(paths.settings_path, root / "cfg" / APP_NAME / "settings.json")
+            self.assertEqual(paths.settings_path, root / "data" / APP_NAME / "settings.json")
+
+    def test_linux_xdg_config_home_does_not_change_default_settings_path(self) -> None:
+        with isolated_env("linux"), TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / "home"
+            data_home = root / "data"
+
+            without_config_override = resolve_app_paths(
+                {
+                    "HOME": str(home),
+                    "XDG_DATA_HOME": str(data_home),
+                }
+            )
+            with_config_override = resolve_app_paths(
+                {
+                    "HOME": str(home),
+                    "XDG_CONFIG_HOME": str(root / "config"),
+                    "XDG_DATA_HOME": str(data_home),
+                }
+            )
+
+            self.assertEqual(without_config_override.data_dir, data_home / APP_NAME)
+            self.assertEqual(with_config_override.data_dir, data_home / APP_NAME)
+            self.assertEqual(
+                without_config_override.settings_path,
+                data_home / APP_NAME / "settings.json",
+            )
+            self.assertEqual(
+                with_config_override.settings_path,
+                data_home / APP_NAME / "settings.json",
+            )
 
     def test_settings_path_env_overrides_settings_path(self) -> None:
         with isolated_env("darwin"), TemporaryDirectory() as temp:

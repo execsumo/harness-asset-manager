@@ -52,7 +52,7 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
     context = resolve_platform_context(active_env)
     config_dir, data_dir, state_dir = _base_dirs(context)
     settings_override = env_get(active_env, SETTINGS_PATH_ENV)
-    settings_path = Path(settings_override) if settings_override else config_dir / "settings.json"
+    settings_path = Path(settings_override) if settings_override else data_dir / "settings.json"
     return AppPaths(
         config_dir=config_dir,
         data_dir=data_dir,

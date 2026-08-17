@@ -30,7 +30,7 @@ class HttpApiTests(unittest.TestCase):
             )
             self.assertEqual(
                 settings["storage"]["settingsPath"],
-                str(harness.spec.xdg_config_home / APP_NAME / "settings.json"),
+                str(harness.spec.xdg_data_home / APP_NAME / "settings.json"),
             )
             self.assertEqual(len(settings["harnesses"]), 7)
             opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
