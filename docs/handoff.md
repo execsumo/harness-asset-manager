@@ -2,6 +2,78 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-18 — Skills inventory performance shipped; tailnet app live
+
+### Running state
+
+- `main` includes skills-performance merge `2e80fb3`. The production
+  frontend was rebuilt from that checkout on 2026-08-18.
+- The app is running with
+  `./.venv/bin/python -m harness_asset_manager serve --host 127.0.0.1 --port 8000 --allow-remote --no-open-browser`.
+- Tailnet URL: <https://vibebox.goose-marlin.ts.net/>. Tailscale Serve maps `/` to
+  `http://127.0.0.1:8000`; the root, `/api/health`, and `/api/skills` all returned
+  HTTP 200 through tailnet HTTPS after launch.
+- This is tailnet-only, not a Funnel/public route. The API is unauthenticated, so
+  every identity allowed to reach this node by tailnet policy can mutate local
+  harness configuration.
+- Five pre-existing root-file deletions (`RECOMMENDATIONS.md` and four
+  `plan-*.md` pointers) remain deliberately untouched and uncommitted.
+
+### What shipped
+
+**Stable settings path (`c375eec`).** The default settings file previously lived
+under `config_dir`, so changing only `XDG_CONFIG_HOME` could silently select a
+different `settings.json` and make disabled-harness or auto-adopt settings appear
+lost. The default now follows `data_dir / "settings.json"`; explicit settings-path
+overrides still win, and no live settings file was migrated, overwritten, or
+deleted.
+
+**Faster skills adoption and harness enable (`2e80fb3`).** The delay was dominated
+by rebuilding the complete skills read model after each mutation: the store and
+every harness repeatedly walked, read, hashed, and parsed the same package trees.
+The fix adds a shared, bounded package cache, per-snapshot validation cycles,
+bounded parallel scanning, and single-flight snapshot construction. Unchanged
+packages are validated from filesystem metadata without rereading content, while
+ordinary edits, nested topology changes, symlink repoints, broken links,
+invalidation races, and waiter failures retain deterministic freshness behavior.
+
+Controlled read-only comparison on the same live roots (70 store packages and 90
+harness observations):
+
+- baseline `c375eec`: 10.042 s cold; 10.257 s median expired refresh;
+- candidate `f7ed959`: 2.240 s cold; 1.279 s median expired refresh;
+- unchanged refresh speedup: **8.02x**;
+- post-merge tailnet expired refreshes: approximately 1.24–1.30 s.
+
+Validation: 549 backend unit tests and 186 integration tests passed at 81% branch
+coverage; focused skills-mutation integration tests passed 46/46; typecheck, Ruff,
+`git diff --check`, and production build passed. The independent correctness review
+found no remaining blocker. The exact full Vitest command did not complete in this
+environment because workers repeatedly entered the known uninterruptible I/O state;
+frontend code was unchanged, and the isolated skills selector test passed 4/4.
+
+### Next steps, in priority order
+
+1. **Pressure-test the real mutation path.** Adopt and enable
+   `frontend-test-environment-debugging` from the tailnet UI. Record the browser
+   network waterfall for the mutation plus subsequent list/detail/source-status
+   requests, and distinguish server time from rendering time.
+2. **Optimize the remaining post-mutation work only if the trace justifies it.**
+   The leading candidates are the before/after mutation audit snapshots and the
+   frontend's overlapping post-mutation refetches. Preserve audit completeness and
+   cache invalidation semantics; do not trade correctness for a cosmetic speedup.
+3. **Add an end-to-end latency regression check.** Keep the existing read-only
+   benchmark for package-inventory comparisons, and add a safe isolated-state test
+   that times adopt/enable plus the first refreshed read model. Avoid live-user
+   mutations in automated validation.
+4. **Resolve the frontend test-runner environment.** Reproduce the Vitest worker
+   I/O stall on an otherwise idle machine, separate jsdom/dependency startup from
+   test execution, and restore a reliable full-suite acceptance signal before the
+   next frontend-heavy change.
+5. **Repository hygiene.** Decide separately whether the five historical root
+   pointers should stay deleted, then commit that decision without mixing it into
+   runtime or performance work. Nothing from this session has been pushed.
+
 ## 2026-08-14 — Cursor permissions approval mode set to unrestricted
 
 Configured `CursorPermissionsMapper` to write `approvalMode = "unrestricted"` into `~/.cursor/cli-config.json` upon enabling a HAM denylist permission, aligning Cursor with Claude, Antigravity, and Codex.

@@ -54,6 +54,7 @@ Harness Asset Manager manages six core extension families:
 - **Storage**: Portable Markdown skill folders (`SKILL.md` + scripts/resources) under `skills/<package>/`, with source and revision tracked in `skills-manifest.json`.
 - **Harness Integration**: Installed via local filesystem links (`symlink`) into each harness's skills directory (`~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, etc.).
 - **Hermes Support**: Categorized under `~/.hermes/skills/harnessam/`. Hub provenance is retained when available; bundled/official skills remain excluded, while other valid local or self-learned skills are discoverable and adoptable. The legacy `harness-asset-manager` category remains readable for migration.
+- **Inventory Read Model**: Store and harness observations share a bounded, thread-safe package cache keyed by resolved package identity. Each snapshot uses one validation cycle, scans the store and adapters concurrently, and single-flights concurrent cache misses. Unchanged regular files are validated from topology and stat metadata without content reads; content-read file symlinks remain volatile across cycles, directory symlinks are never traversed, and invalidation during a build forces a fresh snapshot before publication.
 
 ### 2. MCP Servers
 - **Storage**: Normalized JSON records in `mcp/manifest.json`.
