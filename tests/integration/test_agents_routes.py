@@ -382,6 +382,7 @@ class AgentRoutesTests(unittest.TestCase):
         has not moved since we linked, so that copy holds the only edit — folding it
         back in discards nothing, and Stage 3 does it without asking."""
         with AppTestHarness() as harness:
+            harness.put_json("/api/settings/auto-adopt/agents/harnesses", {"harnesses": ["claude"]})
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )
@@ -405,7 +406,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertIn("edited by the harness", store_file.read_text(encoding="utf-8"))
 
             # Invariant 5: nothing is repaired silently.
-            actions = harness.container.agents_audit.recent()
+            actions = [a for a in harness.container.agents_audit.recent() if a.ref == "red-team"]
             self.assertEqual([a.action for a in actions], ["adopted"])
             self.assertEqual(actions[0].ref, "red-team")
 
@@ -494,6 +495,7 @@ class AgentRoutesTests(unittest.TestCase):
         discards the other's work, so nothing is adopted, nothing is deleted, and each
         divergent copy is preserved for the user to choose from."""
         with AppTestHarness() as harness:
+            harness.put_json("/api/settings/auto-adopt/agents", {"enabled": True})
             harness.post_json(
                 "/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"}
             )

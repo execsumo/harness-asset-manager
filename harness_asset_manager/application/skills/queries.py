@@ -30,6 +30,7 @@ class SkillsQueryService:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
         self._reconcile = reconcile
+        self._is_reconciling = False
 
     def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
         self._reconcile = reconcile
@@ -66,8 +67,12 @@ class SkillsQueryService:
         return source_status_payload(self.resolve_update_status(entry))
 
     def inventory(self) -> SkillInventory:
-        if self._reconcile is not None:
-            self._reconcile()
+        if self._reconcile is not None and not self._is_reconciling:
+            self._is_reconciling = True
+            try:
+                self._reconcile()
+            finally:
+                self._is_reconciling = False
         snapshot = self.read_models.snapshot()
         return SkillInventory.from_snapshot(
             store_scan=snapshot.store_scan,

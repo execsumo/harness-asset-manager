@@ -110,14 +110,14 @@ class SkillsMutationService:
         self.read_models.invalidate()
         return {"ok": True}
 
-    def manage_entry(self, entry: InventoryEntry) -> None:
+    def manage_entry(self, entry: InventoryEntry) -> Path:
         """Adopt an already-scanned unmanaged entry.
 
         The auto-adoption reconciler uses this after it has made its own safety
         decision. Keeping the filesystem operation here ensures manual and
         automatic adoption use the same ingest-and-bind semantics.
         """
-        self._manage_entry(entry)
+        return self._manage_entry(entry)
 
     def manage_all_skills(self) -> dict[str, object]:
         inventory = self.queries.inventory()
@@ -307,6 +307,7 @@ class SkillsMutationService:
             adapter = self.read_models.require_enabled_adapter(sighting.harness)
             adapter.enable_shared_package(ingested)
             canonical_bound_harnesses.add(sighting.harness)
+        return ingested
 
     def _partition_bound_adapters(
         self,

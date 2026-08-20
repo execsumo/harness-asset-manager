@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from harness_asset_manager.api.schemas import ErrorResponse
@@ -26,6 +27,35 @@ from .routers import (
 )
 
 
+def custom_openapi(app: FastAPI) -> dict[str, object]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+        servers=app.servers,
+        terms_of_service=app.terms_of_service,
+        contact=app.contact,
+        license_info=app.license_info,
+        summary=app.summary,
+    )
+    # Python 3.14+ stdlib updated HTTP 422 reason phrase from "Unprocessable Entity"
+    # to "Unprocessable Content" per RFC 9110. Normalize default 422 validation descriptions
+    # to "Unprocessable Entity" so OpenAPI codegen is deterministic across Python 3.11-3.14+.
+    for path in openapi_schema.get("paths", {}).values():
+        for operation in path.values():
+            if isinstance(operation, dict) and "responses" in operation:
+                resp_422 = operation["responses"].get("422")
+                if isinstance(resp_422, dict) and resp_422.get("description") == "Unprocessable Content":
+                    resp_422["description"] = "Unprocessable Entity"
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
 def create_app(
     container: BackendContainer,
     *,
@@ -38,14 +68,15 @@ def create_app(
         redoc_url=None,
         openapi_url="/api/openapi.json",
         responses={
-            400: {"model": ErrorResponse},
-            404: {"model": ErrorResponse},
-            409: {"model": ErrorResponse},
-            422: {"model": ErrorResponse},
-            500: {"model": ErrorResponse},
-            503: {"model": ErrorResponse},
+            400: {"model": ErrorResponse, "description": "Bad Request"},
+            404: {"model": ErrorResponse, "description": "Not Found"},
+            409: {"model": ErrorResponse, "description": "Conflict"},
+            422: {"model": ErrorResponse, "description": "Unprocessable Entity"},
+            500: {"model": ErrorResponse, "description": "Internal Server Error"},
+            503: {"model": ErrorResponse, "description": "Service Unavailable"},
         },
     )
+    app.openapi = lambda: custom_openapi(app)
     app.state.container = container
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
     app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
