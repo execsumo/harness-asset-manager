@@ -45,65 +45,71 @@ class SkillsAutoAdoptService:
         self.journal = journal
         self.lock_path = lock_path
         self.default_harnesses = default_harnesses or (lambda: ())
+        self._is_reconciling = False
 
     def reconcile(self) -> SkillsAutoAdoptOutcome:
-        if not self.is_enabled():
+        if not self.is_enabled() or self._is_reconciling:
             return SkillsAutoAdoptOutcome()
 
-        with file_lock(self.lock_path):
-            snapshot = self.read_models.snapshot()
-            inventory = SkillInventory.from_snapshot(
-                store_scan=snapshot.store_scan,
-                harness_scans=self.read_models.visible_scans(snapshot),
-            )
-            unmanaged = [entry for entry in inventory.entries if entry.kind == "unmanaged"]
-            grouped: dict[tuple[str, str, str], list[InventoryEntry]] = defaultdict(list)
-            for entry in unmanaged:
-                grouped[(entry.name, entry.source.kind, entry.source.locator)].append(entry)
+        self._is_reconciling = True
+        try:
+            with file_lock(self.lock_path):
+                snapshot = self.read_models.snapshot()
+                inventory = SkillInventory.from_snapshot(
+                    store_scan=snapshot.store_scan,
+                    harness_scans=self.read_models.visible_scans(snapshot),
+                )
+                unmanaged = [entry for entry in inventory.entries if entry.kind == "unmanaged"]
+                grouped: dict[tuple[str, str, str], list[InventoryEntry]] = defaultdict(list)
+                for entry in unmanaged:
+                    grouped[(entry.name, entry.source.kind, entry.source.locator)].append(entry)
 
-            adopted: list[str] = []
-            skipped: list[tuple[str, str]] = []
-            for entries in grouped.values():
-                revisions = {entry.current_revision for entry in entries}
-                if len(revisions) != 1:
-                    for entry in entries:
-                        skipped.append((entry.skill_ref, "different local revisions require review"))
-                    continue
-                entry = entries[0]
-                reason = self._unsafe_reason(entry)
-                if reason is not None:
-                    skipped.append((entry.skill_ref, reason))
-                    continue
-                try:
-                    self.mutations.manage_entry(entry)
-                    enabled = {
-                        adapter.harness for adapter in self.read_models.enabled_installed_adapters()
-                    }
-                    for harness in self.default_harnesses():
-                        if harness in enabled:
-                            self.mutations.enable_skill(entry.skill_ref, harness)
-                except Exception as error:  # noqa: BLE001 — keep one bad skill from blocking the inventory
-                    skipped.append((entry.skill_ref, str(error)))
+                adopted: list[str] = []
+                skipped: list[tuple[str, str]] = []
+                for entries in grouped.values():
+                    revisions = {entry.current_revision for entry in entries}
+                    if len(revisions) != 1:
+                        for entry in entries:
+                            skipped.append((entry.skill_ref, "different local revisions require review"))
+                        continue
+                    entry = entries[0]
+                    reason = self._unsafe_reason(entry)
+                    if reason is not None:
+                        skipped.append((entry.skill_ref, reason))
+                        continue
+                    try:
+                        package_path = self.mutations.manage_entry(entry)
+                        enabled = {
+                            adapter.harness for adapter in self.read_models.enabled_installed_adapters()
+                        }
+                        for harness in self.default_harnesses():
+                            if harness in enabled:
+                                adapter = self.read_models.require_enabled_adapter(harness)
+                                adapter.enable_shared_package(package_path)
+                    except Exception as error:  # noqa: BLE001 — keep one bad skill from blocking the inventory
+                        skipped.append((entry.skill_ref, str(error)))
+                        record_auto_adopt(
+                            self.journal,
+                            family="skills",
+                            ref=entry.skill_ref,
+                            target_paths=self._paths(entry),
+                            outcome="failed",
+                            error_type=error.__class__.__name__,
+                        )
+                        continue
+                    adopted.append(entry.skill_ref)
                     record_auto_adopt(
                         self.journal,
                         family="skills",
                         ref=entry.skill_ref,
                         target_paths=self._paths(entry),
-                        outcome="failed",
-                        error_type=error.__class__.__name__,
                     )
-                    continue
-                adopted.append(entry.skill_ref)
-                record_auto_adopt(
-                    self.journal,
-                    family="skills",
-                    ref=entry.skill_ref,
-                    target_paths=self._paths(entry),
-                )
 
-            if adopted:
-                self.read_models.invalidate()
-            return SkillsAutoAdoptOutcome(tuple(adopted), tuple(skipped))
+                if adopted:
+                    self.read_models.invalidate()
+                return SkillsAutoAdoptOutcome(tuple(adopted), tuple(skipped))
+        finally:
+            self._is_reconciling = False
 
     @staticmethod
     def _unsafe_reason(entry: InventoryEntry) -> str | None:
