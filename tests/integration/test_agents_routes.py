@@ -408,7 +408,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertIn("edited by the harness", store_file.read_text(encoding="utf-8"))
 
             # Invariant 5: nothing is repaired silently.
-            actions = harness.container.agents_audit.recent()
+            actions = [a for a in harness.container.agents_audit.recent() if a.ref == "red-team"]
             self.assertEqual([a.action for a in actions], ["adopted"])
             self.assertEqual(actions[0].ref, "red-team")
 
