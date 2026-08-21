@@ -68,8 +68,12 @@ gap noted below.
 ### Validation
 
 Full suite on the final tree: 549 backend unit tests and 187 backend integration tests
-pass at 81% branch coverage; `npm run typecheck` clean; `npm test` and `npm run build`
-pass; Ruff clean; Pyright reports 0 errors on the changed files.
+pass at 81% branch coverage (the 2026-08-18 entry recorded 186 integration tests and this
+session added exactly one, so the merge dropped no test despite resolving a conflict in
+`test_agents_routes.py`); `npm run typecheck` clean; `npm test` passes 300/300 across 62 files (the
+previously reported Vitest worker I/O stall did not reproduce); `npm run build` passes;
+`npm run codegen:check` reports no OpenAPI drift; Ruff clean; Pyright project-wide
+reports 0 errors against its existing warning baseline.
 
 ### Known environment gap
 
@@ -86,7 +90,11 @@ runs on `unittest` via `scripts/test_backend.sh`. Use
 2. **Pressure-test the real mutation path** (carried over, still the substantive next
    item). Adopt and enable a skill from the UI, record the browser network waterfall for
    the mutation plus the following list/detail/source-status requests, and separate
-   server time from render time.
+   server time from render time. The app must be restarted first — nothing is listening
+   on port 8000. Note the baseline moved: concurrent readers now serialize behind the
+   adoption lock instead of returning early, so overlapping GETs will show longer tail
+   latency during auto-adopt than the merged-but-unfixed code did. That is the
+   correctness fix showing up in the trace, not a caching regression.
 3. **Optimize remaining post-mutation work only if the trace justifies it.** Leading
    candidates stay the before/after audit snapshots and the frontend's overlapping
    post-mutation refetches. Preserve audit completeness and cache invalidation semantics.
