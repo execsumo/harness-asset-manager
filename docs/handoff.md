@@ -2,6 +2,104 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-21 — Interrupted `origin/main` merge landed; auto-adopt stale-read fixed
+
+### Running state
+
+- `main` is at the merge commit `fd7341d` plus a follow-up fix commit. **Nothing is
+  pushed** — `main` is well ahead of `origin/main` and push is deliberately deferred.
+- The app is **not** running (nothing listening on port 8000). `frontend/dist` has been
+  rebuilt from the current tree.
+- `stash@{0}` (root `plan-*.md` / `RECOMMENDATIONS.md` pointer deletions) is untouched
+  and still pending the separate decision recorded below.
+- `CLAUDE.md` has an uncommitted local edit (an appended RTK tooling section) that was
+  made outside this work and deliberately left uncommitted.
+
+### What was actually on disk when this session started
+
+`.git/MERGE_HEAD` was present: a merge of `origin/main` (`97559e2`) into `main` had been
+started around 2026-08-20, its three conflicts resolved into the index, and then
+abandoned before committing. The previous handoff entry did not mention it. The
+resolution survived only in the index, which is the most fragile place to hold it.
+
+### What shipped
+
+**Merge committed (`fd7341d`).** Committed exactly the nine already-staged files, with no
+re-resolution: the four upstream commits are Dependabot bumps (#37 ruff, #38 coverage,
+#44 npm) plus `9b86efc` (#43), which normalizes the OpenAPI 422 reason phrase so codegen
+stays deterministic on Python 3.14+.
+
+The conflict resolution keeps this fork's `SkillsMutationService.enable_managed_package`
+and `_manage_entry -> Path` alongside upstream's reentrancy guards. That union is
+required, not cosmetic: `auto_adopt` binds the package path returned by `manage_entry`.
+Worth noting upstream, `origin/main`'s `_manage_entry` is annotated `-> None` while its
+body still returns `ingested` and `manage_entry` still declares `-> Path`; the fork's
+version is the internally coherent one.
+
+**Auto-adopt stale-read fix.** Upstream #43 resolved its deadlock with plain instance
+booleans (`_is_reconciling`) on `SkillsQueryService` and `SkillsAutoAdoptService`. Those
+guards were written against a codebase without this fork's caching and bounded-parallel
+scanning layer, and they are not thread-safe. Sync API endpoints run in a threadpool over
+one shared container, so the bad interleaving is a live path:
+
+1. Thread A calls `inventory()`, which sets the flag and begins auto-adoption.
+2. Thread B calls `inventory()`, sees A's flag, and **skips reconciliation entirely**,
+   returning a snapshot taken from the middle of A's adoption.
+
+Before the merge, B would instead have blocked on `file_lock` and returned freshly
+reconciled state. The merge therefore traded *blocking-correct* for
+*non-blocking-possibly-stale* in the one subsystem whose recent commits (`b47bc41`,
+`f7ed959`) were specifically about race correctness.
+
+This was confirmed by reproduction, not by inspection: thread B returned the skill as
+`unmanaged` while thread A concurrently returned it as `managed`.
+
+The fix makes both guards `threading.local()`. Reentrancy protection is preserved per
+thread (upstream's actual intent), while a genuinely concurrent caller falls through to
+`file_lock`, is serialized, and reads fresh state.
+
+**Regression test.** `test_concurrent_inventory_read_during_auto_adopt_is_not_stale` in
+`tests/integration/test_skills_mutations.py` blocks adoption mid-flight, starts a second
+reader, and asserts both that the reader does not return early and that it observes the
+adopted skill. It was verified to fail against the merged-but-unfixed code
+("concurrent reader returned mid-adoption") and pass after the fix, closing the coverage
+gap noted below.
+
+### Validation
+
+Full suite on the final tree: 549 backend unit tests and 187 backend integration tests
+pass at 81% branch coverage; `npm run typecheck` clean; `npm test` and `npm run build`
+pass; Ruff clean; Pyright reports 0 errors on the changed files.
+
+### Known environment gap
+
+`./.venv/bin/python -m pytest ...` does not work in this repo — pytest is not a
+dependency. `requirements-dev.txt` pins only ruff, pyright, and coverage, and the suite
+runs on `unittest` via `scripts/test_backend.sh`. Use
+`./.venv/bin/python -m unittest tests.integration.test_skills_mutations` for focused runs.
+
+### Next steps, in priority order
+
+1. **Decide whether to push.** `main` carries a large unpushed backlog plus this merge,
+   and Dependabot keeps landing on `origin/main`, so the divergence regrows every week
+   this waits. Push was intentionally not performed.
+2. **Pressure-test the real mutation path** (carried over, still the substantive next
+   item). Adopt and enable a skill from the UI, record the browser network waterfall for
+   the mutation plus the following list/detail/source-status requests, and separate
+   server time from render time.
+3. **Optimize remaining post-mutation work only if the trace justifies it.** Leading
+   candidates stay the before/after audit snapshots and the frontend's overlapping
+   post-mutation refetches. Preserve audit completeness and cache invalidation semantics.
+4. **Add an end-to-end latency regression check** over adopt/enable plus the first
+   refreshed read model, using isolated state rather than live-user mutations.
+5. **Audit the other families for the same threading assumption.** Only skills carried
+   the `_is_reconciling` guards, but `slash_commands`, `mcp`, `hooks`, and `permissions`
+   all wire `set_reconcile` the same way and share the threadpool exposure.
+6. **Resolve the frontend test-runner environment.** The Vitest worker I/O stall has not
+   reproduced recently, but the cause was never identified.
+7. **Repository hygiene.** Decide whether the five root pointers in `stash@{0}` stay
+   deleted, and commit that decision on its own.
+
 ## 2026-08-18 — Skills inventory performance shipped; tailnet app live
 
 ### Running state
@@ -17,7 +115,11 @@ Running status for in-flight work. Read this before resuming. Newest session on 
   every identity allowed to reach this node by tailnet policy can mutate local
   harness configuration.
 - Five pre-existing root-file deletions (`RECOMMENDATIONS.md` and four
-  `plan-*.md` pointers) remain deliberately untouched and uncommitted.
+  `plan-*.md` pointers) remain deliberately untouched. **Correction (2026-08-21):**
+  they are not loose in the working tree — they are parked in `stash@{0}`
+  ("wip: remove obsolete root plan pointers before branch reconciliation"), and the
+  root pointer files are present on disk. This entry also failed to record that an
+  `origin/main` merge was started and left unfinished; see the 2026-08-21 entry.
 
 ### What shipped
 

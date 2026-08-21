@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import threading
 import unittest
 
+from harness_asset_manager.application.skills.inventory import SkillInventory
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
 from tests.support.app_harness import AppTestHarness
@@ -672,6 +674,69 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue((harness.spec.skills_store_root / "shared-audit").is_dir())
             self.assertTrue((harness.spec.codex_root / "shared-audit").is_symlink())
             self.assertTrue((harness.spec.claude_root / "shared-audit").is_dir())
+
+    def test_concurrent_inventory_read_during_auto_adopt_is_not_stale(self) -> None:
+        """A reader that arrives mid-adoption must wait, not skip reconciliation.
+
+        The reentrancy guard that keeps auto-adopt from recursing into itself is
+        per-thread. If it were a plain instance flag, this second reader would see
+        the first thread's in-flight reconcile, skip its own, and return a snapshot
+        of the store taken before adoption finished — reporting the skill as
+        unmanaged while it was already being adopted.
+        """
+        with AppTestHarness(fixture_factory=seed_auto_adopt_skill_fixture) as harness:
+            harness.put_json("/api/settings/auto-adopt/skills", {"enabled": True})
+            queries = harness.container.skills_queries
+            mutations = harness.container.skills_mutations
+
+            adoption_started = threading.Event()
+            release_adoption = threading.Event()
+            original_manage_entry = mutations.manage_entry
+
+            def blocking_manage_entry(entry):
+                adoption_started.set()
+                self.assertTrue(release_adoption.wait(timeout=30), "adoption was never released")
+                return original_manage_entry(entry)
+
+            mutations.manage_entry = blocking_manage_entry  # type: ignore[method-assign]
+            self.addCleanup(setattr, mutations, "manage_entry", original_manage_entry)
+
+            results: dict[str, SkillInventory] = {}
+
+            def read_inventory(key: str) -> None:
+                results[key] = queries.inventory()
+
+            adopter = threading.Thread(target=read_inventory, args=("adopter",))
+            adopter.start()
+            self.addCleanup(adopter.join, 30)
+            self.assertTrue(adoption_started.wait(timeout=30), "auto-adopt never started")
+
+            reader = threading.Thread(target=read_inventory, args=("reader",))
+            reader.start()
+            self.addCleanup(reader.join, 30)
+            # Registered last so it runs first: a failed assertion below must not leave
+            # the adopter parked on its 30s release timeout.
+            self.addCleanup(release_adoption.set)
+
+            # The concurrent reader must block behind the adoption lock rather than
+            # returning a snapshot from the middle of the adoption.
+            reader.join(timeout=2)
+            self.assertTrue(reader.is_alive(), "concurrent reader returned mid-adoption")
+
+            release_adoption.set()
+            adopter.join(timeout=30)
+            reader.join(timeout=30)
+            self.assertFalse(adopter.is_alive())
+            self.assertFalse(reader.is_alive())
+
+            for key in ("adopter", "reader"):
+                entry = next(
+                    (item for item in results[key].entries if item.name == "Auto Local"),
+                    None,
+                )
+                if entry is None:
+                    self.fail(f"{key} did not see the skill at all")
+                self.assertEqual(entry.kind, "managed", f"{key} read a stale inventory")
 
 
 if __name__ == "__main__":

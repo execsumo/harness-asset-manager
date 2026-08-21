@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,13 +46,16 @@ class SkillsAutoAdoptService:
         self.journal = journal
         self.lock_path = lock_path
         self.default_harnesses = default_harnesses or (lambda: ())
-        self._is_reconciling = False
+        # Per-thread reentrancy guard; see SkillsQueryService for why this must not be
+        # a plain instance flag. Cross-thread callers fall through to file_lock, which
+        # serializes them and leaves each one reading freshly reconciled state.
+        self._reconcile_state = threading.local()
 
     def reconcile(self) -> SkillsAutoAdoptOutcome:
-        if not self.is_enabled() or self._is_reconciling:
+        if not self.is_enabled() or getattr(self._reconcile_state, "active", False):
             return SkillsAutoAdoptOutcome()
 
-        self._is_reconciling = True
+        self._reconcile_state.active = True
         try:
             with file_lock(self.lock_path):
                 snapshot = self.read_models.snapshot()
@@ -108,7 +112,7 @@ class SkillsAutoAdoptService:
                     self.read_models.invalidate()
                 return SkillsAutoAdoptOutcome(tuple(adopted), tuple(skipped))
         finally:
-            self._is_reconciling = False
+            self._reconcile_state.active = False
 
     @staticmethod
     def _unsafe_reason(entry: InventoryEntry) -> str | None:

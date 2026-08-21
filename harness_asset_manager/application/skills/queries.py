@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Callable, Literal
@@ -30,7 +31,11 @@ class SkillsQueryService:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
         self._reconcile = reconcile
-        self._is_reconciling = False
+        # Reentrancy guard, per thread. A plain instance flag would let a concurrent
+        # reader see another thread's in-flight reconcile and skip its own, returning a
+        # snapshot taken mid-adoption. Sync API endpoints run in a threadpool over one
+        # shared service instance, so that is a live path, not a theoretical one.
+        self._reconcile_state = threading.local()
 
     def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
         self._reconcile = reconcile
@@ -67,12 +72,12 @@ class SkillsQueryService:
         return source_status_payload(self.resolve_update_status(entry))
 
     def inventory(self) -> SkillInventory:
-        if self._reconcile is not None and not self._is_reconciling:
-            self._is_reconciling = True
+        if self._reconcile is not None and not getattr(self._reconcile_state, "active", False):
+            self._reconcile_state.active = True
             try:
                 self._reconcile()
             finally:
-                self._is_reconciling = False
+                self._reconcile_state.active = False
         snapshot = self.read_models.snapshot()
         return SkillInventory.from_snapshot(
             store_scan=snapshot.store_scan,
