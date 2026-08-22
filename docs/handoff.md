@@ -34,10 +34,14 @@ re-run on merged `main`. Merged as `344d42e`; branch deleted.
   populated store between two synthetic homes with different layouts and asserts inventory
   survives, missing bindings report cleanly, foreign ledger entries don't misclassify, and
   no false drift appears.
-- **Docs + store `.gitignore`** (`67e8a80`): README section under Local-first Safety
-  ("carrying the store between your own devices": what travels, what to exclude —
-  `marketplace/`, `audit.log*`, `*.lock`, runtime files; secrets note). HAM now writes a
-  default `.gitignore` into the store root on startup (only if absent).
+- **Docs + store `.gitignore`** (`67e8a80`, aligned in the follow-up docs pass): README
+  section under Local-first Safety ("carrying the store between your own devices": what
+  travels, what to exclude — `marketplace/`, `audit.log*`, locks, runtime files, `configs/`;
+  secrets note). HAM writes a default `.gitignore` into the store root on startup (only if
+  absent); the follow-up pass added the missing `audit.log`/`marketplace/`/`configs/`
+  entries so the seeded file matches the documented exclusions. ARCHITECTURE.md §4 gained a
+  "Store Portability" subsection pinning the three invariants (no device-local paths, total
+  reads, artifact tolerance).
 - **Post-review fix** (`970a5d3`, owner): agy's foreign-path guard used a name heuristic
   (`base_home.name == "home"`) that fires on *every standard Linux machine*, admitting a
   foreign `/home/alice/...` as local. Replaced with an explicit `extra_local_roots`

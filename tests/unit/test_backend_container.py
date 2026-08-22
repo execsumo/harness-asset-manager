@@ -436,7 +436,10 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
             self.assertIn("*.lock", content)
             self.assertIn("runtime.json", content)
             self.assertIn("server.log", content)
+            self.assertIn("audit.log", content)
             self.assertIn("*-audit.json*", content)
+            self.assertIn("configs/", content)
+            self.assertIn("marketplace/", content)
             self.assertIn(".sync-conflict-*", content)
 
 

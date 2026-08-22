@@ -613,7 +613,7 @@ Useful Linux paths:
 
 ### Carrying the store between your own devices
 
-The Harness Asset Manager store (`~/.harnessam` on macOS/Linux, or `~/.local/share/harnessam` on Linux) is designed to be portable across your own machines using standard dotfile or folder synchronization tools (such as Git dotfile repos, Syncthing, Dropbox, iCloud, Nextcloud, or rsync).
+The Harness Asset Manager store (`~/.harnessam` on macOS and Linux, or your explicit XDG roots — the same paths described above) is designed to be portable across your own machines using standard dotfile or folder synchronization tools (a Git dotfile repo, Syncthing, Dropbox, iCloud, Nextcloud, rsync). This is a supported workflow, not an accident: every persisted reference that names a file stores it home-relative (`~/...`), so the store survives different usernames, operating systems, and home locations (`/Users/alice` ↔ `/home/bob`).
 
 #### Portable Paths
 All persisted references (such as agent binding ledgers and slash command sync state) store home-relative paths (`~/...`). This allows your store to travel seamlessly between devices with different usernames, operating systems, or home locations (for example, `/Users/alice` on macOS and `/home/bob` on Linux).
@@ -638,8 +638,14 @@ HAM automatically creates a default `.gitignore` inside `~/.harnessam` on first 
   - `runtime.json` (Local server PID and port info)
   - `server.log` (Local daemon log)
   - `*-audit.json*`, `audit.log` (Machine-local activity journals)
+  - `configs/` (Native config snapshots of *this* machine)
+  - `agents/conflicts/` (Local reconciliation history)
   - `cache/`, `tmp/`, `marketplace/` (Ephemeral downloads and caches)
   - `.sync-conflict-*`, `*.sync-conflict-*`, `.syncthing.*` (Sync-tool conflict artifacts)
+
+#### Secrets travel with the store
+
+MCP `env`/`headers` values and hook `command` strings live in the manifests, so they cross machines with everything else. Only sync the store to repositories and devices you control and trust — a public dotfile repo leaks credentials exactly like any other dotfile would.
 
 #### Arrival on a New Machine
 When you sync or copy your store to a new machine:

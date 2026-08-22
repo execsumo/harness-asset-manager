@@ -187,6 +187,34 @@ HAM captures canonical baselines and timestamped snapshots of user-level native 
 
 All file mutations use atomic writes (`atomic_write_text`) with flock file locks to ensure zero data corruption during concurrent operations.
 
+### Store Portability
+
+The store is designed to be carried between a user's own machines with dotfile/folder
+synchronization tools. Three properties make that safe, all enforced in
+`harness_asset_manager/portable_paths.py` and the persistence layer:
+
+1. **No device-local absolute paths in load-bearing records.** `bindings.json` targets and
+   slash-command sync-state paths persist home-relative (`~/...`) and re-resolve against the
+   current `$HOME` on load. Legacy absolute paths still parse when they resolve under this
+   machine's local roots (HOME, process XDG base dirs, resolved store base dirs); an absolute
+   path from a *foreign* machine degrades to no-record rather than misclassifying local
+   files.
+2. **Total reads.** Every persisted-state reader survives absent, truncated, or malformed
+   JSON — what folder sync produces when it replicates mid-write — by degrading to the
+   default value plus a surfaced issue where the store has an issue channel. Losing state
+   degrades to "no baseline", never to a crash and never to a destructive default.
+3. **Sync-artifact tolerance.** `is_sync_artifact()` keeps conflict copies (`name (conflict
+   copy)`, `*.sync-conflict-*`), editor backups, temp files, and dotfiles out of skills/
+   agents directory scans and out of auto-adopt eligibility: they may surface as unmanaged,
+   but are never adopted and never break scanning.
+
+On startup HAM seeds a default `.gitignore` into the store root (only if absent) suggesting
+the standard exclusions (`marketplace/`, journals, locks, runtime state, `configs/`). Intent
+travels with the synced store; placement (symlinks, rendered harness files) is recomputed
+locally per machine when assets are enabled. Secrets in MCP `env`/`headers` values and hook
+commands live in the manifests and therefore travel too — documented as a trust boundary,
+not enforced.
+
 ### Mutation Audit Journal
 
 The HTTP API and headless CLI share the same audited domain-service wrappers. Each

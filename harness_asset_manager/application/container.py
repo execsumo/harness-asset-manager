@@ -179,9 +179,13 @@ DEFAULT_STORE_GITIGNORE = """# Harness Asset Manager — local / ephemeral state
 *.lock
 runtime.json
 server.log
+audit.log
 *-audit.json*
+configs/
+agents/conflicts/
 cache/
 tmp/
+marketplace/
 .sync-conflict-*
 *.sync-conflict-*
 .syncthing.*
