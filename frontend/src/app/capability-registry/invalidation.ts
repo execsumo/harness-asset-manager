@@ -7,7 +7,6 @@ import { invalidateSkillsQueries } from "../../features/skills/public";
 import { invalidateSlashCommandQueries } from "../../features/slash-commands/public";
 import { invalidateHooksQueries } from "../../features/hooks/public";
 import { invalidateAgentsQueries } from "../../features/agents/public";
-import { invalidateActivityQueries } from "../../features/activity/public";
 
 export async function invalidateCapabilityQueries(queryClient: QueryClient): Promise<void> {
   await Promise.all([
@@ -18,6 +17,5 @@ export async function invalidateCapabilityQueries(queryClient: QueryClient): Pro
     invalidateSlashCommandQueries(queryClient),
     invalidateHooksQueries(queryClient),
     invalidateAgentsQueries(queryClient),
-    invalidateActivityQueries(queryClient),
   ]);
 }

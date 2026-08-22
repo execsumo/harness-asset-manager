@@ -21,7 +21,6 @@ import {
   Webhook,
   Bot,
   Shield,
-  History,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 
@@ -127,7 +126,6 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
 }
 
 function sidebarIcon(iconKey: SidebarIconKey): ReactNode {
-  if (iconKey === "activity") return <History size={16} />;
   if (iconKey === "skills") return <BookOpen size={16} />;
   if (iconKey === "slash-commands") return <Command size={16} />;
   if (iconKey === "mcp") return <Terminal size={16} />;

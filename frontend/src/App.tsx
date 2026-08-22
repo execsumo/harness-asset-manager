@@ -22,7 +22,6 @@ const MarketplaceLayout = lazy(() => import("./features/marketplace/components/M
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
 const SettingsPage = lazy(() => import("./features/settings/screens/SettingsPage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
-const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
 export function App() {
   const [queryClient] = useState(
@@ -118,15 +117,6 @@ function AppContent() {
           </Route>
 
           {getSlashCommandsRouteElements()}
-
-          <Route
-            path="activity"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label={common.loading.activity} />}>
-                <ActivityPage />
-              </Suspense>
-            }
-          />
 
           <Route
             path="settings"

@@ -25,7 +25,6 @@ const englishCommonCopy = {
     marketplace: "Marketplace",
     clis: "CLIs",
     permissions: "Permissions",
-    activity: "Activity",
     settings: "Settings",
     light: "Light",
     dark: "Dark",
@@ -43,7 +42,6 @@ const englishCommonCopy = {
     marketplace: "Loading marketplace",
     slashCommands: "Loading slash commands",
     settings: "Loading settings",
-    activity: "Loading activity",
     document: "Loading document",
   },
   search: {

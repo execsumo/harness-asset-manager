@@ -12,7 +12,6 @@ from harness_asset_manager.application import BackendContainer
 from .errors import install_error_handlers
 from .guards import LoopbackOnlyMiddleware
 from .routers import (
-    activity,
     agents,
     config_snapshots,
     health,
@@ -81,7 +80,6 @@ def create_app(
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
     app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
     install_error_handlers(app)
-    app.include_router(activity.router)
     app.include_router(health.router)
     app.include_router(settings.router)
     app.include_router(skills.router)
