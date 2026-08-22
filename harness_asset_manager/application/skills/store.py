@@ -16,7 +16,12 @@ from .manifest import (
     write_skill_store_manifest,
 )
 from .observations import SkillStoreScan, StorePackageObservation
-from .package import SkillPackageCache, SkillParseError, find_skill_roots, fingerprint_package
+from .package import (
+    SkillPackageCache,
+    SkillParseError,
+    find_skill_roots,
+    fingerprint_package,
+)
 
 
 class SkillStore:

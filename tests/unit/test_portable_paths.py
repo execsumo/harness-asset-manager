@@ -3,7 +3,10 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from harness_asset_manager.portable_paths import from_portable_path, resolve_home, to_portable_path
+from harness_asset_manager.portable_paths import (
+    from_portable_path,
+    to_portable_path,
+)
 
 
 class PortablePathsTests(unittest.TestCase):

@@ -61,6 +61,7 @@ def _is_detected(
 ) -> bool:
     """Derive detection from harness support status: CLI on PATH, app probe, or config present."""
     import shutil
+
     from harness_asset_manager.harness.contracts import (
         ConfigSubtreeBindingProfile,
         FileTreeBindingProfile,

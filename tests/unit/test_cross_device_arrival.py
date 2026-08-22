@@ -12,7 +12,6 @@ from harness_asset_manager.application.slash_commands.models import SlashCommand
 from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import (
     FakeHomeSpec,
-    create_fake_home_spec,
     seed_skill_package,
     write_cli_stub,
 )

@@ -116,7 +116,9 @@ class AlreadyManagedRaceTests(unittest.TestCase):
 
 class SkillsAutoAdoptSyncArtifactTests(unittest.TestCase):
     def test_unsafe_reason_rejects_sync_artifacts(self) -> None:
-        from harness_asset_manager.application.skills.auto_adopt import SkillsAutoAdoptService
+        from harness_asset_manager.application.skills.auto_adopt import (
+            SkillsAutoAdoptService,
+        )
         from harness_asset_manager.application.skills.identity import SourceDescriptor
         from harness_asset_manager.application.skills.inventory import (
             InventoryEntry,
