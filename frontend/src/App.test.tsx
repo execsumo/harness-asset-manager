@@ -55,9 +55,10 @@ describe("App shell", () => {
     await waitFor(() => expect(screen.getByLabelText(/primary navigation/i)).toBeInTheDocument());
     expect(screen.getByText(/harness-asset-manager/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Skills/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Slash Commands/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /MCP Servers/i })).toBeInTheDocument();
+    // "Skills" is ambiguous (family heading + Marketplace sub-link), so assert Agents.
+    expect(screen.getByRole("link", { name: /Agents/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Slash Commands/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /MCP Servers/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Marketplace/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Settings$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Activity$/i })).toBeInTheDocument();
@@ -90,14 +91,14 @@ describe("App shell", () => {
     renderApp("/settings");
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Skills 13" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Slash Commands 6" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "MCP Servers 3" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Skills 13" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Slash Commands 6" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "MCP Servers 3" })).toBeInTheDocument();
     });
-    expect(screen.getByRole("link", { name: "In use 10" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Unmanaged 3" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "In use 2" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Unmanaged 1" })).not.toBeInTheDocument();
+    // Family headings link straight to the unified page; there are no nested
+    // child links anymore.
+    expect(screen.queryByRole("link", { name: "In use 10" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "In use 2" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marketplace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Skills" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "MCP" })).toBeInTheDocument();
@@ -113,9 +114,11 @@ describe("App shell", () => {
 
     renderApp("/settings");
 
-    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Slash Commands" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "MCP Servers" })).toBeInTheDocument();
+    // "Skills" is ambiguous here (family heading + Marketplace sub-link share the
+    // name), so assert the unambiguous family headings instead.
+    expect(screen.getByRole("link", { name: /Agents/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Slash Commands" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MCP Servers" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marketplace" })).toBeInTheDocument();
   });
 

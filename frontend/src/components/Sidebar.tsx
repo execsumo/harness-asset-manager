@@ -59,23 +59,39 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
           />
         ))}
 
-        {model.groups.map((group) => (
-          <NavGroup
-            key={group.key}
-            label={group.label}
-            icon={sidebarIcon(group.iconKey)}
-            count={group.count}
-          >
-            {group.links.map((link) => (
-              <SidebarLink
-                key={link.key}
+        {model.groups.map((group) => {
+          // Families converged to a single unified page: the heading itself links
+          // there instead of expanding to a nested child entry.
+          if (group.links.length === 1) {
+            const link = group.links[0];
+            return (
+              <SidebarTopLink
+                key={group.key}
                 to={link.to}
-                label={link.label}
-                count={link.count}
+                label={group.label}
+                icon={sidebarIcon(group.iconKey)}
+                count={group.count}
               />
-            ))}
-          </NavGroup>
-        ))}
+            );
+          }
+          return (
+            <NavGroup
+              key={group.key}
+              label={group.label}
+              icon={sidebarIcon(group.iconKey)}
+              count={group.count}
+            >
+              {group.links.map((link) => (
+                <SidebarLink
+                  key={link.key}
+                  to={link.to}
+                  label={link.label}
+                  count={link.count}
+                />
+              ))}
+            </NavGroup>
+          );
+        })}
       </nav>
 
       <div className="sidebar__footer">
