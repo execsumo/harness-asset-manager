@@ -10,6 +10,7 @@ import { invalidateCapabilityQueries } from "./app/capability-registry";
 import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session";
 import { getSkillsRouteElements } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
+import { getMcpRouteElements } from "./features/mcp/routes";
 import { getAgentsRouteElements } from "./features/agents/routes";
 import { getSlashCommandsRouteElements } from "./features/slash-commands/routes";
 import { useCommonCopy } from "./i18n";
@@ -20,8 +21,6 @@ import { ThemeProvider } from "./lib/theme";
 const MarketplaceLayout = lazy(() => import("./features/marketplace/components/MarketplaceLayout"));
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
 const SettingsPage = lazy(() => import("./features/settings/screens/SettingsPage"));
-const McpNeedsReviewPage = lazy(() => import("./features/mcp/screens/McpNeedsReviewPage"));
-const McpInUsePage = lazy(() => import("./features/mcp/screens/McpInUsePage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
 const ActivityPage = lazy(() => import("./features/activity/screens/ActivityPage"));
 
@@ -84,25 +83,7 @@ function AppContent() {
 
           {getSkillsRouteElements()}
 
-          <Route path="mcp" element={<Navigate to="/mcp/use" replace />} />
-          <Route
-            path="mcp/use"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label={common.loading.mcp} />}>
-                <McpInUsePage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="mcp/review"
-            element={
-              <Suspense fallback={<RouteLoadingPanel label={common.loading.mcp} />}>
-                <McpNeedsReviewPage />
-              </Suspense>
-            }
-          />
-          <Route path="mcp/managed" element={<Navigate to="/mcp/use" replace />} />
-          <Route path="mcp/unmanaged" element={<Navigate to="/mcp/review" replace />} />
+          {getMcpRouteElements()}
 
           {getHooksRouteElements()}
 

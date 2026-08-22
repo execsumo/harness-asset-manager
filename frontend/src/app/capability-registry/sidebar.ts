@@ -117,16 +117,6 @@ export function useSidebarModel(): SidebarModel {
           count: mcpCounts.total,
           links: [
             { key: "mcp-use", to: mcpRoutes.inUse, label: common.productLanguage.inUse, count: mcpCounts.inUse },
-            {
-              // MCP keeps its review link: its In-use page lists managed servers
-              // only, so unadopted servers are unreachable without it. Every
-              // other family's In-use page already includes unadopted assets
-              // behind a status filter.
-              key: "mcp-review",
-              to: mcpRoutes.needsReview,
-              label: common.productLanguage.needsReview,
-              count: mcpCounts.needsReview,
-            },
           ],
         },
         {

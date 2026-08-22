@@ -97,7 +97,7 @@ describe("App shell", () => {
     expect(screen.getByRole("link", { name: "In use 10" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Unmanaged 3" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "In use 2" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Unmanaged 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Unmanaged 1" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Marketplace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Skills" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "MCP" })).toBeInTheDocument();
@@ -126,8 +126,9 @@ describe("App shell", () => {
     ["/slash-commands", "Slash Commands"],
     ["/slash-commands/use", "Slash Commands"],
     ["/slash-commands/review", "Slash commands to review"],
+    ["/mcp", "MCP servers in use"],
     ["/mcp/use", "MCP servers in use"],
-    ["/mcp/review", "MCP configs to review"],
+    ["/mcp/review", "MCP servers in use"],
     ["/marketplace/skills", "Marketplace"],
     ["/marketplace/clis", "Marketplace"],
     ["/settings", "Settings"],
@@ -141,7 +142,7 @@ describe("App shell", () => {
     ["/skills/managed", "Skills in use"],
     ["/skills/unmanaged", "Skills to review"],
     ["/mcp/managed", "MCP servers in use"],
-    ["/mcp/unmanaged", "MCP configs to review"],
+    ["/mcp/unmanaged", "MCP servers in use"],
   ])("redirects compatibility route %s to the new concept route", async (route, heading) => {
     renderApp(route);
     await screen.findByRole("heading", { name: heading }, { timeout: 10000 });

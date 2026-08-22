@@ -242,8 +242,8 @@ describe("OverviewPage", () => {
     const mcpCard = screen.getByRole("heading", { name: "MCP Servers" }).closest("article") as HTMLElement;
     expect(within(mcpCard).getByText("2 in use")).toBeInTheDocument();
     expect(within(mcpCard).getByText("4 review")).toBeInTheDocument();
-    expect(within(mcpCard).getByRole("link", { name: "In use" })).toHaveAttribute("href", "/mcp/use");
-    expect(within(mcpCard).getByRole("link", { name: "Needs review" })).toHaveAttribute("href", "/mcp/review");
+    expect(within(mcpCard).getByRole("link", { name: "In use" })).toHaveAttribute("href", "/mcp");
+    expect(within(mcpCard).getByRole("link", { name: "Needs review" })).toHaveAttribute("href", "/mcp?status=untracked");
     expect(within(mcpCard).queryByRole("link", { name: "Marketplace" })).not.toBeInTheDocument();
 
     const extensionsSection = section("Extensions");
