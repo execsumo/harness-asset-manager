@@ -382,9 +382,23 @@ Every automatic action is appended to the Activity audit log: repair you cannot 
 
 ### Permissions
 
-Denylist rules strictly restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. `--scope` values include `shell`, `file_read`, `file_write`, `web`, `mcp`, `any`, and `--pattern` matches according to scope (`shell` → `git push`, `file_*` → `~/.zshrc`, `web` → `api.example.com`, `mcp` → `server/tool`). Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only. Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default. Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules.
+Denylist rules restrict shell commands, file paths, web domains, and MCP tools across supported harnesses in a single unified view. Only `--decision deny` binds to harnesses today — Harness Asset Manager is denylist-only. Each rule carries a canonical scope (`shell`, `file_read`, `file_write`, `web`, `mcp`, `any`) and a pattern that is matched according to that scope:
 
-Cursor has a mapper implemented against `~/.cursor/cli-config.json` (`Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()` deny tokens — multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either). Enabling a Cursor rule writes `approvalMode = "unrestricted"` and disabling the final rule cleans it up. Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model. The capability matrix keeps Cursor as `Planned` until this is verified against an installed `cursor-agent` rather than documentation alone.
+- `shell` → `git push`
+- `file_read` / `file_write` → `~/.zshrc`
+- `web` → `api.example.com`
+- `mcp` → `server/tool`
+
+Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default.
+
+The permissions matrix behaves like every other family view: sortable rule, harness, and applied-count columns, plus a select checkbox on each row. Managed rules support bulk apply, remove, and delete; untracked rules support bulk adopt.
+
+Each harness codec translates rules into that harness's native deny surface:
+
+- Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules.
+- Cursor maps rules onto deny tokens in `~/.cursor/cli-config.json` — `Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()`. Multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either. Enabling a Cursor rule writes `approvalMode = "unrestricted"`; disabling the final rule cleans it up.
+
+Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model. The capability matrix keeps Cursor as `Planned` until this is verified against an installed `cursor-agent` rather than documentation alone.
 
 ### Native Config Snapshots
 
