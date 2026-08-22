@@ -85,12 +85,6 @@ export function useSidebarModel(): SidebarModel {
           count: agentsCounts.total,
           links: [
             { key: "agents-use", to: agentsRoutes.inUse, label: common.productLanguage.inUse, count: agentsCounts.inUse },
-            {
-              key: "agents-review",
-              to: agentsRoutes.needsReview,
-              label: common.productLanguage.needsReview,
-              count: agentsCounts.needsReview,
-            },
           ],
         },
         {
@@ -100,12 +94,6 @@ export function useSidebarModel(): SidebarModel {
           count: sumLoadedCounts(inUseSkills, needsReviewSkills),
           links: [
             { key: "skills-use", to: skillsRoutes.index, label: common.productLanguage.inUse, count: inUseSkills },
-            {
-              key: "skills-review",
-              to: skillsRoutes.needsReviewFilter,
-              label: common.productLanguage.needsReview,
-              count: needsReviewSkills,
-            },
           ],
         },
         {
@@ -120,12 +108,6 @@ export function useSidebarModel(): SidebarModel {
               label: common.productLanguage.inUse,
               count: slashCommandCount,
             },
-            {
-              key: "slash-commands-review",
-              to: slashCommandRoutes.untracked,
-              label: common.productLanguage.needsReview,
-              count: slashCommandReviewCount,
-            },
           ],
         },
         {
@@ -136,6 +118,10 @@ export function useSidebarModel(): SidebarModel {
           links: [
             { key: "mcp-use", to: mcpRoutes.inUse, label: common.productLanguage.inUse, count: mcpCounts.inUse },
             {
+              // MCP keeps its review link: its In-use page lists managed servers
+              // only, so unadopted servers are unreachable without it. Every
+              // other family's In-use page already includes unadopted assets
+              // behind a status filter.
               key: "mcp-review",
               to: mcpRoutes.needsReview,
               label: common.productLanguage.needsReview,
@@ -150,12 +136,6 @@ export function useSidebarModel(): SidebarModel {
           count: hooksCounts.total,
           links: [
             { key: "hooks-use", to: hooksRoutes.inUse, label: common.productLanguage.inUse, count: hooksCounts.inUse },
-            {
-              key: "hooks-review",
-              to: hooksRoutes.needsReview,
-              label: common.productLanguage.needsReview,
-              count: hooksCounts.needsReview,
-            },
           ],
         },
         {

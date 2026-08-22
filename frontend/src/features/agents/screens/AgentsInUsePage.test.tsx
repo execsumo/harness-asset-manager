@@ -116,7 +116,7 @@ describe("AgentsInUsePage", () => {
     renderPage();
     await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
     expect(
-      screen.getByText(/1 agent binding needs attention\. See "Agents to review"\./i),
+      screen.getByText(/1 agent binding needs attention\. Use the "Needs review" filter to see them\./i),
     ).toBeInTheDocument();
     // The banner is a compact count only — it must not echo the raw reason text.
     expect(

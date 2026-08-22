@@ -187,7 +187,7 @@ export default function AgentsInUsePage() {
 
   const issueCount = inventory?.issues?.length ?? 0;
   const inventoryIssueMessage = issueCount
-    ? `${issueCount} agent binding${issueCount === 1 ? "" : "s"} need${issueCount === 1 ? "s" : ""} attention. See "Agents to review".`
+    ? `${issueCount} agent binding${issueCount === 1 ? "" : "s"} need${issueCount === 1 ? "s" : ""} attention. Use the "Needs review" filter to see them.`
     : "";
   const selectedCount = selectedRefs.size;
   const adoptableCount = entries.filter((entry) => entry.kind === "unmanaged" && entry.actions.canAdopt).length;
