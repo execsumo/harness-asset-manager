@@ -286,6 +286,36 @@ describe("OverviewPage", () => {
       within(claudeRow).getByLabelText("Hooks: Claude hook writes are unavailable"),
     ).toBeInTheDocument();
 
+    // Cells deep-link to harness-filtered capability surfaces.
+    expect(within(codexRow).getByRole("link", { name: "Skills on Codex" })).toHaveAttribute(
+      "href",
+      "/skills?harness=codex",
+    );
+    expect(within(codexRow).getByRole("link", { name: "MCP on Codex" })).toHaveAttribute(
+      "href",
+      "/mcp?harness=codex",
+    );
+    expect(within(codexRow).getByRole("link", { name: "Hooks on Codex" })).toHaveAttribute(
+      "href",
+      "/hooks?harness=codex",
+    );
+    expect(within(codexRow).getByRole("link", { name: "1 Skills to review on Codex" })).toHaveAttribute(
+      "href",
+      "/skills?status=untracked&harness=codex",
+    );
+    expect(within(codexRow).getByRole("link", { name: "1 Agents to review on Codex" })).toHaveAttribute(
+      "href",
+      "/agents?status=untracked&harness=codex",
+    );
+    expect(within(claudeRow).getByRole("link", { name: "2 MCP to review on Claude" })).toHaveAttribute(
+      "href",
+      "/mcp?status=untracked&harness=claude",
+    );
+    expect(within(claudeRow).getByRole("link", { name: "1 Hooks to review on Claude" })).toHaveAttribute(
+      "href",
+      "/hooks?status=untracked&harness=claude",
+    );
+
     // The coverage table is the first section on the page.
     const firstSection = document.querySelector(".overview-page > section");
     expect(firstSection).toContainElement(coverage);

@@ -1,12 +1,13 @@
 import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
 import type {
-  OverviewCoverageCell,
   OverviewHarnessAvailabilityIssue,
   OverviewHarnessCellKey,
   OverviewHarnessRow,
 } from "../../../app/capability-registry";
+import { coverageCellLinks } from "../../../app/capability-registry";
 import { useOverviewCopy } from "../i18n";
 
 const CELL_KEYS: OverviewHarnessCellKey[] = [
@@ -58,8 +59,6 @@ export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
 }
 
 function CoverageRow({ row }: { row: OverviewHarnessRow }) {
-  const reviewTotal = CELL_KEYS.reduce((total, key) => total + row.cells[key].review, 0);
-
   return (
     <div className="overview-coverage-row">
       <span className="overview-coverage-row__identity">
@@ -74,12 +73,9 @@ function CoverageRow({ row }: { row: OverviewHarnessRow }) {
         </span>
       </span>
       {CELL_KEYS.map((key) => (
-        <CoverageCell key={key} cell={row.cells[key]} />
+        <CoverageCell key={key} cellKey={key} row={row} />
       ))}
-      <CoverageCell
-        cell={{ active: reviewTotal, review: reviewTotal }}
-        tone={reviewTotal > 0 ? "warning" : "normal"}
-      />
+      <ReviewTotalCell row={row} />
     </div>
   );
 }
@@ -100,24 +96,49 @@ function AvailabilityWarning({ issue }: { issue: OverviewHarnessAvailabilityIssu
 }
 
 function CoverageCell({
-  cell,
-  tone = "normal",
+  cellKey,
+  row,
 }: {
-  cell: OverviewCoverageCell;
-  tone?: "normal" | "warning";
+  cellKey: OverviewHarnessCellKey;
+  row: OverviewHarnessRow;
 }) {
+  const copy = useOverviewCopy();
+  const cell = row.cells[cellKey];
+
   return (
-    <span
-      className="overview-coverage-cell"
-      data-tone={tone}
-      data-active={cell.active > 0}
-      title={cell.review > 0 ? `${cell.review.toLocaleString()} to review` : undefined}
-    >
+    <span className="overview-coverage-cell" data-active={cell.active > 0}>
       <span className="overview-coverage-cell__dot" aria-hidden="true" />
-      <span>{cell.active.toLocaleString()}</span>
-      {cell.review > 0 && tone === "normal" ? (
-        <span className="overview-coverage-cell__detail">+{cell.review.toLocaleString()}</span>
+      {cell.active > 0 ? (
+        <Link
+          to={coverageCellLinks(cellKey, row.harness).activeTo}
+          className="overview-coverage-cell__link"
+          aria-label={copy.sections.capabilityOnHarness(copy.sections[cellKey], row.label)}
+        >
+          {cell.active.toLocaleString()}
+        </Link>
+      ) : (
+        <span>{cell.active.toLocaleString()}</span>
+      )}
+      {cell.review > 0 ? (
+        <Link
+          to={coverageCellLinks(cellKey, row.harness).reviewTo}
+          className="overview-coverage-cell__detail overview-coverage-cell__link"
+          aria-label={copy.sections.reviewOnHarness(cell.review, copy.sections[cellKey], row.label)}
+        >
+          +{cell.review.toLocaleString()}
+        </Link>
       ) : null}
+    </span>
+  );
+}
+
+function ReviewTotalCell({ row }: { row: OverviewHarnessRow }) {
+  const total = CELL_KEYS.reduce((sum, key) => sum + row.cells[key].review, 0);
+
+  return (
+    <span className="overview-coverage-cell" data-tone="warning" data-active={total > 0}>
+      <span className="overview-coverage-cell__dot" aria-hidden="true" />
+      <span>{total.toLocaleString()}</span>
     </span>
   );
 }

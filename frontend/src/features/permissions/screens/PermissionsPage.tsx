@@ -6,6 +6,7 @@ import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkA
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
@@ -85,9 +86,17 @@ export default function PermissionsPage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const entries = useMemo(
-    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter }),
-    [inventory, search, statusFilter],
+    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter, harness: harnessParam }),
+    [inventory, search, statusFilter, harnessParam],
   );
   const summary = useMemo(() => permissionsSummary(inventory), [inventory]);
   const statusCounts = useMemo<Record<PermissionsStatusFilter, number>>(
@@ -103,7 +112,7 @@ export default function PermissionsPage() {
 
   const hasData = summary.total > 0;
   const isReady = status === "ready" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
 
   // Keep only currently visible rows selected as filters or inventory change.
   useEffect(() => {
@@ -250,7 +259,8 @@ export default function PermissionsPage() {
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-  }, []);
+    clearHarnessFilter();
+  }, [clearHarnessFilter]);
 
   return (
     <>
@@ -276,7 +286,14 @@ export default function PermissionsPage() {
             searchPlaceholder={copy.inUse.searchPlaceholder}
             searchLabel={copy.inUse.searchLabel}
             trailing={
-              <SelectionMenu
+              <>
+                {harnessParam ? (
+                  <HarnessFilterChip
+                    label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                    onClear={clearHarnessFilter}
+                  />
+                ) : null}
+                <SelectionMenu
                 value={statusFilter}
                 options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
                   value,
@@ -286,7 +303,8 @@ export default function PermissionsPage() {
                 active={statusFilter !== "all"}
                 ariaLabel={copy.inUse.filters.aria(STATUS_LABELS[statusFilter])}
                 onChange={setStatusFilter}
-              />
+                />
+              </>
             }
           />
         ) : null}

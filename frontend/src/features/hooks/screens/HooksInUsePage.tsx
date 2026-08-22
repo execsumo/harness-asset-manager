@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { useCommonCopy } from "../../../i18n";
@@ -71,14 +72,22 @@ export default function HooksInUsePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const entries = useMemo(
-    () => filterHooks(inventory, { search, status: statusFilter }),
-    [inventory, search, statusFilter],
+    () => filterHooks(inventory, { search, status: statusFilter, harness: harnessParam }),
+    [inventory, search, statusFilter, harnessParam],
   );
   const counts = useMemo(() => hooksStatusCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const isReady = status === "ready" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
 
   // Keep only currently visible, untracked rows selected as filters or inventory change.
   useEffect(() => {
@@ -171,7 +180,12 @@ export default function HooksInUsePage() {
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-  }, [setStatusFilter]);
+    clearHarnessFilter();
+  }, [clearHarnessFilter, setStatusFilter]);
+
+  const harnessFilterLabel = harnessParam
+    ? inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam
+    : null;
 
   const selectedCount = selectedIds.size;
 
@@ -199,11 +213,16 @@ export default function HooksInUsePage() {
             searchPlaceholder={copy.inUse.searchPlaceholder}
             searchLabel={copy.inUse.searchLabel}
             trailing={
-              <HooksFilterMenu
-                pill={statusFilter}
-                counts={counts}
-                onChange={setStatusFilter}
-              />
+              <>
+                {harnessFilterLabel ? (
+                  <HarnessFilterChip label={harnessFilterLabel} onClear={clearHarnessFilter} />
+                ) : null}
+                <HooksFilterMenu
+                  pill={statusFilter}
+                  counts={counts}
+                  onChange={setStatusFilter}
+                />
+              </>
             }
           />
         ) : null}

@@ -17,6 +17,8 @@ export interface HooksInUseFilters {
 export interface HooksFilters {
   search: string;
   status: HooksStatusFilter;
+  /** Restrict to entries sighted on this harness (id). */
+  harness?: string | null;
 }
 
 export type HooksMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
@@ -52,6 +54,14 @@ function hasDrift(entry: HookInventoryEntryDto, addressable?: ReadonlySet<string
 
 function addressableHarnesses(inventory: HookInventoryDto): ReadonlySet<string> {
   return new Set(inventory.columns.filter(isHooksHarnessAddressable).map((column) => column.harness));
+}
+
+function matchesHarnessSighting(
+  sightings: Array<{ harness: string }>,
+  harness: string | null | undefined,
+): boolean {
+  if (!harness) return true;
+  return sightings.some((sighting) => sighting.harness === harness);
 }
 
 function matchesSearch(entry: HookInventoryEntryDto, query: string): boolean {
@@ -104,6 +114,7 @@ export function filterHooks(
 
   return inventory.entries.filter((entry) => {
     if (!matchesSearch(entry, needle)) return false;
+    if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.status === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.status === "all";
 

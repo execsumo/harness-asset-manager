@@ -14,6 +14,8 @@ export type SkillsStatusFilter = "all" | "enabled" | "all-harnesses" | "off" | "
 export interface SkillsFilters {
   search: string;
   status: SkillsStatusFilter;
+  /** Restrict to rows that touch this harness (id). */
+  harness?: string | null;
 }
 
 export interface AlignedHarnessCell {
@@ -55,8 +57,10 @@ export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFi
 
   const managedRows = data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "inUse");
   const untrackedRows = data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview");
-  const matchingRows = [...managedRows, ...untrackedRows].filter((row) =>
-    matchesSearch(row, filters.search, filters.status === "untracked" ? ["found"] : ["enabled", "disabled", "found"]),
+  const matchingRows = [...managedRows, ...untrackedRows].filter(
+    (row) =>
+      matchesSearch(row, filters.search, filters.status === "untracked" ? ["found"] : ["enabled", "disabled", "found"]) &&
+      matchesHarness(row, filters.harness),
   );
 
   if (filters.status === "untracked") return matchingRows.filter((row) => untrackedRows.includes(row));
@@ -97,6 +101,11 @@ export function countNeedsReviewRows(data: SkillsWorkspaceData | null): number {
 
 export function countAdoptableLocalSkillRows(data: SkillsWorkspaceData | null): number {
   return selectNeedsReviewRows(data).filter((row) => row.actions.canManage).length;
+}
+
+function matchesHarness(row: SkillListRow, harness: string | null | undefined): boolean {
+  if (!harness) return true;
+  return row.cells.some((cell) => cell.harness === harness && cell.state !== "empty");
 }
 
 export function alignHarnessCells(row: SkillListRow, columns: HarnessColumn[]): AlignedHarnessCell[] {

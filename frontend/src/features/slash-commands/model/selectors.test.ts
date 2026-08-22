@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { SlashCommandDto, SlashCommandReviewDto, SlashTargetId } from "../api/types";
 import {
   countSyncedTargets,
+  filterSlashCommandEntries,
   filterSlashCommands,
   filterSlashReviewRows,
   primaryReviewAction,
   reviewMetaText,
+  slashCommandInventoryEntries,
   sortSlashCommands,
 } from "./selectors";
 
@@ -16,6 +18,23 @@ describe("slash command selectors", () => {
     command("selective-command", ["codex"]),
     command("enabled-command", ["claude", "codex"]),
   ];
+
+  it("harness filter keeps entries bound to the target harness", () => {
+    const entries = slashCommandInventoryEntries({
+      commands,
+      reviewCommands: [reviewRow("missing", ["restore_managed"])],
+    });
+    expect(
+      filterSlashCommandEntries(entries, "", "all", "codex").map((entry) => entry.id),
+    ).toEqual([
+      "selective-command",
+      "enabled-command",
+      "codex:code-review:missing",
+    ]);
+    expect(
+      filterSlashCommandEntries(entries, "", "all", "claude").map((entry) => entry.id),
+    ).toEqual(["enabled-command"]);
+  });
 
   it("filters and counts coverage", () => {
     expect(filterSlashCommands(commands, "selective").map((item) => item.name)).toEqual([

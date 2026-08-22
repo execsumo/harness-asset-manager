@@ -1,6 +1,7 @@
 export { invalidateCapabilityQueries } from "./invalidation";
 export {
   buildOverviewModel,
+  coverageCellLinks,
   invalidateOverviewData,
   useOverviewData,
   useOverviewModel,

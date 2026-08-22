@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
@@ -49,13 +50,21 @@ export default function SlashCommandsPage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const entries = useMemo(
-    () => filterSlashCommandEntries(controller.entries, search, statusFilter),
-    [controller.entries, search, statusFilter],
+    () => filterSlashCommandEntries(controller.entries, search, statusFilter, harnessParam),
+    [controller.entries, search, statusFilter, harnessParam],
   );
   const counts = useMemo(() => slashCommandStatusCounts(controller.entries), [controller.entries]);
   const hasData = controller.entries.length > 0;
-  const filtersActive = search !== "" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
 
   useEffect(() => {
     setSelectedRefs((current) => {
@@ -75,7 +84,8 @@ export default function SlashCommandsPage() {
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-  }, [setStatusFilter]);
+    clearHarnessFilter();
+  }, [clearHarnessFilter, setStatusFilter]);
 
   const handleAdoptSelected = useCallback(async () => {
     const selectedRows = entries.flatMap((entry) => {
@@ -118,17 +128,22 @@ export default function SlashCommandsPage() {
             searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
             searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
             trailing={
-              <SelectionMenu
-                value={statusFilter}
-                options={(Object.keys(STATUS_LABELS) as SlashCommandsStatusFilter[]).map((value) => ({
-                  value,
-                  label: STATUS_LABELS[value],
-                  meta: counts[value],
-                }))}
-                active={statusFilter !== "all"}
-                ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
-                onChange={setStatusFilter}
-              />
+              <>
+                {harnessParam ? (
+                  <HarnessFilterChip label={harnessParam} onClear={clearHarnessFilter} />
+                ) : null}
+                <SelectionMenu
+                  value={statusFilter}
+                  options={(Object.keys(STATUS_LABELS) as SlashCommandsStatusFilter[]).map((value) => ({
+                    value,
+                    label: STATUS_LABELS[value],
+                    meta: counts[value],
+                  }))}
+                  active={statusFilter !== "all"}
+                  ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
+                  onChange={setStatusFilter}
+                />
+              </>
             }
           />
         ) : null}

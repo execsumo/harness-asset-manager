@@ -181,4 +181,55 @@
   box-shadow: 0 0 0 3px var(--color-accent-softer);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Harness deep-link filter chip                                               */
+/* -------------------------------------------------------------------------- */
+
+.harness-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 38px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-softer);
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.harness-filter-chip__label {
+  white-space: nowrap;
+}
+
+.harness-filter-chip__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.harness-filter-chip__clear:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.harness-filter-chip__clear:active {
+  transform: scale(0.94);
+}
+
+.harness-filter-chip__clear:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-softer);
+}
+
 }

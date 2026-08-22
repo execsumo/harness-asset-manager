@@ -155,6 +155,19 @@ describe("filterMcpServersInUse", () => {
   it("returns [] when inventory is null", () => {
     expect(filterMcpServersInUse(null, { search: "", pill: "all" })).toEqual([]);
   });
+
+  it("harness filter keeps only entries sighted on that harness", () => {
+    const inventory = makeInventory([
+      makeEntry("exa", ["managed"]),
+      makeEntry("ctx", ["missing", "drifted", "missing"]),
+    ]);
+    expect(
+      filterMcpServersInUse(inventory, { search: "", pill: "all", harness: "h1" }).map((e) => e.name),
+    ).toEqual(["ctx"]);
+    expect(
+      filterMcpServersInUse(inventory, { search: "", pill: "untracked", harness: "h0" }),
+    ).toEqual([]);
+  });
 });
 
 describe("pillCounts", () => {

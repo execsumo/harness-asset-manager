@@ -33,11 +33,19 @@ export function filterSlashCommandEntries(
   entries: SlashCommandInventoryEntry[],
   search: string,
   status: SlashCommandsStatusFilter,
+  harness?: string | null,
 ): SlashCommandInventoryEntry[] {
   const needle = search.trim().toLowerCase();
   return entries.filter((entry) => {
     if (status === "untracked" && entry.kind !== "unmanaged") return false;
     if (status !== "untracked" && entry.kind === "unmanaged" && status !== "all") return false;
+    if (harness) {
+      const touchesHarness =
+        entry.kind === "managed"
+          ? entry.command.syncTargets.some((syncTarget) => syncTarget.target === harness)
+          : entry.review.target === harness;
+      if (!touchesHarness) return false;
+    }
     if (!needle) return true;
     const value =
       entry.kind === "managed"

@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { BulkActionBar } from "../../../components/BulkActionBar";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { useToast } from "../../../components/Toast";
@@ -86,9 +87,17 @@ export default function SkillsWorkspacePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const rows = useMemo(
-    () => filterSkills(data, { search: filters.search, status: statusFilter }),
-    [data, filters.search, statusFilter],
+    () => filterSkills(data, { search: filters.search, status: statusFilter, harness: harnessParam }),
+    [data, filters.search, statusFilter, harnessParam],
   );
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
@@ -100,7 +109,8 @@ export default function SkillsWorkspacePage() {
   const untrackedCount = data?.summary.unmanaged ?? 0;
   const hasData = (data?.rows.length ?? 0) > 0;
   const isReady = controllerStatus === "ready" && Boolean(data);
-  const hasActiveFilters = filters.search.trim() !== "" || statusFilter !== "all";
+  const hasActiveFilters =
+    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null;
 
   useEffect(() => {
     setSelectedUntrackedRefs((current) => {
@@ -159,7 +169,8 @@ export default function SkillsWorkspacePage() {
   const clearFilters = useCallback(() => {
     updateFilters({ search: "" });
     setStatusFilter("all");
-  }, [setStatusFilter, updateFilters]);
+    clearHarnessFilter();
+  }, [clearHarnessFilter, setStatusFilter, updateFilters]);
 
   const statusOptions = useMemo(
     () => STATUS_VALUES.map((value) => ({ value, label: statusLabel(copy, value), meta: counts[value] })),
@@ -212,13 +223,21 @@ export default function SkillsWorkspacePage() {
             searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
             searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
             trailing={
-              <SelectionMenu
-                value={statusFilter}
-                options={statusOptions}
-                active={statusFilter !== "all"}
-                ariaLabel={statusLabel(copy, statusFilter)}
-                onChange={setStatusFilter}
-              />
+              <>
+                {harnessParam ? (
+                  <HarnessFilterChip
+                    label={data?.harnessColumns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                    onClear={clearHarnessFilter}
+                  />
+                ) : null}
+                <SelectionMenu
+                  value={statusFilter}
+                  options={statusOptions}
+                  active={statusFilter !== "all"}
+                  ariaLabel={statusLabel(copy, statusFilter)}
+                  onChange={setStatusFilter}
+                />
+              </>
             }
           />
         ) : null}

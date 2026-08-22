@@ -6,6 +6,7 @@ import { BulkActionBar } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { McpServerDetailSheet } from "../components/detail/McpServerDetailSheet";
@@ -100,6 +101,14 @@ export default function McpInUsePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const {
     requestEnable,
     requestBulkEnable,
@@ -118,14 +127,14 @@ export default function McpInUsePage() {
   );
 
   const entries = useMemo(
-    () => filterMcpServersInUse(inventory, { search, pill: statusFilter }),
+    () => filterMcpServersInUse(inventory, { search, pill: statusFilter, harness: harnessParam }),
     [inventory, search, statusFilter],
   );
   const counts = useMemo(() => pillCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const isReady = status === "ready" && Boolean(inventory);
   const isReviewView = statusFilter === "untracked";
-  const filtersActive = search !== "" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
 
   const inventoryIssueMessage = inventory?.issues?.length
     ? copy.inUse.inventoryIssue(inventory.issues.length)
@@ -334,7 +343,8 @@ export default function McpInUsePage() {
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-  }, [setStatusFilter]);
+    clearHarnessFilter();
+  }, [clearHarnessFilter, setStatusFilter]);
 
   const selectedEntry = useMemo(
     () => (selectedName ? findEntry(selectedName) : null),
@@ -389,7 +399,14 @@ export default function McpInUsePage() {
             onSearchChange={setSearch}
             searchPlaceholder={copy.inUse.searchPlaceholder}
             searchLabel={copy.inUse.searchLabel}
-            trailing={<McpFilterMenu pill={statusFilter} counts={counts} onChange={setStatusFilter} />}
+            trailing={
+              <>
+                {harnessParam ? (
+                  <HarnessFilterChip label={findHarnessLabel(harnessParam)} onClear={clearHarnessFilter} />
+                ) : null}
+                <McpFilterMenu pill={statusFilter} counts={counts} onChange={setStatusFilter} />
+              </>
+            }
           />
         ) : null}
       </div>

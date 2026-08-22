@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
+import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { useCommonCopy } from "../../../i18n";
@@ -80,15 +81,23 @@ export default function AgentsInUsePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed harness deep-link filter (from Overview coverage cells).
+  const harnessParam = searchParams.get("harness");
+  const clearHarnessFilter = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("harness");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const entries = useMemo(
-    () => filterAgents(inventory, { search, status: statusFilter }),
-    [inventory, search, statusFilter],
+    () => filterAgents(inventory, { search, status: statusFilter, harness: harnessParam }),
+    [inventory, search, statusFilter, harnessParam],
   );
   const counts = useMemo(() => agentsStatusCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const totalManaged = inventory?.entries.filter((entry) => entry.kind === "managed").length ?? 0;
   const isReady = status === "success" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all";
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
   const isReviewView = statusFilter === "untracked";
 
   useEffect(() => {
@@ -183,7 +192,8 @@ export default function AgentsInUsePage() {
   const clearFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("all");
-  }, [setStatusFilter]);
+    clearHarnessFilter();
+  }, [clearHarnessFilter, setStatusFilter]);
 
   const issueCount = inventory?.issues?.length ?? 0;
   const inventoryIssueMessage = issueCount
@@ -233,17 +243,25 @@ export default function AgentsInUsePage() {
             searchPlaceholder="Search by name or description..."
             searchLabel="Search agents"
             trailing={
-              <SelectionMenu
-                value={statusFilter}
-                options={STATUS_VALUES.map((value) => ({
-                  value,
-                  label: statusLabel(value),
-                  meta: counts[value],
-                }))}
-                active={statusFilter !== "all"}
-                ariaLabel={`Filter: ${statusLabel(statusFilter)}`}
-                onChange={setStatusFilter}
-              />
+              <>
+                {harnessParam ? (
+                  <HarnessFilterChip
+                    label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                    onClear={clearHarnessFilter}
+                  />
+                ) : null}
+                <SelectionMenu
+                  value={statusFilter}
+                  options={STATUS_VALUES.map((value) => ({
+                    value,
+                    label: statusLabel(value),
+                    meta: counts[value],
+                  }))}
+                  active={statusFilter !== "all"}
+                  ariaLabel={`Filter: ${statusLabel(statusFilter)}`}
+                  onChange={setStatusFilter}
+                />
+              </>
             }
           />
         ) : null}

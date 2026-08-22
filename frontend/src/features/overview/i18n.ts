@@ -27,6 +27,9 @@ const englishOverviewCopy = {
     discoverGroup: "Discover",
     unavailableFallback: "writes are unavailable for an unknown reason",
     capabilityIssue: (capability: string, reason: string) => `${capability} writes unavailable — ${reason}`,
+    capabilityOnHarness: (capability: string, harness: string) => `${capability} on ${harness}`,
+    reviewOnHarness: (count: number, capability: string, harness: string) =>
+      `${count.toLocaleString()} ${capability} to review on ${harness}`,
   },
   extensions: {
     skills: "Skills",

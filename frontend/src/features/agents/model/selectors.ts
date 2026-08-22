@@ -6,6 +6,8 @@ export type AgentsStatusFilter = InUsePillValue | "untracked";
 export interface AgentsFilters {
   search: string;
   status: AgentsStatusFilter;
+  /** Restrict to entries bound on this harness (id). */
+  harness?: string | null;
 }
 
 export type AgentMatrixCellState = "enabled" | "disabled" | "unavailable" | "observed" | "empty";
@@ -46,6 +48,14 @@ export function filterAgentsNeedsReview(
   return filterAgents(inventory, { search, status: "untracked" });
 }
 
+function matchesHarnessBinding(
+  entry: AgentInventoryEntryDto,
+  harness: string | null | undefined,
+): boolean {
+  if (!harness) return true;
+  return entry.bindings.some((binding) => binding.harness === harness && binding.state !== "unsupported");
+}
+
 function matchesSearch(entry: AgentInventoryEntryDto, search: string): boolean {
   const query = search.trim().toLowerCase();
   return (
@@ -64,6 +74,7 @@ export function filterAgents(
 
   return inventory.entries.filter((entry) => {
     if (!matchesSearch(entry, filters.search)) return false;
+    if (!matchesHarnessBinding(entry, filters.harness)) return false;
     if (filters.status === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.status === "all";
 

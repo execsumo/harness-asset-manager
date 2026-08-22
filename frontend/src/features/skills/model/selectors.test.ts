@@ -5,6 +5,7 @@ import {
   countAdoptableLocalSkillRows,
   countNeedsReviewRows,
   filterNeedsReviewRows,
+  filterSkills,
   filterSkillsInUseRows,
   resetSkillsNeedsReviewFilters,
   resetSkillsInUseFilters,
@@ -42,6 +43,13 @@ const data: SkillsWorkspaceData = {
 } as unknown as SkillsWorkspaceData;
 
 describe("skills workspace model", () => {
+  it("harness filter keeps only rows that touch the harness", () => {
+    const codexOnly = filterSkills(data, { search: "", status: "all", harness: "codex" });
+    expect(codexOnly).toHaveLength(3);
+    const missingHarness = filterSkills(data, { search: "", status: "all", harness: "claude" });
+    expect(missingHarness).toHaveLength(0);
+  });
+
   it("partitions in-use and needs-review rows correctly", () => {
     const inUseRows = filterSkillsInUseRows(data, resetSkillsInUseFilters());
     const needsReviewRows = filterNeedsReviewRows(data, resetSkillsNeedsReviewFilters());

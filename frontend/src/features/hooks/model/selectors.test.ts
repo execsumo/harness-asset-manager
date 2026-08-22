@@ -4,7 +4,7 @@ import type {
   HookInventoryEntryDto,
   HookInventoryColumnDto,
 } from "../api/management-types";
-import { filterHooksNeedsReview, matrixCellFor } from "./selectors";
+import { filterHooks, filterHooksNeedsReview, matrixCellFor } from "./selectors";
 
 describe("hooks selectors", () => {
   const column: HookInventoryColumnDto = {
@@ -45,6 +45,41 @@ describe("hooks selectors", () => {
     expect(filterHooksNeedsReview(inventory, "rtk")).toHaveLength(1);
     expect(filterHooksNeedsReview(inventory, "echo done")).toHaveLength(0);
     expect(filterHooksNeedsReview(null, "")).toEqual([]);
+  });
+
+  it("filterHooks harness filter keeps only entries sighted on the harness", () => {
+    const inventory: HookInventoryDto = {
+      columns: [
+        column,
+        { ...column, harness: "other-hooks", label: "Other" },
+      ],
+      entries: [
+        {
+          id: "managed-1",
+          displayName: "stop: echo done",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          sightings: [{ harness: "antigravity-hooks", state: "managed" }],
+        },
+        {
+          id: "managed-2",
+          displayName: "post: echo other",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          sightings: [{ harness: "other-hooks", state: "managed" }],
+        },
+      ],
+      issues: [],
+    };
+
+    expect(
+      filterHooks(inventory, { search: "", status: "all", harness: "antigravity-hooks" }).map((e) => e.id),
+    ).toEqual(["managed-1"]);
+    expect(
+      filterHooks(inventory, { search: "", status: "all", harness: "missing" }),
+    ).toEqual([]);
   });
 
   it("appends caveat to tooltip for enabled hooks when caveat exists", () => {

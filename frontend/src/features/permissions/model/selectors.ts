@@ -41,6 +41,14 @@ function addressableHarnesses(inventory: PermissionInventoryDto): ReadonlySet<st
   return new Set(inventory.columns.filter(isPermissionsHarnessAddressable).map((column) => column.harness));
 }
 
+function matchesHarnessSighting(
+  sightings: Array<{ harness: string }>,
+  harness: string | null | undefined,
+): boolean {
+  if (!harness) return true;
+  return sightings.some((sighting) => sighting.harness === harness);
+}
+
 function matchesSearch(entry: PermissionInventoryEntryDto, query: string): boolean {
   if (!query) return true;
   const needle = query.toLowerCase();
@@ -59,6 +67,8 @@ export interface PermissionsFilters {
   search: string;
   decision: PermissionsDecisionFilter;
   status: PermissionsStatusFilter;
+  /** Restrict to entries sighted on this harness (id). */
+  harness?: string | null;
 }
 
 function matchesStatus(
@@ -94,6 +104,7 @@ export function filterPermissions(
   const needle = filters.search.trim();
   return inventory.entries.filter((entry) => {
     if (!matchesSearch(entry, needle)) return false;
+    if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.decision !== "all" && entry.spec?.decision !== filters.decision) return false;
     if (!matchesStatus(entry, filters.status, addressable)) return false;
     return true;

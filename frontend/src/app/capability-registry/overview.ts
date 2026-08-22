@@ -185,6 +185,35 @@ export function buildOverviewModel(
   };
 }
 
+/** Canonical capability surfaces with URL-backed harness filter targets. */
+const COVERAGE_CELL_ROUTES: Record<OverviewHarnessCellKey, { active: string; review: string }> = {
+  skills: { active: "/skills", review: "/skills?status=untracked" },
+  commands: { active: "/slash-commands", review: "/slash-commands?status=untracked" },
+  mcp: { active: "/mcp", review: "/mcp?status=untracked" },
+  hooks: { active: "/hooks", review: "/hooks?status=untracked" },
+  permissions: { active: "/permissions", review: "/permissions?status=untracked" },
+  agents: { active: "/agents", review: "/agents?status=untracked" },
+};
+
+export interface CoverageCellLinks {
+  /** Capability surface filtered to the harness (for cells with active items). */
+  activeTo: string;
+  /** Capability review surface filtered to the harness (for cells with review items). */
+  reviewTo: string;
+}
+
+export function coverageCellLinks(
+  cellKey: OverviewHarnessCellKey,
+  harness: string,
+): CoverageCellLinks {
+  const routes = COVERAGE_CELL_ROUTES[cellKey];
+  const join = (route: string) => (route.includes("?") ? "&" : "?");
+  return {
+    activeTo: `${routes.active}${join(routes.active)}harness=${encodeURIComponent(harness)}`,
+    reviewTo: `${routes.review}${join(routes.review)}harness=${encodeURIComponent(harness)}`,
+  };
+}
+
 function buildShortcuts(copy: OverviewCopy): OverviewShortcut[] {
   return [
     { key: "manage-skills", label: copy.extensions.skills, to: skillsRoutes.inUse, group: "manage" },

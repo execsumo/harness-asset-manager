@@ -14,6 +14,8 @@ export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "
 export interface McpInUseFilters {
   search: string;
   pill: InUsePillValue;
+  /** Restrict to entries sighted on this harness (id). */
+  harness?: string | null;
 }
 
 export type McpMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
@@ -63,6 +65,14 @@ function addressableHarnesses(inventory: McpInventoryDto): ReadonlySet<string> {
   return new Set(inventory.columns.filter(isMcpHarnessAddressable).map((column) => column.harness));
 }
 
+function matchesHarnessSighting(
+  sightings: Array<{ harness: string }>,
+  harness: string | null | undefined,
+): boolean {
+  if (!harness) return true;
+  return sightings.some((sighting) => sighting.harness === harness);
+}
+
 function matchesSearch(entry: McpInventoryEntryDto, query: string): boolean {
   if (!query) return true;
   const needle = query.toLowerCase();
@@ -81,6 +91,7 @@ export function filterMcpServersInUse(
   const harnessCount = addressable.size;
   return inventory.entries.filter((entry) => {
     if (!matchesSearch(entry, filters.search.trim())) return false;
+    if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.pill === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.pill === "all";
 
