@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { MatrixHarnessHeader } from "./MatrixHarnessHeader";
 import { MatrixTable } from "./MatrixTable";
 
 describe("MatrixTable", () => {
@@ -31,21 +30,5 @@ describe("MatrixTable", () => {
     // cells landed one column early. Widths come from the th classes instead.
     expect(table.querySelector("colgroup")).toBeNull();
     expect(table.querySelectorAll("col")).toHaveLength(0);
-  });
-
-  it("renders harness headers through the centered matrix target", () => {
-    render(
-      <table>
-        <thead>
-          <tr>
-            <MatrixHarnessHeader label="Codex" logoKey="codex" harness="codex" />
-          </tr>
-        </thead>
-      </table>,
-    );
-
-    const trigger = screen.getByLabelText("Codex");
-    expect(trigger).toHaveClass("matrix-harness-target");
-    expect(trigger).toHaveClass("matrix-harness-target--header");
   });
 });

@@ -170,7 +170,7 @@ function PermissionsMatrixRow({
   const ruleName = entry.spec?.pattern ?? entry.displayName;
 
   return (
-    <tr className="matrix-table__row" data-kind={entry.kind} data-checked={checked ? "true" : undefined}>
+    <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
       <td className="matrix-table__cell matrix-table__cell--checkbox">
         <CardSelectCheckbox
           checked={checked}
