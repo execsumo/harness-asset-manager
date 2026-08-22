@@ -7,6 +7,7 @@ import {
   MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
+import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../api/management-types";
 import { usePermissionsCopy, type PermissionsCopy } from "../i18n";
@@ -28,7 +29,9 @@ interface PermissionsMatrixViewProps {
   columns: PermissionInventoryColumnDto[];
   pendingPermissionKeys: ReadonlySet<string>;
   pendingPerHarnessKeys: ReadonlySet<string>;
+  checkedIds: ReadonlySet<string>;
   onOpenDetail: (id: string) => void;
+  onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
   onAdopt: (id: string) => void;
@@ -39,7 +42,9 @@ export function PermissionsMatrixView({
   columns,
   pendingPermissionKeys,
   pendingPerHarnessKeys,
+  checkedIds,
   onOpenDetail,
+  onToggleChecked,
   onEnableHarness,
   onDisableHarness,
   onAdopt,
@@ -71,6 +76,7 @@ export function PermissionsMatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
+          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
           <MatrixSortableHeader
             label="Rule"
             align="identity"
@@ -120,7 +126,9 @@ export function PermissionsMatrixView({
             columns={displayColumns}
             pendingPermission={pendingPermissionKeys.has(entry.id)}
             pendingPerHarnessKeys={pendingPerHarnessKeys}
+            checked={checkedIds.has(entry.id)}
             onOpenDetail={onOpenDetail}
+            onToggleChecked={onToggleChecked}
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
             onAdopt={onAdopt}
@@ -137,7 +145,9 @@ function PermissionsMatrixRow({
   columns,
   pendingPermission,
   pendingPerHarnessKeys,
+  checked,
   onOpenDetail,
+  onToggleChecked,
   onEnableHarness,
   onDisableHarness,
   onAdopt,
@@ -147,7 +157,9 @@ function PermissionsMatrixRow({
   columns: PermissionInventoryColumnDto[];
   pendingPermission: boolean;
   pendingPerHarnessKeys: ReadonlySet<string>;
+  checked: boolean;
   onOpenDetail: (id: string) => void;
+  onToggleChecked: (id: string) => void;
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
   onAdopt: (id: string) => void;
@@ -158,7 +170,15 @@ function PermissionsMatrixRow({
   const ruleName = entry.spec?.pattern ?? entry.displayName;
 
   return (
-    <tr className="matrix-table__row" data-kind={entry.kind}>
+    <tr className="matrix-table__row" data-kind={entry.kind} data-checked={checked ? "true" : undefined}>
+      <td className="matrix-table__cell matrix-table__cell--checkbox">
+        <CardSelectCheckbox
+          checked={checked}
+          label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
+          onToggle={() => onToggleChecked(entry.id)}
+          disabled={pendingPermission}
+        />
+      </td>
       <td className="matrix-table__cell matrix-table__cell--identity">
         <button
           type="button"

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -47,6 +48,7 @@ export default function PermissionsPage() {
     handleReconcilePermission,
     handleCreatePermission,
     handlePromotePermission,
+    handleSetPermissionHarnesses,
   } = usePermissionsManagementController();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,6 +58,10 @@ export default function PermissionsPage() {
   const [addPending, setAddPending] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [bulkPending, setBulkPending] = useState<MultiSelectAction | null>(null);
+  const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const [bulkErrorMessage, setBulkErrorMessage] = useState("");
   const copy = usePermissionsCopy();
   const common = useCommonCopy();
   const STATUS_LABELS = statusLabels(copy);
@@ -98,6 +104,97 @@ export default function PermissionsPage() {
   const hasData = summary.total > 0;
   const isReady = status === "ready" && Boolean(inventory);
   const filtersActive = search !== "" || statusFilter !== "all";
+
+  // Keep only currently visible rows selected as filters or inventory change.
+  useEffect(() => {
+    setCheckedIds((current) => {
+      const visible = new Set(entries.map((entry) => entry.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of current) {
+        if (visible.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [entries]);
+
+  const toggleChecked = useCallback((id: string) => {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearChecked = useCallback(() => setCheckedIds(new Set()), []);
+
+  const runBulkAction = useCallback(
+    async (action: MultiSelectAction, fn: (id: string) => Promise<unknown>): Promise<void> => {
+      if (checkedIds.size === 0) return;
+      const ids = Array.from(checkedIds);
+      setBulkPending(action);
+      try {
+        const results = await Promise.allSettled(ids.map((id) => fn(id)));
+        const failures = results
+          .map((result, i) => ({ id: ids[i], result }))
+          .filter((x) => x.result.status === "rejected");
+        if (failures.length > 0) {
+          const detail = failures
+            .map((f) => {
+              const reason = (f.result as PromiseRejectedResult).reason;
+              return `${f.id}: ${reason instanceof Error ? reason.message : reason}`;
+            })
+            .join("; ");
+          setBulkErrorMessage(detail);
+        } else {
+          setCheckedIds(new Set());
+        }
+      } finally {
+        setBulkPending(null);
+      }
+    },
+    [checkedIds],
+  );
+
+  const handleBulkEnableAll = useCallback(
+    () => runBulkAction("enable-all", (id) => handleSetPermissionHarnesses(id, "enabled")),
+    [handleSetPermissionHarnesses, runBulkAction],
+  );
+
+  const handleBulkDisableAll = useCallback(
+    () => runBulkAction("disable-all", (id) => handleSetPermissionHarnesses(id, "disabled")),
+    [handleSetPermissionHarnesses, runBulkAction],
+  );
+
+  const handleBulkDelete = useCallback(
+    () => runBulkAction("delete", (id) => handleUninstallPermission(id)),
+    [handleUninstallPermission, runBulkAction],
+  );
+
+  const selectedManagedCount = useMemo(
+    () => entries.filter((entry) => entry.kind === "managed" && checkedIds.has(entry.id)).length,
+    [checkedIds, entries],
+  );
+  const selectedUntrackedCount = useMemo(
+    () => entries.filter((entry) => entry.kind === "unmanaged" && checkedIds.has(entry.id)).length,
+    [checkedIds, entries],
+  );
+
+  const handleAdoptSelected = useCallback(async () => {
+    const ids = entries
+      .filter((entry) => entry.kind === "unmanaged" && checkedIds.has(entry.id))
+      .map((entry) => entry.id);
+    if (ids.length === 0) return;
+    setAdoptingSelected(true);
+    try {
+      for (const id of ids) await handlePromotePermission(id);
+      clearChecked();
+    } finally {
+      setAdoptingSelected(false);
+    }
+  }, [checkedIds, clearChecked, entries, handlePromotePermission]);
 
   const setDetailId = useCallback(
     (id: string | null) => {
@@ -198,6 +295,9 @@ export default function PermissionsPage() {
       {actionErrorMessage ? (
         <ErrorBanner message={actionErrorMessage} onDismiss={clearActionError} />
       ) : null}
+      {bulkErrorMessage ? (
+        <ErrorBanner message={bulkErrorMessage} onDismiss={() => setBulkErrorMessage("")} />
+      ) : null}
 
       {isInitialLoading ? (
         <div className="panel-state">
@@ -212,7 +312,9 @@ export default function PermissionsPage() {
             columns={inventory.columns}
             pendingPermissionKeys={pendingPermissionKeys}
             pendingPerHarnessKeys={pendingPerHarnessKeys}
+            checkedIds={checkedIds}
             onOpenDetail={setDetailId}
+            onToggleChecked={toggleChecked}
             onEnableHarness={(id, harness) => {
               void handleToggleHarness(id, harness, false);
             }}
@@ -293,6 +395,56 @@ export default function PermissionsPage() {
         }}
         onConfirm={executeUninstall}
       />
+
+      {selectedManagedCount > 0 ? (
+        <BulkActionBar
+          selectedCount={selectedManagedCount}
+          pending={bulkPending}
+          onClear={clearChecked}
+          onEnableAll={handleBulkEnableAll}
+          onDisableAll={handleBulkDisableAll}
+          onDelete={handleBulkDelete}
+          destructive={{
+            actionLabel: copy.inUse.uninstall.action,
+            confirmTitle: copy.inUse.uninstall.bulkTitle(selectedManagedCount),
+            confirmDescription: copy.inUse.uninstall.singleDescription,
+          }}
+        />
+      ) : null}
+
+      {selectedUntrackedCount > 0 ? (
+        <div className="bulk-dock">
+          <div className="bulk-dock__fade" />
+          <div className="bulk-bar" data-state="open" role="toolbar" aria-label={common.bulk.ariaLabel}>
+            <div className="bulk-bar__group">
+              <span className="bulk-bar__count">{common.bulk.selected(selectedUntrackedCount)}</span>
+              <button
+                type="button"
+                className="bulk-bar__clear"
+                onClick={clearChecked}
+                disabled={adoptingSelected}
+                aria-label={common.actions.clearSelection}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <span className="bulk-bar__divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="bulk-bar__action"
+              onClick={() => void handleAdoptSelected()}
+              disabled={adoptingSelected}
+            >
+              {adoptingSelected ? (
+                <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
+              ) : (
+                <Plus size={15} aria-hidden="true" />
+              )}
+              {copy.inUse.adoptSelected}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -43,7 +43,9 @@ function renderMatrix() {
     columns,
     pendingPermissionKeys: new Set<string>(),
     pendingPerHarnessKeys: new Set<string>(),
+    checkedIds: new Set<string>(),
     onOpenDetail: vi.fn(),
+    onToggleChecked: vi.fn(),
     onEnableHarness: vi.fn(),
     onDisableHarness: vi.fn(),
     onAdopt: vi.fn(),
@@ -73,7 +75,7 @@ describe("PermissionsMatrixView", () => {
 
     const table = screen.getByRole("table", { name: "Permissions harness matrix" });
     const headerCells = table.querySelectorAll("thead tr > th");
-    expect(headerCells).toHaveLength(columns.length + 3);
+    expect(headerCells).toHaveLength(columns.length + 4);
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha Rule", "Zeta Rule"]);
 
@@ -91,6 +93,16 @@ describe("PermissionsMatrixView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sort by Codex" }));
     expect(rowNames()).toEqual(["Alpha Rule", "Zeta Rule"]);
+  });
+
+  it("renders a checkbox for every row and toggles selection", () => {
+    const props = renderMatrix();
+
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(entries.length);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Alpha Rule" }));
+    expect(props.onToggleChecked).toHaveBeenCalledWith("alpha-rule");
   });
 });
 

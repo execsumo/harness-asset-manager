@@ -4,6 +4,8 @@ const englishPermissionsCopy = {
     title: "Permissions",
     subtitle: "Apply a rule once across your harnesses, and resolve any that differ.",
     adopt: "Adopt",
+    adoptSelected: "Adopt selected",
+    adoptingSelected: "Adopting selected rules",
     searchPlaceholder: "Search by ID, decision, scope or pattern...",
     searchLabel: "Search permissions",
     loading: "Loading permissions",
@@ -22,6 +24,7 @@ const englishPermissionsCopy = {
     uninstall: {
       action: "Delete",
       title: (id: string) => `Delete ${id}?`,
+      bulkTitle: (count: number) => `Delete ${count} rule${count === 1 ? "" : "s"}?`,
       description: "Remove this permission from harness-asset-manager and disable it on all harnesses.",
       singleDescription: "Remove this permission from harness-asset-manager and disable it on all harnesses.",
       pending: "Deleting",
