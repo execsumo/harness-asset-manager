@@ -165,3 +165,78 @@ export function matrixCellFor(
     action: "enable",
   };
 }
+
+export type AgentSortDirection = "asc" | "desc";
+export type AgentSortKey = "name" | "coverage" | { harness: string };
+
+export interface AgentSortState {
+  key: AgentSortKey;
+  direction: AgentSortDirection;
+}
+
+export function isAgentHarnessSortKey(key: AgentSortKey): key is { harness: string } {
+  return typeof key === "object" && key !== null && "harness" in key;
+}
+
+export function agentSortKeysEqual(a: AgentSortKey, b: AgentSortKey): boolean {
+  if (typeof a === "string" && typeof b === "string") return a === b;
+  if (isAgentHarnessSortKey(a) && isAgentHarnessSortKey(b)) return a.harness === b.harness;
+  return false;
+}
+
+const AGENT_HARNESS_STATE_PRIORITY: Record<AgentMatrixCellState, number> = {
+  enabled: 0,
+  disabled: 1,
+  observed: 2,
+  unavailable: 3,
+  empty: 4,
+};
+
+function compareAgentsByName(a: AgentInventoryEntryDto, b: AgentInventoryEntryDto): number {
+  return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+}
+
+export function sortAgentsRows(
+  entries: AgentInventoryEntryDto[],
+  columns: AgentInventoryDto["columns"],
+  sort: AgentSortState,
+): AgentInventoryEntryDto[] {
+  const directionMultiplier = sort.direction === "asc" ? 1 : -1;
+  const next = entries.slice();
+
+  if (sort.key === "name") {
+    next.sort((a, b) => compareAgentsByName(a, b) * directionMultiplier);
+    return next;
+  }
+
+  if (sort.key === "coverage") {
+    next.sort((a, b) => {
+      const diff = countEnabledBindings(a) - countEnabledBindings(b);
+      if (diff !== 0) return diff * directionMultiplier;
+      return compareAgentsByName(a, b);
+    });
+    return next;
+  }
+
+  const harness = sort.key.harness;
+  const column = columns.find((c) => c.harness === harness) ?? {
+    harness,
+    label: harness,
+    logoKey: harness,
+    installed: true,
+    supported: true,
+  };
+
+  next.sort((a, b) => {
+    const aCell = matrixCellFor(a, column);
+    const bCell = matrixCellFor(b, column);
+    const aPriority = AGENT_HARNESS_STATE_PRIORITY[aCell.state] ?? AGENT_HARNESS_STATE_PRIORITY.empty;
+    const bPriority = AGENT_HARNESS_STATE_PRIORITY[bCell.state] ?? AGENT_HARNESS_STATE_PRIORITY.empty;
+    const diff = aPriority - bPriority;
+    if (diff !== 0) return diff * directionMultiplier;
+    return compareAgentsByName(a, b);
+  });
+
+  return next;
+}
+

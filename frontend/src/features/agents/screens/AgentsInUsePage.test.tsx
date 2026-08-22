@@ -95,7 +95,7 @@ describe("AgentsInUsePage", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByRole("table", { name: /Agents Matrix/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("table", { name: /Agents harness matrix|Agents Matrix/i })).toBeInTheDocument());
     expect(screen.getByText("Test Agent")).toBeInTheDocument();
   });
 

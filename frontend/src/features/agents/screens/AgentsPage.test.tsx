@@ -99,7 +99,7 @@ describe("Agents unified inventory", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByRole("table", { name: /Agents Matrix/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("table", { name: /Agents harness matrix|Agents Matrix/i })).toBeInTheDocument());
     expect(screen.getByText("OK Agent")).toBeInTheDocument();
 
     const okRow = screen.getByText("OK Agent").closest("tr");

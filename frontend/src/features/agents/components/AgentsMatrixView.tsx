@@ -1,16 +1,25 @@
+import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
-  MatrixHarnessHeader,
   MatrixHarnessIcon,
+  MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
 import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { AgentInventoryDto, AgentInventoryEntryDto } from "../api/types";
-import { matrixCellFor, type AgentMatrixCellModel } from "../model/selectors";
+import {
+  agentSortKeysEqual,
+  matrixCellFor,
+  sortAgentsRows,
+  type AgentMatrixCellModel,
+  type AgentSortKey,
+  type AgentSortState,
+} from "../model/selectors";
+import { AgentsHarnessLogoStack } from "./AgentsHarnessLogoStack";
 
 interface AgentsMatrixViewProps {
   entries: AgentInventoryEntryDto[];
@@ -25,6 +34,8 @@ interface AgentsMatrixViewProps {
   onAdopt: (ref: string) => void;
 }
 
+const INITIAL_SORT: AgentSortState = { key: "name", direction: "asc" };
+
 export function AgentsMatrixView({
   entries,
   columns,
@@ -37,31 +48,71 @@ export function AgentsMatrixView({
   onDisableHarness,
   onAdopt,
 }: AgentsMatrixViewProps) {
+  const [sort, setSort] = useState<AgentSortState>(INITIAL_SORT);
+  const sortedEntries = useMemo(() => sortAgentsRows(entries, columns, sort), [entries, columns, sort]);
+
+  const requestSort = (key: AgentSortKey) => {
+    setSort((current) => {
+      if (agentSortKeysEqual(current.key, key)) {
+        return { key, direction: current.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
   return (
     <MatrixTable
-      ariaLabel="Agents Matrix"
+      ariaLabel="Agents harness matrix"
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"
-      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
-          <th className="matrix-table__th matrix-table__th--identity">Agent Name</th>
-          {columns.map((column) => (
-            <MatrixHarnessHeader
-              key={column.harness}
-              label={column.label}
-              logoKey={column.logoKey}
-              harness={column.harness}
-            />
-          ))}
-          <th className="matrix-table__th matrix-table__th--end">Active</th>
+          <MatrixSortableHeader
+            label="Agent"
+            align="identity"
+            active={agentSortKeysEqual(sort.key, "name")}
+            direction={sort.direction}
+            onClick={() => requestSort("name")}
+          />
+          {columns.map((column) => {
+            const key: AgentSortKey = { harness: column.harness };
+            return (
+              <MatrixSortableHeader
+                key={column.harness}
+                label={column.label}
+                align="harness"
+                active={agentSortKeysEqual(sort.key, key)}
+                direction={sort.direction}
+                logoOnly
+                leading={
+                  <MatrixHarnessIcon
+                    label={column.label}
+                    logoKey={column.logoKey}
+                    harness={column.harness}
+                  />
+                }
+                srLabel={`Sort by ${column.label}`}
+                onClick={() => requestSort(key)}
+              />
+            );
+          })}
+          <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
+            Harnesses
+          </th>
+          <MatrixSortableHeader
+            label="Active"
+            align="end"
+            active={agentSortKeysEqual(sort.key, "coverage")}
+            direction={sort.direction}
+            onClick={() => requestSort("coverage")}
+          />
         </tr>
       </thead>
       <tbody>
-        {entries.map((entry) => (
+        {sortedEntries.map((entry) => (
           <AgentsMatrixRow
             key={entry.ref}
             entry={entry}
@@ -148,6 +199,9 @@ function AgentsMatrixRow({
           </td>
         );
       })}
+      <td className="matrix-table__cell matrix-table__cell--compact">
+        <AgentsHarnessLogoStack bindings={entry.bindings} columns={columns} />
+      </td>
       <td className="matrix-table__cell matrix-table__cell--coverage">
         {isUntracked ? (
           <button
