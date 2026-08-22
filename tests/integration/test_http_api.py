@@ -98,7 +98,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(detail["displayStatus"], "Managed")
             self.assertEqual(
                 [cell["label"] for cell in detail["harnessCells"]],
-                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Factory Droid", "Hermes Agent"],
+                ["Claude", "Codex", "Antigravity", "Cursor", "OpenCode", "Hermes Agent"],
             )
             self.assertNotIn("updateStatus", detail["actions"])
             self.assertEqual(source_status["updateStatus"], "no_update_available")
@@ -232,6 +232,32 @@ class HttpApiTests(unittest.TestCase):
                 settings["autoAdoptHarnessOptions"]["agents"],
                 ["claude", "codex", "agy", "cursor", "opencode", "droid", "hermes"],
             )
+
+    def test_skills_inventory_excludes_disabled_and_undetected_harnesses(self) -> None:
+        with AppTestHarness(mixed=True, omit_clis=("opencode", "hermes")) as harness:
+            # 1. Undetected harnesses (droid not in PATH/app probe, opencode & hermes omitted) excluded
+            skills = harness.get_json("/api/skills")
+            col_ids = [col["harness"] for col in skills["harnessColumns"]]
+            self.assertIn("claude", col_ids)
+            self.assertIn("codex", col_ids)
+            self.assertNotIn("droid", col_ids)
+            self.assertNotIn("opencode", col_ids)
+            self.assertNotIn("hermes", col_ids)
+
+            # 2. Disabling claude in settings drops it from columns
+            harness.put_json("/api/settings/harnesses/claude/support", {"enabled": False})
+            harness.container.skills_read_models.invalidate()
+
+            skills_disabled = harness.get_json("/api/skills")
+            cols_disabled = [col["harness"] for col in skills_disabled["harnessColumns"]]
+            self.assertNotIn("claude", cols_disabled)
+            self.assertIn("codex", cols_disabled)
+
+            # 3. Row cells agree with filtered columns
+            for row in skills_disabled["rows"]:
+                cell_harnesses = [cell["harness"] for cell in row["cells"]]
+                self.assertNotIn("claude", cell_harnesses)
+                self.assertNotIn("opencode", cell_harnesses)
 
 
 if __name__ == "__main__":

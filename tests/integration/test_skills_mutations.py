@@ -6,6 +6,7 @@ import unittest
 from harness_asset_manager.application.skills.inventory import SkillInventory
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
+from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
     seed_shared_only_fixture,
@@ -306,7 +307,7 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertEqual(len(policy["cells"]), len(skills["harnessColumns"]))
             self.assertEqual(len(detail["harnessCells"]), len(skills["harnessColumns"]))
             self.assertIn("codex", [cell["harness"] for cell in policy["cells"]])
-            self.assertEqual(len(skills["harnessColumns"]), 7)
+            self.assertEqual(len(skills["harnessColumns"]), 6)
 
     def test_enable_allows_harnesses_other_than_origin(self) -> None:
         with AppTestHarness(fixture_factory=seed_origin_shared_fixture) as harness:
@@ -458,14 +459,13 @@ class SkillsMutationTests(unittest.TestCase):
             skills = harness.get_json("/api/skills")
             shared_entry = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
 
-            # Inventory columns still include every supported harness, but
-            # each column carries the honest `installed` flag.
+            # Uninstalled harnesses are excluded from columns entirely.
             installed_by_harness = {col["harness"]: col["installed"] for col in skills["harnessColumns"]}
             self.assertTrue(installed_by_harness["codex"])
             self.assertTrue(installed_by_harness["claude"])
-            self.assertFalse(installed_by_harness["opencode"])
-            self.assertFalse(installed_by_harness["hermes"])
-            self.assertFalse(installed_by_harness["agy"])
+            self.assertNotIn("opencode", installed_by_harness)
+            self.assertNotIn("hermes", installed_by_harness)
+            self.assertNotIn("agy", installed_by_harness)
 
             result = harness.post_json(
                 f"/api/skills/{shared_entry['skillRef']}/set-harnesses",
@@ -476,12 +476,12 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertEqual(result["failed"], [])
             # Only installed or otherwise interactable harnesses should flip.
             expected = {"codex", "claude"}
-            if installed_by_harness["cursor"]:
+            if installed_by_harness.get("cursor"):
                 expected.add("cursor")
             self.assertEqual(set(result["succeeded"]), expected)
             self.assertTrue((harness.spec.codex_root / "shared-audit").is_symlink())
             self.assertTrue((harness.spec.claude_root / "shared-audit").is_symlink())
-            if installed_by_harness["cursor"]:
+            if installed_by_harness.get("cursor"):
                 self.assertTrue((harness.spec.cursor_root / "shared-audit").is_symlink())
             else:
                 self.assertFalse((harness.spec.cursor_root / "shared-audit").exists())
@@ -534,13 +534,16 @@ class SkillsMutationTests(unittest.TestCase):
 
     def test_manage_rejects_missing_harness_install_before_creating_bindings(self) -> None:
         with AppTestHarness(mixed=True) as harness:
-            (harness.spec.bin_dir / "codex").unlink()
             skills = harness.get_json("/api/skills")
             trace_lens = next(row for row in skills["rows"] if row["name"] == "Trace Lens")
+            entry = harness.container.skills_queries.require_entry(trace_lens["skillRef"])
+            (harness.spec.bin_dir / "codex").unlink()
+            harness.container.skills_read_models.invalidate()
 
-            result = harness.post_json(f"/api/skills/{trace_lens['skillRef']}/manage", expected_status=400)
+            with self.assertRaises(MutationError) as ctx:
+                harness.container.skills_mutations.manage_entry(entry)
 
-            self.assertIn("Codex is not installed or not available on PATH", result["error"])
+            self.assertIn("Codex is not installed or not available on PATH", str(ctx.exception))
             self.assertFalse((harness.spec.codex_root / "trace-lens-copy").exists())
             self.assertFalse((harness.spec.claude_root / "trace-lens-copy").is_symlink())
             self.assertFalse((harness.spec.opencode_root / "trace-lens-copy").exists())

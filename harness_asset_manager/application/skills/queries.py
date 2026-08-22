@@ -79,9 +79,13 @@ class SkillsQueryService:
             finally:
                 self._reconcile_state.active = False
         snapshot = self.read_models.snapshot()
+        active_scans = tuple(
+            scan for scan in self.read_models.visible_scans(snapshot)
+            if scan.installed
+        )
         return SkillInventory.from_snapshot(
             store_scan=snapshot.store_scan,
-            harness_scans=self.read_models.visible_scans(snapshot),
+            harness_scans=active_scans,
         )
 
     def require_entry(self, skill_ref: str) -> InventoryEntry:
