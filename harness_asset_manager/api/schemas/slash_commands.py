@@ -37,6 +37,7 @@ class SlashTargetResponse(BaseModel):
     defaultSelected: bool
     enabled: bool
     available: bool
+    installed: bool = True
 
 
 class SlashSyncEntryResponse(BaseModel):

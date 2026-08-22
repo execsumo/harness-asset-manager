@@ -51,6 +51,7 @@ class SlashTarget:
     enabled: bool
     available: bool
     default_selected: bool
+    installed: bool = True
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -68,6 +69,7 @@ class SlashTarget:
             "defaultSelected": self.default_selected,
             "enabled": self.enabled,
             "available": self.available,
+            "installed": self.installed,
         }
 
 

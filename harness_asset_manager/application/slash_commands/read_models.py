@@ -31,7 +31,8 @@ class SlashCommandReadModelService:
         self.path_policy = path_policy or SlashCommandPathPolicy()
 
     def list_commands(self) -> dict[str, object]:
-        targets = self.resolve_targets()
+        all_targets = self.resolve_targets()
+        targets = tuple(target for target in all_targets if target.installed)
         commands = self.store.list_commands()
         state = self.sync_state.load()
         return {
@@ -44,7 +45,8 @@ class SlashCommandReadModelService:
         }
 
     def get_command(self, name: str) -> dict[str, object] | None:
-        targets = self.resolve_targets()
+        all_targets = self.resolve_targets()
+        targets = tuple(target for target in all_targets if target.installed)
         command = self.store.get_command(name)
         if command is None:
             return None
@@ -58,7 +60,8 @@ class SlashCommandReadModelService:
         state: dict[str, dict[str, SlashCommandSyncRecord]] | None = None,
         targets: tuple[SlashTarget, ...] | None = None,
     ) -> list[dict[str, object]]:
-        resolved_targets = targets if targets is not None else self.resolve_targets()
+        all_targets = self.resolve_targets()
+        resolved_targets = targets if targets is not None else tuple(t for t in all_targets if t.installed)
         managed_commands = commands if commands is not None else self.store.list_commands()
         command_names = {command.name for command in managed_commands}
         sync_state = state if state is not None else self.sync_state.load()

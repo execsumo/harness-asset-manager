@@ -5544,6 +5544,11 @@
             "title": "Id",
             "type": "string"
           },
+          "installed": {
+            "default": true,
+            "title": "Installed",
+            "type": "boolean"
+          },
           "invocationPrefix": {
             "title": "Invocationprefix",
             "type": "string"

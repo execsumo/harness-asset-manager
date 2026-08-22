@@ -14,7 +14,7 @@ class SlashCommandApiTests(unittest.TestCase):
 
             self.assertEqual(payload["commands"], [])
             target_ids = [target["id"] for target in payload["targets"]]
-            self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "droid", "hermes"])
+            self.assertEqual(target_ids, ["claude", "codex", "agy", "cursor", "opencode", "hermes"])
             self.assertIn("codex", payload["defaultTargets"])
             self.assertTrue(all("enabled" in target for target in payload["targets"]))
             self.assertTrue(str(harness.spec.xdg_data_home / APP_NAME) in payload["storePath"])
@@ -320,6 +320,48 @@ class SlashCommandApiTests(unittest.TestCase):
             cmd = next(c for c in payload["commands"] if c["name"] == "lint-check")
             agy_target = next(t for t in cmd["syncTargets"] if t["target"] == "agy")
             self.assertEqual(agy_target["status"], "synced")
+
+    def test_inventory_excludes_disabled_and_undetected_harnesses(self) -> None:
+        with AppTestHarness(omit_clis=("opencode", "hermes")) as harness:
+            # 1. Undetected harnesses (droid, opencode, hermes) excluded from targets
+            payload = harness.get_json("/api/slash-commands")
+            target_ids = [t["id"] for t in payload["targets"]]
+            self.assertIn("claude", target_ids)
+            self.assertIn("codex", target_ids)
+            self.assertNotIn("droid", target_ids)
+            self.assertNotIn("opencode", target_ids)
+            self.assertNotIn("hermes", target_ids)
+
+            # 2. Disabling claude in settings drops it from targets
+            harness.put_json("/api/settings/harnesses/claude/support", {"enabled": False})
+
+            payload_disabled = harness.get_json("/api/slash-commands")
+            target_ids_disabled = [t["id"] for t in payload_disabled["targets"]]
+            self.assertNotIn("claude", target_ids_disabled)
+            self.assertIn("codex", target_ids_disabled)
+
+            # 3. Created command syncTargets agree with filtered targets
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "audit",
+                    "description": "Audit",
+                    "prompt": "Audit this",
+                },
+            )
+            payload_with_cmd = harness.get_json("/api/slash-commands")
+            cmd = payload_with_cmd["commands"][0]
+            sync_target_ids = [st["target"] for st in cmd["syncTargets"]]
+            self.assertNotIn("claude", sync_target_ids)
+            self.assertNotIn("opencode", sync_target_ids)
+            self.assertIn("codex", sync_target_ids)
+
+            # 4. get_command agrees with filtered targets
+            single_cmd = harness.get_json("/api/slash-commands/audit")
+            single_sync_targets = [st["target"] for st in single_cmd["syncTargets"]]
+            self.assertNotIn("claude", single_sync_targets)
+            self.assertNotIn("opencode", single_sync_targets)
+            self.assertIn("codex", single_sync_targets)
 
 
 if __name__ == "__main__":

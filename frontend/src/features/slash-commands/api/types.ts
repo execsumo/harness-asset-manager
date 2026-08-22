@@ -30,6 +30,7 @@ export interface SlashTargetDto {
   defaultSelected: boolean;
   enabled: boolean;
   available: boolean;
+  installed?: boolean;
 }
 
 export interface SlashSyncEntryDto {

@@ -2984,6 +2984,11 @@ export interface components {
              * @enum {string}
              */
             id: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes" | "droid";
+            /**
+             * Installed
+             * @default true
+             */
+            installed: boolean;
             /** Invocationprefix */
             invocationPrefix: string;
             /** Label */
