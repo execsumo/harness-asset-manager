@@ -124,14 +124,14 @@ describe("App shell", () => {
 
   it.each([
     ["/overview", "Overview"],
-    ["/skills/use", "Skills in use"],
+    ["/skills/use", "Skills"],
     ["/skills/review", "Skills to review"],
     ["/slash-commands", "Slash Commands"],
     ["/slash-commands/use", "Slash Commands"],
     ["/slash-commands/review", "Slash commands to review"],
-    ["/mcp", "MCP servers in use"],
-    ["/mcp/use", "MCP servers in use"],
-    ["/mcp/review", "MCP servers in use"],
+    ["/mcp", "MCP Servers"],
+    ["/mcp/use", "MCP Servers"],
+    ["/mcp/review", "MCP Servers"],
     ["/marketplace/skills", "Marketplace"],
     ["/marketplace/clis", "Marketplace"],
     ["/settings", "Settings"],
@@ -142,10 +142,10 @@ describe("App shell", () => {
   });
 
   it.each([
-    ["/skills/managed", "Skills in use"],
+    ["/skills/managed", "Skills"],
     ["/skills/unmanaged", "Skills to review"],
-    ["/mcp/managed", "MCP servers in use"],
-    ["/mcp/unmanaged", "MCP servers in use"],
+    ["/mcp/managed", "MCP Servers"],
+    ["/mcp/unmanaged", "MCP Servers"],
   ])("redirects compatibility route %s to the new concept route", async (route, heading) => {
     renderApp(route);
     await screen.findByRole("heading", { name: heading }, { timeout: 10000 });
