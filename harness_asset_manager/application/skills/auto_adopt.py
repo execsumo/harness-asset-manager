@@ -9,6 +9,7 @@ from typing import Callable
 from harness_asset_manager.application.auto_adopt import record_auto_adopt
 from harness_asset_manager.application.mutation_audit import MutationAuditJournal
 from harness_asset_manager.atomic_files import file_lock
+from harness_asset_manager.portable_paths import is_sync_artifact
 
 from .inventory import InventoryEntry, SkillInventory
 from .mutations import SkillsMutationService
@@ -122,6 +123,8 @@ class SkillsAutoAdoptService:
         for sighting in sightings:
             if sighting.path is None:
                 return "harness path is unavailable"
+            if is_sync_artifact(sighting.path.name):
+                return "sync or conflict artifact is not auto-adopted"
             if sighting.path.is_symlink():
                 return "a symlink is not auto-adopted"
             if not sighting.path.is_dir():

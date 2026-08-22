@@ -588,6 +588,23 @@ class AgentStoreTests(AgentsFixture):
         with self.assertRaises(MutationError):
             self.store.path_for("../escape")
 
+    def test_scan_ignores_sync_artifacts_and_temp_files(self) -> None:
+        self.store.create(name="Valid Agent", description="d", prompt="p")
+        # Add sync conflict files and temp artifacts
+        (self.store_root / ".sync-conflict-20240101.md").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.sync-conflict-20240101.md").write_text("junk", encoding="utf-8")
+        (self.store_root / ".syncthing.valid-agent.md.tmp").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.tmp").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.bak").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.orig").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.md~").write_text("junk", encoding="utf-8")
+        (self.store_root / ".#valid-agent.md").write_text("junk", encoding="utf-8")
+        (self.store_root / "not-markdown.txt").write_text("junk", encoding="utf-8")
+
+        agents, issues = self.store.scan()
+        self.assertEqual([a.slug for a in agents], ["valid-agent"])
+        self.assertEqual(issues, ())
+
 
 if __name__ == "__main__":
     unittest.main()

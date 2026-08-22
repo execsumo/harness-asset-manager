@@ -170,10 +170,26 @@ class SkillPackageCache:
             self._condition.notify_all()
 
 
+from harness_asset_manager.portable_paths import is_sync_artifact
+
+
 def find_skill_roots(root: Path) -> tuple[Path, ...]:
     if not root.exists() or not root.is_dir():
         return ()
-    return tuple(sorted(path for path in root.iterdir() if path.is_dir() and (path / "SKILL.md").is_file()))
+    roots: list[Path] = []
+    try:
+        children = list(root.iterdir())
+    except OSError:
+        return ()
+    for path in children:
+        if is_sync_artifact(path.name):
+            continue
+        try:
+            if path.is_dir() and (path / "SKILL.md").is_file():
+                roots.append(path)
+        except OSError:
+            continue
+    return tuple(sorted(roots))
 
 
 def fingerprint_package(root: Path) -> tuple[str, tuple[str, ...]]:
@@ -227,7 +243,7 @@ def _enumerate_package_entries(root: Path) -> tuple[_PackagePathEntry, ...]:
         except OSError as error:
             raise SkillParseError(f"unable to inspect {directory}: {error}") from error
         for child in children:
-            if child.name == ".DS_Store":
+            if is_sync_artifact(child.name):
                 continue
             relative_path = f"{prefix}/{child.name}" if prefix else child.name
             path = Path(child.path)

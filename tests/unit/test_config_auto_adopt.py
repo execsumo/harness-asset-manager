@@ -114,4 +114,35 @@ class AlreadyManagedRaceTests(unittest.TestCase):
             self.assertEqual(self._outcomes(journal), [])
 
 
-__all__ = ["AlreadyManagedRaceTests"]
+class SkillsAutoAdoptSyncArtifactTests(unittest.TestCase):
+    def test_unsafe_reason_rejects_sync_artifacts(self) -> None:
+        from harness_asset_manager.application.skills.auto_adopt import SkillsAutoAdoptService
+        from harness_asset_manager.application.skills.identity import SourceDescriptor
+        from harness_asset_manager.application.skills.inventory import (
+            InventoryEntry,
+            InventorySighting,
+        )
+
+        conflict_entry = InventoryEntry(
+            skill_ref="my-skill.sync-conflict-20240101",
+            name="My Skill",
+            description="desc",
+            kind="unmanaged",
+            source=SourceDescriptor(kind="local", locator="local:my-skill"),
+            sightings=[
+                InventorySighting(
+                    kind="harness",
+                    harness="claude",
+                    label="Claude",
+                    path=Path("/home/user/.claude/skills/my-skill.sync-conflict-20240101"),
+                    scope="user",
+                    revision="123",
+                    source=SourceDescriptor(kind="local", locator="local:my-skill"),
+                ),
+            ],
+        )
+        reason = SkillsAutoAdoptService._unsafe_reason(conflict_entry)
+        self.assertIn("sync or conflict artifact", str(reason))
+
+
+__all__ = ["AlreadyManagedRaceTests", "SkillsAutoAdoptSyncArtifactTests"]

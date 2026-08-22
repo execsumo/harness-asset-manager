@@ -115,4 +115,32 @@ def _is_local_path(candidate: Path, base_home: Path) -> bool:
     return False
 
 
-__all__ = ["from_portable_path", "resolve_home", "to_portable_path"]
+def is_sync_artifact(name_or_path: str | Path) -> bool:
+    """Check if a filename or path represents a sync/backup/temp artifact.
+
+    Matches:
+    - Hidden files and folders (e.g. .*, .git, .DS_Store, .sync-conflict-*, .syncthing.*)
+    - Emacs/nano/vim backup and autosave files (*~, .#*, #*#)
+    - Temporary and patch rejection files (*.tmp, *.bak, *.orig, *.rej, *.swp, *.swo, *.lock, *.temp)
+    - Sync-tool conflict copies (*.sync-conflict-*, *.conflict*, *(conflict*)*, etc.)
+    """
+    name = Path(name_or_path).name if isinstance(name_or_path, Path) else str(name_or_path).strip()
+    if not name or name in {".", ".."}:
+        return True
+    if name.startswith("."):
+        return True
+    if name.endswith("~"):
+        return True
+    if name.startswith("#") and name.endswith("#"):
+        return True
+    if name.endswith((".tmp", ".bak", ".orig", ".rej", ".swp", ".swo", ".lock", ".temp")):
+        return True
+    lower = name.lower()
+    if "sync-conflict" in lower or ".syncthing." in lower or "syncthing" in lower:
+        return True
+    if "conflict" in lower and ("." in lower or "(" in lower or "-" in lower or "_" in lower):
+        return True
+    return False
+
+
+__all__ = ["from_portable_path", "is_sync_artifact", "resolve_home", "to_portable_path"]
