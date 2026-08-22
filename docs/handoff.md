@@ -2,6 +2,27 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Backlog sweep: root pointers deleted, sync plan retired, stale items closed
+
+All remaining open items resolved by owner decision; nothing left in the backlog.
+
+1. **Root plan pointers deleted** (`RECOMMENDATIONS.md`, `plan-agents-packages.md`,
+   `plan-agents-simplify.md`, `plan-auto-adoption.md`, `plan-cross-device-sync.md`). The
+   `stash@{0}` decision is finally committed: the docs/ copies remain canonical; the root
+   pointers are gone for good.
+2. **`docs/plan-cross-device-sync.md` deleted entirely.** No in-app sync transport will be
+   built — carrying the store between a user's own machines via dotfile/folder replication
+   is *the* supported workflow, documented in README ("Carrying the store between your own
+   devices" + "Store Portability" in ARCHITECTURE §4) and in the portable-store entry below.
+   The README's "Cross-device sync — planned" roadmap section was replaced with a short
+   note pointing at that workflow.
+3. **Vitest worker I/O stall item dropped** without root-causing: it has not reproduced in
+   many sessions. Reopen only if it returns.
+4. **Per-family single-flight reconcile locks dropped**: agreed unnecessary — the 2026-08-21
+   audit found no correctness gap (409 races skipped benignly, file-locked writes), and the
+   mutation-path pressure test showed no latency concern. Agents' `lock_path` remains the
+   template if reconcile cost ever matters.
+
 ## 2026-08-22 — Mutation-path pressure test passed; perf follow-ups closed
 
 Closed handoff items 1–3 from the 2026-08-21/18 entries (pressure-test, conditional

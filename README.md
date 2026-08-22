@@ -745,20 +745,9 @@ npm run build
 - [x] Package-based storage (portable resource bundles)
 - [ ] Plugin support
 
-### Cross-device sync — planned, not yet started
+### Cross-device sync — carried by you, not by the app
 
-Harness Asset Manager collapses *many harnesses → one store*. The next major piece adds *many machines → one store*: adopt a Skill on your desktop and have it be there, wired into the right harnesses, on your laptop and in your containers.
-
-The unit of sync is the Harness Asset Manager store, not the harness directories — those hold symlinks, per-harness translations, and config files you also own, none of which survive being copied between machines. Canonical records travel; each machine recomputes its own bindings on arrival, so a machine without Cursor simply does not bind Cursor.
-
-Planned shape:
-
-- a private git remote you own — no accounts, no hosted service, nothing leaves your control
-- MCP credential **values are never transported**; the receiving machine reports which credentials it still needs
-- conflicts are preserved and reported, never auto-resolved by timestamp
-- one-way `pull` for ephemeral and headless machines (containers, VPS, CI), which should inherit a portfolio and never push back
-
-Design and sequencing: [`plan-cross-device-sync.md`](plan-cross-device-sync.md).
+No in-app sync transport is planned. The supported way to move your store between your own machines is standard dotfile/folder replication (a Git dotfile repo, Syncthing, rsync, iCloud, …) — see [Carrying the store between your own devices](#carrying-the-store-between-your-own-devices). Every persisted reference in the store is home-relative, so a replicated store re-resolves its bindings on arrival and a machine without Cursor simply does not bind Cursor.
 
 ---
 
