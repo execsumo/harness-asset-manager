@@ -154,7 +154,7 @@ describe("Skills unified inventory page", () => {
     expect(screen.getByText("Managed Skill")).toBeInTheDocument();
     expect(screen.getByText("Untracked Skill")).toBeInTheDocument();
     expect(screen.getByLabelText("Search skills in use")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sort by Name" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sort by Skill" })).toBeInTheDocument();
 
     for (const name of ["Grid", "Board", "Matrix", "Scan", "Table"]) {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();

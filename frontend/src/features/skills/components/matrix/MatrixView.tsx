@@ -64,7 +64,7 @@ export function MatrixView({
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
           <MatrixSortableHeader
-            label="Name"
+            label="Skill"
             align="identity"
             active={sortKeysEqual(sort.key, "name")}
             direction={sort.direction}

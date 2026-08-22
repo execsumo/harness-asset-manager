@@ -76,7 +76,7 @@ describe("Skills MatrixView", () => {
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha", "Zeta"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Sort by Name" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Skill" }));
     expect(rowNames()).toEqual(["Zeta", "Alpha"]);
   });
 

@@ -1,7 +1,7 @@
 
 const englishSkillsCopy = {
   inUse: {
-    title: "Skills in use",
+    title: "Skills",
     subtitle: (count: number) =>
       count > 0
         ? `${count} skill${count === 1 ? "" : "s"} being managed across harnesses.`
