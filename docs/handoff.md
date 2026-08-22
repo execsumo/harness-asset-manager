@@ -2,6 +2,20 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Sidebar flattened: family headings link straight to their page
+
+Follow-on to the two entries below. Since every family now has exactly one unified page, the nested
+"In use" child entry under each sidebar heading was pure indirection. Single-link groups (Agents,
+Skills, Slash Commands, MCP Servers, Hooks) render their heading itself as a direct link carrying
+the family count; Marketplace keeps its collapsible group for its three children (`92c4076`).
+Implemented in `Sidebar.tsx` (render-level: single-link `SidebarGroupModel`s become
+`SidebarTopLink`s; the model is unchanged), so a future multi-page family automatically regains the
+collapsible treatment. App.test.tsx updated; note the accessible-name collision between the Skills
+family heading and the Marketplace "Skills" sub-link — tests assert unambiguous names instead.
+
+Validation: typecheck clean, Vitest 307/307 across 61 files, build passes, dist rebuilt from
+merged `main`. Pushed.
+
 ## 2026-08-22 — MCP In-use page converged; all five families now uniform
 
 MCP's In-use page now includes unadopted servers behind the URL-backed status filter
