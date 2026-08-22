@@ -1,10 +1,11 @@
+import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
-  MatrixHarnessHeader,
   MatrixHarnessIcon,
+  MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
 import { OverflowTooltipText } from "../../../components/ui/OverflowTooltipText";
@@ -12,10 +13,14 @@ import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { HookInventoryColumnDto, HookInventoryEntryDto } from "../api/management-types";
 import { useHooksCopy, type HooksCopy } from "../i18n";
 import {
+  hooksSortKeysEqual,
   matrixCellFor,
   matrixColumns,
   matrixCoverage,
+  sortHooksRows,
   type HooksMatrixCellModel,
+  type HooksSortKey,
+  type HooksSortState,
 } from "../model/selectors";
 import { HooksHarnessLogoStack } from "./HooksHarnessLogoStack";
 
@@ -32,6 +37,8 @@ interface HooksMatrixViewProps {
   onAdopt: (id: string) => void;
 }
 
+const INITIAL_SORT: HooksSortState = { key: "name", direction: "asc" };
+
 export function HooksMatrixView({
   entries,
   columns,
@@ -46,35 +53,74 @@ export function HooksMatrixView({
 }: HooksMatrixViewProps) {
   const copy = useHooksCopy();
   const displayColumns = matrixColumns({ columns });
+  const [sort, setSort] = useState<HooksSortState>(INITIAL_SORT);
+  const sortedEntries = useMemo(
+    () => sortHooksRows(entries, columns, sort, copy),
+    [entries, columns, sort, copy],
+  );
+
+  const requestSort = (key: HooksSortKey) => {
+    setSort((current) => {
+      if (hooksSortKeysEqual(current.key, key)) {
+        return { key, direction: current.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
 
   return (
     <MatrixTable
-      ariaLabel="Hooks Matrix"
+      ariaLabel="Hooks harness matrix"
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
       coverageColumnWidth="96px"
-      minWidth="800px"
     >
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
-          <th className="matrix-table__th matrix-table__th--identity">Hook ID</th>
-          {displayColumns.map((column) => (
-            <MatrixHarnessHeader
-              key={column.harness}
-              label={column.label}
-              logoKey={column.logoKey}
-              harness={column.harness}
-            />
-          ))}
+          <MatrixSortableHeader
+            label="Hook"
+            align="identity"
+            active={hooksSortKeysEqual(sort.key, "name")}
+            direction={sort.direction}
+            onClick={() => requestSort("name")}
+          />
+          {displayColumns.map((column) => {
+            const key: HooksSortKey = { harness: column.harness };
+            return (
+              <MatrixSortableHeader
+                key={column.harness}
+                label={column.label}
+                align="harness"
+                active={hooksSortKeysEqual(sort.key, key)}
+                direction={sort.direction}
+                logoOnly
+                leading={
+                  <MatrixHarnessIcon
+                    label={column.label}
+                    logoKey={column.logoKey}
+                    harness={column.harness}
+                  />
+                }
+                srLabel={`Sort by ${column.label}`}
+                onClick={() => requestSort(key)}
+              />
+            );
+          })}
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Active</th>
+          <MatrixSortableHeader
+            label="Active"
+            align="end"
+            active={hooksSortKeysEqual(sort.key, "coverage")}
+            direction={sort.direction}
+            onClick={() => requestSort("coverage")}
+          />
         </tr>
       </thead>
       <tbody>
-        {entries.map((entry) => (
+        {sortedEntries.map((entry) => (
           <HooksMatrixRow
             key={entry.id}
             entry={entry}

@@ -1,7 +1,7 @@
 
 const englishHooksCopy = {
   inUse: {
-    title: "Hooks in use",
+    title: "Hooks",
     subtitle: "Browse, enable, and remove hooks across your harnesses.",
     searchPlaceholder: "Search by ID, event or command...",
     searchLabel: "Search hooks",

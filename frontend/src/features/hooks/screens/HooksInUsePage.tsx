@@ -187,7 +187,7 @@ export default function HooksInUsePage() {
               className="action-pill action-pill--md action-pill--accent"
               onClick={() => setAddDialogOpen(true)}
             >
-              <Plus size={16} style={{ marginRight: "4px" }} />
+              <Plus size={16} />
               Add Hook
             </button>
           }

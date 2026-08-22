@@ -258,3 +258,84 @@ export function matrixCoverage(
     writable: addressable.size,
   };
 }
+
+export type HooksSortDirection = "asc" | "desc";
+export type HooksSortKey = "name" | "coverage" | { harness: string };
+
+export interface HooksSortState {
+  key: HooksSortKey;
+  direction: HooksSortDirection;
+}
+
+export function isHooksHarnessSortKey(key: HooksSortKey): key is { harness: string } {
+  return typeof key === "object" && key !== null && "harness" in key;
+}
+
+export function hooksSortKeysEqual(a: HooksSortKey, b: HooksSortKey): boolean {
+  if (typeof a === "string" && typeof b === "string") return a === b;
+  if (isHooksHarnessSortKey(a) && isHooksHarnessSortKey(b)) return a.harness === b.harness;
+  return false;
+}
+
+const HOOKS_HARNESS_STATE_PRIORITY: Record<HooksMatrixCellState, number> = {
+  enabled: 0,
+  disabled: 1,
+  different: 2,
+  observed: 2,
+  unavailable: 3,
+};
+
+function compareHooksByName(a: HookInventoryEntryDto, b: HookInventoryEntryDto): number {
+  const nameA = a.displayName || a.id;
+  const nameB = b.displayName || b.id;
+  return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+}
+
+export function sortHooksRows(
+  entries: HookInventoryEntryDto[],
+  columns: HookInventoryColumnDto[],
+  sort: HooksSortState,
+  copy: HooksCopy = hooksCopy,
+): HookInventoryEntryDto[] {
+  const directionMultiplier = sort.direction === "asc" ? 1 : -1;
+  const next = entries.slice();
+
+  if (sort.key === "name") {
+    next.sort((a, b) => compareHooksByName(a, b) * directionMultiplier);
+    return next;
+  }
+
+  if (sort.key === "coverage") {
+    next.sort((a, b) => {
+      const aCoverage = matrixCoverage(a, columns).enabled;
+      const bCoverage = matrixCoverage(b, columns).enabled;
+      const diff = aCoverage - bCoverage;
+      if (diff !== 0) return diff * directionMultiplier;
+      return compareHooksByName(a, b);
+    });
+    return next;
+  }
+
+  const harness = sort.key.harness;
+  const column = columns.find((c) => c.harness === harness) ?? {
+    harness,
+    label: harness,
+    logoKey: harness,
+    installed: true,
+    configPresent: true,
+    hooksWritable: true,
+  };
+
+  next.sort((a, b) => {
+    const aCell = matrixCellFor(a, column, copy);
+    const bCell = matrixCellFor(b, column, copy);
+    const aPriority = HOOKS_HARNESS_STATE_PRIORITY[aCell.state] ?? 4;
+    const bPriority = HOOKS_HARNESS_STATE_PRIORITY[bCell.state] ?? 4;
+    const diff = aPriority - bPriority;
+    if (diff !== 0) return diff * directionMultiplier;
+    return compareHooksByName(a, b);
+  });
+
+  return next;
+}
+

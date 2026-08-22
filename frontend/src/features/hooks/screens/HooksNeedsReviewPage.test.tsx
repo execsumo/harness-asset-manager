@@ -107,7 +107,7 @@ describe("Hooks unified inventory page", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByRole("table", { name: /hooks matrix/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("table", { name: /Hooks harness matrix|Hooks Matrix/i })).toBeInTheDocument());
     expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Adopt$/i })).toBeInTheDocument();
   });
