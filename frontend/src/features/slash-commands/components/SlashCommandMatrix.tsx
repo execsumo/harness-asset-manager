@@ -70,13 +70,13 @@ export function SlashCommandMatrix({
       ariaLabel="Slash commands target matrix"
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="140px"
+      coverageColumnWidth="96px"
     >
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
           <MatrixSortableHeader
-            label="Name"
+            label="Slash Command"
             align="identity"
             active={slashSortKeysEqual(sort.key, "name")}
             direction={sort.direction}
@@ -184,16 +184,18 @@ function SlashCommandMatrixRow({
           const pending = pendingName === command.name;
           return (
             <td key={target.id} className="matrix-table__cell matrix-table__cell--harness">
-              <MatrixHarnessCellTarget
-                ariaLabel={`${isEnabled ? "Disable" : "Enable"} ${target.label} for ${command.name}`}
-                state={isEnabled ? "enabled" : "disabled"}
-                pending={pending && pendingTarget === target.id}
-                disabled={pending || !target.enabled}
-                ariaPressed={isEnabled}
-                onClick={() => onToggleTarget(command, target)}
-              >
-                <MatrixHarnessIcon label={target.label} logoKey={target.id === "claude" ? "claude" : target.id} harness={target.id} />
-              </MatrixHarnessCellTarget>
+              <UiTooltip content={`${target.label} — ${isEnabled ? "enabled" : "disabled"}`}>
+                <MatrixHarnessCellTarget
+                  ariaLabel={`${isEnabled ? "Disable" : "Enable"} ${target.label} for ${command.name}`}
+                  state={isEnabled ? "enabled" : "disabled"}
+                  pending={pending && pendingTarget === target.id}
+                  disabled={pending || !target.enabled}
+                  ariaPressed={isEnabled}
+                  onClick={() => onToggleTarget(command, target)}
+                >
+                  <MatrixHarnessIcon label={target.label} logoKey={target.id === "claude" ? "claude" : target.id} harness={target.id} />
+                </MatrixHarnessCellTarget>
+              </UiTooltip>
             </td>
           );
         })}
