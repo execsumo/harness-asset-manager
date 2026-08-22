@@ -11,6 +11,7 @@ from harness_asset_manager.application.drift import (
 )
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.hashing import hash_file, hash_text
+from harness_asset_manager.portable_paths import from_portable_path, to_portable_path
 
 LEDGER_VERSION = 1
 
@@ -34,9 +35,9 @@ class AgentBindingRecord:
     rendered_size: int | None = None
     rendered_mtime_ns: int | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self, *, home: Path | None = None) -> dict[str, object]:
         return {
-            "target": str(self.target),
+            "target": to_portable_path(self.target, home=home),
             "linkedAt": self.linked_at,
             "storeSha256": self.store_sha256,
             "renderedSha256": self.rendered_sha256,
@@ -60,8 +61,9 @@ class AgentBindingLedger:
     default.
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, home: Path | None = None) -> None:
         self.path = path
+        self.home = home
 
     @property
     def lock_path(self) -> Path:
@@ -88,7 +90,7 @@ class AgentBindingLedger:
                 continue
             records: dict[str, AgentBindingRecord] = {}
             for harness, raw_record in harness_payload.items():
-                record = _parse_record(str(harness), raw_record)
+                record = _parse_record(str(harness), raw_record, home=self.home)
                 if record is not None:
                     records[record.harness] = record
             if records:
@@ -105,7 +107,7 @@ class AgentBindingLedger:
             "version": LEDGER_VERSION,
             "agents": {
                 slug: {
-                    harness: record.to_dict()
+                    harness: record.to_dict(home=self.home)
                     for harness, record in sorted(records.items())
                 }
                 for slug, records in sorted(state.items())
@@ -243,16 +245,21 @@ def _safe_hash(path: Path) -> str | None:
         return None
 
 
-def _parse_record(harness: str, raw_record: object) -> AgentBindingRecord | None:
+def _parse_record(
+    harness: str, raw_record: object, *, home: Path | None = None
+) -> AgentBindingRecord | None:
     if not isinstance(raw_record, dict) or not harness:
         return None
-    target = raw_record.get("target")
+    target_raw = raw_record.get("target")
     linked_at = raw_record.get("linkedAt")
-    if not isinstance(target, str) or not isinstance(linked_at, (int, float)):
+    if not isinstance(target_raw, str) or not isinstance(linked_at, (int, float)):
+        return None
+    target = from_portable_path(target_raw, home=home)
+    if target is None:
         return None
     return AgentBindingRecord(
         harness=harness,
-        target=Path(target),
+        target=target,
         linked_at=float(linked_at),
         store_sha256=_optional_str(raw_record.get("storeSha256")),
         rendered_sha256=_optional_str(raw_record.get("renderedSha256")),

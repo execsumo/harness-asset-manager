@@ -7,6 +7,7 @@ from pathlib import Path
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.harness.contracts import CommandFileRenderFormat
 from harness_asset_manager.hashing import hash_file
+from harness_asset_manager.portable_paths import from_portable_path, to_portable_path
 
 from .models import SlashTargetId
 
@@ -20,10 +21,10 @@ class SlashCommandSyncRecord:
     content_hash: str | None
     render_format: CommandFileRenderFormat
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self, *, home: Path | None = None) -> dict[str, object]:
         return {
             "target": self.target,
-            "path": str(self.path),
+            "path": to_portable_path(self.path, home=home),
             "contentHash": self.content_hash,
             "renderFormat": self.render_format,
         }
@@ -33,8 +34,9 @@ SlashCommandSyncState = dict[str, dict[str, SlashCommandSyncRecord]]
 
 
 class SlashCommandSyncStateStore:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, home: Path | None = None) -> None:
         self.path = path
+        self.home = home
 
     @property
     def lock_path(self) -> Path:
@@ -43,7 +45,10 @@ class SlashCommandSyncStateStore:
     def load(self) -> SlashCommandSyncState:
         if not self.path.is_file():
             return {}
-        payload = json.loads(self.path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
         if not isinstance(payload, dict):
             return {}
         commands_payload = payload.get("commands", payload)
@@ -55,7 +60,7 @@ class SlashCommandSyncStateStore:
                 continue
             records: dict[str, SlashCommandSyncRecord] = {}
             for target_id, raw_record in target_payload.items():
-                record = _parse_record(str(target_id), raw_record)
+                record = _parse_record(str(target_id), raw_record, home=self.home)
                 if record is not None:
                     records[record.target] = record
             if records:
@@ -68,7 +73,7 @@ class SlashCommandSyncStateStore:
             "version": SYNC_STATE_VERSION,
             "commands": {
                 command_name: {
-                    target_id: record.to_dict()
+                    target_id: record.to_dict(home=self.home)
                     for target_id, record in sorted(records.items())
                 }
                 for command_name, records in sorted(state.items())
@@ -113,16 +118,21 @@ class SlashCommandSyncStateStore:
         return records
 
 
-def _parse_record(target_id: str, raw_record: object) -> SlashCommandSyncRecord | None:
+def _parse_record(
+    target_id: str, raw_record: object, *, home: Path | None = None
+) -> SlashCommandSyncRecord | None:
     if not isinstance(raw_record, dict):
         return None
-    path = raw_record.get("path")
+    path_raw = raw_record.get("path")
     render_format = raw_record.get("renderFormat")
-    if not isinstance(path, str) or render_format not in {"frontmatter_markdown", "cursor_plaintext"}:
+    if not isinstance(path_raw, str) or render_format not in {"frontmatter_markdown", "cursor_plaintext"}:
+        return None
+    path = from_portable_path(path_raw, home=home)
+    if path is None:
         return None
     return SlashCommandSyncRecord(
         target=target_id,  # type: ignore[arg-type]
-        path=Path(path),
+        path=path,
         content_hash=raw_record.get("contentHash") if isinstance(raw_record.get("contentHash"), str) else None,
         render_format=render_format,  # type: ignore[arg-type]
     )

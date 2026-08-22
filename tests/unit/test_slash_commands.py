@@ -44,7 +44,7 @@ def _services(home: Path, root: Path):
     )
     targets = resolve_slash_targets(kernel)
     store = SlashCommandStore(SlashCommandStorePaths(root=root / "app" / "slash-commands", commands_dir=root / "app" / "slash-commands" / "commands"))
-    sync_state = SlashCommandSyncStateStore(root / "app" / "slash-commands" / "sync-state.json")
+    sync_state = SlashCommandSyncStateStore(root / "app" / "slash-commands" / "sync-state.json", home=home)
     path_policy = SlashCommandPathPolicy()
     read_models = SlashCommandReadModelService(store, sync_state, lambda: resolve_slash_targets(kernel), path_policy)
     queries = SlashCommandQueryService(read_models)
@@ -294,7 +294,7 @@ class SlashCommandStoreTests(unittest.TestCase):
             (home / ".codex").mkdir(parents=True)
             *_unused, store, sync_state, queries, mutations = _services(home, root)
             store.create_command(SlashCommand(name="code-review", description="d", prompt="$ARGUMENTS"))
-            outside = root / "outside.md"
+            outside = home / "outside.md"
             outside.write_text("outside", encoding="utf-8")
             sync_state.add_target(
                 "code-review",

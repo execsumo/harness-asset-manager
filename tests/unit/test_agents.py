@@ -191,7 +191,7 @@ class AgentsFixture(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         self.adapters = {"claude": self.adapter}
         snapshot = lambda: ((self.target,), self.adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
@@ -226,7 +226,7 @@ class CodexAgentTests(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         adapters = {"codex": self.adapter}
         snapshot = lambda: ((self.target,), adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
@@ -383,7 +383,7 @@ class HermesBestEffortHarnessTests(unittest.TestCase):
         self.store = AgentStore(self.store_root)
         adapters = {"hermes": AgentHarnessAdapter(self.target, self.store_root)}
         snapshot = lambda: ((self.target,), adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 

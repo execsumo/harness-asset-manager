@@ -220,7 +220,7 @@ def build_backend_container(
             commands_dir=paths.slash_command_commands_dir,
         )
     )
-    slash_command_sync_state = SlashCommandSyncStateStore(paths.slash_command_sync_state_path)
+    slash_command_sync_state = SlashCommandSyncStateStore(paths.slash_command_sync_state_path, home=app_home)
     slash_command_path_policy = SlashCommandPathPolicy()
     migrate_legacy_slash_commands(
         command_store=slash_command_store,
@@ -354,7 +354,7 @@ def build_backend_container(
     permissions_queries.set_reconcile(permissions_auto_adopt.reconcile)
 
     scaffold_service = ScaffoldService(paths)
-    agent_bindings = AgentBindingLedger(paths.bindings_ledger_path)
+    agent_bindings = AgentBindingLedger(paths.bindings_ledger_path, home=app_home)
 
     def resolve_agents_snapshot():
         # Re-resolved per call so toggling a harness in Settings takes effect at once.
