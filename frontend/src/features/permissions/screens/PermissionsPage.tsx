@@ -22,15 +22,15 @@ import { usePermissionsManagementController } from "../model/use-permissions-man
 
 const DETAIL_PARAM = "permission";
 
-
-
-const STATUS_LABELS: Record<PermissionsStatusFilter, string> = {
-  all: "All",
-  applied: "Applied",
-  "not-applied": "Not applied",
-  differs: "Differs",
-  untracked: "Untracked",
-};
+function statusLabels(copy: ReturnType<typeof usePermissionsCopy>): Record<PermissionsStatusFilter, string> {
+  return {
+    all: copy.inUse.filters.all,
+    applied: copy.inUse.filters.applied,
+    "not-applied": copy.inUse.filters.notApplied,
+    differs: copy.inUse.filters.differs,
+    untracked: copy.inUse.filters.untracked,
+  };
+}
 
 export default function PermissionsPage() {
   const {
@@ -58,6 +58,7 @@ export default function PermissionsPage() {
   const [search, setSearch] = useState("");
   const copy = usePermissionsCopy();
   const common = useCommonCopy();
+  const STATUS_LABELS = statusLabels(copy);
 
   // Status filter lives in the URL so sidebar deep-links (?status=untracked) work.
   const statusParam = searchParams.get("status");
@@ -158,15 +159,15 @@ export default function PermissionsPage() {
     <>
       <div className="page-chrome">
         <PageHeader
-          title="Permissions"
-          subtitle="Define denylist rules to restrict shell commands, file paths, and web domains across your harnesses."
+          title={copy.inUse.title}
+          subtitle={copy.inUse.subtitle}
           actions={
             <button
               type="button"
               className="action-pill action-pill--md action-pill--accent"
               onClick={() => setAddDialogOpen(true)}
             >
-              <Plus size={16} style={{ marginRight: "4px" }} />
+              <Plus size={16} />
               Add Permission
             </button>
           }
@@ -175,8 +176,8 @@ export default function PermissionsPage() {
           <FilterBar
             searchValue={search}
             onSearchChange={setSearch}
-            searchPlaceholder="Search pattern or scope..."
-            searchLabel="Search permissions"
+            searchPlaceholder={copy.inUse.searchPlaceholder}
+            searchLabel={copy.inUse.searchLabel}
             trailing={
               <SelectionMenu
                 value={statusFilter}
@@ -186,7 +187,7 @@ export default function PermissionsPage() {
                   meta: statusCounts[value],
                 }))}
                 active={statusFilter !== "all"}
-                ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
+                ariaLabel={copy.inUse.filters.aria(STATUS_LABELS[statusFilter])}
                 onChange={setStatusFilter}
               />
             }

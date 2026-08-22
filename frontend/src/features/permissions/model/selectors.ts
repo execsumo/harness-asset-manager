@@ -208,3 +208,82 @@ export function matrixCoverage(
     writable: addressable.size,
   };
 }
+
+export type PermissionsSortDirection = "asc" | "desc";
+export type PermissionsSortKey = "name" | "coverage" | { harness: string };
+
+export interface PermissionsSortState {
+  key: PermissionsSortKey;
+  direction: PermissionsSortDirection;
+}
+
+export function isPermissionsHarnessSortKey(key: PermissionsSortKey): key is { harness: string } {
+  return typeof key === "object" && key !== null && "harness" in key;
+}
+
+export function permissionsSortKeysEqual(a: PermissionsSortKey, b: PermissionsSortKey): boolean {
+  if (typeof a === "string" && typeof b === "string") return a === b;
+  if (isPermissionsHarnessSortKey(a) && isPermissionsHarnessSortKey(b)) return a.harness === b.harness;
+  return false;
+}
+
+const PERMISSIONS_HARNESS_STATE_PRIORITY: Record<PermissionsMatrixCellState, number> = {
+  enabled: 0,
+  disabled: 1,
+  different: 2,
+  observed: 2,
+  unavailable: 3,
+};
+
+function comparePermissionsByName(a: PermissionInventoryEntryDto, b: PermissionInventoryEntryDto): number {
+  const nameA = a.displayName || a.id;
+  const nameB = b.displayName || b.id;
+  return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+}
+
+export function sortPermissionsRows(
+  entries: PermissionInventoryEntryDto[],
+  columns: PermissionInventoryColumnDto[],
+  sort: PermissionsSortState,
+  copy: PermissionsCopy = permissionsCopy,
+): PermissionInventoryEntryDto[] {
+  const directionMultiplier = sort.direction === "asc" ? 1 : -1;
+  const next = entries.slice();
+
+  if (sort.key === "name") {
+    next.sort((a, b) => comparePermissionsByName(a, b) * directionMultiplier);
+    return next;
+  }
+
+  if (sort.key === "coverage") {
+    next.sort((a, b) => {
+      const aCoverage = matrixCoverage(a, columns).enabled;
+      const bCoverage = matrixCoverage(b, columns).enabled;
+      const diff = aCoverage - bCoverage;
+      if (diff !== 0) return diff * directionMultiplier;
+      return comparePermissionsByName(a, b);
+    });
+    return next;
+  }
+
+  const harness = sort.key.harness;
+  const column = columns.find((c) => c.harness === harness) ?? {
+    harness,
+    label: harness,
+    installed: true,
+    configPresent: true,
+    permissionsWritable: true,
+  };
+
+  next.sort((a, b) => {
+    const aCell = matrixCellFor(a, column, copy);
+    const bCell = matrixCellFor(b, column, copy);
+    const aPriority = PERMISSIONS_HARNESS_STATE_PRIORITY[aCell.state] ?? 4;
+    const bPriority = PERMISSIONS_HARNESS_STATE_PRIORITY[bCell.state] ?? 4;
+    const diff = aPriority - bPriority;
+    if (diff !== 0) return diff * directionMultiplier;
+    return comparePermissionsByName(a, b);
+  });
+
+  return next;
+}

@@ -1,8 +1,9 @@
 
 const englishPermissionsCopy = {
   inUse: {
-    title: "Permissions in use",
+    title: "Permissions",
     subtitle: "Apply a rule once across your harnesses, and resolve any that differ.",
+    adopt: "Adopt",
     searchPlaceholder: "Search by ID, decision, scope or pattern...",
     searchLabel: "Search permissions",
     loading: "Loading permissions",
@@ -12,10 +13,10 @@ const englishPermissionsCopy = {
     emptyBody: "Add a permission or enable one to see it here.",
     filters: {
       all: "All",
-      enabled: "Applied",
-      allHarnesses: "Applied everywhere",
-      unbound: "Not applied",
-      drifted: "Differs",
+      applied: "Applied",
+      notApplied: "Not applied",
+      differs: "Differs",
+      untracked: "Untracked",
       aria: (label: string) => `Filter: ${label}`,
     },
     uninstall: {

@@ -1,9 +1,10 @@
+import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 import {
   MatrixHarnessCellTarget,
-  MatrixHarnessHeader,
   MatrixHarnessIcon,
+  MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
@@ -13,7 +14,11 @@ import {
   matrixCellFor,
   matrixColumns,
   matrixCoverage,
+  permissionsSortKeysEqual,
+  sortPermissionsRows,
   type PermissionsMatrixCellModel,
+  type PermissionsSortKey,
+  type PermissionsSortState,
 } from "../model/selectors";
 import { PermissionsHarnessLogoStack } from "./PermissionsHarnessLogoStack";
 import { PermissionsStatusChip } from "./PermissionsStatusChip";
@@ -41,35 +46,74 @@ export function PermissionsMatrixView({
 }: PermissionsMatrixViewProps) {
   const copy = usePermissionsCopy();
   const displayColumns = matrixColumns({ columns });
+  const [sort, setSort] = useState<PermissionsSortState>({ key: "name", direction: "asc" });
+
+  const requestSort = (key: PermissionsSortKey) => {
+    setSort((current) => {
+      if (permissionsSortKeysEqual(current.key, key)) {
+        return { key, direction: current.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const sortedEntries = useMemo(
+    () => sortPermissionsRows(entries, displayColumns, sort, copy),
+    [entries, displayColumns, sort, copy],
+  );
 
   return (
     <MatrixTable
-      ariaLabel="Permissions Matrix"
+      ariaLabel="Permissions harness matrix"
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="104px"
-      hasCheckboxColumn={false}
-      minWidth="800px"
+      coverageColumnWidth="96px"
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--identity">Rule</th>
-          {displayColumns.map((column) => (
-            <MatrixHarnessHeader
-              key={column.harness}
-              label={column.label}
-              logoKey={column.logoKey}
-              harness={column.harness}
-            />
-          ))}
+          <MatrixSortableHeader
+            label="Rule"
+            align="identity"
+            active={permissionsSortKeysEqual(sort.key, "name")}
+            direction={sort.direction}
+            onClick={() => requestSort("name")}
+          />
+          {displayColumns.map((column) => {
+            const key: PermissionsSortKey = { harness: column.harness };
+            return (
+              <MatrixSortableHeader
+                key={column.harness}
+                label={column.label}
+                align="harness"
+                active={permissionsSortKeysEqual(sort.key, key)}
+                direction={sort.direction}
+                logoOnly
+                leading={
+                  <MatrixHarnessIcon
+                    label={column.label}
+                    logoKey={column.logoKey}
+                    harness={column.harness}
+                  />
+                }
+                srLabel={`Sort by ${column.label}`}
+                onClick={() => requestSort(key)}
+              />
+            );
+          })}
           <th className="matrix-table__th matrix-table__th--compact" aria-label="Harnesses">
             Harnesses
           </th>
-          <th className="matrix-table__th matrix-table__th--end">Status</th>
+          <MatrixSortableHeader
+            label="Active"
+            align="end"
+            active={permissionsSortKeysEqual(sort.key, "coverage")}
+            direction={sort.direction}
+            onClick={() => requestSort("coverage")}
+          />
         </tr>
       </thead>
       <tbody>
-        {entries.map((entry) => (
+        {sortedEntries.map((entry) => (
           <PermissionsMatrixRow
             key={entry.id}
             entry={entry}
@@ -163,12 +207,12 @@ function PermissionsMatrixRow({
             {pendingPermission ? (
               <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
             ) : null}
-            Adopt
+            {copy.inUse.adopt}
           </button>
         ) : (
           <span
             className="matrix-table__coverage"
-            aria-label={`Applied on ${coverage.enabled} of ${coverage.writable} harnesses`}
+            aria-label={`Coverage: ${coverage.enabled} / ${coverage.writable}`}
           >
             <span className="matrix-table__coverage-count">{coverage.enabled}</span>
             <span className="matrix-table__coverage-total" aria-hidden="true">
