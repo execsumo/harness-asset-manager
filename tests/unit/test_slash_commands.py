@@ -510,6 +510,41 @@ class SlashCommandDriftAutoRepairTests(unittest.TestCase):
 
             self.assertEqual(sync_state.load()["code-review"]["codex"].content_hash, before)
 
+    def test_repair_does_not_reenter_reconcile_per_repaired_command(self) -> None:
+        """Regression: one top-level reconcile must stay one reconcile pass.
+
+        The repair path builds its mutation payloads via ``queries.get_command``,
+        which triggers the wired reconcile again. Without the query service's
+        reentrancy guard each repaired command caused a full nested reconcile
+        pass (O(N^2) scans and N-deep recursion; unbounded if drift persists
+        across passes, e.g. under a concurrent external writer).
+        """
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            (home / ".codex").mkdir(parents=True)
+            store, _sync_state, mutations, auto_adopt, _journal = self._auto_adopt(root, home)
+            for name in ("cmd-a", "cmd-b", "cmd-c"):
+                store.create_command(SlashCommand(name=name, description="d", prompt="$ARGUMENTS"))
+                mutations.sync_command(name, targets=["codex"])
+                (home / ".codex" / "prompts" / f"{name}.md").write_text(
+                    "---\ndescription: Edited\n---\n\nEdited prompt\n", encoding="utf-8"
+                )
+
+            calls = {"n": 0}
+            real_reconcile = auto_adopt.reconcile
+
+            def counting_reconcile() -> None:
+                calls["n"] += 1
+                real_reconcile()
+
+            mutations.queries.set_reconcile(counting_reconcile)
+            real_reconcile()
+
+            self.assertEqual(calls["n"], 1)
+            for name in ("cmd-a", "cmd-b", "cmd-c"):
+                self.assertEqual(store.require_command(name).description, "Edited")
+
     def test_reconcile_is_idempotent(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

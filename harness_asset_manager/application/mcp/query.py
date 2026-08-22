@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 
 from harness_asset_manager.errors import MutationError
@@ -41,13 +42,27 @@ class McpQueryService:
         self.availability_probe = availability_probe or McpAvailabilityProbe()
         self._availability_cache = availability_cache if availability_cache is not None else {}
         self._reconcile = reconcile
+        # Reentrancy guard, per thread (mirrors SkillsQueryService). Reconcile does
+        # not currently read back through this service, but the wiring is identical
+        # to the slash-commands family where that assumption broke; keep the
+        # invariant structural. Must be thread-local: sync API endpoints run in a
+        # threadpool over one shared service instance.
+        self._reconcile_state = threading.local()
 
     def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
         self._reconcile = reconcile
 
-    def list_servers(self) -> dict[str, object]:
-        if self._reconcile is not None:
+    def _reconcile_once(self) -> None:
+        if self._reconcile is None or getattr(self._reconcile_state, "active", False):
+            return
+        self._reconcile_state.active = True
+        try:
             self._reconcile()
+        finally:
+            self._reconcile_state.active = False
+
+    def list_servers(self) -> dict[str, object]:
+        self._reconcile_once()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         return inventory_payload(
@@ -59,8 +74,7 @@ class McpQueryService:
         )
 
     def get_server(self, name: str) -> dict[str, object]:
-        if self._reconcile is not None:
-            self._reconcile()
+        self._reconcile_once()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         visible_scans = self.read_models.visible_scans(snapshot)
@@ -82,8 +96,7 @@ class McpQueryService:
         raise MutationError(f"unknown mcp server: {name}", status=404)
 
     def check_availability(self, name: str) -> dict[str, object]:
-        if self._reconcile is not None:
-            self._reconcile()
+        self._reconcile_once()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         entry = next((item for item in inventory.entries if item.name == name), None)
@@ -99,8 +112,7 @@ class McpQueryService:
         }
 
     def list_unmanaged_by_server(self) -> dict[str, object]:
-        if self._reconcile is not None:
-            self._reconcile()
+        self._reconcile_once()
         if self.planner is None:
             raise RuntimeError("unmanaged MCP planner is not configured")
         snapshot = self.read_models.snapshot()

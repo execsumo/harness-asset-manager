@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 
 from harness_asset_manager.errors import MutationError
@@ -20,13 +21,27 @@ class HooksQueryService:
     ) -> None:
         self.read_models = read_models
         self._reconcile = reconcile
+        # Reentrancy guard, per thread (mirrors SkillsQueryService). Reconcile does
+        # not currently read back through this service, but the wiring is identical
+        # to the slash-commands family where that assumption broke; keep the
+        # invariant structural. Must be thread-local: sync API endpoints run in a
+        # threadpool over one shared service instance.
+        self._reconcile_state = threading.local()
 
     def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
         self._reconcile = reconcile
 
-    def list_hooks(self) -> dict[str, object]:
-        if self._reconcile is not None:
+    def _reconcile_once(self) -> None:
+        if self._reconcile is None or getattr(self._reconcile_state, "active", False):
+            return
+        self._reconcile_state.active = True
+        try:
             self._reconcile()
+        finally:
+            self._reconcile_state.active = False
+
+    def list_hooks(self) -> dict[str, object]:
+        self._reconcile_once()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         return inventory_payload(
@@ -35,8 +50,7 @@ class HooksQueryService:
         )
 
     def get_hook(self, id: str) -> dict[str, object]:
-        if self._reconcile is not None:
-            self._reconcile()
+        self._reconcile_once()
         snapshot = self.read_models.snapshot()
         inventory = self._inventory(snapshot.harness_scans)
         visible_scans = self.read_models.visible_scans(snapshot)

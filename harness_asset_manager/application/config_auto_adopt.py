@@ -5,6 +5,20 @@ from collections.abc import Callable
 
 from harness_asset_manager.application.auto_adopt import record_auto_adopt
 from harness_asset_manager.application.mutation_audit import MutationAuditJournal
+from harness_asset_manager.errors import MutationError
+
+
+def _is_already_managed(error: Exception) -> bool:
+    """True when a reconcile lost a race with another concurrent reconcile.
+
+    Every read endpoint runs reconcile over one shared service instance in a
+    threadpool, so two readers can decide to adopt the same unmanaged entry at
+    the same time. The loser hits the mutation service's ``already managed`` 409
+    after the winner has already adopted (and invalidated the read models). That
+    is the desired outcome, not a failure — recording it as a failed auto-adopt
+    event would pollute the Activity trail with errors for work that succeeded.
+    """
+    return isinstance(error, MutationError) and error.status == 409
 
 
 class ObservedConfigAutoAdoptService:
@@ -70,13 +84,14 @@ class ObservedConfigAutoAdoptService:
                                     error_type=error.__class__.__name__,
                                 )
             except Exception as error:  # noqa: BLE001 — leave ambiguous/failed entries for review
-                record_auto_adopt(
-                    self.journal,
-                    family=self.family,
-                    ref=ref,
-                    outcome="failed",
-                    error_type=error.__class__.__name__,
-                )
+                if not _is_already_managed(error):
+                    record_auto_adopt(
+                        self.journal,
+                        family=self.family,
+                        ref=ref,
+                        outcome="failed",
+                        error_type=error.__class__.__name__,
+                    )
                 continue
             record_auto_adopt(self.journal, family=self.family, ref=ref)
 
@@ -116,13 +131,14 @@ class McpAutoAdoptService:
                 if isinstance(result, dict) and result.get("ok") is False:
                     continue
             except Exception as error:  # noqa: BLE001 — preserve the unmanaged entry for review
-                record_auto_adopt(
-                    self.journal,
-                    family="mcp",
-                    ref=group.name,
-                    outcome="failed",
-                    error_type=error.__class__.__name__,
-                )
+                if not _is_already_managed(error):
+                    record_auto_adopt(
+                        self.journal,
+                        family="mcp",
+                        ref=group.name,
+                        outcome="failed",
+                        error_type=error.__class__.__name__,
+                    )
                 continue
             record_auto_adopt(
                 self.journal,
