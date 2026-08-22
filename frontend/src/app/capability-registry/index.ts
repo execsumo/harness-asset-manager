@@ -4,12 +4,13 @@ export {
   invalidateOverviewData,
   useOverviewData,
   useOverviewModel,
-  type OverviewExtensionKind,
+  type OverviewCoverageCell,
+  type OverviewHarnessAvailabilityIssue,
+  type OverviewHarnessCellKey,
   type OverviewHarnessRow,
-  type OverviewMarketplaceEntry,
   type OverviewModel,
   type OverviewReviewItem,
-  type OverviewStats,
+  type OverviewShortcut,
 } from "./overview";
 export {
   useSidebarModel,

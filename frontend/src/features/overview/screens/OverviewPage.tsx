@@ -8,31 +8,37 @@ import {
   invalidateOverviewData,
   useOverviewData,
 } from "../../../app/capability-registry";
-import { ExtensionPortfolio } from "../components/ExtensionPortfolio";
 import { HarnessCoverageMap } from "../components/HarnessCoverageMap";
-import { MarketplacePanel } from "../components/MarketplacePanel";
+import { QuickLinks } from "../components/QuickLinks";
 import { ReviewQueue } from "../components/ReviewQueue";
-import { StatisticsBand } from "../components/StatisticsBand";
 import { useOverviewCopy } from "../i18n";
 
 export default function OverviewPage() {
   const queryClient = useQueryClient();
-  const { skillsQuery, slashCommandsQuery, mcpQuery, model } = useOverviewData();
+  const {
+    skillsQuery,
+    slashCommandsQuery,
+    mcpQuery,
+    hooksQuery,
+    permissionsQuery,
+    agentsQuery,
+    model,
+  } = useOverviewData();
   const [refreshing, setRefreshing] = useState(false);
   const copy = useOverviewCopy();
   const common = useCommonCopy();
 
-  const skillsLoading = skillsQuery.isPending && !skillsQuery.data;
-  const slashCommandsLoading = slashCommandsQuery.isPending && !slashCommandsQuery.data;
-  const mcpLoading = mcpQuery.isPending && !mcpQuery.data;
-  const loading = skillsLoading || slashCommandsLoading || mcpLoading;
-  const bothFailed =
-    skillsQuery.isError &&
-    slashCommandsQuery.isError &&
-    mcpQuery.isError &&
-    !skillsQuery.data &&
-    !slashCommandsQuery.data &&
-    !mcpQuery.data;
+  const queries = [
+    skillsQuery,
+    slashCommandsQuery,
+    mcpQuery,
+    hooksQuery,
+    permissionsQuery,
+    agentsQuery,
+  ];
+  const loading = queries.some((query) => query.isPending && !query.data);
+  const allFailed =
+    queries.every((query) => query.isError && !query.data);
 
   async function refreshOverview() {
     setRefreshing(true);
@@ -49,7 +55,7 @@ export default function OverviewPage() {
         <PageHeader title={copy.screen.title} />
       </div>
 
-      {bothFailed ? (
+      {allFailed ? (
         <div className="panel-state overview-error-state">
           <span>{copy.screen.unableToLoadOverview}</span>
           <button
@@ -63,28 +69,45 @@ export default function OverviewPage() {
         </div>
       ) : (
         <div className="overview-page">
-          {skillsQuery.isError && !skillsQuery.data ? (
-            <ErrorBanner message={copy.screen.unableToLoadSkills(errorMessage(skillsQuery.error))} />
-          ) : null}
-          {slashCommandsQuery.isError && !slashCommandsQuery.data ? (
-            <ErrorBanner message={copy.screen.unableToLoadSlashCommands(errorMessage(slashCommandsQuery.error))} />
-          ) : null}
-          {mcpQuery.isError && !mcpQuery.data ? (
-            <ErrorBanner message={copy.screen.unableToLoadMcpServers(errorMessage(mcpQuery.error))} />
-          ) : null}
+          <ErrorBanners
+            errors={[
+              { query: skillsQuery, message: copy.screen.unableToLoadSkills },
+              { query: slashCommandsQuery, message: copy.screen.unableToLoadSlashCommands },
+              { query: mcpQuery, message: copy.screen.unableToLoadMcpServers },
+              { query: hooksQuery, message: copy.screen.unableToLoadHooks },
+              { query: permissionsQuery, message: copy.screen.unableToLoadPermissions },
+              { query: agentsQuery, message: copy.screen.unableToLoadAgents },
+            ]}
+          />
 
-          <StatisticsBand stats={model.stats} loading={loading} />
+          <HarnessCoverageMap rows={model.harnessRows} loading={loading} />
           <div className="overview-dashboard-grid">
-            <div className="overview-dashboard-column overview-dashboard-column--primary">
-              <ExtensionPortfolio extensions={model.extensions} loading={loading} />
-              <HarnessCoverageMap rows={model.harnessRows} loading={loading} />
-            </div>
-            <div className="overview-dashboard-column overview-dashboard-column--secondary">
-              <MarketplacePanel entries={model.marketplaceEntries} />
-              <ReviewQueue items={model.reviewItems} loading={loading} />
-            </div>
+            <ReviewQueue items={model.reviewItems} loading={loading} />
+            <QuickLinks shortcuts={model.shortcuts} />
           </div>
         </div>
+      )}
+    </>
+  );
+}
+
+interface QueryErrorSource {
+  isError: boolean;
+  data?: unknown;
+  error: unknown;
+}
+
+function ErrorBanners({
+  errors,
+}: {
+  errors: Array<{ query: QueryErrorSource; message: (text: string) => string }>;
+}) {
+  return (
+    <>
+      {errors.map(({ query, message }, index) =>
+        query.isError && !query.data ? (
+          <ErrorBanner key={index} message={message(errorMessage(query.error))} />
+        ) : null,
       )}
     </>
   );

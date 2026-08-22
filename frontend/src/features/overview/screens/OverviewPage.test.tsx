@@ -111,6 +111,73 @@ function mcpInventoryPayload() {
   };
 }
 
+function hooksInventoryPayload() {
+  return {
+    columns: [
+      {
+        harness: "codex",
+        label: "Codex",
+        logoKey: "codex",
+        installed: true,
+        configPresent: true,
+        hooksWritable: true,
+        hooksUnavailableReason: null,
+      },
+      {
+        harness: "claude",
+        label: "Claude",
+        logoKey: "claude",
+        installed: true,
+        configPresent: true,
+        hooksWritable: false,
+        hooksUnavailableReason: "Claude hook writes are unavailable",
+      },
+    ],
+    entries: [
+      {
+        id: "pre-commit",
+        displayName: "Pre-commit",
+        kind: "managed",
+        canEnable: true,
+        enabledStatus: "enabled",
+        spec: null,
+        sightings: [
+          { harness: "codex", state: "managed", driftDetail: null },
+          { harness: "claude", state: "drifted", driftDetail: null },
+        ],
+      },
+    ],
+    issues: [],
+  };
+}
+
+function agentsInventoryPayload() {
+  return {
+    columns: [{ harness: "codex", label: "Codex", logoKey: "codex", installed: true }],
+    entries: [
+      {
+        ref: "planner",
+        name: "planner",
+        description: "Planning agent.",
+        kind: "managed",
+        harnessPath: null,
+        bindings: [{ harness: "codex", state: "enabled", detail: null }],
+        actions: { canAdopt: false, canDelete: true },
+      },
+      {
+        ref: "helper",
+        name: "helper",
+        description: "Local helper.",
+        kind: "unmanaged",
+        harnessPath: "/tmp/.codex/agents/helper.md",
+        bindings: [{ harness: "codex", state: "enabled", detail: null }],
+        actions: { canAdopt: true, canDelete: false },
+      },
+    ],
+    issues: [],
+  };
+}
+
 function slashCommandsPayload() {
   return {
     storePath: "/tmp/home/Library/Application Support/harnessam/slash-commands/commands",
@@ -148,47 +215,33 @@ function stubOverviewApi({
   skills = skillsPayload(),
   slashCommands = slashCommandsPayload(),
   mcp = mcpInventoryPayload(),
+  hooks = hooksInventoryPayload(),
+  permissions = { columns: [], entries: [], issues: [] },
+  agents = agentsInventoryPayload(),
 }: {
   skills?: unknown;
   slashCommands?: unknown;
   mcp?: unknown;
+  hooks?: unknown;
+  permissions?: unknown;
+  agents?: unknown;
 } = {}) {
   fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
-    if (url === "/api/skills") return skills instanceof Error ? errorJson(skills.message) : okJson(skills);
-    if (url === "/api/slash-commands") {
-      return slashCommands instanceof Error ? errorJson(slashCommands.message) : okJson(slashCommands);
-    }
-    if (url === "/api/mcp/servers") return mcp instanceof Error ? errorJson(mcp.message) : okJson(mcp);
+    const respond = (payload: unknown) =>
+      payload instanceof Error ? errorJson(payload.message) : okJson(payload);
+    if (url === "/api/skills") return respond(skills);
+    if (url === "/api/slash-commands") return respond(slashCommands);
+    if (url === "/api/mcp/servers") return respond(mcp);
+    if (url === "/api/hooks") return respond(hooks);
+    if (url === "/api/permissions") return respond(permissions);
+    if (url === "/api/agents") return respond(agents);
     return okJson({});
   });
 }
 
 function section(name: string): HTMLElement {
   return screen.getByRole("heading", { name }).closest("section") as HTMLElement;
-}
-
-function removedOverviewCopy(): string[] {
-  return [
-    ["at a", "glance"].join(" "),
-    ["Manage", "by", "function"].join(" "),
-    ["Capability", "portfolio"].join(" "),
-    ["Review", "queue"].join(" "),
-    ["Harness", "coverage"].join(" "),
-    ["Each", "capability"].join(" "),
-    ["Server", "configs", "Skill", "Manager"].join(" "),
-    ["Preview-only", "discovery"].join(" "),
-    "Skills and MCP servers in the catalog",
-    "Observed destinations across skills and MCP",
-  ];
-}
-
-function removedMarketplaceFacts(): string[] {
-  return [
-    ["Installable", "skills"].join(" "),
-    ["Source", "install"].join(" "),
-    ["External", "tools"].join(" "),
-  ];
 }
 
 describe("OverviewPage", () => {
@@ -201,84 +254,63 @@ describe("OverviewPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders the portfolio statistics band", async () => {
+  it("renders the active-harnesses coverage table across all capabilities", async () => {
     stubOverviewApi();
     renderOverview();
 
-    const stats = await screen.findByLabelText("Inventory statistics");
-    expect(within(stats).getByText("In use")).toBeInTheDocument();
-    expect(within(stats).getAllByText("Needs review")).toHaveLength(1);
-    expect(within(stats).getByText("Harnesses")).toBeInTheDocument();
-    await within(stats).findByText("2 skills · 1 command · 2 MCP");
-    expect(within(stats).getByText("adoption · config · inventory")).toBeInTheDocument();
-    expect(within(stats).getByText("2 observed")).toBeInTheDocument();
-    expect(screen.queryByText(["harness-asset-manager", "status"].join(" "))).not.toBeInTheDocument();
-    for (const copy of removedOverviewCopy()) {
-      expect(screen.queryByText(copy, { exact: false })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Codex")).toBeInTheDocument());
+    const coverage = section("Active harnesses");
+    const codexRow = within(coverage).getByText("Codex").closest(".overview-coverage-row") as HTMLElement;
+    const claudeRow = within(coverage).getByText("Claude").closest(".overview-coverage-row") as HTMLElement;
+
+    for (const header of ["Harness", "Skills", "Cmds", "MCP", "Hooks", "Perms", "Agents", "Review"]) {
+      expect(within(coverage).getByText(header)).toBeInTheDocument();
     }
+
+    // Codex: 2 enabled skills (+1 found), 0 synced commands (+1 review), 2 managed
+    // servers, 1 hook, 1 agent (+1 unmanaged) → 3 items to review.
+    expect(within(codexRow).getAllByText("2")).toHaveLength(2);
+    expect(within(codexRow).getAllByText("+1")).toHaveLength(3);
+    expect(within(codexRow).getAllByText("1")).toHaveLength(2);
+    expect(within(codexRow).getByText("3")).toBeInTheDocument();
+
+    // Claude: 1 enabled skill, drifted + unmanaged MCP (+2), drifted hook (+1),
+    // unwritable MCP and hooks → 3 items to review.
+    expect(within(claudeRow).getByText("1")).toBeInTheDocument();
+    expect(within(claudeRow).getByText("+2")).toBeInTheDocument();
+    expect(within(claudeRow).getByText("3")).toBeInTheDocument();
+    expect(
+      within(claudeRow).getByLabelText("MCP: Claude MCP writes are unavailable"),
+    ).toBeInTheDocument();
+    expect(
+      within(claudeRow).getByLabelText("Hooks: Claude hook writes are unavailable"),
+    ).toBeInTheDocument();
+
+    // The coverage table is the first section on the page.
+    const firstSection = document.querySelector(".overview-page > section");
+    expect(firstSection).toContainElement(coverage);
   });
 
-  it("links each extension to its in-use and needs-review surfaces", async () => {
+  it("renders compact manage and discover shortcuts", async () => {
     stubOverviewApi();
     renderOverview();
 
-    const extensions = await screen.findByRole("heading", { name: "Extensions" });
-    expect(extensions).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: ["Manage", "by", "function"].join(" ") })).not.toBeInTheDocument();
+    const shortcuts = await screen.findByRole("heading", { name: "Shortcuts" });
+    expect(shortcuts).toBeInTheDocument();
 
-    const skillsCard = screen.getByRole("heading", { name: "Skills" }).closest("article") as HTMLElement;
-    await waitFor(() => expect(within(skillsCard).getByText("2 in use")).toBeInTheDocument());
-    expect(within(skillsCard).getByText("1 review")).toBeInTheDocument();
-    expect(within(skillsCard).getByRole("link", { name: "In use" })).toHaveAttribute("href", "/skills/use");
-    expect(within(skillsCard).getByRole("link", { name: "Needs review" })).toHaveAttribute("href", "/skills/review");
-    expect(within(skillsCard).queryByRole("link", { name: "Marketplace" })).not.toBeInTheDocument();
-
-    const slashCard = screen.getByRole("heading", { name: "Slash Commands" }).closest("article") as HTMLElement;
-    expect(within(slashCard).getByText("1 in use")).toBeInTheDocument();
-    expect(within(slashCard).getByText("1 review")).toBeInTheDocument();
-    expect(within(slashCard).getByRole("link", { name: "In use" })).toHaveAttribute("href", "/slash-commands/use");
-    expect(within(slashCard).getByRole("link", { name: "Needs review" })).toHaveAttribute("href", "/slash-commands/review");
-
-    const mcpCard = screen.getByRole("heading", { name: "MCP Servers" }).closest("article") as HTMLElement;
-    expect(within(mcpCard).getByText("2 in use")).toBeInTheDocument();
-    expect(within(mcpCard).getByText("4 review")).toBeInTheDocument();
-    expect(within(mcpCard).getByRole("link", { name: "In use" })).toHaveAttribute("href", "/mcp");
-    expect(within(mcpCard).getByRole("link", { name: "Needs review" })).toHaveAttribute("href", "/mcp?status=untracked");
-    expect(within(mcpCard).queryByRole("link", { name: "Marketplace" })).not.toBeInTheDocument();
-
-    const extensionsSection = section("Extensions");
-    expect(within(extensionsSection).queryByRole("heading", { name: "CLIs" })).not.toBeInTheDocument();
-  });
-
-  it("renders marketplace discovery rows after extensions", async () => {
-    stubOverviewApi();
-    renderOverview();
-
-    const extensions = await screen.findByRole("heading", { name: "Extensions" });
-    const marketplace = screen.getByRole("heading", { name: "Discover" });
-    expect(extensions.compareDocumentPosition(marketplace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const primaryColumn = extensions.closest(".overview-dashboard-column--primary");
-    const secondaryColumn = marketplace.closest(".overview-dashboard-column--secondary");
-    expect(primaryColumn).not.toBeNull();
-    expect(secondaryColumn).not.toBeNull();
-    expect(primaryColumn).toContainElement(screen.getByRole("heading", { name: "Active harnesses" }).closest("section"));
-    expect(secondaryColumn).toContainElement(screen.getByRole("heading", { name: "Review" }).closest("section"));
-
-    const marketplaceSection = section("Discover");
-    const skillsRow = within(marketplaceSection).getByRole("heading", { name: "Skills Marketplace" }).closest("article") as HTMLElement;
-    expect(within(skillsRow).getByText("skills.sh")).toBeInTheDocument();
-    expect(within(skillsRow).getByRole("link", { name: "Browse" })).toHaveAttribute("href", "/marketplace/skills");
-
-    const mcpRow = within(marketplaceSection).getByRole("heading", { name: "MCP Marketplace" }).closest("article") as HTMLElement;
-    expect(within(mcpRow).getByText("MCP Registry")).toBeInTheDocument();
-    expect(within(mcpRow).getByRole("link", { name: "Browse" })).toHaveAttribute("href", "/marketplace/mcp");
-
-    const cliRow = within(marketplaceSection).getByRole("heading", { name: "CLI Marketplace" }).closest("article") as HTMLElement;
-    expect(within(cliRow).getByText("CLIs.dev")).toBeInTheDocument();
-    expect(within(cliRow).getByText("Preview only")).toBeInTheDocument();
-    expect(within(cliRow).getByRole("link", { name: "Browse" })).toHaveAttribute("href", "/marketplace/clis");
-    for (const removedText of removedMarketplaceFacts()) {
-      expect(screen.queryByText(removedText)).not.toBeInTheDocument();
+    const shortcutsSection = shortcuts.closest("section") as HTMLElement;
+    for (const [label, href] of [
+      ["Skills", "/skills/use"],
+      ["Slash Commands", "/slash-commands/use"],
+      ["MCP Servers", "/mcp"],
+      ["Hooks", "/hooks"],
+      ["Permissions", "/permissions"],
+      ["Agents", "/agents"],
+      ["Skills Marketplace", "/marketplace/skills"],
+      ["MCP Marketplace", "/marketplace/mcp"],
+      ["CLI Marketplace", "/marketplace/clis"],
+    ] as const) {
+      expect(within(shortcutsSection).getByRole("link", { name: label })).toHaveAttribute("href", href);
     }
   });
 
@@ -299,25 +331,7 @@ describe("OverviewPage", () => {
     expect(within(queue).getByRole("link", { name: /MCP harness unavailable/i })).toBeInTheDocument();
   });
 
-  it("renders compact harness coverage rows with skill, MCP, and different-config counts", async () => {
-    stubOverviewApi();
-    renderOverview();
-
-    await waitFor(() => expect(screen.getByText("Codex")).toBeInTheDocument());
-    const coverage = section("Active harnesses");
-    const codexRow = within(coverage).getByText("Codex").closest(".overview-coverage-row") as HTMLElement;
-    const claudeRow = within(coverage).getByText("Claude").closest(".overview-coverage-row") as HTMLElement;
-
-    expect(within(coverage).queryByText("Different")).not.toBeInTheDocument();
-    expect(within(coverage).queryByText("Status")).not.toBeInTheDocument();
-    expect(within(coverage).getByText("Needs review")).toBeInTheDocument();
-    expect(within(codexRow).getAllByText("2")).toHaveLength(2);
-    expect(within(codexRow).getByText("1")).toBeInTheDocument();
-    expect(within(claudeRow).getByText("1 different")).toBeInTheDocument();
-    expect(within(claudeRow).getByLabelText("Claude MCP writes are unavailable")).toBeInTheDocument();
-  });
-
-  it("keeps usable MCP data visible when skills fail", async () => {
+  it("keeps usable data visible when skills fail", async () => {
     stubOverviewApi({
       skills: new Error("Skills unavailable"),
       mcp: {
@@ -340,7 +354,22 @@ describe("OverviewPage", () => {
     await waitFor(() =>
       expect(screen.getByText("Unable to load skills: Skills unavailable")).toBeInTheDocument(),
     );
-    expect(screen.getByRole("heading", { name: "Extensions" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Active harnesses" })).toBeInTheDocument();
     expect(screen.queryByText("Unable to load overview data.")).not.toBeInTheDocument();
+  });
+
+  it("shows the full-page error state when every inventory fails", async () => {
+    stubOverviewApi({
+      skills: new Error("boom"),
+      slashCommands: new Error("boom"),
+      mcp: new Error("boom"),
+      hooks: new Error("boom"),
+      permissions: new Error("boom"),
+      agents: new Error("boom"),
+    });
+    renderOverview();
+
+    await waitFor(() => expect(screen.getByText("Unable to load overview data.")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
   });
 });

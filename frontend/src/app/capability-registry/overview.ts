@@ -41,51 +41,23 @@ import {
   type PermissionInventoryDto,
 } from "../../features/permissions/public";
 
-export interface OverviewStatMetric {
-  value: number | null;
-  detail: string;
-}
-
-export interface OverviewStats {
-  inUse: OverviewStatMetric;
-  needsReview: OverviewStatMetric;
-  harnesses: OverviewStatMetric;
-}
-
-export interface OverviewExtensionAction {
+export interface OverviewShortcut {
+  key: string;
   label: string;
   to: string;
-  primary?: boolean;
+  group: "manage" | "discover";
 }
 
-export interface OverviewExtensionFact {
-  label: string;
-  value: number | null;
-  tone?: "normal" | "warning";
+export interface OverviewCoverageCell {
+  /** Items actively managed / synced / enabled on this harness. */
+  active: number;
+  /** Items found on this harness that need a decision (unmanaged, drifted, …). */
+  review: number;
 }
 
-export interface OverviewExtensionKind {
-  key: "skills" | "slash-commands" | "mcp" | "hooks" | "permissions" | "agents";
-  label: string;
-  iconKey: "skills" | "slash-commands" | "mcp" | "agents";
-  facts: OverviewExtensionFact[];
-  actions: OverviewExtensionAction[];
-}
-
-export interface OverviewMarketplaceAction {
-  label: string;
-  to: string;
-  primary?: boolean;
-}
-
-export interface OverviewMarketplaceEntry {
-  key: "skills" | "mcp" | "clis";
-  label: string;
-  iconKey: "skills" | "mcp" | "clis";
-  sourceLabel: string;
-  badge?: string;
-  tone?: "normal" | "accent";
-  action: OverviewMarketplaceAction;
+export interface OverviewHarnessAvailabilityIssue {
+  capability: "MCP" | "Hooks" | "Permissions";
+  reason: string;
 }
 
 export interface OverviewReviewItem {
@@ -97,23 +69,24 @@ export interface OverviewReviewItem {
   tone: "neutral" | "warning" | "danger";
 }
 
+export type OverviewHarnessCellKey =
+  | "skills"
+  | "commands"
+  | "mcp"
+  | "hooks"
+  | "permissions"
+  | "agents";
+
 export interface OverviewHarnessRow {
   harness: string;
   label: string;
   logoKey: string | null;
-  enabledSkills: number;
-  foundSkills: number;
-  managedMcpServers: number;
-  differentConfigMcpServers: number;
-  unmanagedMcpServers: number;
-  mcpWritable: boolean | null;
-  mcpUnavailableReason: string | null;
+  cells: Record<OverviewHarnessCellKey, OverviewCoverageCell>;
+  availabilityIssues: OverviewHarnessAvailabilityIssue[];
 }
 
 export interface OverviewModel {
-  stats: OverviewStats;
-  extensions: OverviewExtensionKind[];
-  marketplaceEntries: OverviewMarketplaceEntry[];
+  shortcuts: OverviewShortcut[];
   reviewItems: OverviewReviewItem[];
   harnessRows: OverviewHarnessRow[];
 }
@@ -184,16 +157,9 @@ export function buildOverviewModel(
   agents: AgentInventoryDto | null | undefined,
   copy: OverviewCopy = overviewCopy,
 ): OverviewModel {
-  const inUseSkills = skills?.summary.managed ?? null;
   const skillsToReview = skills?.summary.unmanaged ?? null;
-  const inUseSlashCommands = slashCommands?.commands?.length ?? null;
   const slashCommandsToReview = slashCommands?.reviewCommands?.length ?? null;
-  const inUseMcpServers = mcp?.entries?.filter((entry) => entry.kind === "managed").length ?? null;
   const mcpConfigsToReview = mcp?.entries?.filter((entry) => entry.kind === "unmanaged").length ?? null;
-  const inUseHooks = hooks?.entries?.filter((entry) => entry.kind === "managed").length ?? null;
-  const inUsePermissions = permissions?.entries?.filter((entry) => entry.kind === "managed").length ?? null;
-  const inUseAgents = agents?.entries?.filter((entry) => entry.kind === "managed").length ?? null;
-  const agentsToReview = agents?.entries?.filter((entry) => entry.kind === "unmanaged").length ?? null;
   const differentConfigMcpServers =
     mcp?.entries?.filter(
       (entry) =>
@@ -211,233 +177,28 @@ export function buildOverviewModel(
     unavailableHarnesses,
     copy,
   });
-  const harnessRows = buildHarnessRows(skills, mcp);
-  const hasOverviewData = Boolean(skills || slashCommands || mcp || hooks || permissions || agents);
 
   return {
-    stats: buildStats({
-      inUseSkills,
-      inUseSlashCommands,
-      inUseMcpServers,
-      inUseHooks,
-      inUsePermissions,
-      inUseAgents,
-      needsReview: hasOverviewData ? reviewItems.reduce((total, item) => total + item.count, 0) : null,
-      harnesses: hasOverviewData ? harnessRows.length : null,
-      copy,
-    }),
-    extensions: buildExtensions({
-      inUseSkills,
-      inUseSlashCommands,
-      skillsToReview,
-      slashCommandsToReview,
-      inUseMcpServers,
-      mcpConfigsToReview,
-      differentConfigMcpServers,
-      inventoryIssues,
-      unavailableHarnesses,
-      inUseHooks,
-      inUsePermissions,
-      inUseAgents,
-      agentsToReview,
-      copy,
-    }),
-    marketplaceEntries: buildMarketplaceEntries(copy),
+    shortcuts: buildShortcuts(copy),
     reviewItems,
-    harnessRows,
+    harnessRows: buildHarnessRows(skills, slashCommands, mcp, hooks, permissions, agents, copy),
   };
 }
 
-function buildStats({
-  inUseSkills,
-  inUseSlashCommands,
-  inUseMcpServers,
-  inUseHooks,
-  inUsePermissions,
-  inUseAgents,
-  needsReview,
-  harnesses,
-  copy,
-}: {
-  inUseSkills: number | null;
-  inUseSlashCommands: number | null;
-  inUseMcpServers: number | null;
-  inUseHooks: number | null;
-  inUsePermissions: number | null;
-  inUseAgents: number | null;
-  needsReview: number | null;
-  harnesses: number | null;
-  copy: OverviewCopy;
-}): OverviewStats {
-  return {
-    inUse: {
-      value: sumKnown(inUseSkills, inUseSlashCommands, inUseMcpServers, inUseHooks, inUsePermissions, inUseAgents),
-      detail: copy.stats.inUseDetail(inUseSkills, inUseSlashCommands, inUseMcpServers),
-    },
-    needsReview: {
-      value: needsReview,
-      detail: copy.stats.needsReviewDetail,
-    },
-    harnesses: {
-      value: harnesses,
-      detail: copy.stats.harnessesDetail(harnesses),
-    },
-  };
-}
-
-function sumKnown(...values: Array<number | null>): number | null {
-  const known = values.filter((value): value is number => value != null);
-  if (known.length === 0) {
-    return null;
-  }
-  return known.reduce((total, value) => total + value, 0);
-}
-
-function buildExtensions({
-  inUseSkills,
-  inUseSlashCommands,
-  skillsToReview,
-  slashCommandsToReview,
-  inUseMcpServers,
-  mcpConfigsToReview,
-  differentConfigMcpServers,
-  inventoryIssues,
-  unavailableHarnesses,
-  inUseHooks,
-  inUsePermissions,
-  inUseAgents,
-  agentsToReview,
-  copy,
-}: {
-  inUseSkills: number | null;
-  inUseSlashCommands: number | null;
-  skillsToReview: number | null;
-  slashCommandsToReview: number | null;
-  inUseMcpServers: number | null;
-  mcpConfigsToReview: number | null;
-  differentConfigMcpServers: number | null;
-  inventoryIssues: number | null;
-  unavailableHarnesses: number | null;
-  inUseHooks: number | null;
-  inUsePermissions: number | null;
-  inUseAgents: number | null;
-  agentsToReview: number | null;
-  copy: OverviewCopy;
-}): OverviewExtensionKind[] {
+function buildShortcuts(copy: OverviewCopy): OverviewShortcut[] {
   return [
-    {
-      key: "skills",
-      label: copy.extensions.skills,
-      iconKey: "skills",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUseSkills },
-        { label: copy.extensions.reviewFact, value: skillsToReview, tone: "warning" },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: skillsRoutes.inUse, primary: true },
-        { label: copy.stats.needsReview, to: skillsRoutes.needsReview },
-      ],
-    },
-    {
-      key: "slash-commands",
-      label: copy.extensions.slashCommands,
-      iconKey: "slash-commands",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUseSlashCommands },
-        { label: copy.extensions.reviewFact, value: slashCommandsToReview, tone: "warning" },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: slashCommandRoutes.inUse, primary: true },
-        { label: copy.stats.needsReview, to: slashCommandRoutes.needsReview },
-      ],
-    },
-    {
-      key: "mcp",
-      label: copy.extensions.mcpServers,
-      iconKey: "mcp",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUseMcpServers },
-        {
-          label: copy.extensions.reviewFact,
-          value: sumKnown(
-            mcpConfigsToReview,
-            differentConfigMcpServers,
-            inventoryIssues,
-            unavailableHarnesses,
-          ),
-          tone: "warning",
-        },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: mcpRoutes.inUse, primary: true },
-        { label: copy.stats.needsReview, to: mcpRoutes.needsReview },
-      ],
-    },
-    {
-      key: "hooks",
-      label: "Hooks",
-      iconKey: "mcp",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUseHooks },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: hooksRoutes.inUse, primary: true },
-      ],
-    },
-    {
-      key: "permissions",
-      label: "Permissions",
-      iconKey: "skills",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUsePermissions },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: permissionsRoutes.inUse, primary: true },
-      ],
-    },
-    {
-      key: "agents",
-      label: "Agents",
-      iconKey: "agents",
-      facts: [
-        { label: copy.extensions.inUseFact, value: inUseAgents },
-        { label: copy.extensions.reviewFact, value: agentsToReview, tone: "warning" },
-      ],
-      actions: [
-        { label: copy.stats.inUse, to: agentsRoutes.inUse, primary: true },
-        { label: copy.stats.needsReview, to: agentsRoutes.needsReview },
-      ],
-    },
+    { key: "manage-skills", label: copy.extensions.skills, to: skillsRoutes.inUse, group: "manage" },
+    { key: "manage-slash-commands", label: copy.extensions.slashCommands, to: slashCommandRoutes.inUse, group: "manage" },
+    { key: "manage-mcp", label: copy.extensions.mcpServers, to: mcpRoutes.inUse, group: "manage" },
+    { key: "manage-hooks", label: "Hooks", to: hooksRoutes.inUse, group: "manage" },
+    { key: "manage-permissions", label: "Permissions", to: permissionsRoutes.inUse, group: "manage" },
+    { key: "manage-agents", label: "Agents", to: agentsRoutes.inUse, group: "manage" },
+    { key: "discover-skills", label: copy.marketplace.skills, to: marketplaceRoutes.skills, group: "discover" },
+    { key: "discover-mcp", label: copy.marketplace.mcp, to: marketplaceRoutes.mcp, group: "discover" },
+    { key: "discover-clis", label: copy.marketplace.cli, to: marketplaceRoutes.clis, group: "discover" },
   ];
 }
 
-function buildMarketplaceEntries(copy: OverviewCopy): OverviewMarketplaceEntry[] {
-  return [
-    {
-      key: "skills",
-      label: copy.marketplace.skills,
-      iconKey: "skills",
-      sourceLabel: "skills.sh",
-      action: { label: copy.marketplace.browse, to: marketplaceRoutes.skills, primary: true },
-    },
-    {
-      key: "mcp",
-      label: copy.marketplace.mcp,
-      iconKey: "mcp",
-      sourceLabel: "MCP Registry",
-      action: { label: copy.marketplace.browse, to: marketplaceRoutes.mcp, primary: true },
-    },
-    {
-      key: "clis",
-      label: copy.marketplace.cli,
-      iconKey: "clis",
-      sourceLabel: "CLIs.dev",
-      badge: copy.marketplace.previewOnly,
-      tone: "accent",
-      action: { label: copy.marketplace.browse, to: marketplaceRoutes.clis, primary: true },
-    },
-  ];
-}
 
 function buildReviewItems({
   skillsToReview,
@@ -520,9 +281,26 @@ function buildReviewItems({
   return items;
 }
 
+function emptyCells(): Record<OverviewHarnessCellKey, OverviewCoverageCell> {
+  const cell = (): OverviewCoverageCell => ({ active: 0, review: 0 });
+  return {
+    skills: cell(),
+    commands: cell(),
+    mcp: cell(),
+    hooks: cell(),
+    permissions: cell(),
+    agents: cell(),
+  };
+}
+
 function buildHarnessRows(
   skills: SkillsWorkspaceData | null | undefined,
+  slashCommands: SlashCommandListDto | null | undefined,
   mcp: McpInventoryDto | null | undefined,
+  hooks: HookInventoryDto | null | undefined,
+  permissions: PermissionInventoryDto | null | undefined,
+  agents: AgentInventoryDto | null | undefined,
+  copy: OverviewCopy,
 ): OverviewHarnessRow[] {
   const harnesses = new Map<string, HarnessAccumulator>();
   let nextOrder = 0;
@@ -542,13 +320,8 @@ function buildHarnessRows(
       harness: args.harness,
       label: args.label ?? args.harness,
       logoKey: args.logoKey ?? null,
-      enabledSkills: 0,
-      foundSkills: 0,
-      managedMcpServers: 0,
-      differentConfigMcpServers: 0,
-      unmanagedMcpServers: 0,
-      mcpWritable: null,
-      mcpUnavailableReason: null,
+      cells: emptyCells(),
+      availabilityIssues: [],
       order: nextOrder,
     };
     nextOrder += 1;
@@ -556,6 +329,7 @@ function buildHarnessRows(
     return row;
   };
 
+  // Skills coverage.
   for (const column of skills?.harnessColumns ?? []) {
     ensureHarness({
       harness: column.harness,
@@ -563,7 +337,6 @@ function buildHarnessRows(
       logoKey: column.logoKey ?? column.harness,
     });
   }
-
   for (const row of skills?.rows ?? []) {
     for (const cell of row.cells) {
       const harness = ensureHarness({
@@ -571,37 +344,98 @@ function buildHarnessRows(
         label: cell.label,
         logoKey: cell.logoKey ?? cell.harness,
       });
-      if (cell.state === "enabled") harness.enabledSkills += 1;
-      if (cell.state === "found") harness.foundSkills += 1;
+      if (cell.state === "enabled") harness.cells.skills.active += 1;
+      if (cell.state === "found") harness.cells.skills.review += 1;
     }
   }
 
+  // Slash command sync coverage.
+  for (const command of slashCommands?.commands ?? []) {
+    for (const syncTarget of command.syncTargets) {
+      if (syncTarget.status !== "synced") continue;
+      const target = slashCommands?.targets.find((candidate) => candidate.id === syncTarget.target);
+      ensureHarness({
+        harness: syncTarget.target,
+        label: target?.label,
+        logoKey: target?.id ?? syncTarget.target,
+      }).cells.commands.active += 1;
+    }
+  }
+  for (const reviewCommand of slashCommands?.reviewCommands ?? []) {
+    const target = slashCommands?.targets.find((candidate) => candidate.id === reviewCommand.target);
+    ensureHarness({
+      harness: reviewCommand.target,
+      label: target?.label ?? reviewCommand.targetLabel,
+      logoKey: reviewCommand.target,
+    }).cells.commands.review += 1;
+  }
+
+  // MCP server coverage + writability.
   for (const column of mcp?.columns ?? []) {
     const harness = ensureHarness({
       harness: column.harness,
       label: column.label,
       logoKey: column.logoKey ?? column.harness,
     });
-    harness.mcpWritable = column.mcpWritable;
-    harness.mcpUnavailableReason = column.mcpUnavailableReason ?? null;
-  }
-
-  for (const entry of mcp?.entries ?? []) {
-    for (const sighting of entry.sightings) {
-      const column = mcp?.columns.find((candidate) => candidate.harness === sighting.harness);
-      const harness = ensureHarness({
-        harness: sighting.harness,
-        label: column?.label,
-        logoKey: column?.logoKey ?? sighting.harness,
+    if (column.mcpWritable === false) {
+      harness.availabilityIssues.push({
+        capability: "MCP",
+        reason: column.mcpUnavailableReason ?? copy.sections.unavailableFallback,
       });
-      if (entry.kind === "managed" && sighting.state === "managed") {
-        harness.managedMcpServers += 1;
+    }
+  }
+  accumulateSightings(ensureHarness, mcp, "mcp");
+
+  // Hooks coverage + writability.
+  for (const column of hooks?.columns ?? []) {
+    ensureHarness({
+      harness: column.harness,
+      label: column.label,
+      logoKey: column.logoKey ?? column.harness,
+    });
+    if (column.hooksWritable === false) {
+      harnesses.get(column.harness)?.availabilityIssues.push({
+        capability: "Hooks",
+        reason: column.hooksUnavailableReason ?? copy.sections.unavailableFallback,
+      });
+    }
+  }
+  accumulateSightings(ensureHarness, hooks, "hooks");
+
+  // Permissions coverage + writability.
+  for (const column of permissions?.columns ?? []) {
+    ensureHarness({
+      harness: column.harness,
+      label: column.label,
+      logoKey: column.logoKey ?? column.harness,
+    });
+    if (column.permissionsWritable === false) {
+      harnesses.get(column.harness)?.availabilityIssues.push({
+        capability: "Permissions",
+        reason: column.permissionsUnavailableReason ?? copy.sections.unavailableFallback,
+      });
+    }
+  }
+  accumulateSightings(ensureHarness, permissions, "permissions");
+
+  // Agents coverage (bindings; no writable concept).
+  for (const column of agents?.columns ?? []) {
+    if (!column.installed) continue;
+    ensureHarness({
+      harness: column.harness,
+      label: column.label,
+      logoKey: column.logoKey ?? column.harness,
+    });
+  }
+  for (const entry of agents?.entries ?? []) {
+    for (const binding of entry.bindings) {
+      if (binding.state === "unsupported") continue;
+      const harness = ensureHarness({ harness: binding.harness, label: binding.harness });
+      if (entry.kind === "managed" && binding.state === "enabled") {
+        harness.cells.agents.active += 1;
       }
-      if (entry.kind === "managed" && sighting.state === "drifted") {
-        harness.differentConfigMcpServers += 1;
-      }
-      if (entry.kind === "unmanaged" && sighting.state === "unmanaged") {
-        harness.unmanagedMcpServers += 1;
+      if (entry.kind === "unmanaged") {
+        harness.cells.agents.review += 1;
       }
     }
   }
@@ -609,6 +443,43 @@ function buildHarnessRows(
   return Array.from(harnesses.values())
     .sort((a, b) => a.order - b.order)
     .map(({ order: _order, ...row }) => row);
+}
+
+interface SightingsSource {
+  columns?: Array<{ harness: string; label: string; logoKey?: string | null }> | null;
+  entries?:
+    | Array<{
+        kind: "managed" | "unmanaged";
+        sightings: Array<{ harness: string; state: string }>;
+      }>
+    | null;
+}
+
+function accumulateSightings(
+  ensureHarness: (args: { harness: string; label?: string | null; logoKey?: string | null }) => HarnessAccumulator,
+  source: SightingsSource | null | undefined,
+  cellKey: "mcp" | "hooks" | "permissions",
+): void {
+  for (const entry of source?.entries ?? []) {
+    for (const sighting of entry.sightings) {
+      if (sighting.state === "unsupported" || sighting.state === "missing") continue;
+      const column = source?.columns?.find((candidate) => candidate.harness === sighting.harness);
+      const harness = ensureHarness({
+        harness: sighting.harness,
+        label: column?.label,
+        logoKey: column?.logoKey ?? sighting.harness,
+      });
+      if (entry.kind === "managed" && sighting.state === "managed") {
+        harness.cells[cellKey].active += 1;
+      }
+      if (
+        (entry.kind === "managed" && sighting.state === "drifted") ||
+        (entry.kind === "unmanaged" && sighting.state === "unmanaged")
+      ) {
+        harness.cells[cellKey].review += 1;
+      }
+    }
+  }
 }
 
 export function inUseMcpHarnessCount(mcp: McpInventoryDto | null | undefined): number | null {

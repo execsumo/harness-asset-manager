@@ -1,8 +1,22 @@
 import { AlertTriangle } from "lucide-react";
 
 import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
-import type { OverviewHarnessRow } from "../../../app/capability-registry";
+import type {
+  OverviewCoverageCell,
+  OverviewHarnessAvailabilityIssue,
+  OverviewHarnessCellKey,
+  OverviewHarnessRow,
+} from "../../../app/capability-registry";
 import { useOverviewCopy } from "../i18n";
+
+const CELL_KEYS: OverviewHarnessCellKey[] = [
+  "skills",
+  "commands",
+  "mcp",
+  "hooks",
+  "permissions",
+  "agents",
+];
 
 interface HarnessCoverageMapProps {
   rows: OverviewHarnessRow[];
@@ -27,8 +41,9 @@ export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
         <div className="overview-coverage-table">
           <div className="overview-coverage-row overview-coverage-row--head">
             <span>{copy.sections.harness}</span>
-            <span>{copy.sections.skills}</span>
-            <span>{copy.sections.mcp}</span>
+            {CELL_KEYS.map((key) => (
+              <span key={key}>{copy.sections[key]}</span>
+            ))}
             <span>{copy.sections.needsReview}</span>
           </div>
           {rows.map((row) => (
@@ -43,9 +58,7 @@ export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
 }
 
 function CoverageRow({ row }: { row: OverviewHarnessRow }) {
-  const copy = useOverviewCopy();
-  const reviewTotal = row.foundSkills + row.unmanagedMcpServers + row.differentConfigMcpServers;
-  const unavailableReason = row.mcpWritable === false ? row.mcpUnavailableReason ?? copy.sections.mcpUnavailable : null;
+  const reviewTotal = CELL_KEYS.reduce((total, key) => total + row.cells[key].review, 0);
 
   return (
     <div className="overview-coverage-row">
@@ -54,47 +67,57 @@ function CoverageRow({ row }: { row: OverviewHarnessRow }) {
         <span>
           <strong>
             {row.label}
-            {unavailableReason ? (
-              <span
-                className="overview-coverage-warning"
-                title={unavailableReason}
-                aria-label={unavailableReason}
-              >
-                <AlertTriangle size={13} />
-              </span>
-            ) : null}
+            {row.availabilityIssues.map((issue) => (
+              <AvailabilityWarning key={issue.capability} issue={issue} />
+            ))}
           </strong>
         </span>
       </span>
-      <CoverageCell value={row.enabledSkills} />
+      {CELL_KEYS.map((key) => (
+        <CoverageCell key={key} cell={row.cells[key]} />
+      ))}
       <CoverageCell
-        value={row.managedMcpServers}
-        detail={differentConfigDetail(row.differentConfigMcpServers, copy.sections.different)}
+        cell={{ active: reviewTotal, review: reviewTotal }}
+        tone={reviewTotal > 0 ? "warning" : "normal"}
       />
-      <CoverageCell value={reviewTotal} />
     </div>
   );
 }
 
-function CoverageCell({
-  value,
-  detail,
-  tone = "normal",
-}: {
-  value: number;
-  detail?: string | null;
-  tone?: "normal" | "warning";
-}) {
+function AvailabilityWarning({ issue }: { issue: OverviewHarnessAvailabilityIssue }) {
+  const copy = useOverviewCopy();
+  const message = copy.sections.capabilityIssue(issue.capability, issue.reason);
+
   return (
-    <span className="overview-coverage-cell" data-tone={tone} data-active={value > 0}>
-      <span className="overview-coverage-cell__dot" aria-hidden="true" />
-      <span>{value.toLocaleString()}</span>
-      {detail ? <span className="overview-coverage-cell__detail">{detail}</span> : null}
+    <span
+      className="overview-coverage-warning"
+      title={message}
+      aria-label={`${issue.capability}: ${issue.reason}`}
+    >
+      <AlertTriangle size={13} />
     </span>
   );
 }
 
-function differentConfigDetail(value: number, formatter: (count: number) => string): string | null {
-  if (value <= 0) return null;
-  return formatter(value);
+function CoverageCell({
+  cell,
+  tone = "normal",
+}: {
+  cell: OverviewCoverageCell;
+  tone?: "normal" | "warning";
+}) {
+  return (
+    <span
+      className="overview-coverage-cell"
+      data-tone={tone}
+      data-active={cell.active > 0}
+      title={cell.review > 0 ? `${cell.review.toLocaleString()} to review` : undefined}
+    >
+      <span className="overview-coverage-cell__dot" aria-hidden="true" />
+      <span>{cell.active.toLocaleString()}</span>
+      {cell.review > 0 && tone === "normal" ? (
+        <span className="overview-coverage-cell__detail">+{cell.review.toLocaleString()}</span>
+      ) : null}
+    </span>
+  );
 }

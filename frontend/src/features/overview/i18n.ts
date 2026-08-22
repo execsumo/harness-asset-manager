@@ -1,4 +1,3 @@
-
 const englishOverviewCopy = {
   screen: {
     title: "Overview",
@@ -6,50 +5,38 @@ const englishOverviewCopy = {
     unableToLoadSkills: (message: string) => `Unable to load skills: ${message}`,
     unableToLoadSlashCommands: (message: string) => `Unable to load slash commands: ${message}`,
     unableToLoadMcpServers: (message: string) => `Unable to load MCP servers: ${message}`,
+    unableToLoadHooks: (message: string) => `Unable to load hooks: ${message}`,
+    unableToLoadPermissions: (message: string) => `Unable to load permissions: ${message}`,
+    unableToLoadAgents: (message: string) => `Unable to load agents: ${message}`,
   },
   sections: {
-    inventoryStatistics: "Inventory statistics",
-    extensions: "Extensions",
-    discover: "Discover",
+    shortcuts: "Shortcuts",
     review: "Review",
     activeHarnesses: "Active harnesses",
     noReviewWaiting: "No local adoption or config review is waiting.",
     noHarnesses: "No harnesses have been discovered yet.",
     harness: "Harness",
     skills: "Skills",
+    commands: "Cmds",
     mcp: "MCP",
-    needsReview: "Needs review",
-    mcpUnavailable: "MCP unavailable",
-    different: (count: number) => `${count.toLocaleString()} different`,
-  },
-  stats: {
-    inUse: "In use",
-    needsReview: "Needs review",
-    harnesses: "Harnesses",
-    metricPart: (value: number | null, singular: string, plural: string) =>
-      `${value == null ? "-" : value.toLocaleString()} ${value === 1 ? singular : plural}`,
-    inUseDetail: (skills: number | null, commands: number | null, mcp: number | null) =>
-      [
-        `${skills == null ? "-" : skills.toLocaleString()} ${skills === 1 ? "skill" : "skills"}`,
-        `${commands == null ? "-" : commands.toLocaleString()} ${commands === 1 ? "command" : "commands"}`,
-        `${mcp == null ? "-" : mcp.toLocaleString()} MCP`,
-      ].join(" · "),
-    needsReviewDetail: "adoption · config · inventory",
-    harnessesDetail: (count: number | null) => `${count == null ? "-" : count.toLocaleString()} observed`,
+    hooks: "Hooks",
+    permissions: "Perms",
+    agents: "Agents",
+    needsReview: "Review",
+    manageGroup: "Manage",
+    discoverGroup: "Discover",
+    unavailableFallback: "writes are unavailable for an unknown reason",
+    capabilityIssue: (capability: string, reason: string) => `${capability} writes unavailable — ${reason}`,
   },
   extensions: {
     skills: "Skills",
     slashCommands: "Slash Commands",
     mcpServers: "MCP Servers",
-    inUseFact: "in use",
-    reviewFact: "review",
   },
   marketplace: {
     skills: "Skills Marketplace",
     mcp: "MCP Marketplace",
     cli: "CLI Marketplace",
-    browse: "Browse",
-    previewOnly: "Preview only",
   },
   reviewItems: {
     skillsLabel: "Skills to review",
