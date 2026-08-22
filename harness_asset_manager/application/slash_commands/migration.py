@@ -42,7 +42,7 @@ def migrate_legacy_slash_commands(
 
     try:
         legacy_state = json.loads(legacy_sync_state_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, ValueError):
         return
     if not isinstance(legacy_state, dict):
         return

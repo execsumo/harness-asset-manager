@@ -79,6 +79,25 @@ class SkillStoreManifestTests(unittest.TestCase):
             loaded = load_manifest(Path(temp_dir) / "missing.json")
             self.assertEqual(loaded.entries, ())
 
+    def test_load_manifest_handles_truncated_corrupt_json(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text('{"entries": [{"packageDir": "inc', encoding="utf-8")
+            loaded = load_manifest(manifest_path)
+            self.assertEqual(loaded.entries, ())
+
+    def test_load_manifest_handles_malformed_entries(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text(
+                '{"entries": [{"packageDir": "valid", "declaredName": "Valid", "sourceKind": "github", '
+                '"sourceLocator": "github:mode-io/valid", "revision": "123"}, "not-a-dict", {"packageDir": 12}]}',
+                encoding="utf-8",
+            )
+            loaded = load_manifest(manifest_path)
+            self.assertEqual(len(loaded.entries), 1)
+            self.assertEqual(loaded.entries[0].package_dir, "valid")
+
 
 if __name__ == "__main__":
     unittest.main()

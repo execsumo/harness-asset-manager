@@ -266,7 +266,18 @@ class McpServerStore:
     def _load_manifest_result(self) -> _ManifestLoadResult:
         if not self.manifest_path.is_file():
             return _ManifestLoadResult(McpManagedManifest())
-        payload = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        except Exception as error:
+            return _ManifestLoadResult(
+                McpManagedManifest(),
+                issues=(McpManifestIssue(name="<manifest>", reason=str(error)),),
+            )
+        if not isinstance(payload, dict):
+            return _ManifestLoadResult(
+                McpManagedManifest(),
+                issues=(McpManifestIssue(name="<manifest>", reason="manifest must be an object"),),
+            )
         raw_entries = payload.get("servers", [])
         if not isinstance(raw_entries, list):
             return _ManifestLoadResult(

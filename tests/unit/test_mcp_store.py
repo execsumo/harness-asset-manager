@@ -212,6 +212,25 @@ class McpServerStoreTests(unittest.TestCase):
             self.assertEqual([server.name for server in store.list_managed()], ["valid"])
             self.assertEqual(len(store.manifest_issues()), 1)
 
+    def test_truncated_or_corrupt_json_surfaces_manifest_issue_and_does_not_crash(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest_path = Path(tmp) / "manifest.json"
+            manifest_path.write_text('{"servers": [{"name": "incompl', encoding="utf-8")
+            store = McpServerStore(manifest_path)
+
+            self.assertEqual(store.list_managed(), ())
+            self.assertEqual(len(store.manifest_issues()), 1)
+            self.assertEqual(store.manifest_issues()[0].name, "<manifest>")
+
+    def test_non_dict_manifest_surfaces_manifest_issue_and_does_not_crash(self) -> None:
+        with TemporaryDirectory() as tmp:
+            manifest_path = Path(tmp) / "manifest.json"
+            manifest_path.write_text("[]", encoding="utf-8")
+            store = McpServerStore(manifest_path)
+
+            self.assertEqual(store.list_managed(), ())
+            self.assertEqual(len(store.manifest_issues()), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -563,6 +563,20 @@ class SlashCommandDriftAutoRepairTests(unittest.TestCase):
 
             self.assertEqual(record_after_first, record_after_second)
 
+    def test_sync_state_truncated_or_corrupt_reads_as_empty(self) -> None:
+        with TemporaryDirectory() as tmp:
+            sync_file = Path(tmp) / "sync-state.json"
+            sync_file.write_text('{"commands": {"code-review":', encoding="utf-8")
+            store = SlashCommandSyncStateStore(sync_file)
+            self.assertEqual(store.load(), {})
+
+    def test_sync_state_non_dict_reads_as_empty(self) -> None:
+        with TemporaryDirectory() as tmp:
+            sync_file = Path(tmp) / "sync-state.json"
+            sync_file.write_text("[]", encoding="utf-8")
+            store = SlashCommandSyncStateStore(sync_file)
+            self.assertEqual(store.load(), {})
+
 
 if __name__ == "__main__":
     unittest.main()
