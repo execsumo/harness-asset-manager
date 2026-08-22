@@ -78,7 +78,7 @@ class LedgerStoreTests(unittest.TestCase):
         self.addCleanup(self._tmp.cleanup)
         self.root = Path(self._tmp.name)
         self.path = self.root / "bindings.json"
-        self.ledger = AgentBindingLedger(self.path)
+        self.ledger = AgentBindingLedger(self.path, home=self.root)
 
     def record(self, harness: str = "claude") -> AgentBindingRecord:
         return AgentBindingRecord(
@@ -121,9 +121,14 @@ class LedgerStoreTests(unittest.TestCase):
                     "agents": {
                         "a": {
                             "claude": {"target": 12, "linkedAt": 1.0},
-                            "cursor": {"target": "/store/a.md"},
+                            "cursor": {"target": "~/store/a.md"},
+                            "foreign": {
+                                "target": "/foreign/machine/path/a.md",
+                                "linkedAt": 2.0,
+                                "storeSha256": "sha256:ok",
+                            },
                             "opencode": {
-                                "target": "/store/a.md",
+                                "target": "~/store/a.md",
                                 "linkedAt": 2.0,
                                 "storeSha256": "sha256:ok",
                             },
@@ -197,7 +202,7 @@ class AgentLedgerFixture(unittest.TestCase):
         )
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         snapshot = lambda: ((self.target,), {"claude": self.adapter})
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         # Mirrors container.py: only live symlinked bindings are re-baselined.
         def rebaseline(slug: str) -> None:
             store_path = self.store.path_for(slug)
@@ -403,7 +408,7 @@ class RenderedDriftTests(unittest.TestCase):
         )
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         snapshot = lambda: ((self.target,), {"codex": self.adapter})
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.store = AgentStore(self.store_root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)

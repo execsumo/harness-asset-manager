@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from harness_asset_manager.atomic_files import file_lock
+from harness_asset_manager.portable_paths import is_sync_artifact
 
 from .health import CheckIssue
 from .identity import SourceDescriptor
@@ -15,7 +16,12 @@ from .manifest import (
     write_skill_store_manifest,
 )
 from .observations import SkillStoreScan, StorePackageObservation
-from .package import SkillPackageCache, find_skill_roots, fingerprint_package
+from .package import (
+    SkillPackageCache,
+    SkillParseError,
+    find_skill_roots,
+    fingerprint_package,
+)
 
 
 class SkillStore:
@@ -46,28 +52,33 @@ class SkillStore:
 
         package_roots = find_skill_roots(self.root)
 
-        def observe(path: Path) -> StorePackageObservation:
-            entry = manifest_index.get(path.name)
-            source = SourceDescriptor(
-                kind=entry.source_kind if entry else "shared-store",
-                locator=entry.source_locator if entry else f"shared-store:{path.name}",
-            )
-            pkg = self.package_cache.parse(
-                path,
-                default_source=source,
-                validation_cycle=cache_cycle,
-            )
-            return StorePackageObservation(
-                package=pkg,
-                recorded_revision=entry.revision if entry else None,
-                recorded_source_ref=entry.source_ref if entry else None,
-                recorded_source_path=entry.source_path if entry else None,
-                origin_harness=entry.origin_harness if entry else None,
-            )
+        def observe(path: Path) -> StorePackageObservation | None:
+            try:
+                entry = manifest_index.get(path.name)
+                source = SourceDescriptor(
+                    kind=entry.source_kind if entry else "shared-store",
+                    locator=entry.source_locator if entry else f"shared-store:{path.name}",
+                )
+                pkg = self.package_cache.parse(
+                    path,
+                    default_source=source,
+                    validation_cycle=cache_cycle,
+                )
+                return StorePackageObservation(
+                    package=pkg,
+                    recorded_revision=entry.revision if entry else None,
+                    recorded_source_ref=entry.source_ref if entry else None,
+                    recorded_source_path=entry.source_path if entry else None,
+                    origin_harness=entry.origin_harness if entry else None,
+                )
+            except (SkillParseError, OSError, ValueError) as error:
+                issues.append(f"Unreadable skill package {path.name}: {error}")
+                return None
 
         if package_roots:
             with ThreadPoolExecutor(max_workers=min(16, len(package_roots))) as executor:
-                all_packages.extend(executor.map(observe, package_roots))
+                observed = executor.map(observe, package_roots)
+                all_packages.extend(p for p in observed if p is not None)
 
         return SkillStoreScan(
             packages=tuple(all_packages),
@@ -173,15 +184,24 @@ class SkillStore:
         issues: list[CheckIssue] = []
         if not self.root.exists():
             return ()
-        for path in sorted(self.root.iterdir()):
-            if path.is_dir() and not (path / "SKILL.md").is_file():
-                issues.append(
-                    CheckIssue(
-                        severity="error",
-                        code="shared-missing-skill-md",
-                        message=f"Shared package is missing SKILL.md: {path.name}",
+        try:
+            children = list(self.root.iterdir())
+        except OSError:
+            return ()
+        for path in sorted(children):
+            if is_sync_artifact(path.name):
+                continue
+            try:
+                if path.is_dir() and not (path / "SKILL.md").is_file():
+                    issues.append(
+                        CheckIssue(
+                            severity="error",
+                            code="shared-missing-skill-md",
+                            message=f"Shared package is missing SKILL.md: {path.name}",
+                        )
                     )
-                )
+            except OSError:
+                continue
         return tuple(issues)
 
 

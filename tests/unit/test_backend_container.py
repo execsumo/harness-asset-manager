@@ -422,6 +422,23 @@ class LegacyLayoutMigrationTests(unittest.TestCase):
             self.assertEqual(agent.description, "Orchestrates tasks.")
             self.assertEqual(agent.prompt, "You are a chief of staff.")
 
+    def test_build_backend_container_creates_default_gitignore(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            data_dir = spec.xdg_data_home / APP_NAME
+            gitignore_path = data_dir / ".gitignore"
+            self.assertFalse(gitignore_path.exists())
+
+            build_backend_container(spec.env())
+
+            self.assertTrue(gitignore_path.is_file())
+            content = gitignore_path.read_text(encoding="utf-8")
+            self.assertIn("*.lock", content)
+            self.assertIn("runtime.json", content)
+            self.assertIn("server.log", content)
+            self.assertIn("*-audit.json*", content)
+            self.assertIn(".sync-conflict-*", content)
+
 
 if __name__ == "__main__":
     unittest.main()

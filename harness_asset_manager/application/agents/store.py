@@ -8,6 +8,7 @@ from typing import Callable
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
+from harness_asset_manager.portable_paths import is_sync_artifact
 
 from .model import AgentDefinition, AgentIssue, AgentParseError
 from .parser import parse_agent_file, render_agent_document
@@ -50,10 +51,20 @@ class AgentStore:
         issues: list[AgentIssue] = []
         if not self.agents_root.is_dir():
             return (), ()
-        for path in sorted(self.agents_root.glob("*.md")):
+        try:
+            entries = sorted(self.agents_root.iterdir())
+        except OSError:
+            return (), ()
+        for path in entries:
+            if is_sync_artifact(path.name):
+                continue
+            if not path.is_file() or path.suffix != ".md":
+                continue
             try:
                 agents.append(self._load_agent(path))
             except AgentParseError as error:
+                issues.append(AgentIssue(name=path.stem, reason=str(error)))
+            except OSError as error:
                 issues.append(AgentIssue(name=path.stem, reason=str(error)))
         return tuple(agents), tuple(issues)
 

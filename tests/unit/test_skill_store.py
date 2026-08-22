@@ -141,5 +141,32 @@ class SkillStoreDeleteTests(unittest.TestCase):
 
             self.assertIn("missing from manifest", str(ctx.exception))
             self.assertTrue((spec.skills_store_root / "audit").is_dir())
+
+
+class SkillStoreScanArtifactsTests(unittest.TestCase):
+    def test_scan_ignores_sync_artifacts_and_hidden_dirs(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            store = SkillStore(spec.skills_store_root)
+            seed_skill_package(spec.skills_store_root, "audit", "Audit")
+
+            # Add various sync artifacts in the skills store root
+            (spec.skills_store_root / ".sync-conflict-20240101").mkdir(parents=True)
+            (spec.skills_store_root / ".sync-conflict-20240101" / "SKILL.md").write_text("conflict", encoding="utf-8")
+            (spec.skills_store_root / "audit.sync-conflict-20240101").mkdir(parents=True)
+            (spec.skills_store_root / "audit.sync-conflict-20240101" / "SKILL.md").write_text("conflict", encoding="utf-8")
+            (spec.skills_store_root / ".syncthing.temp.tmp").mkdir(parents=True)
+            (spec.skills_store_root / "random.tmp").write_text("junk", encoding="utf-8")
+            (spec.skills_store_root / "backup.bak").write_text("junk", encoding="utf-8")
+            (spec.skills_store_root / "patch.rej").write_text("junk", encoding="utf-8")
+
+            scan = store.scan()
+            packages = [p.package.root_path.name for p in scan.packages]
+            self.assertEqual(packages, ["audit"])
+
+            integrity_issues = store.check_integrity()
+            self.assertEqual(integrity_issues, ())
+
+
 if __name__ == "__main__":
     unittest.main()

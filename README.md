@@ -611,6 +611,43 @@ Useful Linux paths:
 - marketplace cache: `~/.harnessam/marketplace`
 - app settings: `~/.harnessam/settings.json`
 
+### Carrying the store between your own devices
+
+The Harness Asset Manager store (`~/.harnessam` on macOS/Linux, or `~/.local/share/harnessam` on Linux) is designed to be portable across your own machines using standard dotfile or folder synchronization tools (such as Git dotfile repos, Syncthing, Dropbox, iCloud, Nextcloud, or rsync).
+
+#### Portable Paths
+All persisted references (such as agent binding ledgers and slash command sync state) store home-relative paths (`~/...`). This allows your store to travel seamlessly between devices with different usernames, operating systems, or home locations (for example, `/Users/alice` on macOS and `/home/bob` on Linux).
+
+#### What to Sync vs Ignore
+
+HAM automatically creates a default `.gitignore` inside `~/.harnessam` on first start to keep sync repositories clean:
+
+- **Sync (portable assets & configuration)**:
+  - `skills/` and `skills-manifest.json` (Skill packages and metadata)
+  - `agents/` (Subagent Markdown definitions)
+  - `mcp/manifest.json` (Normalized MCP server configurations)
+  - `hooks/manifest.json` (Hook rules)
+  - `permissions/manifest.json` (Denylist policies)
+  - `slash-commands/commands/` (Prompt library)
+  - `slash-commands/sync-state.json` (Slash command sync state)
+  - `bindings.json` (Agent binding cache)
+  - `settings.json` (App preferences and harness support toggles)
+
+- **Ignore (device-local & ephemeral state)**:
+  - `*.lock` (File locks)
+  - `runtime.json` (Local server PID and port info)
+  - `server.log` (Local daemon log)
+  - `*-audit.json*`, `audit.log` (Machine-local activity journals)
+  - `cache/`, `tmp/`, `marketplace/` (Ephemeral downloads and caches)
+  - `.sync-conflict-*`, `*.sync-conflict-*`, `.syncthing.*` (Sync-tool conflict artifacts)
+
+#### Arrival on a New Machine
+When you sync or copy your store to a new machine:
+1. HAM starts immediately and discovers all stored skills, agents, commands, and configs.
+2. Harnesses on the new machine initially show up as **disabled** (since symlinks and rendered target files have not been generated on the new machine yet), not in an error state.
+3. Enabling an asset in the UI or CLI (`harnessam <family> enable ...` or `harnessam refresh --sync-all`) creates fresh, local links and configurations tailored to the new machine.
+4. Auto-adoption and integrity checks tolerate sync conflict files and unreadable artifacts without crashing or corrupting the store.
+
 ### Environment Variable Overrides
 
 If you manage skills in a custom environment, you can override individual skill roots with environment variables:

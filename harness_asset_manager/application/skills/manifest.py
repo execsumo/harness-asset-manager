@@ -46,21 +46,35 @@ class SkillStoreManifest:
 def load_skill_store_manifest(path: Path) -> SkillStoreManifest:
     if not path.is_file():
         return SkillStoreManifest(entries=())
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    entries = tuple(
-        SkillStoreEntry(
-            package_dir=item["packageDir"],
-            declared_name=item["declaredName"],
-            source_kind=item["sourceKind"],
-            source_locator=item["sourceLocator"],
-            revision=item["revision"],
-            source_ref=item.get("sourceRef") if isinstance(item.get("sourceRef"), str) else None,
-            source_path=item.get("sourcePath") if isinstance(item.get("sourcePath"), str) else None,
-            origin_harness=item.get("originHarness") if isinstance(item.get("originHarness"), str) else None,
-        )
-        for item in payload.get("entries", [])
-    )
-    return SkillStoreManifest(entries=entries)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return SkillStoreManifest(entries=())
+    if not isinstance(payload, dict):
+        return SkillStoreManifest(entries=())
+    raw_entries = payload.get("entries", [])
+    if not isinstance(raw_entries, list):
+        return SkillStoreManifest(entries=())
+    entries: list[SkillStoreEntry] = []
+    for item in raw_entries:
+        if not isinstance(item, dict):
+            continue
+        try:
+            entries.append(
+                SkillStoreEntry(
+                    package_dir=str(item["packageDir"]),
+                    declared_name=str(item["declaredName"]),
+                    source_kind=str(item["sourceKind"]),
+                    source_locator=str(item["sourceLocator"]),
+                    revision=str(item["revision"]),
+                    source_ref=item.get("sourceRef") if isinstance(item.get("sourceRef"), str) else None,
+                    source_path=item.get("sourcePath") if isinstance(item.get("sourcePath"), str) else None,
+                    origin_harness=item.get("originHarness") if isinstance(item.get("originHarness"), str) else None,
+                )
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return SkillStoreManifest(entries=tuple(entries))
 
 
 def write_skill_store_manifest(path: Path, manifest: SkillStoreManifest) -> None:

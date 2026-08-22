@@ -191,7 +191,7 @@ class AgentsFixture(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         self.adapters = {"claude": self.adapter}
         snapshot = lambda: ((self.target,), self.adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
@@ -226,7 +226,7 @@ class CodexAgentTests(unittest.TestCase):
         self.adapter = AgentHarnessAdapter(self.target, self.store_root)
         adapters = {"codex": self.adapter}
         snapshot = lambda: ((self.target,), adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
@@ -383,7 +383,7 @@ class HermesBestEffortHarnessTests(unittest.TestCase):
         self.store = AgentStore(self.store_root)
         adapters = {"hermes": AgentHarnessAdapter(self.target, self.store_root)}
         snapshot = lambda: ((self.target,), adapters)
-        self.ledger = AgentBindingLedger(root / "data" / "bindings.json")
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
         self.inventory = AgentInventoryService(self.store, snapshot, self.ledger)
         self.mutations = AgentMutationService(self.store, snapshot, self.ledger)
 
@@ -587,6 +587,23 @@ class AgentStoreTests(AgentsFixture):
     def test_path_for_rejects_traversal(self) -> None:
         with self.assertRaises(MutationError):
             self.store.path_for("../escape")
+
+    def test_scan_ignores_sync_artifacts_and_temp_files(self) -> None:
+        self.store.create(name="Valid Agent", description="d", prompt="p")
+        # Add sync conflict files and temp artifacts
+        (self.store_root / ".sync-conflict-20240101.md").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.sync-conflict-20240101.md").write_text("junk", encoding="utf-8")
+        (self.store_root / ".syncthing.valid-agent.md.tmp").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.tmp").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.bak").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.orig").write_text("junk", encoding="utf-8")
+        (self.store_root / "valid-agent.md~").write_text("junk", encoding="utf-8")
+        (self.store_root / ".#valid-agent.md").write_text("junk", encoding="utf-8")
+        (self.store_root / "not-markdown.txt").write_text("junk", encoding="utf-8")
+
+        agents, issues = self.store.scan()
+        self.assertEqual([a.slug for a in agents], ["valid-agent"])
+        self.assertEqual(issues, ())
 
 
 if __name__ == "__main__":

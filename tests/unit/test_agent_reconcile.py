@@ -105,7 +105,7 @@ class AgentReconcileFixture(unittest.TestCase):
         self.audit_path = root / "data" / "audit.json"
         self.lock_path = root / "data" / "reconcile.lock"
 
-        self.ledger = AgentBindingLedger(self.ledger_path)
+        self.ledger = AgentBindingLedger(self.ledger_path, home=root)
         self.audit = AgentAuditLog(self.audit_path)
 
         def rebaseline(slug: str) -> None:

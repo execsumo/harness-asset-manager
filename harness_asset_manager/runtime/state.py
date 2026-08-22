@@ -31,16 +31,21 @@ def load_runtime_state(env: dict[str, str] | None = None) -> RuntimeState | None
     path = runtime_state_path(env)
     if not path.is_file():
         return None
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return RuntimeState(
-        pid=int(payload["pid"]),
-        host=str(payload["host"]),
-        port=int(payload["port"]),
-        base_url=str(payload["base_url"]),
-        version=str(payload["version"]),
-        executable=str(payload["executable"]),
-        started_at=float(payload.get("started_at", time.time())),
-    )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            return None
+        return RuntimeState(
+            pid=int(payload["pid"]),
+            host=str(payload["host"]),
+            port=int(payload["port"]),
+            base_url=str(payload["base_url"]),
+            version=str(payload["version"]),
+            executable=str(payload["executable"]),
+            started_at=float(payload.get("started_at", time.time())),
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def write_runtime_state(state: RuntimeState, env: dict[str, str] | None = None) -> Path:

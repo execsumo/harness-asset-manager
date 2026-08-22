@@ -50,6 +50,20 @@ class RuntimeTests(unittest.TestCase):
             clear_runtime_state(env)
             self.assertIsNone(load_runtime_state(env))
 
+    def test_runtime_state_truncated_corrupt_json_returns_none(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
+            state_file = Path(temp_dir) / "runtime.json"
+            state_file.write_text('{"pid": 12', encoding="utf-8")
+            self.assertIsNone(load_runtime_state(env))
+
+    def test_runtime_state_non_dict_json_returns_none(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
+            state_file = Path(temp_dir) / "runtime.json"
+            state_file.write_text("[]", encoding="utf-8")
+            self.assertIsNone(load_runtime_state(env))
+
     def test_explicit_missing_frontend_dist_does_not_fall_back(self) -> None:
         with TemporaryDirectory() as temp_dir:
             missing = Path(temp_dir) / "missing-dist"
