@@ -2,6 +2,29 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — MCP In-use page converged; all five families now uniform
+
+MCP's In-use page now includes unadopted servers behind the URL-backed status filter
+(`?status=untracked`), matching agents/skills/slash-commands/hooks. Implemented by agy (delegated
+via herdr, branch `ui/mcp-converge-in-use`, commits `1f1326c` + `d04baa0`), independently verified:
+diff spot-checked and typecheck / Vitest / build re-run on this checkout — all pass.
+
+- `/mcp` is the canonical route (moved into a feature `routes.tsx`, hooks pattern); `/mcp/use`,
+  `/mcp/review`, `/mcp/managed`, `/mcp/unmanaged` are redirects (`/mcp/review` →
+  `/mcp?status=untracked`). `mcpRoutes.inUse = "/mcp"`, `needsReview = "/mcp?status=untracked"`.
+- Selectors: `filterMcpServersInUse` no longer drops unmanaged entries; new `untracked` pill;
+  "All" counts every entry. Matrix renders unmanaged rows inline with Adopt (identical) or
+  config-choice dialog (differing configs); needs-review detail sheet composed for unmanaged
+  servers; bulk adopt-selected and adopt-identical header action carried over from the old page.
+- **Sidebar is now uniform across all five families: one "In use" link each.** The MCP exception
+  comment from `420b97c` is gone with its second link.
+- Deleted `McpNeedsReviewPage.tsx` + `McpNeedsReviewMatrixView.tsx`; their test cases were folded
+  into `McpInUsePage.test.tsx` (307/307 tests, 61 files — count up from 300/62).
+- `frontend/dist` rebuilt from merged `main`; hard-refresh to see it.
+
+Validation re-run post-merge on this checkout: typecheck clean, Vitest 307/307, build passes.
+Pushed to `origin/main`. Backend untouched.
+
 ## 2026-08-21 — Sidebar: removed per-family Unmanaged links unified into In-use pages
 
 Agents, Skills, Slash Commands, and Hooks each have one unified In-use page that already includes
