@@ -316,6 +316,27 @@ describe("OverviewPage", () => {
       "/hooks?status=untracked&harness=claude",
     );
 
+    // The All-harnesses totals row shows catalog totals and links to the
+    // unfiltered capability surfaces.
+    const totalsRowEl = within(coverage)
+      .getByText("All harnesses")
+      .closest(".overview-coverage-row") as HTMLElement;
+    expect(within(totalsRowEl).getByRole("link", { name: "All skills" })).toHaveAttribute(
+      "href",
+      "/skills",
+    );
+    expect(within(totalsRowEl).getByRole("link", { name: "All cmds" })).toHaveAttribute(
+      "href",
+      "/slash-commands",
+    );
+    expect(within(totalsRowEl).getByRole("link", { name: "All hooks" })).toHaveAttribute(
+      "href",
+      "/hooks",
+    );
+    expect(
+      within(totalsRowEl).getByRole("link", { name: "2 MCP to review across all harnesses" }),
+    ).toHaveAttribute("href", "/mcp?status=untracked");
+
     // The coverage table is the first section on the page.
     const firstSection = document.querySelector(".overview-page > section");
     expect(firstSection).toContainElement(coverage);

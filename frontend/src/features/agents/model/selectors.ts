@@ -53,7 +53,9 @@ function matchesHarnessBinding(
   harness: string | null | undefined,
 ): boolean {
   if (!harness) return true;
-  return entry.bindings.some((binding) => binding.harness === harness && binding.state !== "unsupported");
+  // Managed agents carry a "disabled" binding on every installed target, so
+  // only an "enabled" binding counts as touching the harness.
+  return entry.bindings.some((binding) => binding.harness === harness && binding.state === "enabled");
 }
 
 function matchesSearch(entry: AgentInventoryEntryDto, search: string): boolean {

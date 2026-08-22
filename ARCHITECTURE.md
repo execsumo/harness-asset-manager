@@ -251,6 +251,17 @@ per-view routes (`/mcp/review`, `/mcp/unmanaged`, …) are redirects onto the ca
 filters. Single-link sidebar groups render their heading itself as a direct link carrying the
 family count; only multi-page groups (Marketplace) keep a collapsible sub-tree.
 
+Every family page also honours a URL-backed `?harness=<id>` filter that restricts the list to
+items actually present on that harness — skills with an `enabled`/`found` matrix cell (a
+plainly `disabled` cell means merely adoptable), agents with an `enabled` binding, slash
+commands with a `synced` sync entry, and MCP/hooks/permissions with any observed sighting.
+The Overview page's Active-harnesses table is the primary producer of these deep links: each
+coverage cell links to the harness-filtered capability surface, and its `+N` review detail
+links to the harness-filtered needs-review view. A leading All-harnesses totals row shows
+catalog-level counts per capability and links to the unfiltered surfaces. An active
+`?harness=` filter renders a dismissible chip in the page's FilterBar and participates in
+"Clear filters".
+
 ### Shared matrix component system
 
 All five family matrices are built from `components/matrix/` (`MatrixTable`,

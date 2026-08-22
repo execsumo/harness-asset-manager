@@ -347,6 +347,30 @@
   text-transform: uppercase;
 }
 
+.overview-coverage-row--totals {
+  background: color-mix(in srgb, var(--color-surface-raised) 45%, transparent);
+}
+
+.overview-coverage-row--totals + .overview-coverage-row {
+  border-top: 2px solid var(--color-border-strong);
+}
+
+.overview-coverage-row--totals .overview-coverage-cell {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.overview-coverage-row__all-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-softer);
+  color: var(--color-accent);
+}
+
 .overview-coverage-row--skeleton {
   min-height: 54px;
   opacity: 0.55;

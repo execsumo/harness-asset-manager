@@ -13,6 +13,7 @@ const englishOverviewCopy = {
     shortcuts: "Shortcuts",
     review: "Review",
     activeHarnesses: "Active harnesses",
+    allHarnesses: "All harnesses",
     noReviewWaiting: "No local adoption or config review is waiting.",
     noHarnesses: "No harnesses have been discovered yet.",
     harness: "Harness",
@@ -30,6 +31,9 @@ const englishOverviewCopy = {
     capabilityOnHarness: (capability: string, harness: string) => `${capability} on ${harness}`,
     reviewOnHarness: (count: number, capability: string, harness: string) =>
       `${count.toLocaleString()} ${capability} to review on ${harness}`,
+    allCapabilityAria: (capability: string) => `All ${capability.toLowerCase()}`,
+    allReviewAria: (count: number, capability: string) =>
+      `${count.toLocaleString()} ${capability} to review across all harnesses`,
   },
   extensions: {
     skills: "Skills",

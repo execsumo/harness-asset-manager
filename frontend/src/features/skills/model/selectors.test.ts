@@ -43,9 +43,13 @@ const data: SkillsWorkspaceData = {
 } as unknown as SkillsWorkspaceData;
 
 describe("skills workspace model", () => {
-  it("harness filter keeps only rows that touch the harness", () => {
+  it("harness filter keeps only rows enabled or found on the harness", () => {
+    // "shared-audit" is adopted but merely disabled on codex — it must NOT match.
     const codexOnly = filterSkills(data, { search: "", status: "all", harness: "codex" });
-    expect(codexOnly).toHaveLength(3);
+    expect(codexOnly.map((row) => row.skillRef)).toEqual([
+      "shared:audit-skill",
+      "unmanaged:trace-lens",
+    ]);
     const missingHarness = filterSkills(data, { search: "", status: "all", harness: "claude" });
     expect(missingHarness).toHaveLength(0);
   });

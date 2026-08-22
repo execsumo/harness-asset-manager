@@ -105,7 +105,11 @@ export function countAdoptableLocalSkillRows(data: SkillsWorkspaceData | null): 
 
 function matchesHarness(row: SkillListRow, harness: string | null | undefined): boolean {
   if (!harness) return true;
-  return row.cells.some((cell) => cell.harness === harness && cell.state !== "empty");
+  // Managed skills carry a "disabled" cell on every detected harness, so only
+  // "enabled" (actively bound) / "found" (unadopted) count as touching it.
+  return row.cells.some(
+    (cell) => cell.harness === harness && (cell.state === "enabled" || cell.state === "found"),
+  );
 }
 
 export function alignHarnessCells(row: SkillListRow, columns: HarnessColumn[]): AlignedHarnessCell[] {

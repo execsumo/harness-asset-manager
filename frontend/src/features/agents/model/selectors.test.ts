@@ -38,9 +38,8 @@ describe("agents selectors", () => {
       "planner",
       "helper",
     ]);
-    expect(filterAgents(inventory, { search: "", status: "all", harness: "claude" }).map((e) => e.ref)).toEqual([
-      "reviewer",
-    ]);
+    // A merely-disabled binding does not count as touching the harness.
+    expect(filterAgents(inventory, { search: "", status: "all", harness: "claude" })).toEqual([]);
     expect(filterAgents(inventory, { search: "", status: "untracked", harness: "claude" })).toEqual([]);
     // Unsupported bindings do not count as touching the harness.
     const unsupported = {

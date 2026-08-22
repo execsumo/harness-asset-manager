@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Layers } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
@@ -21,10 +21,11 @@ const CELL_KEYS: OverviewHarnessCellKey[] = [
 
 interface HarnessCoverageMapProps {
   rows: OverviewHarnessRow[];
+  totalsRow: OverviewHarnessRow;
   loading: boolean;
 }
 
-export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
+export function HarnessCoverageMap({ rows, totalsRow, loading }: HarnessCoverageMapProps) {
   const copy = useOverviewCopy();
 
   return (
@@ -47,6 +48,7 @@ export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
             ))}
             <span>{copy.sections.needsReview}</span>
           </div>
+          <TotalsRow row={totalsRow} />
           {rows.map((row) => (
             <CoverageRow key={row.harness} row={row} />
           ))}
@@ -55,6 +57,65 @@ export function HarnessCoverageMap({ rows, loading }: HarnessCoverageMapProps) {
         <p className="overview-empty-note">{copy.sections.noHarnesses}</p>
       )}
     </section>
+  );
+}
+
+function TotalsRow({ row }: { row: OverviewHarnessRow }) {
+  const copy = useOverviewCopy();
+
+  return (
+    <div className="overview-coverage-row overview-coverage-row--totals">
+      <span className="overview-coverage-row__identity">
+        <span className="overview-coverage-row__all-icon" aria-hidden="true">
+          <Layers size={16} />
+        </span>
+        <span>
+          <strong>{row.label || copy.sections.allHarnesses}</strong>
+        </span>
+      </span>
+      {CELL_KEYS.map((key) => (
+        <TotalsCell key={key} cellKey={key} row={row} />
+      ))}
+      <ReviewTotalCell row={row} />
+    </div>
+  );
+}
+
+function TotalsCell({
+  cellKey,
+  row,
+}: {
+  cellKey: OverviewHarnessCellKey;
+  row: OverviewHarnessRow;
+}) {
+  const copy = useOverviewCopy();
+  const cell = row.cells[cellKey];
+  const links = coverageCellLinks(cellKey);
+
+  return (
+    <span className="overview-coverage-cell" data-active={cell.active > 0}>
+      <span className="overview-coverage-cell__dot" aria-hidden="true" />
+      {cell.active > 0 ? (
+        <Link
+          to={links.activeTo}
+          className="overview-coverage-cell__link"
+          aria-label={copy.sections.allCapabilityAria(copy.sections[cellKey])}
+        >
+          {cell.active.toLocaleString()}
+        </Link>
+      ) : (
+        <span>{cell.active.toLocaleString()}</span>
+      )}
+      {cell.review > 0 ? (
+        <Link
+          to={links.reviewTo}
+          className="overview-coverage-cell__detail overview-coverage-cell__link"
+          aria-label={copy.sections.allReviewAria(cell.review, copy.sections[cellKey])}
+        >
+          +{cell.review.toLocaleString()}
+        </Link>
+      ) : null}
+    </span>
   );
 }
 

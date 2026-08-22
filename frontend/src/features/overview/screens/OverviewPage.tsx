@@ -80,7 +80,7 @@ export default function OverviewPage() {
             ]}
           />
 
-          <HarnessCoverageMap rows={model.harnessRows} loading={loading} />
+          <HarnessCoverageMap rows={model.harnessRows} totalsRow={model.totalsRow} loading={loading} />
           <div className="overview-dashboard-grid">
             <ReviewQueue items={model.reviewItems} loading={loading} />
             <QuickLinks shortcuts={model.shortcuts} />

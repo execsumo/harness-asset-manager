@@ -195,6 +195,16 @@ describe("capability overview model", () => {
     ]);
     expect(rows.codex?.availabilityIssues).toEqual([]);
 
+    // Catalog-level totals, agnostic of any single harness.
+    expect(model.totalsRow.cells).toEqual({
+      skills: { active: 2, review: 1 },
+      commands: { active: 1, review: 1 },
+      mcp: { active: 1, review: 1 },
+      hooks: { active: 1, review: 0 },
+      permissions: { active: 0, review: 0 },
+      agents: { active: 0, review: 1 },
+    });
+
     expect(model.shortcuts.map((shortcut) => shortcut.key)).toEqual([
       "manage-skills",
       "manage-slash-commands",

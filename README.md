@@ -208,7 +208,12 @@ harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanage
 
 ### Overview
 
-Start with the whole extension portfolio: what is in use, what needs review, what can be discovered, and where extensions are active.
+Start with the Active harnesses table: per-harness coverage across skills, slash commands,
+MCP servers, hooks, permissions, and agents, with a review column that totals everything
+waiting for a decision. Every cell deep-links into the filtered capability view (and its
+needs-review surface), so a glance turns directly into action, and an All-harnesses totals
+row jumps to each capability's full catalog. A review queue highlights adoption and config
+work in one place, and a compact shortcuts strip covers the remaining surfaces.
 
 ![skill-market-overview](./assets/harness-asset-manager-overview.png)
 

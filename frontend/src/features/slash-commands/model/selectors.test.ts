@@ -34,6 +34,23 @@ describe("slash command selectors", () => {
     expect(
       filterSlashCommandEntries(entries, "", "all", "claude").map((entry) => entry.id),
     ).toEqual(["enabled-command"]);
+    // "not_selected" sync entries do not count as touching the target.
+    const withUnselected = slashCommandInventoryEntries({
+      commands: [
+        command("disabled-command", []),
+        {
+          ...command("selective-command", ["codex"]),
+          syncTargets: [
+            ...command("selective-command", ["codex"]).syncTargets,
+            { target: "claude", path: "/tmp/claude/x.md", status: "not_selected" },
+          ],
+        },
+      ],
+      reviewCommands: [],
+    });
+    expect(
+      filterSlashCommandEntries(withUnselected, "", "all", "claude").map((entry) => entry.id),
+    ).toEqual([]);
   });
 
   it("filters and counts coverage", () => {

@@ -2,6 +2,52 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Overview redesigned around the Active-harnesses table; coverage cells deep-link
+
+Two commits on `main` (`7c77bed`, `ae3d9e2`). The Overview page is now action-first:
+
+- **Statistics band removed** — the "in use" mega-sum (skills + commands + MCP + hooks +
+  permissions + agents) was a vanity metric; its detail line duplicated the Extensions
+  section, and "N observed" duplicated the harness table's row count.
+- **Extensions portfolio + Discover panel collapsed** into a compact Shortcuts strip
+  (`QuickLinks.tsx`, manage/discover chip groups) beside the promoted Review queue.
+- **Active harnesses is the full-width centerpiece**: per-harness coverage for all six
+  capabilities from every inventory — skills matrix cells, slash-command `syncTargets` /
+  `reviewCommands`, MCP/hooks/permissions sightings, agent bindings — plus a cross-capability
+  review column and writability warnings for MCP, hooks, and permission writes
+  (`OverviewHarnessRow.cells` / `.availabilityIssues` in `capability-registry/overview.ts`).
+- **Coverage cells deep-link**: active count → `/skills?harness=<id>`-style capability view;
+  `+N` review detail → the `?status=untracked&harness=<id>` review view. Route map lives in
+  `coverageCellLinks()` (canonical routes only — legacy `/skills/use` etc. redirects drop
+  query params). Review-column total is intentionally not a link.
+- **All six family pages honour URL-backed `?harness=`** via their selectors; active filter
+  renders a shared `HarnessFilterChip` in each FilterBar and participates in Clear filters.
+  Documented as a convention in ARCHITECTURE §6; README Product Tour updated.
+
+Validation (both commits): typecheck, backend suite, Vitest (314/314 across 64 files),
+eslint clean on touched files, production build with `frontend/dist` rebuilt — all green.
+
+## 2026-08-22 — Deep-link filter semantics fixed; All-harnesses totals row
+
+Follow-up to the Overview redesign after live use:
+
+- **Bug: `?harness=` filters matched too much on three pages.** The predicates counted
+  assets that merely *could* be on a harness: skills cells are `"disabled"` on every
+  detected harness unless enabled (`cell_state` in `application/skills/policy.py`), agent
+  bindings default to `"disabled"` on all installed targets, and slash-command
+  `syncTargets` carries a `"not_selected"` entry for every target. Predicates now require a
+  real tie: skills cell state `enabled`/`found`, agent binding `enabled`, sync entry status
+  `synced`. MCP/hooks/permissions sightings only exist where observed, so they were already
+  correct. Selector tests updated to pin the stricter semantics.
+- **All-harnesses totals row** added as the first row of the Active-harnesses table:
+  catalog totals per capability (managed counts + unadopted/drift review), independent of
+  any single harness's adoption. Its cells link to the unfiltered capability surfaces
+  (`coverageCellLinks(cellKey)` with no harness). Rendered by `TotalsRow` in
+  `HarnessCoverageMap`; modelled as `OverviewModel.totalsRow`.
+
+Validation: typecheck, Vitest (full suite), production build with `frontend/dist` rebuilt —
+all green.
+
 ## 2026-08-22 — Activity page/view removed; backend audit journal retained
 
 The user-facing Activity surface is gone; the backend activity log stays.

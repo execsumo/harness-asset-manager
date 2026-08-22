@@ -42,7 +42,9 @@ export function filterSlashCommandEntries(
     if (harness) {
       const touchesHarness =
         entry.kind === "managed"
-          ? entry.command.syncTargets.some((syncTarget) => syncTarget.target === harness)
+          ? entry.command.syncTargets.some(
+              (syncTarget) => syncTarget.target === harness && syncTarget.status === "synced",
+            )
           : entry.review.target === harness;
       if (!touchesHarness) return false;
     }

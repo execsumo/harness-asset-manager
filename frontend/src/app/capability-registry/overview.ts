@@ -88,6 +88,8 @@ export interface OverviewHarnessRow {
 export interface OverviewModel {
   shortcuts: OverviewShortcut[];
   reviewItems: OverviewReviewItem[];
+  /** Catalog-level totals per capability, agnostic of any single harness. */
+  totalsRow: OverviewHarnessRow;
   harnessRows: OverviewHarnessRow[];
 }
 
@@ -181,7 +183,66 @@ export function buildOverviewModel(
   return {
     shortcuts: buildShortcuts(copy),
     reviewItems,
+    totalsRow: buildTotalsRow(skills, slashCommands, mcp, hooks, permissions, agents, copy),
     harnessRows: buildHarnessRows(skills, slashCommands, mcp, hooks, permissions, agents, copy),
+  };
+}
+
+function buildTotalsRow(
+  skills: SkillsWorkspaceData | null | undefined,
+  slashCommands: SlashCommandListDto | null | undefined,
+  mcp: McpInventoryDto | null | undefined,
+  hooks: HookInventoryDto | null | undefined,
+  permissions: PermissionInventoryDto | null | undefined,
+  agents: AgentInventoryDto | null | undefined,
+  copy: OverviewCopy,
+): OverviewHarnessRow {
+  const managedCount = (
+    entries?: Array<{ kind: "managed" | "unmanaged" }> | null,
+  ): number => entries?.filter((entry) => entry.kind === "managed").length ?? 0;
+  const unmanagedCount = (
+    entries?: Array<{ kind: "managed" | "unmanaged" }> | null,
+  ): number => entries?.filter((entry) => entry.kind === "unmanaged").length ?? 0;
+  const driftedCount = (
+    entries?: Array<{ kind: "managed" | "unmanaged"; sightings?: Array<{ state: string }> }> | null,
+  ): number =>
+    entries?.filter((entry) =>
+      entry.kind === "managed" && entry.sightings?.some((sighting) => sighting.state === "drifted"),
+    ).length ?? 0;
+
+  return {
+    harness: "__all__",
+    label: copy.sections.allHarnesses,
+    logoKey: null,
+    availabilityIssues: [],
+    cells: {
+      // Catalog totals: everything the store manages, regardless of which
+      // harnesses have adopted it.
+      skills: {
+        active: skills?.summary.managed ?? 0,
+        review: skills?.summary.unmanaged ?? 0,
+      },
+      commands: {
+        active: slashCommands?.commands?.length ?? 0,
+        review: slashCommands?.reviewCommands?.length ?? 0,
+      },
+      mcp: {
+        active: managedCount(mcp?.entries),
+        review: unmanagedCount(mcp?.entries) + driftedCount(mcp?.entries),
+      },
+      hooks: {
+        active: managedCount(hooks?.entries),
+        review: unmanagedCount(hooks?.entries) + driftedCount(hooks?.entries),
+      },
+      permissions: {
+        active: managedCount(permissions?.entries),
+        review: unmanagedCount(permissions?.entries) + driftedCount(permissions?.entries),
+      },
+      agents: {
+        active: managedCount(agents?.entries),
+        review: unmanagedCount(agents?.entries),
+      },
+    },
   };
 }
 
@@ -204,13 +265,14 @@ export interface CoverageCellLinks {
 
 export function coverageCellLinks(
   cellKey: OverviewHarnessCellKey,
-  harness: string,
+  harness?: string,
 ): CoverageCellLinks {
   const routes = COVERAGE_CELL_ROUTES[cellKey];
-  const join = (route: string) => (route.includes("?") ? "&" : "?");
+  const suffix = (route: string) =>
+    harness ? `${route.includes("?") ? "&" : "?"}harness=${encodeURIComponent(harness)}` : "";
   return {
-    activeTo: `${routes.active}${join(routes.active)}harness=${encodeURIComponent(harness)}`,
-    reviewTo: `${routes.review}${join(routes.review)}harness=${encodeURIComponent(harness)}`,
+    activeTo: `${routes.active}${suffix(routes.active)}`,
+    reviewTo: `${routes.review}${suffix(routes.review)}`,
   };
 }
 
