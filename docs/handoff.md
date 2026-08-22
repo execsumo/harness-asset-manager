@@ -2,6 +2,28 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Family matrix pages standardized on the Skills design
+
+Skills is the design reference; Agents, Slash Commands, MCP, and Hooks were converged on it
+(delegated to agy via herdr, branch `ui/standardize-family-matrices`, 6 commits `1673b7c`..`0f5c038`,
+independently verified: diff spot-checked and typecheck / Vitest / build re-run — all pass).
+
+- **Identity headers are now the family name**, styled identically to the "Active" header:
+  Skill / Agent / Slash Command / MCP Server / Hook (was Name / Agent Name / Name / Server / Hook ID).
+- **Sorting everywhere**: name asc/desc, per-harness column state, and coverage/Active — ported the
+  Skills `sortRows` pattern into agents/hooks/mcp selectors (new sort tests mirror
+  `MatrixView.test.tsx`); slash commands' existing sort was aligned rather than reimplemented.
+- **Column widths uniform**: harness 52px / compact 140px / coverage 96px across all five; agents
+  gained a compact responsive stack cell (`AgentsHarnessLogoStack`); hooks dropped a minWidth=800px
+  override.
+- **Titles**: "Skills in use" → "Skills", "MCP servers in use" → "MCP Servers", "Hooks in use" →
+  "Hooks"; Agents and Slash Commands were already bare family names. Review-view titles unchanged.
+- **Buttons**: standardized on the action-pill system; removed an inline `marginRight` style in
+  HooksInUsePage.
+
+Validation re-run post-merge: typecheck clean, Vitest 312/312 across 63 files (up from 307/61),
+build passes, dist rebuilt from merged `main`. Pushed. Frontend only — no backend/API changes.
+
 ## 2026-08-22 — Sidebar flattened: family headings link straight to their page
 
 Follow-on to the two entries below. Since every family now has exactly one unified page, the nested
