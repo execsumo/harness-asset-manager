@@ -61,13 +61,20 @@ class McpQueryService:
         finally:
             self._reconcile_state.active = False
 
+    def _active_scans(self, snapshot) -> tuple[McpHarnessScan, ...]:
+        return tuple(
+            scan for scan in self.read_models.visible_scans(snapshot)
+            if scan.installed or scan.config_present
+        )
+
     def list_servers(self) -> dict[str, object]:
         self._reconcile_once()
         snapshot = self.read_models.snapshot()
-        inventory = self._inventory(snapshot.harness_scans)
+        active_scans = self._active_scans(snapshot)
+        inventory = self._inventory(active_scans)
         return inventory_payload(
             inventory,
-            self.read_models.visible_scans(snapshot),
+            active_scans,
             records=self._records_by_name(),
             availability_cache=self._availability_cache,
             install_detail_lookup=self._marketplace_install_detail,
@@ -76,19 +83,19 @@ class McpQueryService:
     def get_server(self, name: str) -> dict[str, object]:
         self._reconcile_once()
         snapshot = self.read_models.snapshot()
-        inventory = self._inventory(snapshot.harness_scans)
-        visible_scans = self.read_models.visible_scans(snapshot)
+        active_scans = self._active_scans(snapshot)
+        inventory = self._inventory(active_scans)
         for entry in inventory.entries:
             if entry.name == name:
                 payload = entry_payload(
                     entry,
-                    visible_scans,
+                    active_scans,
                     records=self._records_by_name(),
                     availability=self._availability_cache.get(_availability_cache_key(entry)),
                     install_detail_lookup=self._marketplace_install_detail,
                 )
                 if entry.spec is not None:
-                    payload.update(detail_extras_payload(name=name, spec=entry.spec, scans=visible_scans))
+                    payload.update(detail_extras_payload(name=name, spec=entry.spec, scans=active_scans))
                     link = self.enrichment.lookup(name) if self.enrichment else None
                     if link is not None:
                         payload["marketplaceLink"] = link.to_dict()
@@ -98,7 +105,8 @@ class McpQueryService:
     def check_availability(self, name: str) -> dict[str, object]:
         self._reconcile_once()
         snapshot = self.read_models.snapshot()
-        inventory = self._inventory(snapshot.harness_scans)
+        active_scans = self._active_scans(snapshot)
+        inventory = self._inventory(active_scans)
         entry = next((item for item in inventory.entries if item.name == name), None)
         if entry is None or entry.spec is None:
             raise MutationError(f"unknown mcp server: {name}", status=404)

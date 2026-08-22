@@ -44,25 +44,32 @@ class PermissionsQueryService:
         finally:
             self._reconcile_state.active = False
 
+    def _active_scans(self, snapshot) -> tuple[PermissionHarnessScan, ...]:
+        return tuple(
+            scan for scan in self.read_models.visible_scans(snapshot)
+            if scan.installed or scan.config_present
+        )
+
     def list_permissions(self) -> dict[str, object]:
         self._reconcile_once()
         snapshot = self.read_models.snapshot()
-        inventory = self._inventory(snapshot.harness_scans)
+        active_scans = self._active_scans(snapshot)
+        inventory = self._inventory(active_scans)
         return inventory_payload(
             inventory,
-            self.read_models.visible_scans(snapshot),
+            active_scans,
         )
 
     def get_permission(self, id: str) -> dict[str, object]:
         self._reconcile_once()
         snapshot = self.read_models.snapshot()
-        inventory = self._inventory(snapshot.harness_scans)
-        visible_scans = self.read_models.visible_scans(snapshot)
+        active_scans = self._active_scans(snapshot)
+        inventory = self._inventory(active_scans)
         for entry in inventory.entries:
             if entry.id == id:
                 return entry_payload(
                     entry,
-                    visible_scans,
+                    active_scans,
                 )
         raise MutationError(f"unknown permission: {id}", status=404)
 

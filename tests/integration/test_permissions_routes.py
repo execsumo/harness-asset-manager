@@ -219,6 +219,48 @@ class PermissionRoutesTests(unittest.TestCase):
             states = {s["harness"]: s["state"] for s in entry["sightings"]}
             self.assertEqual(states.get("claude"), "managed")
 
+    def test_inventory_excludes_disabled_and_undetected_harnesses(self) -> None:
+        with AppTestHarness(omit_clis=("cursor-agent", "agy")) as harness:
+            # 1. Undetected harnesses (cursor, agy without CLI or config) excluded from columns
+            payload = harness.get_json("/api/permissions")
+            cols = [col["harness"] for col in payload["columns"]]
+            self.assertIn("claude", cols)
+            self.assertIn("codex", cols)
+            self.assertNotIn("cursor", cols)
+            self.assertNotIn("agy", cols)
+
+            # 2. Creating config file for cursor makes it detected (config_present)
+            (harness.spec.home / ".cursor").mkdir(parents=True, exist_ok=True)
+            (harness.spec.home / ".cursor" / "cli-config.json").write_text('{"permissions":{}}', encoding="utf-8")
+            harness.container.permissions_read_models.invalidate()
+
+            payload_with_cursor = harness.get_json("/api/permissions")
+            cols_with_cursor = [col["harness"] for col in payload_with_cursor["columns"]]
+            self.assertIn("cursor", cols_with_cursor)
+
+            # 3. Disabling claude in settings drops it from columns
+            harness.put_json("/api/settings/harnesses/claude/support", {"enabled": False})
+            harness.container.permissions_read_models.invalidate()
+
+            payload_disabled = harness.get_json("/api/permissions")
+            cols_disabled = [col["harness"] for col in payload_disabled["columns"]]
+            self.assertNotIn("claude", cols_disabled)
+            self.assertIn("codex", cols_disabled)
+
+            # 4. Entry sightings agree with filtered columns
+            harness.post_json(
+                "/api/permissions",
+                {
+                    "id": "my-perm",
+                    "decision": "deny",
+                    "scope": "shell",
+                    "pattern": "git push",
+                },
+            )
+            detail = harness.get_json("/api/permissions/my-perm")
+            detail_sightings = [s["harness"] for s in detail["sightings"]]
+            self.assertNotIn("claude", detail_sightings)
+
 
 if __name__ == "__main__":
     unittest.main()
