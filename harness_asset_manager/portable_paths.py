@@ -39,7 +39,12 @@ def to_portable_path(path: Path | str, *, home: Path | None = None) -> str:
     return target.as_posix()
 
 
-def from_portable_path(raw: str | Path, *, home: Path | None = None) -> Path | None:
+def from_portable_path(
+    raw: str | Path,
+    *,
+    home: Path | None = None,
+    extra_local_roots: tuple[Path, ...] = (),
+) -> Path | None:
     """Re-resolve a persisted portable path (~/...) against current HOME.
 
     Backward compatibility:
@@ -62,7 +67,7 @@ def from_portable_path(raw: str | Path, *, home: Path | None = None) -> Path | N
 
     candidate = Path(raw_str)
     if candidate.is_absolute():
-        if _is_local_path(candidate, base_home):
+        if _is_local_path(candidate, base_home, extra_local_roots):
             return candidate
         # Absolute path outside current HOME and local roots -> foreign machine path
         return None
@@ -70,49 +75,40 @@ def from_portable_path(raw: str | Path, *, home: Path | None = None) -> Path | N
     return base_home / candidate
 
 
-def _is_local_path(candidate: Path, base_home: Path) -> bool:
-    try:
-        candidate.relative_to(base_home)
+def _is_local_path(
+    candidate: Path,
+    base_home: Path,
+    extra_local_roots: tuple[Path, ...] = (),
+) -> bool:
+    """True when an absolute path belongs to this machine's known-local roots.
+
+    Local roots are HOME, the XDG base directories of the running process, and any
+    explicit ``extra_local_roots`` the caller supplies (the resolved HAM store dirs).
+    Anything else is foreign and must degrade to no-record, never be re-resolved.
+    """
+
+    def _under(root: Path) -> bool:
+        try:
+            candidate.relative_to(root)
+            return True
+        except ValueError:
+            pass
+        try:
+            candidate.resolve(strict=False).relative_to(root.resolve(strict=False))
+            return True
+        except (ValueError, OSError):
+            pass
+        return False
+
+    if _under(base_home):
         return True
-    except ValueError:
-        pass
-    try:
-        candidate.resolve(strict=False).relative_to(base_home.resolve(strict=False))
-        return True
-    except (ValueError, OSError):
-        pass
 
     for xdg_key in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME"):
         xdg_val = os.environ.get(xdg_key)
-        if xdg_val:
-            xdg_path = Path(xdg_val)
-            try:
-                candidate.relative_to(xdg_path)
-                return True
-            except ValueError:
-                pass
-            try:
-                candidate.resolve(strict=False).relative_to(xdg_path.resolve(strict=False))
-                return True
-            except (ValueError, OSError):
-                pass
+        if xdg_val and _under(Path(xdg_val)):
+            return True
 
-    # Synthetic test fixture roots (FakeHomeSpec where spec.home is root/home)
-    if base_home.name == "home" and base_home.parent != base_home:
-        parent = base_home.parent
-        if parent != parent.parent:
-            try:
-                candidate.relative_to(parent)
-                return True
-            except ValueError:
-                pass
-            try:
-                candidate.resolve(strict=False).relative_to(parent.resolve(strict=False))
-                return True
-            except (ValueError, OSError):
-                pass
-
-    return False
+    return any(_under(root) for root in extra_local_roots)
 
 
 def is_sync_artifact(name_or_path: str | Path) -> bool:

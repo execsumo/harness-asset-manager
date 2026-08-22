@@ -34,9 +34,16 @@ SlashCommandSyncState = dict[str, dict[str, SlashCommandSyncRecord]]
 
 
 class SlashCommandSyncStateStore:
-    def __init__(self, path: Path, *, home: Path | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        home: Path | None = None,
+        extra_local_roots: tuple[Path, ...] = (),
+    ) -> None:
         self.path = path
         self.home = home
+        self.extra_local_roots = extra_local_roots
 
     @property
     def lock_path(self) -> Path:
@@ -60,7 +67,12 @@ class SlashCommandSyncStateStore:
                 continue
             records: dict[str, SlashCommandSyncRecord] = {}
             for target_id, raw_record in target_payload.items():
-                record = _parse_record(str(target_id), raw_record, home=self.home)
+                record = _parse_record(
+                    str(target_id),
+                    raw_record,
+                    home=self.home,
+                    extra_local_roots=self.extra_local_roots,
+                )
                 if record is not None:
                     records[record.target] = record
             if records:
@@ -119,7 +131,11 @@ class SlashCommandSyncStateStore:
 
 
 def _parse_record(
-    target_id: str, raw_record: object, *, home: Path | None = None
+    target_id: str,
+    raw_record: object,
+    *,
+    home: Path | None = None,
+    extra_local_roots: tuple[Path, ...] = (),
 ) -> SlashCommandSyncRecord | None:
     if not isinstance(raw_record, dict):
         return None
@@ -127,7 +143,7 @@ def _parse_record(
     render_format = raw_record.get("renderFormat")
     if not isinstance(path_raw, str) or render_format not in {"frontmatter_markdown", "cursor_plaintext"}:
         return None
-    path = from_portable_path(path_raw, home=home)
+    path = from_portable_path(path_raw, home=home, extra_local_roots=extra_local_roots)
     if path is None:
         return None
     return SlashCommandSyncRecord(

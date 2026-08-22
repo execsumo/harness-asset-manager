@@ -213,6 +213,16 @@ def build_backend_container(
 
     paths = resolve_app_paths(active_env)
     app_home = resolve_context(active_env).home
+    # Absolute paths persisted in ledgers/sync state count as "local" only when they
+    # resolve under HOME, the process XDG roots, or these resolved base dirs; anything
+    # else is a foreign machine's path and degrades to no-record on load. The *base*
+    # dirs (not the harnessam subdirs) because harness files live in sibling
+    # directories of the store ($XDG_CONFIG_HOME/opencode, ~/.claude, ...).
+    portable_extra_roots = (
+        paths.data_dir.parent,
+        paths.config_dir.parent,
+        paths.state_dir.parent,
+    )
     
     _migrate_legacy_layouts(paths.data_dir, paths.skills_store_root, paths.agents_root)
     _ensure_default_gitignore(paths.data_dir)
@@ -244,7 +254,11 @@ def build_backend_container(
             commands_dir=paths.slash_command_commands_dir,
         )
     )
-    slash_command_sync_state = SlashCommandSyncStateStore(paths.slash_command_sync_state_path, home=app_home)
+    slash_command_sync_state = SlashCommandSyncStateStore(
+        paths.slash_command_sync_state_path,
+        home=app_home,
+        extra_local_roots=portable_extra_roots,
+    )
     slash_command_path_policy = SlashCommandPathPolicy()
     migrate_legacy_slash_commands(
         command_store=slash_command_store,
@@ -378,7 +392,11 @@ def build_backend_container(
     permissions_queries.set_reconcile(permissions_auto_adopt.reconcile)
 
     scaffold_service = ScaffoldService(paths)
-    agent_bindings = AgentBindingLedger(paths.bindings_ledger_path, home=app_home)
+    agent_bindings = AgentBindingLedger(
+        paths.bindings_ledger_path,
+        home=app_home,
+        extra_local_roots=portable_extra_roots,
+    )
 
     def resolve_agents_snapshot():
         # Re-resolved per call so toggling a harness in Settings takes effect at once.

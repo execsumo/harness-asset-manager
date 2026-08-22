@@ -48,6 +48,24 @@ class PortablePathsTests(unittest.TestCase):
         foreign_path = Path("/Users/alice/.claude/agents/reviewer.md")
         self.assertIsNone(from_portable_path(foreign_path, home=home))
 
+    def test_from_portable_path_foreign_sibling_home_on_linux_layout(self) -> None:
+        # Regression: HOME=/home/<user> must not make sibling homes local.
+        # A name-based heuristic ("HOME's parent is a local root when its basename
+        # is 'home'") admitted /home/alice/... on a machine whose HOME is
+        # /home/dev, defeating foreign-path detection on every standard Linux box.
+        home = Path("/home/dev")
+        self.assertIsNone(from_portable_path("/home/alice/.claude/agents/rival.md", home=home))
+
+    def test_from_portable_path_extra_local_roots(self) -> None:
+        home = Path("/home/dev")
+        store = Path("/srv/harnessam/data")
+        outside = Path("/opt/other/thing")
+        self.assertEqual(
+            from_portable_path(str(store), home=home, extra_local_roots=(store,)),
+            store,
+        )
+        self.assertIsNone(from_portable_path(str(outside), home=home, extra_local_roots=(store,)))
+
     def test_from_portable_path_empty_or_whitespace(self) -> None:
         home = Path("/home/bob")
         self.assertIsNone(from_portable_path("", home=home))

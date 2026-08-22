@@ -61,9 +61,16 @@ class AgentBindingLedger:
     default.
     """
 
-    def __init__(self, path: Path, *, home: Path | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        home: Path | None = None,
+        extra_local_roots: tuple[Path, ...] = (),
+    ) -> None:
         self.path = path
         self.home = home
+        self.extra_local_roots = extra_local_roots
 
     @property
     def lock_path(self) -> Path:
@@ -90,7 +97,12 @@ class AgentBindingLedger:
                 continue
             records: dict[str, AgentBindingRecord] = {}
             for harness, raw_record in harness_payload.items():
-                record = _parse_record(str(harness), raw_record, home=self.home)
+                record = _parse_record(
+                    str(harness),
+                    raw_record,
+                    home=self.home,
+                    extra_local_roots=self.extra_local_roots,
+                )
                 if record is not None:
                     records[record.harness] = record
             if records:
@@ -246,7 +258,11 @@ def _safe_hash(path: Path) -> str | None:
 
 
 def _parse_record(
-    harness: str, raw_record: object, *, home: Path | None = None
+    harness: str,
+    raw_record: object,
+    *,
+    home: Path | None = None,
+    extra_local_roots: tuple[Path, ...] = (),
 ) -> AgentBindingRecord | None:
     if not isinstance(raw_record, dict) or not harness:
         return None
@@ -254,7 +270,7 @@ def _parse_record(
     linked_at = raw_record.get("linkedAt")
     if not isinstance(target_raw, str) or not isinstance(linked_at, (int, float)):
         return None
-    target = from_portable_path(target_raw, home=home)
+    target = from_portable_path(target_raw, home=home, extra_local_roots=extra_local_roots)
     if target is None:
         return None
     return AgentBindingRecord(
