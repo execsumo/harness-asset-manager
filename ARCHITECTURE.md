@@ -228,9 +228,10 @@ in `agents-audit.json`.
 
 The journal is append-serialized with `flock`. An audit-write failure does not turn an
 already-completed config mutation into an apparent failure, which avoids unsafe retries.
-`GET /api/activity` validates and returns recent events newest-first for the read-only
-Activity page. Reads scan at most the final 1 MiB of the journal and skip malformed,
-truncated, or schema-invalid entries; `audit.log` remains the authoritative record.
+`audit.log` is the authoritative activity record and is backend-only: there is no HTTP
+endpoint or UI surface for it. The former `GET /api/activity` endpoint and the read-only
+Activity page were removed; the journal remains in place for traceability and support
+diagnostics.
 
 ---
 

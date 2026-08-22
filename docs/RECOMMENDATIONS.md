@@ -28,6 +28,8 @@
 > 2026-08-12 (extension-family and harness contribution checklists).
 > 2026-08-12 (machine-readable API error envelopes and frontend `ApiError` handling).
 > 2026-08-12 (backend and frontend coverage ratchets).
+> 2026-08-22 `60b1a02` (Activity page/view and `/api/activity` removed; `audit.log`
+> mutation journal retained backend-only).
 > Partially-shipped items below keep their number and describe only the remaining scope.
 > See `handoff.md` for the full chronological record.
 

@@ -2,6 +2,26 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Activity page/view removed; backend audit journal retained
+
+The user-facing Activity surface is gone; the backend activity log stays.
+
+- Deleted `frontend/src/features/activity/` (page, queries, API client, styles, i18n,
+  tests), the `/activity` route in `App.tsx`, the sidebar link + `activity` icon key,
+  and the `nav.activity` / `loading.activity` copy keys.
+- Removed the `GET /api/activity` endpoint (`routers/activity.py`,
+  `schemas/activity.py`) and `tests/integration/test_activity_api.py`; regenerated
+  `openapi.json` / `generated.ts` via `npm run codegen:openapi`.
+- **`MutationAuditJournal` is untouched** — every mutation still appends to
+  `data/audit.log`. The journal is now backend-only (no HTTP endpoint, no UI) and
+  remains the traceability/support-diagnostics record. ARCHITECTURE §5 updated
+  accordingly; `plan-auto-adoption.md` wording fixed ("shared Activity journal" →
+  "mutation audit journal"); shipped-batches list in RECOMMENDATIONS notes the removal.
+- App test now asserts the Activity sidebar link is *absent*.
+
+Validation: typecheck, backend suite (579 unit + 191 integration OK), frontend vitest
+(310/310), production build — all green. Commit `60b1a02` pushed to `main`.
+
 ## 2026-08-22 — Backlog sweep: root pointers deleted, sync plan retired, stale items closed
 
 All remaining open items resolved by owner decision; nothing left in the backlog.

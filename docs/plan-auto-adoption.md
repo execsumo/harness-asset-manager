@@ -462,10 +462,11 @@ details above did not survive contact with the implementation:
 - **`auto_adopt.slash_commands` already existed** (added when new-unmanaged-file
   adoption shipped 2026-08-08), so this reused it rather than adding a second key.
   One toggle covers every safe automatic ownership change for a family; see §9 item 4.
-- The audit trail is the shared Activity journal (`record_auto_repair`, `operation:
-  "auto_repair"`), not the agents-specific `AgentAuditLog` — that mechanism was itself
-  generalized into the Activity journal by the 2026-08-07 mutation-audit work, after
-  this section's "grow a family column" note was written.
+- The audit trail is the mutation audit journal (`record_auto_repair`, `operation:
+  "auto_repair"`, appended to `data/audit.log`), not the agents-specific
+  `AgentAuditLog` — that mechanism was itself generalized into the mutation audit
+  journal by the 2026-08-07 mutation-audit work, after this section's "grow a family
+  column" note was written.
 - `classify_drift()` was generalized to take a plain `baseline_sha256` instead of an
   `AgentBindingRecord`, and moved to `harness_asset_manager/application/drift.py`.
   The agents ledger's `classify_drift()` is now a thin wrapper over it.
