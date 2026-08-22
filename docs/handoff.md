@@ -2,6 +2,29 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Family pages hide disabled and not-detected harnesses
+
+Harness toggle columns on the five family pages now only include harnesses that are **enabled in
+Settings AND detected** (installed, or config file present). Implemented by agy (delegated via
+herdr, branch `fix/hide-unusable-harness-columns`, 4 commits `ba700e5`..`7e74531`), independently
+verified: diff spot-checked and full suite re-run — backend 553 unit + 193 integration (6 new
+integration regression tests), typecheck, Vitest 312/312, build all pass.
+
+- The leak was real and per-family inconsistent: MCP/Hooks/Permissions built their inventory from
+  the FULL harness scan list (so disabled harnesses rendered as columns); skills/agents/slash
+  filtered disabled but kept enabled-but-not-installed ones.
+- Fix is at the inventory presentation boundary only (`_active_scans` in mcp/hooks/permissions;
+  detection filters in skills/agents/slash presentation). Reconcile paths, mutation gating
+  (`require_enabled_adapter`, `enabled_writable_adapters`), and planner/unmanaged-review endpoints
+  are untouched.
+- Slash-command detection could NOT reuse its `available` flag (output-root existence — a fresh
+  install may not have created the folder yet). New `_is_detected` in `slash_commands/targets.py`
+  derives detection from install probe on PATH / app probe paths / discovery config files; targets
+  gained an `installed` field (OpenAPI regenerated, codegen check clean).
+- CLI JSON matrix output shares these query services, so headless output filters identically
+  (intended).
+- Server restarted from merged `main`; dist rebuilt. Pushed to `origin/main`.
+
 ## 2026-08-22 — Family matrix pages standardized on the Skills design
 
 Skills is the design reference; Agents, Slash Commands, MCP, and Hooks were converged on it
