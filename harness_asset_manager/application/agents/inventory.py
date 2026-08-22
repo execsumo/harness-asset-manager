@@ -48,7 +48,7 @@ class AgentInventoryService:
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
-        return self._resolve()[0]
+        return tuple(target for target in self._resolve()[0] if target.installed)
 
     @property
     def adapters(self) -> dict[str, AgentHarnessAdapter]:
@@ -62,7 +62,8 @@ class AgentInventoryService:
         if self._reconcile is not None:
             reconcile_issues = self._reconcile().issues
 
-        targets, adapters = self._resolve()
+        all_targets, adapters = self._resolve()
+        targets = tuple(target for target in all_targets if target.installed)
         managed, issues = self.store.scan()
         issue_list = list(issues)
         issue_list.extend(AgentIssue(name=name, reason=reason) for name, reason in reconcile_issues)
@@ -94,7 +95,8 @@ class AgentInventoryService:
         agent = self.store.get(slug)
         if agent is None:
             return None
-        targets, adapters = self._resolve()
+        all_targets, adapters = self._resolve()
+        targets = tuple(target for target in all_targets if target.installed)
         records = self.ledger.load().get(slug, {})
         discarded_issues: list[AgentIssue] = []
         harnesses: list[AgentHarnessDetail] = []

@@ -577,6 +577,47 @@ class AgentRoutesTests(unittest.TestCase):
     def _state(entry: dict, harness_id: str) -> str:
         return next(b["state"] for b in entry["bindings"] if b["harness"] == harness_id)
 
+    def test_inventory_excludes_disabled_and_undetected_harnesses(self) -> None:
+        with AppTestHarness() as harness:
+            # 1. Undetected harness (droid without CLI or root dir) excluded from columns
+            payload = harness.get_json("/api/agents")
+            cols = [col["harness"] for col in payload["columns"]]
+            self.assertIn("claude", cols)
+            self.assertIn("codex", cols)
+            self.assertIn("hermes", cols)
+            self.assertNotIn("droid", cols)
+
+            # 2. Disabling claude in settings drops it from columns
+            harness.put_json("/api/settings/harnesses/claude/support", {"enabled": False})
+
+            payload_disabled = harness.get_json("/api/agents")
+            cols_disabled = [col["harness"] for col in payload_disabled["columns"]]
+            self.assertNotIn("claude", cols_disabled)
+            self.assertIn("codex", cols_disabled)
+
+            # 3. Entry bindings agree with filtered columns
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Red Team",
+                    "description": "probes systems",
+                    "prompt": "Be adversarial.",
+                },
+            )
+            payload_with_agent = harness.get_json("/api/agents")
+            entry = payload_with_agent["entries"][0]
+            binding_harnesses = [b["harness"] for b in entry["bindings"]]
+            self.assertNotIn("claude", binding_harnesses)
+            self.assertNotIn("droid", binding_harnesses)
+            self.assertIn("codex", binding_harnesses)
+
+            # 4. Detail harnesses agree with filtered columns
+            detail = harness.get_json("/api/agents/red-team")
+            detail_harnesses = [h["harness"] for h in detail["harnesses"]]
+            self.assertNotIn("claude", detail_harnesses)
+            self.assertNotIn("droid", detail_harnesses)
+            self.assertIn("codex", detail_harnesses)
+
 
 if __name__ == "__main__":
     unittest.main()
