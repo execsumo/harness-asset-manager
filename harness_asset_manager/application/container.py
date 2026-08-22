@@ -175,6 +175,29 @@ def _migrate_legacy_layouts(data_dir: Path, skills_store_root: Path, agents_root
                         shutil.move(str(item), str(target))
 
 
+DEFAULT_STORE_GITIGNORE = """# Harness Asset Manager — local / ephemeral state
+*.lock
+runtime.json
+server.log
+*-audit.json*
+cache/
+tmp/
+.sync-conflict-*
+*.sync-conflict-*
+.syncthing.*
+"""
+
+
+def _ensure_default_gitignore(data_dir: Path) -> None:
+    gitignore_path = data_dir / ".gitignore"
+    if not gitignore_path.exists():
+        try:
+            data_dir.mkdir(parents=True, exist_ok=True)
+            gitignore_path.write_text(DEFAULT_STORE_GITIGNORE, encoding="utf-8")
+        except OSError:
+            pass
+
+
 def build_backend_container(
     env: dict[str, str] | None = None,
     *,
@@ -192,6 +215,7 @@ def build_backend_container(
     app_home = resolve_context(active_env).home
     
     _migrate_legacy_layouts(paths.data_dir, paths.skills_store_root, paths.agents_root)
+    _ensure_default_gitignore(paths.data_dir)
 
     support_store = HarnessSupportStore(paths.settings_path)
     harness_kernel = HarnessKernelService.from_environment(active_env, support_store=support_store)
