@@ -2,6 +2,45 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Permissions page converged; matrix dead code removed; docs caught up
+
+The last family still on its own design was converged. Commits `5befc6b`..`09b2d7b` (frontend +
+docs only — no backend/API changes), all on `main`, pushed to `origin/main`. This entry also
+closes the doc pass: README and ARCHITECTURE.md were audited against current behavior and
+updated where stale.
+
+- **Permissions matrix standardized** (`5befc6b`): page title/subtitle, search copy, status
+  filter pills, and Adopt button now come from feature i18n (title drops the "in use" suffix);
+  `MatrixSortableHeader` throughout with a new `sortPermissionsRows` selector mirroring
+  hooks/MCP ordering (name / coverage / per-harness state); coverage aria-labels and column
+  widths aligned to the shared convention.
+- **Per-row checkboxes with bulk actions** (`689d740`): managed rows selected → BulkActionBar
+  (Apply everywhere / Remove everywhere / Delete with confirm dialog) driven by the existing
+  set-harnesses and uninstall mutations; untracked rows → bulk-dock Adopt bar like Hooks/MCP.
+  Selection is per row id and cleared when filters or inventory change.
+- **Untracked-row tint dropped** (`e1e71ac`): permissions was the only family styling unmanaged
+  rows with a warm accent/tint; removed so all five families render unmanaged rows identically.
+- **Dead code orphaned by standardization removed** (`a49c292`): `MatrixHarnessHeader` deleted
+  (no view uses it since every matrix moved to `MatrixSortableHeader`; its `--header` class had
+  no CSS rule), `MatrixTable`'s ignored `hasCheckboxColumn` prop dropped (views render their own
+  checkbox columns), and permissions rows' unused `data-kind` attribute removed.
+- **README** (`a5ea789`): Permissions section restructured into the standard family deep-dive —
+  scope→pattern examples as a list, matrix interactions documented (sortable columns, select
+  checkboxes, bulk apply/remove/delete/adopt), per-codec deny-surface notes split out.
+- **Doc audit follow-ups (this session)**: removed the stale README claim that the capability
+  matrix "keeps Cursor as Planned" — it has been `Yes (Denylist)` since 2026-08-14 and the
+  sentence contradicted both the README matrix and ARCHITECTURE.md. Added a Frontend
+  Architecture section to ARCHITECTURE.md pinning the now-stable UI conventions: one unified
+  In-use page per family with URL-backed status filters, flattened single-link sidebar groups,
+  the shared matrix component system (sortable headers, checkbox/bulk-action pattern, column
+  width convention), and enabled+detected-only harness columns enforced at the inventory
+  presentation boundary.
+- `09b2d7b`: CLAUDE.md gained RTK token-optimized command instructions (tooling only).
+
+Validation re-run on this tree before this entry: typecheck clean; Vitest 314/314 across 64
+files; backend 553 unit + 193 integration tests pass at 81% branch coverage; production build
+passes; `frontend/dist` rebuilt from merged `main`.
+
 ## 2026-08-22 — Family pages hide disabled and not-detected harnesses
 
 Harness toggle columns on the five family pages now only include harnesses that are **enabled in

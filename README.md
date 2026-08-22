@@ -398,7 +398,7 @@ Each harness codec translates rules into that harness's native deny surface:
 - Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules.
 - Cursor maps rules onto deny tokens in `~/.cursor/cli-config.json` — `Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()`. Multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either. Enabling a Cursor rule writes `approvalMode = "unrestricted"`; disabling the final rule cleans it up.
 
-Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model. The capability matrix keeps Cursor as `Planned` until this is verified against an installed `cursor-agent` rather than documentation alone.
+Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model.
 
 ### Native Config Snapshots
 

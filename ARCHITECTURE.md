@@ -206,6 +206,48 @@ truncated, or schema-invalid entries; `audit.log` remains the authoritative reco
 
 ---
 
+## 6. Frontend Architecture
+
+The SPA (`frontend/src`) is feature-sliced: every family lives under `features/<family>/`
+(`components/`, `screens/`, `model/` selectors, `api/`, `i18n.ts`, `routes.tsx`), with
+cross-family primitives in `components/matrix/`. State is TanStack React Query over the
+generated API client; the client is regenerated from OpenAPI and kept drift-free by a
+`codegen:check` gate.
+
+### One unified page per family
+
+Each family has exactly one canonical "In use" route listing managed **and** unadopted items,
+with URL-backed status filter pills (`?status=needs-review`, `?status=untracked`). Legacy
+per-view routes (`/mcp/review`, `/mcp/unmanaged`, …) are redirects onto the canonical route's
+filters. Single-link sidebar groups render their heading itself as a direct link carrying the
+family count; only multi-page groups (Marketplace) keep a collapsible sub-tree.
+
+### Shared matrix component system
+
+All five family matrices are built from `components/matrix/` (`MatrixTable`,
+`MatrixSortableHeader`) and follow one set of conventions:
+
+- The identity header is the family name (Skill / Agent / Slash Command / MCP Server / Hook /
+  Rule), styled like the Active coverage header — not "Name".
+- Every column is sortable: name asc/desc, per-harness cell state, and coverage/Active, via a
+  per-family `sort*Rows` selector in that family's `model/selectors.ts`.
+- Column widths are uniform: harness 52px / compact 140px / coverage 96px; compact responsive
+  logo stacks stand in for wide columns on narrow viewports.
+- Rows carry a leading select checkbox. Managed rows selected → bulk action bar (apply /
+  remove everywhere / delete, with confirm dialog); untracked rows → a bulk-dock Adopt bar.
+  Unmanaged rows render inline with no special tint, identically across families.
+
+### Enabled-and-detected column filtering
+
+Harness toggle columns include only harnesses that are enabled in Settings **and detected**
+(installed, or config file present). The filter is applied at the inventory presentation
+boundary only — `_active_scans` for MCP/hooks/permissions, detection filters for skills,
+agents, and slash commands — so reconcile paths, mutation gating, and planner endpoints see
+the full scan list. Disabling a harness in Settings drops its column everywhere without a
+restart.
+
+---
+
 ## 5. Security & Request Guarding
 
 HAM runs as a unauthenticated local daemon listening on loopback (`127.0.0.1`). Security is enforced via ASGI request middleware (`harness_asset_manager/api/guards.py`):
