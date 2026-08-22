@@ -2,6 +2,63 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — `~/.harnessam` made portable for dotfile-sync between devices
+
+Decision: **no in-app sync feature will be built.** The owner will carry the store between
+their own machines with a dotfile/folder-replication tool. That inverts
+`plan-cross-device-sync.md` §4's assumption (some files "never travel") — with folder sync
+everything travels, so the store itself had to be hardened: nothing load-bearing may be
+device-local, and readers must tolerate partial/foreign state fail-safe. Implemented by agy
+(delegated via herdr, branch `feat/portable-store`, 6 commits), independently verified:
+diff spot-check caught a real bug in agy's work (fixed in `970a5d3`, see below); full suite
+re-run on merged `main`. Merged as `344d42e`; branch deleted.
+
+### What shipped
+
+- **Portable path persistence** (`ecfcdfb`): new `harness_asset_manager/portable_paths.py`.
+  `bindings.json` targets and slash-command sync-state paths now persist home-relative
+  (`~/...`) and re-resolve against the current HOME on load. Backward compatible: legacy
+  absolute paths under the current machine's roots still parse; absolute paths from a
+  **foreign** machine degrade to no-record instead of poisoning broken-binding
+  classification.
+- **Total reads everywhere** (`9a3c004`): `SlashCommandSyncStateStore.load()` and MCP's
+  `_load_manifest_result()` previously called `json.loads` uncaught — a truncated file (what
+  folder sync produces when it replicates mid-write) crashed every read of that family.
+  Both now degrade to default + surfaced issue, matching the agents-ledger/hooks/permissions
+  pattern. Skills manifest loader verified/made total.
+- **Sync-artifact tolerance** (`443745f`): `is_sync_artifact()` filters conflict copies,
+  editor backups, temp files, dotfiles out of skills-store/agents-dir scans and auto-adopt
+  eligibility — a Syncthing `name (conflict copy)` file can surface as unmanaged but is
+  never auto-adopted and never breaks scanning.
+- **Arrival pinned by tests** (`b9eb633`): `tests/unit/test_cross_device_arrival.py` moves a
+  populated store between two synthetic homes with different layouts and asserts inventory
+  survives, missing bindings report cleanly, foreign ledger entries don't misclassify, and
+  no false drift appears.
+- **Docs + store `.gitignore`** (`67e8a80`): README section under Local-first Safety
+  ("carrying the store between your own devices": what travels, what to exclude —
+  `marketplace/`, `audit.log*`, `*.lock`, runtime files; secrets note). HAM now writes a
+  default `.gitignore` into the store root on startup (only if absent).
+- **Post-review fix** (`970a5d3`, owner): agy's foreign-path guard used a name heuristic
+  (`base_home.name == "home"`) that fires on *every standard Linux machine*, admitting a
+  foreign `/home/alice/...` as local. Replaced with an explicit `extra_local_roots`
+  parameter plumbed from the container (resolved XDG **base** dirs + HOME). The first cut
+  passed HAM's own store subdirs, which broke slash-command auto-adopt in integration
+  (harness files live in *sibling* dirs of `$XDG_CONFIG_HOME/harnessam`) — caught by
+  re-running the full suite, root-caused, fixed, regression-tested.
+
+### Validation
+
+Backend 579 unit + 193 integration pass; typecheck clean; Vitest 314/314 across 64 files;
+build passes; dist rebuilt from merged `main`; server restarted and healthy on :8000.
+Pushed to `origin/main`.
+
+### Notes for future sync-adjacent work
+
+- `plan-cross-device-sync.md` remains the design of record for a future in-app transport,
+  but its §4 "never travels" column is now stale in practice: everything travels safely.
+- Secrets (MCP `env`/`headers` values, hook commands) live in the manifests and therefore
+  travel with a dotfile repo — documented as trust-boundary advice rather than enforced.
+
 ## 2026-08-22 — Permissions page converged; matrix dead code removed; docs caught up
 
 The last family still on its own design was converged. Commits `5befc6b`..`09b2d7b` (frontend +
