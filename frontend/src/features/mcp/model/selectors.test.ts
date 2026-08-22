@@ -63,13 +63,33 @@ function makeInventory(entries: McpInventoryEntryDto[]): McpInventoryDto {
 }
 
 describe("filterMcpServersInUse", () => {
-  it("returns only in-use entries when pill is 'all'", () => {
+  it("returns both managed and unmanaged entries when pill is 'all'", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      ...makeEntry("unm", ["missing"]),
+      kind: "unmanaged",
+      sightings: [{ harness: "h0", state: "unmanaged" }],
+    };
     const inventory = makeInventory([
       makeEntry("exa", ["managed", "managed", "missing"]),
       makeEntry("ctx", ["missing", "missing", "missing"]),
+      unmanagedEntry,
     ]);
     const out = filterMcpServersInUse(inventory, { search: "", pill: "all" });
-    expect(out.map((e) => e.name)).toEqual(["exa", "ctx"]);
+    expect(out.map((e) => e.name)).toEqual(["exa", "ctx", "unm"]);
+  });
+
+  it("pill 'untracked' isolates unmanaged entries only", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      ...makeEntry("unm", ["missing"]),
+      kind: "unmanaged",
+      sightings: [{ harness: "h0", state: "unmanaged" }],
+    };
+    const inventory = makeInventory([
+      makeEntry("exa", ["managed", "managed", "missing"]),
+      unmanagedEntry,
+    ]);
+    const out = filterMcpServersInUse(inventory, { search: "", pill: "untracked" });
+    expect(out.map((e) => e.name)).toEqual(["unm"]);
   });
 
   it("filters by search across name/displayName/transport", () => {
@@ -85,10 +105,16 @@ describe("filterMcpServersInUse", () => {
     ]);
   });
 
-  it("pill 'enabled' keeps entries with at least 1 managed binding", () => {
+  it("pill 'enabled' keeps entries with at least 1 managed binding and excludes unmanaged", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      ...makeEntry("unm", ["missing"]),
+      kind: "unmanaged",
+      sightings: [{ harness: "h0", state: "unmanaged" }],
+    };
     const inventory = makeInventory([
       makeEntry("exa", ["managed", "missing", "missing"]),
       makeEntry("ctx", ["missing", "missing", "missing"]),
+      unmanagedEntry,
     ]);
     expect(filterMcpServersInUse(inventory, { search: "", pill: "enabled" }).map((e) => e.name)).toEqual([
       "exa",
@@ -132,19 +158,26 @@ describe("filterMcpServersInUse", () => {
 });
 
 describe("pillCounts", () => {
-  it("computes counts across all pill values", () => {
+  it("computes counts across all pill values including untracked", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      ...makeEntry("unm", ["missing"]),
+      kind: "unmanaged",
+      sightings: [{ harness: "h0", state: "unmanaged" }],
+    };
     const inventory = makeInventory([
       makeEntry("exa", ["managed", "managed", "managed"]),
       makeEntry("ctx", ["managed", "missing", "missing"]),
       makeEntry("none", ["missing", "missing", "missing"]),
       makeEntry("dft", ["drifted", "missing", "missing"]),
+      unmanagedEntry,
     ]);
     expect(pillCounts(inventory)).toEqual({
-      all: 4,
+      all: 5,
       enabled: 2,
       "all-harnesses": 1,
       unbound: 1,
       drifted: 1,
+      untracked: 1,
     });
   });
 
@@ -155,6 +188,7 @@ describe("pillCounts", () => {
       "all-harnesses": 0,
       unbound: 0,
       drifted: 0,
+      untracked: 0,
     });
   });
 });

@@ -9,7 +9,7 @@ import type {
 } from "../api/management-types";
 import { mcpCopy, type McpCopy } from "../i18n";
 
-export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted";
+export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked";
 
 export interface McpInUseFilters {
   search: string;
@@ -80,8 +80,10 @@ export function filterMcpServersInUse(
   const addressable = addressableHarnesses(inventory);
   const harnessCount = addressable.size;
   return inventory.entries.filter((entry) => {
-    if (entry.kind !== "managed") return false;
     if (!matchesSearch(entry, filters.search.trim())) return false;
+    if (filters.pill === "untracked") return entry.kind === "unmanaged";
+    if (entry.kind !== "managed") return filters.pill === "all";
+
     const enabledCount = inUseBindingCount(entry, addressable);
     switch (filters.pill) {
       case "all":
@@ -102,13 +104,14 @@ export function filterMcpServersInUse(
 
 export function pillCounts(inventory: McpInventoryDto | null): Record<InUsePillValue, number> {
   if (!inventory) {
-    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0 };
+    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0, untracked: 0 };
   }
   const addressable = addressableHarnesses(inventory);
   const harnessCount = addressable.size;
   const inUseEntries = inventory.entries.filter((e) => e.kind === "managed");
+  const untrackedEntries = inventory.entries.filter((e) => e.kind === "unmanaged");
   return {
-    all: inUseEntries.length,
+    all: inventory.entries.length,
     enabled: inUseEntries.filter((e) => inUseBindingCount(e, addressable) > 0).length,
     "all-harnesses": inUseEntries.filter(
       (e) => harnessCount > 0 && inUseBindingCount(e, addressable) === harnessCount,
@@ -117,6 +120,7 @@ export function pillCounts(inventory: McpInventoryDto | null): Record<InUsePillV
       (e) => inUseBindingCount(e, addressable) === 0 && !hasDrift(e, addressable),
     ).length,
     drifted: inUseEntries.filter((entry) => hasDrift(entry, addressable)).length,
+    untracked: untrackedEntries.length,
   };
 }
 

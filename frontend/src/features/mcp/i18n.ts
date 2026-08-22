@@ -12,12 +12,16 @@ const englishMcpCopy = {
     noMatchesBody: "Adjust the search or filter to see other MCP servers.",
     emptyTitle: "No MCP servers in use yet",
     emptyBody: "Install one from the marketplace, or adopt an existing entry from a harness config.",
+    adopt: "Adopt",
+    adoptSelected: "Adopt selected",
+    adoptingSelected: "Adopting selected servers...",
     filters: {
       all: "All",
       enabled: "Enabled",
       allHarnesses: "Enabled on all",
       unbound: "Unbound",
       drifted: "Different config",
+      untracked: "Needs review",
       aria: (label: string) => `Filter: ${label}`,
     },
     uninstall: {

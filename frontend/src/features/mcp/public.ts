@@ -22,7 +22,8 @@ export type {
 export { isMcpHarnessAddressable } from "./model/selectors";
 
 export const mcpRoutes = {
-  inUse: "/mcp/use",
-  needsReview: "/mcp/review",
+  index: "/mcp",
+  inUse: "/mcp",
+  needsReview: "/mcp?status=untracked",
   marketplace: "/marketplace/mcp",
 } as const;

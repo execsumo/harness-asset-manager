@@ -120,7 +120,148 @@ function marketplaceDetailFixture(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderPage(route = "/mcp/use") {
+function unmanagedInventoryFixture(): McpInventoryDto {
+  return {
+    columns: [
+      { harness: "codex", label: "Codex", logoKey: "codex", installed: true, configPresent: true, mcpWritable: true },
+      { harness: "claude", label: "Claude", logoKey: "claude", installed: true, configPresent: true, mcpWritable: true },
+    ],
+    entries: [
+      {
+        name: "context7",
+        displayName: "Context7",
+        kind: "unmanaged",
+        canEnable: false,
+        enabledStatus: "disabled",
+        availabilityStatus: "unavailable",
+        availabilityReason: null,
+        mcpStatus: { kind: "unchecked", reason: null },
+        installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
+        spec: null,
+        sightings: [
+          { harness: "codex", state: "unmanaged" },
+          { harness: "claude", state: "unmanaged" },
+        ],
+      },
+    ],
+  };
+}
+
+function identicalByServerFixture() {
+  return {
+    harnesses: [],
+    issues: [],
+    servers: [
+      {
+        name: "context7",
+        identical: true,
+        canonicalSpec: {
+          name: "context7",
+          displayName: "context7",
+          source: { kind: "adopted", locator: "cursor:context7" },
+          transport: "stdio",
+          command: "uvx",
+          args: ["context7-mcp"],
+          installedAt: "2026-04-21T00:00:00Z",
+          revision: "abc",
+        },
+        marketplaceLink: null,
+        sightings: [
+          {
+            harness: "codex",
+            label: "Codex",
+            logoKey: "codex",
+            configPath: "/c/.codex/mcp.json",
+            payloadPreview: { command: "uvx", args: ["context7-mcp"] },
+            spec: {
+              name: "context7",
+              displayName: "context7",
+              source: { kind: "adopted", locator: "codex:context7" },
+              transport: "stdio",
+              command: "uvx",
+              args: ["context7-mcp"],
+              installedAt: "2026-04-21T00:00:00Z",
+              revision: "abc",
+            },
+            env: [],
+          },
+          {
+            harness: "claude",
+            label: "Claude",
+            logoKey: "claude",
+            configPath: "/c/.claude.json",
+            payloadPreview: { command: "uvx", args: ["context7-mcp"] },
+            spec: {
+              name: "context7",
+              displayName: "context7",
+              source: { kind: "adopted", locator: "claude:context7" },
+              transport: "stdio",
+              command: "uvx",
+              args: ["context7-mcp"],
+              installedAt: "2026-04-21T00:00:00Z",
+              revision: "abc",
+            },
+            env: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function differingByServerFixture() {
+  return {
+    harnesses: [],
+    issues: [],
+    servers: [
+      {
+        name: "context7",
+        identical: false,
+        canonicalSpec: null,
+        marketplaceLink: null,
+        sightings: [
+          {
+            harness: "codex",
+            label: "Codex",
+            logoKey: "codex",
+            configPath: "/c/.codex/mcp.json",
+            payloadPreview: { command: "uvx", args: ["context7-mcp"] },
+            spec: {
+              name: "context7",
+              displayName: "context7",
+              source: { kind: "adopted", locator: "codex:context7" },
+              transport: "stdio",
+              command: "uvx",
+              args: ["context7-mcp"],
+              installedAt: "2026-04-21T00:00:00Z",
+              revision: "abc",
+            },
+            env: [],
+          },
+          {
+            harness: "claude",
+            label: "Claude",
+            logoKey: "claude",
+            configPath: "/c/.claude.json",
+            payloadPreview: { url: "https://context7.example" },
+            spec: {
+              name: "context7",
+              displayName: "context7",
+              source: { kind: "adopted", locator: "claude:context7" },
+              transport: "http",
+              url: "https://context7.example",
+              installedAt: "2026-04-21T00:00:00Z",
+              revision: "def",
+            },
+            env: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function renderPage(route = "/mcp") {
   return renderWithAppProviders(<McpInUsePage />, { route });
 }
 
@@ -661,6 +802,278 @@ describe("McpInUsePage", () => {
     await waitFor(() =>
       expect(
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/servers/exa")),
+      ).toBe(true),
+    );
+  });
+
+  it("renders the empty state when status=untracked and no unmanaged configs exist", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/servers")) return okJson(inventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server")) return okJson({ harnesses: [], servers: [], issues: [] });
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /no local MCP configs need review|no mcp configs need review/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("renders identity-first rows and directly adopts identical unmanaged servers under status=untracked", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/unmanaged/adopt")) {
+        expect(init?.method).toBe("POST");
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        expect(body.name).toBe("context7");
+        return okJson({
+          ok: true,
+          server: { name: "context7", displayName: "context7" },
+          succeeded: ["codex", "claude"],
+          failed: [],
+        });
+      }
+      if (url.includes("/api/mcp/servers")) return okJson(unmanagedInventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server"))
+        return okJson(identicalByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() => expect(screen.getByText("Context7")).toBeInTheDocument());
+    expect(screen.getByText(/Identical/)).toBeInTheDocument();
+    const adoptButton = screen.getByRole("button", { name: /^Adopt$/ });
+    expect(adoptButton).toBeInTheDocument();
+
+    fireEvent.click(adoptButton);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/unmanaged/adopt")),
+      ).toBe(true),
+    );
+  });
+
+  it("renders choose-config action and adopts via dialog when unmanaged server differs", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/unmanaged/adopt")) {
+        expect(init?.method).toBe("POST");
+        const body = init?.body ? JSON.parse(init.body as string) : {};
+        expect(body.name).toBe("context7");
+        expect(body.observedHarness).toBe("codex");
+        return okJson({
+          ok: true,
+          server: { name: "context7", displayName: "context7" },
+          succeeded: ["codex", "claude"],
+          failed: [],
+        });
+      }
+      if (url.includes("/api/mcp/servers")) return okJson(unmanagedInventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server"))
+        return okJson(differingByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() => expect(screen.getByText("Context7")).toBeInTheDocument());
+    expect(screen.getByText(/Differs across harnesses/)).toBeInTheDocument();
+    const chooseButton = screen.getByRole("button", { name: /^Choose config to adopt$/ });
+    fireEvent.click(chooseButton);
+
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
+    const confirmButton = screen.getByRole("button", { name: /^Adopt$/i });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/unmanaged/adopt")),
+      ).toBe(true),
+    );
+  });
+
+  it("renders Adopt identical servers (N) header action under status=untracked and executes adoption", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/unmanaged/adopt")) {
+        expect(init?.method).toBe("POST");
+        return okJson({
+          ok: true,
+          server: { name: "context7", displayName: "context7" },
+          succeeded: ["codex", "claude"],
+          failed: [],
+        });
+      }
+      if (url.includes("/api/mcp/servers")) return okJson(unmanagedInventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server"))
+        return okJson(identicalByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Adopt identical servers \(1\)/i })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Adopt identical servers \(1\)/i }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/unmanaged/adopt")),
+      ).toBe(true),
+    );
+  });
+
+  it("bulk selects and adopts selected unmanaged servers", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/unmanaged/adopt")) {
+        expect(init?.method).toBe("POST");
+        return okJson({
+          ok: true,
+          server: { name: "context7", displayName: "context7" },
+          succeeded: ["codex", "claude"],
+          failed: [],
+        });
+      }
+      if (url.includes("/api/mcp/servers")) return okJson(unmanagedInventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server"))
+        return okJson(identicalByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() => expect(screen.getByText("Context7")).toBeInTheDocument());
+
+    const checkbox = screen.getByRole("checkbox", { name: /select context7/i });
+    fireEvent.click(checkbox);
+
+    await waitFor(() =>
+      expect(screen.getByRole("toolbar", { name: /bulk actions/i })).toBeInTheDocument(),
+    );
+    const adoptSelectedButton = screen.getByRole("button", { name: /adopt selected/i });
+    fireEvent.click(adoptSelectedButton);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/unmanaged/adopt")),
+      ).toBe(true),
+    );
+  });
+
+  it("opens needs-review detail sheet when clicking unmanaged server", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/servers")) return okJson(unmanagedInventoryFixture());
+      if (url.includes("/api/mcp/unmanaged/by-server"))
+        return okJson(identicalByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage("/mcp?status=untracked");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open detail for Context7" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Open detail for Context7" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: /MCP config to review context7/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("pressure-test: mixed managed and unmanaged servers render under 'All', filter under untracked, and fire mutations", async () => {
+    const mixedInventory: McpInventoryDto = {
+      columns: [
+        { harness: "codex", label: "Codex", logoKey: "codex", installed: true, configPresent: true, mcpWritable: true },
+        { harness: "claude", label: "Claude", logoKey: "claude", installed: true, configPresent: true, mcpWritable: true },
+      ],
+      entries: [
+        {
+          name: "exa",
+          displayName: "Exa Search",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          availabilityStatus: "available",
+          availabilityReason: null,
+          mcpStatus: { kind: "available", reason: null },
+          installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
+          spec: {
+            name: "exa",
+            displayName: "Exa Search",
+            source: { kind: "marketplace", locator: "exa" },
+            transport: "http",
+            url: "https://exa.run.tools",
+            installedAt: "2026-04-21T00:00:00Z",
+            revision: "abc",
+          },
+          sightings: [
+            { harness: "codex", state: "managed" },
+            { harness: "claude", state: "missing" },
+          ],
+        },
+        {
+          name: "context7",
+          displayName: "Context7",
+          kind: "unmanaged",
+          canEnable: false,
+          enabledStatus: "disabled",
+          availabilityStatus: "unavailable",
+          availabilityReason: null,
+          mcpStatus: { kind: "unchecked", reason: null },
+          installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
+          spec: null,
+          sightings: [
+            { harness: "codex", state: "unmanaged" },
+            { harness: "claude", state: "unmanaged" },
+          ],
+        },
+      ],
+    };
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/unmanaged/adopt")) {
+        expect(init?.method).toBe("POST");
+        return okJson({
+          ok: true,
+          server: { name: "context7", displayName: "Context7" },
+          succeeded: ["codex", "claude"],
+          failed: [],
+        });
+      }
+      if (url.includes("/api/mcp/servers/exa/enable")) {
+        return okJson({ ok: true, succeeded: ["claude"], failed: [] });
+      }
+      if (url.includes("/api/mcp/servers")) return okJson(mixedInventory);
+      if (url.includes("/api/mcp/unmanaged/by-server")) return okJson(identicalByServerFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    // (a) both kinds visible under "All"
+    const { unmount } = renderPage("/mcp");
+    await waitFor(() => {
+      expect(screen.getByText("Exa Search")).toBeInTheDocument();
+      expect(screen.getByText("Context7")).toBeInTheDocument();
+    });
+
+    // Verify managed row has coverage
+    expect(screen.getByLabelText("Enabled on 1 of 2 writable harnesses")).toBeInTheDocument();
+    // Verify unmanaged row has adopt button inline under All
+    const adoptButton = screen.getByRole("button", { name: /^Adopt$/ });
+    expect(adoptButton).toBeInTheDocument();
+    unmount();
+
+    // (b) untracked filter isolates unmanaged
+    renderPage("/mcp?status=untracked");
+    await waitFor(() => {
+      expect(screen.getByText("Context7")).toBeInTheDocument();
+      expect(screen.queryByText("Exa Search")).not.toBeInTheDocument();
+    });
+
+    // (c) adopt flows fire the right controller calls
+    const adoptBtn = screen.getByRole("button", { name: /^Adopt$/ });
+    fireEvent.click(adoptBtn);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/api/mcp/unmanaged/adopt")),
       ).toBe(true),
     );
   });

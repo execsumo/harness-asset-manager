@@ -2,7 +2,7 @@ import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import type { InUsePillValue } from "../model/selectors";
 import { useMcpCopy } from "../i18n";
 
-const OPTIONS: InUsePillValue[] = ["all", "enabled", "all-harnesses", "unbound", "drifted"];
+const OPTIONS: InUsePillValue[] = ["all", "enabled", "all-harnesses", "unbound", "drifted", "untracked"];
 
 interface McpFilterMenuProps {
   pill: InUsePillValue;
@@ -34,5 +34,6 @@ function pillLabel(copy: ReturnType<typeof useMcpCopy>, value: InUsePillValue): 
   if (value === "enabled") return copy.inUse.filters.enabled;
   if (value === "all-harnesses") return copy.inUse.filters.allHarnesses;
   if (value === "unbound") return copy.inUse.filters.unbound;
-  return copy.inUse.filters.drifted;
+  if (value === "drifted") return copy.inUse.filters.drifted;
+  return copy.inUse.filters.untracked;
 }

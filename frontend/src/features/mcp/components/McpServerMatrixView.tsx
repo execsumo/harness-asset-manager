@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
@@ -8,7 +8,11 @@ import {
   MatrixTable,
 } from "../../../components/matrix";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
-import type { McpInventoryColumnDto, McpInventoryEntryDto } from "../api/management-types";
+import type {
+  McpIdentityGroupDto,
+  McpInventoryColumnDto,
+  McpInventoryEntryDto,
+} from "../api/management-types";
 import { useMcpCopy, type McpCopy } from "../i18n";
 import {
   matrixCellFor,
@@ -22,27 +26,46 @@ interface McpServerMatrixViewProps {
   entries: McpInventoryEntryDto[];
   columns: McpInventoryColumnDto[];
   pendingServerKeys: ReadonlySet<string>;
+  pendingAdoptKeys?: ReadonlySet<string>;
   pendingPerHarnessKeys: ReadonlySet<string>;
   checkedNames: ReadonlySet<string>;
+  checkedUntrackedNames?: ReadonlySet<string>;
+  groupsByName?: ReadonlyMap<string, McpIdentityGroupDto>;
   onOpenDetail: (name: string) => void;
   onToggleChecked: (name: string) => void;
+  onToggleCheckedUntracked?: (name: string) => void;
   onEnableHarness: (name: string, harness: string) => void;
   onDisableHarness: (name: string, harness: string) => void;
+  onAdopt?: (name: string) => void;
+  onChooseConfigToAdopt?: (name: string) => void;
 }
 
 export function McpServerMatrixView({
   entries,
   columns,
   pendingServerKeys,
+  pendingAdoptKeys,
   pendingPerHarnessKeys,
   checkedNames,
+  checkedUntrackedNames,
+  groupsByName,
   onOpenDetail,
   onToggleChecked,
+  onToggleCheckedUntracked,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
+  onChooseConfigToAdopt,
 }: McpServerMatrixViewProps) {
   const copy = useMcpCopy();
   const displayColumns = matrixColumns({ columns });
+
+  const isAdoptPending = (name: string) =>
+    Boolean(
+      pendingAdoptKeys &&
+        (pendingAdoptKeys.has(name) ||
+          Array.from(pendingAdoptKeys).some((key) => key.startsWith(`${name}:`))),
+    );
 
   return (
     <MatrixTable
@@ -70,21 +93,32 @@ export function McpServerMatrixView({
         </tr>
       </thead>
       <tbody>
-        {entries.map((entry) => (
-          <McpMatrixRow
-            key={entry.name}
-            entry={entry}
-            columns={displayColumns}
-            pendingServer={pendingServerKeys.has(entry.name)}
-            pendingPerHarnessKeys={pendingPerHarnessKeys}
-            checked={checkedNames.has(entry.name)}
-            onOpenDetail={onOpenDetail}
-            onToggleChecked={onToggleChecked}
-            onEnableHarness={onEnableHarness}
-            onDisableHarness={onDisableHarness}
-            copy={copy}
-          />
-        ))}
+        {entries.map((entry) => {
+          const isUntracked = entry.kind === "unmanaged";
+          const group = groupsByName?.get(entry.name);
+          const isChecked = isUntracked
+            ? Boolean(checkedUntrackedNames?.has(entry.name))
+            : checkedNames.has(entry.name);
+          return (
+            <McpMatrixRow
+              key={entry.name}
+              entry={entry}
+              columns={displayColumns}
+              pendingServer={pendingServerKeys.has(entry.name)}
+              pendingAdopt={isAdoptPending(entry.name)}
+              pendingPerHarnessKeys={pendingPerHarnessKeys}
+              checked={isChecked}
+              group={group}
+              onOpenDetail={onOpenDetail}
+              onToggleChecked={isUntracked && onToggleCheckedUntracked ? onToggleCheckedUntracked : onToggleChecked}
+              onEnableHarness={onEnableHarness}
+              onDisableHarness={onDisableHarness}
+              onAdopt={onAdopt}
+              onChooseConfigToAdopt={onChooseConfigToAdopt}
+              copy={copy}
+            />
+          );
+        })}
       </tbody>
     </MatrixTable>
   );
@@ -94,26 +128,38 @@ function McpMatrixRow({
   entry,
   columns,
   pendingServer,
+  pendingAdopt,
   pendingPerHarnessKeys,
   checked,
+  group,
   onOpenDetail,
   onToggleChecked,
   onEnableHarness,
   onDisableHarness,
+  onAdopt,
+  onChooseConfigToAdopt,
   copy,
 }: {
   entry: McpInventoryEntryDto;
   columns: McpInventoryColumnDto[];
   pendingServer: boolean;
+  pendingAdopt: boolean;
   pendingPerHarnessKeys: ReadonlySet<string>;
   checked: boolean;
+  group?: McpIdentityGroupDto;
   onOpenDetail: (name: string) => void;
   onToggleChecked: (name: string) => void;
   onEnableHarness: (name: string, harness: string) => void;
   onDisableHarness: (name: string, harness: string) => void;
+  onAdopt?: (name: string) => void;
+  onChooseConfigToAdopt?: (name: string) => void;
   copy: McpCopy;
 }) {
   const coverage = matrixCoverage(entry, columns);
+  const isUntracked = entry.kind === "unmanaged";
+  const isIdentical = group ? group.identical : true;
+  const isSelectable = !isUntracked || isIdentical;
+  const isRowPending = pendingServer || pendingAdopt;
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
@@ -122,7 +168,7 @@ function McpMatrixRow({
           checked={checked}
           label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
           onToggle={() => onToggleChecked(entry.name)}
-          disabled={pendingServer}
+          disabled={isRowPending || !isSelectable}
         />
       </td>
       <td className="matrix-table__cell matrix-table__cell--identity">
@@ -136,7 +182,11 @@ function McpMatrixRow({
             <span className="matrix-table__name-text">{entry.displayName}</span>
           </span>
           <span className="matrix-table__description">
-            {entry.name} · {entry.spec?.transport ?? "—"}
+            {isUntracked
+              ? (group
+                  ? (group.identical ? copy.detail.review.identical : copy.detail.review.differsAcrossHarnesses)
+                  : (entry.spec?.transport ?? "—"))
+              : `${entry.name} · ${entry.spec?.transport ?? "—"}`}
           </span>
         </button>
       </td>
@@ -148,7 +198,7 @@ function McpMatrixRow({
               entry={entry}
               column={column}
               cell={cell}
-              pending={pendingServer || pendingPerHarnessKeys.has(cell.pendingKey)}
+              pending={isRowPending || pendingPerHarnessKeys.has(cell.pendingKey)}
               onOpenDetail={onOpenDetail}
               onEnableHarness={onEnableHarness}
               onDisableHarness={onDisableHarness}
@@ -160,16 +210,37 @@ function McpMatrixRow({
         <McpHarnessLogoStack bindings={entry.sightings} columns={columns} />
       </td>
       <td className="matrix-table__cell matrix-table__cell--coverage">
-        <span
-          className="matrix-table__coverage"
-          aria-label={copy.detail.matrix.coverage(coverage.enabled, coverage.writable)}
-        >
-          <span className="matrix-table__coverage-count">{coverage.enabled}</span>
-          <span className="matrix-table__coverage-total" aria-hidden="true">
-            {" / "}
-            {coverage.writable}
+        {isUntracked ? (
+          <button
+            type="button"
+            className={`action-pill ${isIdentical ? "action-pill--accent" : ""}`}
+            disabled={isRowPending}
+            title={isIdentical ? copy.detail.review.addTooltip : copy.detail.review.chooseTooltip}
+            onClick={() => {
+              if (isIdentical) {
+                onAdopt?.(entry.name);
+              } else {
+                onChooseConfigToAdopt?.(entry.name);
+              }
+            }}
+          >
+            {pendingAdopt ? (
+              <Loader2 size={12} className="card-action-spinner" aria-hidden="true" />
+            ) : null}
+            {isIdentical ? copy.detail.review.adopt : copy.detail.review.chooseConfigToAdopt}
+          </button>
+        ) : (
+          <span
+            className="matrix-table__coverage"
+            aria-label={copy.detail.matrix.coverage(coverage.enabled, coverage.writable)}
+          >
+            <span className="matrix-table__coverage-count">{coverage.enabled}</span>
+            <span className="matrix-table__coverage-total" aria-hidden="true">
+              {" / "}
+              {coverage.writable}
+            </span>
           </span>
-        </span>
+        )}
       </td>
     </tr>
   );

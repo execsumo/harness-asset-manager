@@ -155,4 +155,93 @@ describe("McpServerMatrixView", () => {
     expect(pending).toBeDisabled();
     expect(pending).toHaveAttribute("data-pending", "true");
   });
+
+  it("renders adopt action and calls onAdopt for identical unmanaged entries", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      name: "context7",
+      displayName: "Context7",
+      kind: "unmanaged",
+      canEnable: false,
+      enabledStatus: "disabled",
+      availabilityStatus: "unavailable",
+      availabilityReason: null,
+      mcpStatus: { kind: "unchecked", reason: null },
+      installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
+      spec: null,
+      sightings: [
+        { harness: "codex", state: "unmanaged" },
+        { harness: "claude", state: "unmanaged" },
+      ],
+    };
+
+    const groupsByName = new Map([
+      [
+        "context7",
+        {
+          name: "context7",
+          identical: true,
+          sightings: [],
+        },
+      ],
+    ]);
+
+    const onAdopt = vi.fn();
+    renderMatrix({
+      entries: [unmanagedEntry],
+      groupsByName,
+      onAdopt,
+    });
+
+    expect(screen.getByText("Identical")).toBeInTheDocument();
+    const adoptButton = screen.getByRole("button", { name: /^Adopt$/ });
+    expect(adoptButton).toBeInTheDocument();
+    fireEvent.click(adoptButton);
+    expect(onAdopt).toHaveBeenCalledWith("context7");
+  });
+
+  it("renders choose-config action and calls onChooseConfigToAdopt for differing unmanaged entries", () => {
+    const unmanagedEntry: McpInventoryEntryDto = {
+      name: "context7",
+      displayName: "Context7",
+      kind: "unmanaged",
+      canEnable: false,
+      enabledStatus: "disabled",
+      availabilityStatus: "unavailable",
+      availabilityReason: null,
+      mcpStatus: { kind: "unchecked", reason: null },
+      installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
+      spec: null,
+      sightings: [
+        { harness: "codex", state: "unmanaged" },
+        { harness: "claude", state: "unmanaged" },
+      ],
+    };
+
+    const groupsByName = new Map([
+      [
+        "context7",
+        {
+          name: "context7",
+          identical: false,
+          sightings: [],
+        },
+      ],
+    ]);
+
+    const onChooseConfigToAdopt = vi.fn();
+    renderMatrix({
+      entries: [unmanagedEntry],
+      groupsByName,
+      onChooseConfigToAdopt,
+    });
+
+    expect(screen.getByText("Differs across harnesses")).toBeInTheDocument();
+    const chooseButton = screen.getByRole("button", { name: /^Choose config to adopt$/ });
+    expect(chooseButton).toBeInTheDocument();
+    fireEvent.click(chooseButton);
+    expect(onChooseConfigToAdopt).toHaveBeenCalledWith("context7");
+
+    const checkbox = screen.getByRole("checkbox", { name: /select context7/i });
+    expect(checkbox).toHaveAttribute("aria-disabled", "true");
+  });
 });
