@@ -2,6 +2,29 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-22 — Mutation-path pressure test passed; perf follow-ups closed
+
+Closed handoff items 1–3 from the 2026-08-21/18 entries (pressure-test, conditional
+optimization, justification for further work). Restarted the server from `main`
+(dist already matched) on :8000 with `--allow-remote`; tailnet URL live as before.
+Owner exercised the real mutation path from the UI: adopting a skill and toggling its
+harness bindings were **snappy** — no observable post-mutation lag, no waterfall worth
+tracing further.
+
+Consequences:
+- **No optimization work** on audit snapshots or frontend refetches — the trace did not
+  justify it (item 2's condition failed in the good direction).
+- The **end-to-end latency regression check** (old item 3) is downgraded to optional:
+  there is no observed latency problem to guard against anymore. Only revisit if a
+  future change makes mutations slow again.
+- Note recorded for posterity: concurrent GETs during auto-adopt serialize behind the
+  adoption lock (longer tail latency vs the pre-fix early-return), confirmed expected.
+
+Still open, unchanged priority: `stash@{0}` root-pointer decision; Vitest worker I/O
+stall root cause (still unreproduced); `plan-cross-device-sync.md` §4 "never travels"
+column is stale post-portable-store; per-family single-flight reconcile locks remain
+deferred hardening (no correctness gap).
+
 ## 2026-08-22 — `~/.harnessam` made portable for dotfile-sync between devices
 
 Decision: **no in-app sync feature will be built.** The owner will carry the store between
