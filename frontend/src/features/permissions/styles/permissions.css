@@ -9,22 +9,6 @@ code.matrix-table__name-text {
   font-weight: 500;
 }
 
-/* Untracked (unmanaged) rows are visually distinct from tracked rules:
-   muted name + a warm left accent + faint tint, so the two states never
-   look the same in the merged inventory. */
-.matrix-table__row[data-kind="unmanaged"] {
-  background: rgba(245, 158, 11, 0.05);
-  box-shadow: inset 3px 0 0 var(--color-warning, #f59e0b);
-}
-
-.matrix-table__row[data-kind="unmanaged"]:hover {
-  background: rgba(245, 158, 11, 0.09);
-}
-
-.matrix-table__row[data-kind="unmanaged"] code.matrix-table__name-text {
-  color: var(--color-text-muted);
-}
-
 .permission-adopt-btn {
   width: 100%;
   justify-content: center;
