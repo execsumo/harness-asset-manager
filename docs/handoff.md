@@ -2,6 +2,53 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-21 — Reconcile-reentrancy audit across families (handoff item 5)
+
+### What shipped
+
+Audited every family that wires `set_reconcile` for the threading assumption skills fixed on
+2026-08-21. Findings by family: **skills** guarded (`threading.local`); **agents** serialized by its
+dedicated `lock_path`; **slash_commands** had a *worse* version of the bug — no guard, and the drift
+repair path reads back through the query service (`_mutation_payload` → `queries.get_command`), so
+one top-level `reconcile()` executed once per repaired command (reproduced empirically: 3 drifted
+commands → 3 full passes; O(N²) scans, N-deep recursion, unbounded if drift persists across passes,
+e.g. under a concurrent external writer); **mcp/hooks/permissions** have no guard but their
+reconciles never read back through the query service, so they were latent-only.
+
+Fixes:
+- Added the same per-thread reentrancy guard (`threading.local`) to `SlashCommandQueryService`
+  (proven bug) and, as structural hardening with comments, to `McpQueryService`, `HooksQueryService`,
+  and `PermissionsQueryService`. The invariant is now uniform: every query service that wires
+  `set_reconcile` is reentrancy-guarded.
+- Audit-trail pollution fix: concurrent readers both run reconcile in these families (there is no
+  single-flight lock), and the loser of an adoption race hits the mutation service's "already
+  managed" 409 after the winner succeeded. `ObservedConfigAutoAdoptService` and
+  `McpAutoAdoptService` now treat a 409 `MutationError` from promote/adopt as a benign race loss
+  instead of recording a failed `auto_adopt` Activity event. Genuine failures still record.
+
+Regression coverage: `test_repair_does_not_reenter_reconcile_per_repaired_command` in
+`tests/unit/test_slash_commands.py` pins one reconcile execution for three drifted commands
+(verified to fail without the guard); new `tests/unit/test_config_auto_adopt.py` pins the 409-skip
+and that non-409 failures still record.
+
+### Validation
+
+553 unit + 187 integration tests pass at 81% branch coverage; Ruff clean; Pyright 0 errors;
+`npm run typecheck` clean; `npm test` 300/300 across 62 files; `npm run build` passes. Committed as
+`71b84fb` on a short-lived branch, fast-forwarded into `main`; branch deleted. **Not pushed** (see
+the push decision below, still pending). Server restarted from this tree.
+
+### Remaining notes from this audit
+
+- These four families still have *no single-flight* reconcile: two concurrent readers duplicate the
+  full scan work and can interleave adoptions. Consequences are now benign (409 races are skipped
+  silently, store writes are file-locked), but if reconcile cost ever matters, a per-family lock
+  like agents' `lock_path` is the template. Not done now — no correctness gap.
+- `SlashCommandMutationService.create_command/update_command` build payloads via
+  `queries.get_command`, which triggers a redundant reconcile pass per mutation call. Harmless today
+  (the guard prevents nesting; the pass finds nothing new post-mutation), noted for whenever
+  mutation latency is next profiled.
+
 ## 2026-08-21 — Interrupted `origin/main` merge landed; auto-adopt stale-read fixed
 
 ### Running state
