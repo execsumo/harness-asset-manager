@@ -45,8 +45,13 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 
 ### Extension Statuses
 
+Each asset family has a single "In use" page listing everything in that family — managed and
+unadopted alike — with a status filter to narrow the view:
+
 - **In use**: Harness Asset Manager controls the item and enables or disables it across harnesses.
-- **Needs review**: Harness Asset Manager found local state differences, unmanaged items, or configuration drift that requires your decision.
+- **Needs review** (filter): items Harness Asset Manager found in your harness configs but does not
+  yet manage — unmanaged entries and configuration drift that require your decision. Adopt them
+  inline from the same page; differing configs are resolved via a source-of-truth choice.
 - **Discover**: Browse marketplaces and preview external tools.
 
 ---
@@ -373,7 +378,7 @@ On the next inventory load, each broken binding is classified and handled:
 
 Newest-file-wins is deliberately **not** a rule here — it silently discards the other harness's work, which is the exact failure this exists to prevent. Codex is excluded from automatic adoption entirely, because converting its TOML back to Markdown drops keys Harness Asset Manager does not model.
 
-Every automatic action is appended to the Activity audit log: repair you cannot see is nearly as bad as breakage you cannot see. Agent-specific repairs are also shown as **Recent automatic repairs** on the agents review page. Each family has its own setting, and turning one off takes effect on the next load, not the next restart.
+Every automatic action is appended to the Activity audit log: repair you cannot see is nearly as bad as breakage you cannot see. Agent-specific repairs are also shown under **Recent automatic repairs** on the agents page's Needs-review view. Each family has its own setting, and turning one off takes effect on the next load, not the next restart.
 
 ### Permissions
 

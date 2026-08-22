@@ -107,6 +107,12 @@ parts are actually invariant.
 - [ ] Regenerate the OpenAPI client and verify `npm run codegen:check`.
 - [ ] Add the frontend feature screens, navigation, loading/error/empty states,
       review actions, i18n strings, and capability-query invalidation.
+- [ ] Ship ONE unified In-use page per family: managed and unadopted entries in
+      the same view, with unadopted items reachable behind a URL-backed status
+      filter (`?status=untracked`) and adopt/review actions inline. Do not add a
+      second sidebar entry for review/unmanaged state — every existing family
+      (skills, agents, slash commands, MCP, hooks) follows the single-link
+      convention; see `McpInUsePage.tsx` or `AgentsInUsePage.tsx`.
 - [ ] Make unsupported harnesses and unsupported scopes visible in the matrix.
       Do not hide a column or silently omit a record.
 

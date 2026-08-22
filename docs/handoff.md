@@ -23,7 +23,10 @@ diff spot-checked and typecheck / Vitest / build re-run on this checkout — all
 - `frontend/dist` rebuilt from merged `main`; hard-refresh to see it.
 
 Validation re-run post-merge on this checkout: typecheck clean, Vitest 307/307, build passes.
-Pushed to `origin/main`. Backend untouched.
+Pushed to `origin/main`. Backend untouched. Follow-up docs pass: README "Extension Statuses"
+now describes the single-page-per-family navigation with the inline Needs-review filter, the
+agents auto-repair pointer was corrected to the Needs-review view, and `docs/adding-a-family.md`
+now pins the one-unified-In-use-page convention as a checklist item for future families.
 
 ## 2026-08-21 — Sidebar: removed per-family Unmanaged links unified into In-use pages
 
