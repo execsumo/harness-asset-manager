@@ -2,6 +2,21 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-21 — Sidebar: removed per-family Unmanaged links unified into In-use pages
+
+Agents, Skills, Slash Commands, and Hooks each have one unified In-use page that already includes
+unadopted assets behind a URL-backed status filter, so their second sidebar link ("Unmanaged")
+duplicated a view reachable in place. Removed those four links (`420b97c`); group header counts still
+show the whole family inventory. **MCP deliberately keeps its Unmanaged link** — `McpInUsePage`
+lists managed servers only (comment recorded in `sidebar.ts`). Legacy `/review` routes remain as
+redirects onto the unified pages' filters; Overview review cards that deep-link through them are
+unchanged. Agents page attention-banner copy now points at the Needs-review filter instead of the
+removed nav item.
+
+Validation: typecheck clean; Vitest 300/300 across 62 files; production build passed (`frontend/dist`
+rebuilt). Pushed to `origin/main`. If MCP's In-use page later gains unadopted entries behind a
+filter, its sidebar link becomes removable the same way.
+
 ## 2026-08-21 — Reconcile-reentrancy audit across families (handoff item 5)
 
 ### What shipped
