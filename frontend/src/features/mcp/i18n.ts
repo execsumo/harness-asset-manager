@@ -1,7 +1,7 @@
 
 const englishMcpCopy = {
   inUse: {
-    title: "MCP servers in use",
+    title: "MCP Servers",
     subtitle: "Browse, enable, and remove MCP servers across your harnesses.",
     searchPlaceholder: "Search by name or transport...",
     searchLabel: "Search MCP servers",
@@ -185,7 +185,7 @@ const englishMcpCopy = {
     matrix: {
       ariaLabel: "MCP server harness matrix",
       selectColumn: "Select",
-      serverColumn: "Server",
+      serverColumn: "MCP Server",
       harnessesColumn: "Harnesses",
       enabledColumn: "Active",
       coverage: (enabled: number, writable: number) =>

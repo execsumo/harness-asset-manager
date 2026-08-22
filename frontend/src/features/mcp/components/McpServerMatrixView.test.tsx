@@ -113,9 +113,34 @@ describe("McpServerMatrixView", () => {
     expect(headerCells[0]).toHaveClass("matrix-table__th--checkbox");
     expect(headerCells[headerCells.length - 2]).toHaveClass("matrix-table__th--compact");
     expect(headerCells[headerCells.length - 1]).toHaveClass("matrix-table__th--end");
-    expect(screen.getByText("Server").closest("th")).toHaveClass("matrix-table__th--identity");
+    expect(screen.getByText("MCP Server").closest("th")).toHaveClass("matrix-table__th--identity");
     expect(screen.getByText("Active").closest("th")).toHaveClass("matrix-table__th--end");
-    expect(screen.getByLabelText("Codex")).toHaveClass("matrix-harness-target--header");
+    expect(screen.getByRole("button", { name: "Sort by Codex" })).toBeInTheDocument();
+  });
+
+  it("sorts rows by MCP Server name, active coverage, and harness state", () => {
+    renderMatrix();
+
+    const getRowNames = () =>
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((r) => r.querySelector(".matrix-table__name-text")?.textContent ?? "");
+
+    // Initially asc: "Drift Server", "Exa Search"
+    expect(getRowNames()).toEqual(["Drift Server", "Exa Search"]);
+
+    // Sort by name desc: "Exa Search", "Drift Server"
+    fireEvent.click(screen.getByRole("button", { name: "Sort by MCP Server" }));
+    expect(getRowNames()).toEqual(["Exa Search", "Drift Server"]);
+
+    // Sort by Active
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Active" }));
+    expect(getRowNames()).toEqual(["Drift Server", "Exa Search"]);
+
+    // Sort by Codex harness (Exa is enabled=0, Drift is missing=4)
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Codex" }));
+    expect(getRowNames()).toEqual(["Exa Search", "Drift Server"]);
   });
 
   it("renders coverage and per-harness actions", () => {

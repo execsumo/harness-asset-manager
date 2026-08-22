@@ -272,3 +272,84 @@ export function formatEnvKeyPreview(keys: readonly string[]): string {
 export function envChipLabel(count: number): string {
   return count === 1 ? "1 env var" : `${count} env vars`;
 }
+
+export type McpSortDirection = "asc" | "desc";
+export type McpSortKey = "name" | "coverage" | { harness: string };
+
+export interface McpSortState {
+  key: McpSortKey;
+  direction: McpSortDirection;
+}
+
+export function isMcpHarnessSortKey(key: McpSortKey): key is { harness: string } {
+  return typeof key === "object" && key !== null && "harness" in key;
+}
+
+export function mcpSortKeysEqual(a: McpSortKey, b: McpSortKey): boolean {
+  if (typeof a === "string" && typeof b === "string") return a === b;
+  if (isMcpHarnessSortKey(a) && isMcpHarnessSortKey(b)) return a.harness === b.harness;
+  return false;
+}
+
+const MCP_HARNESS_STATE_PRIORITY: Record<McpMatrixCellState, number> = {
+  enabled: 0,
+  disabled: 1,
+  different: 2,
+  observed: 2,
+  unavailable: 3,
+};
+
+function compareMcpByName(a: McpInventoryEntryDto, b: McpInventoryEntryDto): number {
+  const nameA = a.displayName || a.name;
+  const nameB = b.displayName || b.name;
+  return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+}
+
+export function sortMcpRows(
+  entries: McpInventoryEntryDto[],
+  columns: McpInventoryColumnDto[],
+  sort: McpSortState,
+  copy: McpCopy = mcpCopy,
+): McpInventoryEntryDto[] {
+  const directionMultiplier = sort.direction === "asc" ? 1 : -1;
+  const next = entries.slice();
+
+  if (sort.key === "name") {
+    next.sort((a, b) => compareMcpByName(a, b) * directionMultiplier);
+    return next;
+  }
+
+  if (sort.key === "coverage") {
+    next.sort((a, b) => {
+      const aCoverage = matrixCoverage(a, columns).enabled;
+      const bCoverage = matrixCoverage(b, columns).enabled;
+      const diff = aCoverage - bCoverage;
+      if (diff !== 0) return diff * directionMultiplier;
+      return compareMcpByName(a, b);
+    });
+    return next;
+  }
+
+  const harness = sort.key.harness;
+  const column = columns.find((c) => c.harness === harness) ?? {
+    harness,
+    label: harness,
+    logoKey: harness,
+    installed: true,
+    configPresent: true,
+    mcpWritable: true,
+  };
+
+  next.sort((a, b) => {
+    const aCell = matrixCellFor(a, column, copy);
+    const bCell = matrixCellFor(b, column, copy);
+    const aPriority = MCP_HARNESS_STATE_PRIORITY[aCell.state] ?? 4;
+    const bPriority = MCP_HARNESS_STATE_PRIORITY[bCell.state] ?? 4;
+    const diff = aPriority - bPriority;
+    if (diff !== 0) return diff * directionMultiplier;
+    return compareMcpByName(a, b);
+  });
+
+  return next;
+}
+

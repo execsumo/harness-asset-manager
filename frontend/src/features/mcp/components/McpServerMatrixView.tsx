@@ -1,10 +1,11 @@
+import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
-  MatrixHarnessHeader,
   MatrixHarnessIcon,
+  MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
@@ -18,7 +19,11 @@ import {
   matrixCellFor,
   matrixColumns,
   matrixCoverage,
+  mcpSortKeysEqual,
+  sortMcpRows,
   type McpMatrixCellModel,
+  type McpSortKey,
+  type McpSortState,
 } from "../model/selectors";
 import { McpHarnessLogoStack } from "./McpHarnessLogoStack";
 
@@ -40,6 +45,8 @@ interface McpServerMatrixViewProps {
   onChooseConfigToAdopt?: (name: string) => void;
 }
 
+const INITIAL_SORT: McpSortState = { key: "name", direction: "asc" };
+
 export function McpServerMatrixView({
   entries,
   columns,
@@ -59,6 +66,20 @@ export function McpServerMatrixView({
 }: McpServerMatrixViewProps) {
   const copy = useMcpCopy();
   const displayColumns = matrixColumns({ columns });
+  const [sort, setSort] = useState<McpSortState>(INITIAL_SORT);
+  const sortedEntries = useMemo(
+    () => sortMcpRows(entries, columns, sort, copy),
+    [entries, columns, sort, copy],
+  );
+
+  const requestSort = (key: McpSortKey) => {
+    setSort((current) => {
+      if (mcpSortKeysEqual(current.key, key)) {
+        return { key, direction: current.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
 
   const isAdoptPending = (name: string) =>
     Boolean(
@@ -72,28 +93,54 @@ export function McpServerMatrixView({
       ariaLabel={copy.detail.matrix.ariaLabel}
       harnessColumnWidth="52px"
       compactColumnWidth="140px"
-      coverageColumnWidth="160px"
+      coverageColumnWidth="96px"
     >
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label={copy.detail.matrix.selectColumn} />
-          <th className="matrix-table__th matrix-table__th--identity">{copy.detail.matrix.serverColumn}</th>
-          {displayColumns.map((column) => (
-            <MatrixHarnessHeader
-              key={column.harness}
-              label={column.label}
-              logoKey={column.logoKey}
-              harness={column.harness}
-            />
-          ))}
+          <MatrixSortableHeader
+            label={copy.detail.matrix.serverColumn}
+            align="identity"
+            active={mcpSortKeysEqual(sort.key, "name")}
+            direction={sort.direction}
+            onClick={() => requestSort("name")}
+          />
+          {displayColumns.map((column) => {
+            const key: McpSortKey = { harness: column.harness };
+            return (
+              <MatrixSortableHeader
+                key={column.harness}
+                label={column.label}
+                align="harness"
+                active={mcpSortKeysEqual(sort.key, key)}
+                direction={sort.direction}
+                logoOnly
+                leading={
+                  <MatrixHarnessIcon
+                    label={column.label}
+                    logoKey={column.logoKey}
+                    harness={column.harness}
+                  />
+                }
+                srLabel={`Sort by ${column.label}`}
+                onClick={() => requestSort(key)}
+              />
+            );
+          })}
           <th className="matrix-table__th matrix-table__th--compact" aria-label={copy.detail.matrix.harnessesColumn}>
             {copy.detail.matrix.harnessesColumn}
           </th>
-          <th className="matrix-table__th matrix-table__th--end">{copy.detail.matrix.enabledColumn}</th>
+          <MatrixSortableHeader
+            label={copy.detail.matrix.enabledColumn}
+            align="end"
+            active={mcpSortKeysEqual(sort.key, "coverage")}
+            direction={sort.direction}
+            onClick={() => requestSort("coverage")}
+          />
         </tr>
       </thead>
       <tbody>
-        {entries.map((entry) => {
+        {sortedEntries.map((entry) => {
           const isUntracked = entry.kind === "unmanaged";
           const group = groupsByName?.get(entry.name);
           const isChecked = isUntracked
