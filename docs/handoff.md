@@ -2569,3 +2569,74 @@ has been told and has not asked for it yet.
 - **`.gitignore` trailing slashes match directories only.** `.venv/` and `node_modules/` did not match
   the symlinks agents create; fixed in `5e76369`, but the same trap applies to any new entry.
 
+
+## "Method Not Allowed" when adding a tag (2026-08-23) — a stale server, not a code bug
+
+**Symptom.** Adding the tag `test` in the Skills asset-details panel returned
+`{"detail":"Method Not Allowed"}` (HTTP 405).
+
+**It was not a code bug.** The server process on `:8000` had started at **17:04**;
+the tags feature landed at **17:44** (`d45e61e`, merged `9c04780` at 17:53). The
+running process predated the route by forty minutes. `frontend/dist` *was* current
+(rebuilt 17:58), which is why the tag UI rendered and the button was clickable —
+**a fresh frontend served by a stale backend.** Restarting the server fixed it;
+the tag now persists.
+
+### Why it presented as 405 instead of 404 — worth knowing, it will recur
+
+`api/routers/skills.py:41` declares `@router.get("/{skill_ref:path}")`. `:path` is
+**greedy**, and that route is declared **before** every sub-route (`/tags`,
+`/document`, `/enable`, …). Starlette matches in declaration order: a request whose
+sub-route does not exist still matches this catch-all on **path** but not on
+**method** — a *partial* match — and a partial match with no later full match is
+reported as **405**.
+
+So **any** unknown sub-path under `/api/skills/...` says "Method Not Allowed",
+which points you at the HTTP verb instead of at the missing route. Asset tags are
+Phase 1 (Skills first); agents, hooks and MCP are next and will hit this again.
+
+**A fix is delegated to agy** on a short-lived branch — unknown sub-paths must 404,
+with a regression test that fails if the catch-all starts swallowing them again.
+**Not merged; pending review.**
+
+### The diagnostic that settles it in one step
+
+Do not read the route table off the running app — `/openapi.json` returns **200 with
+the SPA's HTML**, not JSON, because of the frontend catch-all. Compare process start
+time against the commit that added the route instead:
+
+```bash
+ps -eo pid,lstart,cmd | grep "[p]ython -m harness_asset_manager serve"
+git log -1 --format='%h %ad %s' --date=format:'%Y-%m-%d %H:%M' <commit-that-added-it>
+```
+
+Then prove it: run current `HEAD` on a spare port and reissue the request.
+
+```bash
+.venv/bin/python -m harness_asset_manager serve --host 127.0.0.1 --port 8099 --no-open-browser &
+curl -X PUT "http://127.0.0.1:8099/api/skills/shared%3Aacademic-research/tags" \
+  -H 'Content-Type: application/json' -d '{"tags":["test"]}'
+```
+
+`200` there and `405` on `:8000` means stale process, full stop.
+
+### Live-state changes from this session
+
+- **The `:8000` process was restarted and is now started differently.** The old one
+  ran with `--socket-fd 3` and had been orphaned to PID 1, so its socket could not
+  be reproduced. It now runs:
+
+  ```bash
+  cd ~/projects/harness-asset-manager && nohup .venv/bin/python -m harness_asset_manager \
+    serve --host 0.0.0.0 --port 8000 --no-open-browser --allow-remote > /tmp/ham-serve.log 2>&1 &
+  ```
+
+  Same host, port and `--allow-remote` as before, so the tailnet front door
+  (`:443 → 127.0.0.1:8000`) is unchanged and was verified `200` afterwards.
+- **The tag store is `~/.harnessam/asset-tags.json`** (with a `.lock` beside it). It
+  was **empty** before this — the feature had never completed a write, consistent
+  with every attempt 405ing. It now holds `skills:shared:academic-research: ["test"]`,
+  which is the tag the user was trying to add. Remove it from the UI if unwanted.
+
+**Confirming the `ss`/`netstat` gotcha above:** `ss -ltn | grep :8000` reported the
+port free while the old process was still shutting down. Only `curl` was reliable.
