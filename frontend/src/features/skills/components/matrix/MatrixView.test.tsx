@@ -91,20 +91,73 @@ describe("Skills MatrixView", () => {
     expect(onToggleCell).toHaveBeenCalledWith(rows[0], rows[0].cells[0]);
   });
 
-  it("renders the star toggle in its own column between the checkbox and the skill name", () => {
+  it("renders the star toggle in its own column after the skill name and before harness columns", () => {
     renderMatrix();
 
-    const firstRow = screen.getByRole("table", { name: "Skills harness matrix" }).querySelector(
-      "tbody tr:first-child",
-    ) as HTMLElement;
-    const cells = firstRow.querySelectorAll("td");
-    expect(cells[1].className).toContain("matrix-table__cell--star");
-    expect(cells[2].className).toContain("matrix-table__cell--identity");
+    const table = screen.getByRole("table", { name: "Skills harness matrix" });
+    const headerCells = table.querySelectorAll("thead tr > th");
+    expect(headerCells[0].className).toContain("matrix-table__th--checkbox");
+    expect(headerCells[1].className).toContain("matrix-table__th--identity");
+    expect(headerCells[2].className).toContain("matrix-table__th--star");
+    expect(headerCells[3].className).toContain("matrix-table__th--harness");
 
-    const starBtn = cells[1].querySelector("button");
+    const firstRow = table.querySelector("tbody tr:first-child") as HTMLElement;
+    const cells = firstRow.querySelectorAll("td");
+    expect(cells[0].className).toContain("matrix-table__cell--checkbox");
+    expect(cells[1].className).toContain("matrix-table__cell--identity");
+    expect(cells[2].className).toContain("matrix-table__cell--star");
+    expect(cells[3].className).toContain("matrix-table__cell--harness");
+
+    const starBtn = cells[2].querySelector("button");
     expect(starBtn?.getAttribute("aria-label")).toBe("Unstar Alpha");
-    // The identity cell no longer embeds a star button.
-    expect(cells[2].querySelector(".skill-star-btn")).toBeNull();
+    // The identity cell does not embed a star button.
+    expect(cells[1].querySelector(".skill-star-btn")).toBeNull();
+  });
+
+  it("renders the star header button with tooltip and toggles starred filter on click", () => {
+    const onToggleStarredFilter = vi.fn();
+    render(
+      <MatrixView
+        rows={rows}
+        harnessColumns={harnessColumns}
+        checkedRefs={new Set()}
+        selectedSkillRef={null}
+        pendingToggleKeys={new Set()}
+        onOpenSkill={vi.fn()}
+        onToggleChecked={vi.fn()}
+        onToggleCell={vi.fn()}
+        onToggleStarredFilter={onToggleStarredFilter}
+        starredFilterActive={false}
+      />,
+    );
+
+    const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
+    expect(headerStarBtn).toBeInTheDocument();
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "false");
+    expect(headerStarBtn).not.toHaveAttribute("data-active");
+
+    fireEvent.click(headerStarBtn);
+    expect(onToggleStarredFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders active state on the star header button when starredFilterActive is true", () => {
+    render(
+      <MatrixView
+        rows={rows}
+        harnessColumns={harnessColumns}
+        checkedRefs={new Set()}
+        selectedSkillRef={null}
+        pendingToggleKeys={new Set()}
+        onOpenSkill={vi.fn()}
+        onToggleChecked={vi.fn()}
+        onToggleCell={vi.fn()}
+        starredFilterActive={true}
+      />,
+    );
+
+    const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "true");
+    expect(headerStarBtn).toHaveAttribute("data-active", "true");
   });
 
   it("keeps an undetected harness visible but not actionable", () => {

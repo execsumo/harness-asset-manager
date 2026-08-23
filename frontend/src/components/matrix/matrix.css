@@ -51,6 +51,8 @@
 .matrix-table__th--star,
 .matrix-table__cell--star {
   width: 36px;
+  padding-left: 0;
+  padding-right: 0;
   text-align: center;
 }
 
@@ -152,6 +154,27 @@
 
 .matrix-table__th--harness .matrix-table__sort-btn {
   justify-content: center;
+}
+
+.matrix-table__th--star .matrix-table__sort-btn,
+.matrix-table__star-header-btn {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.matrix-table__th--star .matrix-table__sort-btn:hover,
+.matrix-table__th--star .matrix-table__sort-btn:focus-visible,
+.matrix-table__star-header-btn:hover,
+.matrix-table__star-header-btn:focus-visible {
+  color: #f59e0b;
+}
+
+.matrix-table__th--star .matrix-table__sort-btn[data-active="true"],
+.matrix-table__star-header-btn[data-active="true"] {
+  color: #f59e0b;
 }
 
 .matrix-table__th--end .matrix-table__sort-btn {

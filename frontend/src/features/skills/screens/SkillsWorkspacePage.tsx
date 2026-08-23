@@ -317,6 +317,8 @@ export default function SkillsWorkspacePage() {
             onManageSkill={(ref) => void onManageSkill(ref)}
             pendingStructuralActions={pendingStructuralActions}
             untrackedSelectionOnly
+            starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
+            onToggleStarredFilter={() => toggleTagFilter("starred")}
           />
         ) : hasData || hasActiveFilters ? (
           <SkillsEmptyState copy={copy.filters} onResetFilters={clearFilters} />

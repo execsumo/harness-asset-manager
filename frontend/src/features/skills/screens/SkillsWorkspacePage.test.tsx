@@ -26,7 +26,7 @@ const hooks = vi.hoisted(() => ({
 }));
 
 const mixedData = {
-  summary: { managed: 1, unmanaged: 1 },
+  summary: { managed: 2, unmanaged: 1 },
   harnessColumns: [
     { harness: "codex", label: "Codex", logoKey: "codex", installed: true },
     { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true },
@@ -37,6 +37,19 @@ const mixedData = {
       name: "Managed Skill",
       description: "Managed description",
       displayStatus: "Managed",
+      tags: ["starred"],
+      actions: { canManage: false, canStopManaging: true, canDelete: true },
+      cells: [
+        { harness: "codex", label: "Codex", logoKey: "codex", state: "enabled", interactive: true },
+        { harness: "cursor", label: "Cursor", logoKey: "cursor", state: "disabled", interactive: true },
+      ],
+    },
+    {
+      skillRef: "shared:other-skill",
+      name: "Other Skill",
+      description: "Other description",
+      displayStatus: "Managed",
+      tags: ["devops"],
       actions: { canManage: false, canStopManaging: true, canDelete: true },
       cells: [
         { harness: "codex", label: "Codex", logoKey: "codex", state: "enabled", interactive: true },
@@ -197,6 +210,49 @@ describe("Skills unified inventory page", () => {
 
     fireEvent.click(within(toolbar).getByRole("button", { name: "Adopt" }));
     await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:untracked-skill"));
+  });
+
+  it("toggles tag=starred filter when clicking the header star button", async () => {
+    renderPage();
+
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+    expect(screen.getByText("Other Skill")).toBeInTheDocument();
+
+    const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(headerStarBtn);
+
+    // After clicking, only the starred skill is visible and button is active
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+    expect(screen.queryByText("Other Skill")).not.toBeInTheDocument();
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "true");
+    expect(headerStarBtn).toHaveAttribute("data-active", "true");
+
+    // Clicking again toggles off
+    fireEvent.click(headerStarBtn);
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+    expect(screen.getByText("Other Skill")).toBeInTheDocument();
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("renders active star header when loading ?tag=starred and participates in clear filters", async () => {
+    renderPage("/skills?tag=starred");
+
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+    expect(screen.queryByText("Other Skill")).not.toBeInTheDocument();
+
+    const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "true");
+    expect(headerStarBtn).toHaveAttribute("data-active", "true");
+
+    // Clear filters in TagFilterBar clears the star filter
+    const clearBtn = screen.getByRole("button", { name: "Clear tag filters" });
+    fireEvent.click(clearBtn);
+
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+    expect(screen.getByText("Other Skill")).toBeInTheDocument();
+    expect(headerStarBtn).toHaveAttribute("aria-pressed", "false");
   });
 
 });

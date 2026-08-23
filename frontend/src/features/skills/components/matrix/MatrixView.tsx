@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { Star } from "lucide-react";
 
 import {
   MatrixHarnessIcon,
   MatrixSortableHeader,
   MatrixTable,
 } from "../../../../components/matrix";
+import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { MatrixRow } from "./MatrixRow";
 import { sortRows, sortKeysEqual, type SortKey, type SortState } from "../../model/sortRows";
 import type { CellActionKey } from "../../model/pending";
@@ -24,6 +26,8 @@ interface MatrixViewProps {
   onManageSkill?: (skillRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
   untrackedSelectionOnly?: boolean;
+  starredFilterActive?: boolean;
+  onToggleStarredFilter?: () => void;
 }
 
 const INITIAL_SORT: SortState = { key: "name", direction: "asc" };
@@ -41,6 +45,8 @@ export function MatrixView({
   onManageSkill,
   pendingStructuralActions,
   untrackedSelectionOnly = false,
+  starredFilterActive = false,
+  onToggleStarredFilter,
 }: MatrixViewProps) {
   const [sort, setSort] = useState<SortState>(INITIAL_SORT);
 
@@ -65,7 +71,6 @@ export function MatrixView({
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
-          <th className="matrix-table__th matrix-table__th--star" aria-label="Star" />
           <MatrixSortableHeader
             label="Skill"
             align="identity"
@@ -73,6 +78,20 @@ export function MatrixView({
             direction={sort.direction}
             onClick={() => requestSort("name")}
           />
+          <th className="matrix-table__th matrix-table__th--star">
+            <UiTooltip content="Starred">
+              <button
+                type="button"
+                className="matrix-table__sort-btn matrix-table__sort-btn--harness matrix-table__star-header-btn"
+                data-active={starredFilterActive ? "true" : undefined}
+                aria-pressed={starredFilterActive}
+                aria-label="Filter by starred"
+                onClick={onToggleStarredFilter}
+              >
+                <Star size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            </UiTooltip>
+          </th>
           {harnessColumns.map((column) => {
             const key: SortKey = { harness: column.harness };
             return (
