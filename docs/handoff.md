@@ -2682,3 +2682,67 @@ curl -X PUT "http://127.0.0.1:8099/api/skills/shared%3Aacademic-research/tags" \
 
 **Confirming the `ss`/`netstat` gotcha above:** `ss -ltn | grep :8000` reported the
 port free while the old process was still shutting down. Only `curl` was reliable.
+
+## Verifying the 404-not-405 routing fix (`2994ad1`) — and why the narrowing is safe
+
+The routing fix landed **directly on `main` and was pushed**, against a brief that
+said short-lived branch and no merge without review; it also edited this file. So
+it was verified after the fact rather than before merge. It holds up.
+
+### The narrowing: `{skill_ref:path}` → `{skill_ref}`
+
+The fix dropped the greedy `:path` converter on every `/api/skills` route. The
+default converter does **not** match `/`, so this narrows what the API accepts —
+and the client sends refs through `encodeURIComponent`, which turns a `/` into
+`%2F` that uvicorn decodes back to `/` before routing. If a ref could contain a
+slash, that route would now 404.
+
+**It cannot.** There are exactly two ref constructions
+(`application/skills/inventory.py`):
+
+- `f"shared:{package.root_path.name}"` — a POSIX **directory basename**, which
+  cannot contain `/`.
+- `f"unmanaged:{_unmanaged_entry_key(...)}"` → `stable_id(...)` →
+  `hashlib.sha1(...).hexdigest()[:12]`, i.e. **12 hex characters**.
+
+So refs are slash-free **by construction**, not merely slash-free in today's data
+(0 of 80 live refs contain one). The narrowing is safe, and `:path` was
+over-permissive — it is what turned a missing route into a 405.
+
+### Independently verified (not taken from the agent's report)
+
+- **Mutation:** restoring the greedy `:path` on the detail route fails
+  `test_missing_subroute_returns_404_not_405` with
+  `AssertionError: 'skill_not_found' != 'not_found'`. The regression test is real.
+- **Validation suite, all green:** `bash scripts/test_backend.sh` → `Ran 598 OK`
+  and `Ran 207 OK`; `npm run typecheck` clean; `npm test` **331 passed / 68 files**;
+  `npm run build` clean.
+- **Live HTTP:** detail `200`, source-status `200`, unknown sub-route `404`
+  (was 405), `PUT .../tags` `200`.
+
+### ⚠️ Still unfixed — and one of them must NOT be "fixed" the same way
+
+The brief asked for a report on the other routers; none was given. They still
+carry the greedy catch-all, so **the 405-instead-of-404 confusion still lives
+there**:
+
+- **`api/routers/agents.py`** — seven `{agent_ref:path}` routes. Narrowing these
+  **would** be safe: an agent ref is `AgentDefinition.slug`, which is
+  `path.stem` (`application/agents/parser.py:27`) — a filename stem, no slash.
+- **`api/routers/marketplace_skills.py` and `marketplace_clis.py`** —
+  `{item_id:path}` and `{slug:path}`. **Leave these alone.** Marketplace
+  identifiers are plausibly path-like (`owner/repo/name`) and `:path` may be
+  load-bearing. This was not confirmed — the marketplace endpoint returned no
+  items on this box, so there was nothing to sample. **Confirm the identifier
+  shape before touching them.**
+
+The `app.py` catch-all (unknown `api/` paths → 404) is a genuine safety net, but
+it only catches paths that fall *through* the routers. A greedy in-router route
+still swallows its own unknown sub-paths first.
+
+### Note on "upstream"
+
+This checkout has **only `origin` (execsumo)** — no `mode-io` remote is configured,
+consistent with CLAUDE.md's "the fork is a complete product on its own". So the
+narrowing has no upstream consumer today. If it is ever extracted, the same proof
+applies: ref construction is shared code.
