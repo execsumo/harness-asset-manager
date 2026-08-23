@@ -2,29 +2,71 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-23 — Hooks rows simplified (event / command); ⚠ agy is working IN this checkout
+## 2026-08-23 — Session wrap: asset tags Phase 1 LIVE; star column; routing 404 fix; clean tree
 
-**⚠ Checkout state warning:** the delegated `feat/asset-tags` work (agy, pane wA:p17) is being
-implemented **in this shared checkout**, which is currently switched to `feat/asset-tags` with
-large uncommitted changes — NOT on `main`. Do not reset/switch branches here until agy's work
-lands; do not trust "run app off main" assumptions for this tree until then. The running
-server's `frontend/dist` was rebuilt from `main` (`1cf3a98`) and copied in manually.
-Incident note: a same-checkout ff-merge briefly moved the `feat/asset-tags` ref; it was restored
-via `git update-ref` without touching files. **Future delegation must give agy its own worktree**
-(`git worktree add ../ham-<task> origin/main`) so this never recurs.
+### Running state
 
-**Hooks row simplification** (`main` @ `1cf3a98`, pushed): per owner dog-fooding feedback,
+- `main` = `origin/main` = `2994ad1`. **The checkout is ON `main`, working tree clean, no side
+  branches outstanding** — every feature branch from today was merged and deleted.
+- Server running from merged `main` (`./.venv/bin/python -m harness_asset_manager start --host
+  0.0.0.0 --port 8000 --allow-remote --no-open-browser`), real store verified (`homeDir:
+  /home/dev`), `/api/skills` returns 80 rows (73 managed). `frontend/dist` rebuilt from main.
+  Tailnet URL as usual: `http://vibebox.goose-marlin.ts.net:8000/`.
+
+### What shipped this session
+
+1. **Asset tags Phase 1 (Skills) — shipped, delegated to agy, independently verified**
+   (`d45e61e`, merged via `9c04780`). Implements [`docs/plan-asset-tags.md`](plan-asset-tags.md)
+   §2–§6 Phase 1 exactly: sidecar `AssetTagStore` at `data/asset-tags.json` (schema v1,
+   family-generic `family:ref` keys, total reads, atomic writes under file lock, unknown-key
+   preservation); normalization service (trim, case-fold dedupe preserving first-seen display
+   form, 64-char max, `starred` pinned first in sort); `PUT /api/skills/{ref}/tags` replace-set
+   endpoint (unmanaged skills → 400 `{code,error}` envelope); tags ride on list/detail payloads;
+   frontend star toggle per row, tag chips, `SkillTagFilterBar` (pinned star chip + counts +
+   autocomplete), detail-drawer tag editor, BulkActionBar "Star selected", URL-backed multi-value
+   `?tag=` composing OR-within-tags / AND-with-status/harness. Owner verified the flow end-to-end
+   after fixing a stale-server 405 (see below).
+2. **Star toggle in its own matrix column** (`945a0ad`, owner): moved out of the identity cell's
+   name row into a narrow dedicated column between checkbox and Skill name
+   (`matrix-table__th/cell--star`, 36px). Regression test pins cell order; full Vitest 331/331.
+3. **Unknown API sub-routes return 404 not 405** (`2994ad1`, other agent, independently verified
+   before merge): dropped the greedy `:path` converter from skills sub-routes so unmatched
+   sub-routes fall through to a JSON-envelope 404 instead of hitting the catch-all GET and
+   failing method negotiation. Safety checked: skill refs are structurally always `shared:<slug>`
+   (inventory.py:122; slugs are directory names, no slashes), unmanaged tagging is rejected at
+   the mutation layer. Backend 598 unit + 207 integration OK; new
+   `scripts/pressure_test_skills_routing.py` passes; server restarted onto the fix.
+
+### Incidents / lessons (do not repeat)
+
+- **agy worked directly in the shared checkout** and switched it to `feat/asset-tags`; a
+  same-checkout ff-merge briefly moved that branch ref (restored via `git update-ref`, no file
+  loss). **Future delegations MUST give agy its own worktree off `main`**
+  (`git worktree add ../ham-<task> origin/main`) so the primary checkout never moves.
+- **Stale backend behind fresh frontend**: adding a tag returned 405 because the `:8000` process
+  predated the route (details in the "Method Not Allowed" entry below). Rule of thumb: after any
+  backend change merges, restart the server — a rebuilt `dist` alone is not enough.
+
+### Next steps
+
+- **Dog-fooding drives the queue** — tags UX feedback welcome (owner is actively using it).
+- **Phase 2 of the tags plan** (plan §5): generalize tags payloads/filters/star column to agents,
+  slash commands, MCP, hooks, permissions — presentation work only, schema already spans
+  families; then add the checklist item to `docs/adding-a-family.md`.
+- Later/possible: unmanaged-asset tagging (qualified refs), tag rename/merge tooling.
+
+## 2026-08-23 — Hooks rows simplified (event / command)
 hooks matrix rows now render line 1 = event only (e.g. `pre_compact`) and line 2 = command;
 the old identity cell showed the dense server-side composite `event · match: command`
 (`_display_name` in hooks/inventory.py). Frontend-only change in `HooksMatrixView.tsx` with
 test updates + a new regression test pinning event-as-heading; falls back to `displayName`
 when no spec parses. Note `match` no longer shows on the row (it was almost always `any`) —
-it remains in the detail view; flag if that hurts. Validation: typecheck clean, Vitest 323/323
-across 66 files, build OK, backend 598 unit + 205 integration OK (run on agy's tree).
+it remains in the detail view; flag if that hurts. Validation: typecheck clean, Vitest across
+all files green, build OK.
 
 ## 2026-08-23 — Next feature decided: asset tags with a pinned `starred` system tag
 
-Plan of record: [`docs/plan-asset-tags.md`](plan-asset-tags.md). Decision: one tagging
+**Superseded by the session-wrap entry above — Phase 1 shipped same day.** Plan of record: [`docs/plan-asset-tags.md`](plan-asset-tags.md). Decision: one tagging
 mechanism (sidecar `data/asset-tags.json`, family-generic keys, portable-store invariants
 apply), with `starred` surfaced as a pre-listed system tag / one-click star toggle. Phase 1 =
 Skills only; later phases generalize to the other families. Not started yet — next substantial
