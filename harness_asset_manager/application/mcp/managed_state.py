@@ -79,6 +79,7 @@ def entry_payload(
         "availabilityReason": effective_availability.reason,
         "mcpStatus": mcp_status(availability, config_status),
         "installConfigStatus": config_status.to_dict(),
+        "tags": list(entry.tags),
         "sightings": [
             _binding_to_dict(binding)
             for binding in entry.sightings

@@ -124,6 +124,15 @@ class McpInventoryEntryResponse(BaseModel):
     mcpStatus: McpStatusResponse
     installConfigStatus: McpInstallConfigStatusResponse
     sightings: list[McpBindingResponse]
+    tags: list[str] = Field(default_factory=list)
+
+
+class SetMcpServerTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
+class McpServerTagsResponse(BaseModel):
+    tags: list[str] = Field(default_factory=list)
 
 
 class McpInventoryResponse(BaseModel):
@@ -396,7 +405,9 @@ __all__ = [
     "McpMarketplaceToolResponse",
     "McpMutationFailureResponse",
     "McpServerDetailResponse",
+    "McpServerMutationResponse",
     "McpServerSpecResponse",
+    "McpServerTagsResponse",
     "McpSetHarnessesResultResponse",
     "McpSourceResponse",
     "McpStatusResponse",
@@ -404,4 +415,5 @@ __all__ = [
     "McpUnmanagedHarnessResponse",
     "ReconcileMcpServerRequest",
     "SetMcpServerHarnessesRequest",
+    "SetMcpServerTagsRequest",
 ]

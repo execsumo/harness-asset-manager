@@ -2439,6 +2439,13 @@
                 "type": "null"
               }
             ]
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -3298,6 +3305,13 @@
                 "type": "null"
               }
             ]
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -3435,6 +3449,19 @@
           "revision"
         ],
         "title": "McpServerSpecResponse",
+        "type": "object"
+      },
+      "McpServerTagsResponse": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "McpServerTagsResponse",
         "type": "object"
       },
       "McpSetHarnessesResultResponse": {
@@ -4340,6 +4367,19 @@
           "target"
         ],
         "title": "SetMcpServerHarnessesRequest",
+        "type": "object"
+      },
+      "SetMcpServerTagsRequest": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "SetMcpServerTagsRequest",
         "type": "object"
       },
       "SetPermissionHarnessesRequest": {
@@ -10071,6 +10111,105 @@
           }
         },
         "summary": "Set Mcp Server Harnesses"
+      }
+    },
+    "/api/mcp/servers/{name}/tags": {
+      "put": {
+        "operationId": "set_mcp_server_tags_api_mcp_servers__name__tags_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMcpServerTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpServerTagsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set Mcp Server Tags"
       }
     },
     "/api/mcp/unmanaged/adopt": {

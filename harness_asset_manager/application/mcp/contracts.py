@@ -61,6 +61,7 @@ class McpInventoryEntry:
     sightings: tuple[McpBinding, ...]
     is_managed: bool
     can_enable: bool = True
+    tags: tuple[str, ...] = ()
 
     @property
     def kind(self) -> str:

@@ -640,6 +640,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mcp/servers/{name}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Mcp Server Tags */
+        put: operations["set_mcp_server_tags_api_mcp_servers__name__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mcp/unmanaged/adopt": {
         parameters: {
             query?: never;
@@ -2078,6 +2095,8 @@ export interface components {
             /** Sightings */
             sightings: components["schemas"]["McpBindingResponse"][];
             spec?: components["schemas"]["McpServerSpecResponse"] | null;
+            /** Tags */
+            tags?: string[];
         };
         /** McpInventoryIssueResponse */
         McpInventoryIssueResponse: {
@@ -2330,6 +2349,8 @@ export interface components {
             /** Sightings */
             sightings: components["schemas"]["McpBindingResponse"][];
             spec?: components["schemas"]["McpServerSpecResponse"] | null;
+            /** Tags */
+            tags?: string[];
         };
         /** McpServerMutationResponse */
         McpServerMutationResponse: {
@@ -2367,6 +2388,11 @@ export interface components {
             transport: "stdio" | "http" | "sse";
             /** Url */
             url?: string | null;
+        };
+        /** McpServerTagsResponse */
+        McpServerTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** McpSetHarnessesResultResponse */
         McpSetHarnessesResultResponse: {
@@ -2672,6 +2698,11 @@ export interface components {
              * @enum {string}
              */
             target: "enabled" | "disabled";
+        };
+        /** SetMcpServerTagsRequest */
+        SetMcpServerTagsRequest: {
+            /** Tags */
+            tags?: string[];
         };
         /** SetPermissionHarnessesRequest */
         SetPermissionHarnessesRequest: {
@@ -6533,6 +6564,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpSetHarnessesResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_mcp_server_tags_api_mcp_servers__name__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMcpServerTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerTagsResponse"];
                 };
             };
             /** @description Bad Request */

@@ -8,14 +8,29 @@ import type {
   McpServerSpecDto,
 } from "../api/management-types";
 import { mcpCopy, type McpCopy } from "../i18n";
+import {
+  extractAssetTagCounts,
+  matchesAssetTags,
+  type AssetTagCount,
+} from "../../../components/tags/tag-counts";
 
 export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked";
+
+export type McpTagCount = AssetTagCount;
 
 export interface McpInUseFilters {
   search: string;
   pill: InUsePillValue;
   /** Restrict to entries sighted on this harness (id). */
   harness?: string | null;
+  tags?: string[] | null;
+}
+
+export function extractMcpTagCounts(
+  inventory: McpInventoryDto | null | undefined,
+): McpTagCount[] {
+  const managed = inventory?.entries.filter((entry) => entry.kind === "managed");
+  return extractAssetTagCounts(managed);
 }
 
 export type McpMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
@@ -90,6 +105,11 @@ export function filterMcpServersInUse(
   const addressable = addressableHarnesses(inventory);
   const harnessCount = addressable.size;
   return inventory.entries.filter((entry) => {
+    if (filters.tags && filters.tags.length > 0) {
+      if (entry.kind !== "managed" || !matchesAssetTags(entry, filters.tags)) {
+        return false;
+      }
+    }
     if (!matchesSearch(entry, filters.search.trim())) return false;
     if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.pill === "untracked") return entry.kind === "unmanaged";

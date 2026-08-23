@@ -18,6 +18,7 @@ def build_inventory(
     specs: Iterable[McpServerSpec],
     scans: Iterable[McpHarnessScan],
     issues: Iterable[McpInventoryIssue] = (),
+    tags_by_ref: dict[str, list[str]] | None = None,
 ) -> McpInventory:
     """Combine central specs + per-harness scans into a server x harness matrix."""
     scans_tuple = tuple(scans)
@@ -43,6 +44,7 @@ def build_inventory(
     for server in sorted(managed_tuple, key=lambda s: s.display_name.lower()):
         spec = spec_by_name.get(server.name)
         bindings = tuple(bindings_by_name.get(server.name, ()))
+        tags = tuple(tags_by_ref.get(server.name, ())) if tags_by_ref else ()
         entries.append(
             McpInventoryEntry(
                 name=server.name,
@@ -51,6 +53,7 @@ def build_inventory(
                 sightings=bindings,
                 is_managed=True,
                 can_enable=spec is not None,
+                tags=tags,
             )
         )
         seen.add(server.name)

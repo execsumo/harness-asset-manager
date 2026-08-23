@@ -1,4 +1,4 @@
-import { deleteJson, fetchJson, postJson } from "../../../api/http";
+import { deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
 
 import type {
   McpApplyConfigResponseDto,
@@ -52,6 +52,16 @@ export async function uninstallMcpServer(name: string): Promise<UninstallMcpResp
 
 export async function fetchMcpServerDetail(name: string): Promise<McpServerDetailDto> {
   return fetchJson<McpServerDetailDto>(`/mcp/servers/${encodeURIComponent(name)}`);
+}
+
+export async function setMcpServerTags(
+  name: string,
+  tags: string[],
+): Promise<{ tags: string[] }> {
+  return putJson<{ tags: string[] }>(
+    `/mcp/servers/${encodeURIComponent(name)}/tags`,
+    { tags },
+  );
 }
 
 export async function checkMcpServerAvailability(name: string): Promise<McpAvailabilityCheckResponseDto> {

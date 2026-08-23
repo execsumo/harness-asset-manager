@@ -82,6 +82,7 @@ from .mcp import (
     McpServerDetailResponse,
     McpServerMutationResponse,
     McpServerSpecResponse,
+    McpServerTagsResponse,
     McpSetHarnessesResultResponse,
     McpSourceResponse,
     McpStatusResponse,
@@ -89,6 +90,7 @@ from .mcp import (
     McpUnmanagedHarnessResponse,
     ReconcileMcpServerRequest,
     SetMcpServerHarnessesRequest,
+    SetMcpServerTagsRequest,
 )
 from .permissions import (
     AddPermissionRequest,
@@ -234,6 +236,7 @@ __all__ = [
     "McpServerDetailResponse",
     "McpServerMutationResponse",
     "McpServerSpecResponse",
+    "McpServerTagsResponse",
     "McpSetHarnessesResultResponse",
     "McpSourceResponse",
     "McpStatusResponse",
@@ -245,6 +248,7 @@ __all__ = [
     "SetAutoAdoptRequest",
     "SetHarnessSupportRequest",
     "SetMcpServerHarnessesRequest",
+    "SetMcpServerTagsRequest",
     "SetSkillHarnessesFailureResponse",
     "SetSkillHarnessesRequest",
     "SetSkillHarnessesResultResponse",

@@ -9,6 +9,7 @@ import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import { McpServerDetailSheet } from "../components/detail/McpServerDetailSheet";
 import { McpNeedsReviewDetailSheet } from "../components/detail/McpNeedsReviewDetailSheet";
 import {
@@ -26,12 +27,14 @@ import { useCommonCopy } from "../../../i18n";
 import { useMcpCopy } from "../i18n";
 import type { McpInstallConfigValues } from "../model/install-config";
 import {
+  extractMcpTagCounts,
   filterMcpServersInUse,
   pillCounts,
   type InUsePillValue,
 } from "../model/selectors";
 import { useMcpEnableWorkflow } from "../model/use-mcp-enable-workflow";
 import { useMcpManagementController } from "../model/use-mcp-management-controller";
+import { useSetMcpServerTagsMutation } from "../api/management-queries";
 
 const DETAIL_PARAM = "server";
 const STATUS_VALUES: InUsePillValue[] = [
@@ -85,6 +88,7 @@ export default function McpInUsePage() {
   );
   const [adoptingSelected, setAdoptingSelected] = useState(false);
   const [chooseConfigName, setChooseConfigName] = useState<string | null>(null);
+  const setTagsMutation = useSetMcpServerTagsMutation();
 
   const copy = useMcpCopy();
   const common = useCommonCopy();
@@ -109,6 +113,60 @@ export default function McpInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(
+    () => extractMcpTagCounts(inventory),
+    [inventory],
+  );
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const current = params.getAll("tag");
+      const normalizedToggle = tagToToggle.toLowerCase();
+      params.delete("tag");
+      let found = false;
+      for (const t of current) {
+        if (t.toLowerCase() === normalizedToggle) {
+          found = true;
+        } else {
+          params.append("tag", t);
+        }
+      }
+      if (!found) {
+        params.append("tag", tagToToggle);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const onToggleStarredFilter = useCallback(() => {
+    toggleTagFilter("starred");
+  }, [toggleTagFilter]);
+
+  const handleToggleStar = useCallback(
+    async (name: string) => {
+      const serverEntry = inventory?.entries.find((e) => e.name === name);
+      if (!serverEntry) return;
+      const currentTags = serverEntry.tags || [];
+      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+      await setTagsMutation.mutateAsync({ name, tags: nextTags });
+    },
+    [inventory, setTagsMutation],
+  );
+
   const {
     requestEnable,
     requestBulkEnable,
@@ -127,14 +185,14 @@ export default function McpInUsePage() {
   );
 
   const entries = useMemo(
-    () => filterMcpServersInUse(inventory, { search, pill: statusFilter, harness: harnessParam }),
-    [inventory, search, statusFilter],
+    () => filterMcpServersInUse(inventory, { search, pill: statusFilter, harness: harnessParam, tags: selectedTags }),
+    [inventory, search, statusFilter, harnessParam, selectedTags],
   );
   const counts = useMemo(() => pillCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const isReady = status === "ready" && Boolean(inventory);
   const isReviewView = statusFilter === "untracked";
-  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
   const inventoryIssueMessage = inventory?.issues?.length
     ? copy.inUse.inventoryIssue(inventory.issues.length)
@@ -342,9 +400,12 @@ export default function McpInUsePage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter, setStatusFilter]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const selectedEntry = useMemo(
     () => (selectedName ? findEntry(selectedName) : null),
@@ -394,20 +455,28 @@ export default function McpInUsePage() {
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={copy.inUse.searchPlaceholder}
-            searchLabel={copy.inUse.searchLabel}
-            trailing={
-              <>
-                {harnessParam ? (
-                  <HarnessFilterChip label={findHarnessLabel(harnessParam)} onClear={clearHarnessFilter} />
-                ) : null}
-                <McpFilterMenu pill={statusFilter} counts={counts} onChange={setStatusFilter} />
-              </>
-            }
-          />
+          <>
+            <FilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={copy.inUse.searchPlaceholder}
+              searchLabel={copy.inUse.searchLabel}
+              trailing={
+                <>
+                  {harnessParam ? (
+                    <HarnessFilterChip label={findHarnessLabel(harnessParam)} onClear={clearHarnessFilter} />
+                  ) : null}
+                  <McpFilterMenu pill={statusFilter} counts={counts} onChange={setStatusFilter} />
+                </>
+              }
+            />
+            <TagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -442,6 +511,9 @@ export default function McpInUsePage() {
             }}
             onAdopt={(name) => void handleAdoptConfig(name)}
             onChooseConfigToAdopt={setChooseConfigName}
+            onToggleStar={handleToggleStar}
+            starredFilterActive={starredFilterActive}
+            onToggleStarredFilter={onToggleStarredFilter}
           />
         ) : hasData ? (
           <div className="empty-panel">

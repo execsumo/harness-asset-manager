@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from harness_asset_manager.errors import MutationError
 
@@ -21,6 +21,9 @@ from .read_models import McpReadModelService
 from .redaction import redacted_spec_dict
 from .store import McpServerSpec, McpServerStore, McpSource
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class McpMutationService:
     """Mutations for observed MCP configs.
@@ -39,6 +42,7 @@ class McpMutationService:
         enrichment: McpEnrichmentService | None = None,
         availability_probe: McpAvailabilityProbe | None = None,
         availability_cache: AvailabilityCache | None = None,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self.read_models = read_models
@@ -47,7 +51,29 @@ class McpMutationService:
         self.enrichment = enrichment
         self.availability_probe = availability_probe or McpAvailabilityProbe()
         self._availability_cache = availability_cache if availability_cache is not None else {}
+        self.asset_tags = asset_tags
         self.harness_application = McpHarnessApplication(read_models)
+
+    def set_tags(self, name: str, tags: Iterable[str]) -> dict[str, object]:
+        if self.store.get_managed(name) is None:
+            snapshot = self.read_models.snapshot()
+            is_unmanaged = any(
+                entry.name == name
+                for scan in snapshot.harness_scans
+                for entry in scan.entries
+            )
+            if is_unmanaged:
+                raise MutationError(
+                    f"unmanaged MCP server '{name}' cannot be tagged; adopt it first",
+                    status=400,
+                    code="unmanaged_mcp",
+                )
+            raise MutationError(f"unknown MCP server: {name}", status=404, code="mcp_not_found")
+        if self.asset_tags is None:
+            raise MutationError("asset tag service is not configured", status=500)
+        updated_tags = self.asset_tags.set_tags("mcp", name, tags)
+        self.read_models.invalidate()
+        return {"tags": updated_tags}
 
     # Install / uninstall ---------------------------------------------------
 

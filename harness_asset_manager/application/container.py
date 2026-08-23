@@ -344,6 +344,7 @@ def build_backend_container(
         marketplace_catalog=mcp_catalog,
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
+        asset_tags=asset_tags,
     )
     mcp_mutations = McpMutationService(
         store=mcp_store,
@@ -353,6 +354,7 @@ def build_backend_container(
         enrichment=mcp_enrichment,
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
+        asset_tags=asset_tags,
     )
     mcp_auto_adopt = McpAutoAdoptService(
         planner=mcp_planner,

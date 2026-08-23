@@ -7,6 +7,7 @@ import type {
 } from "../api/management-types";
 import {
   envChipLabel,
+  extractMcpTagCounts,
   filterMcpServersInUse,
   formatEnvKeyPreview,
   isMcpHarnessAddressable,
@@ -364,5 +365,39 @@ describe("isMcpHarnessAddressable", () => {
         mcpUnavailableReason: "Installed Hermes Agent does not expose MCP config support",
       }),
     ).toBe(false);
+  });
+
+  it("extracts MCP tag counts and filters by tags", () => {
+    const entry1: McpInventoryEntryDto = {
+      ...makeEntry("server1", ["managed"]),
+      tags: ["starred", "search"],
+    };
+    const entry2: McpInventoryEntryDto = {
+      ...makeEntry("server2", ["managed"]),
+      tags: ["search", "web"],
+    };
+    const entry3: McpInventoryEntryDto = {
+      ...makeEntry("server3", ["managed"]),
+      tags: ["starred"],
+    };
+    const unmanaged: McpInventoryEntryDto = {
+      ...makeEntry("unm", ["missing"]),
+      kind: "unmanaged",
+      tags: ["starred"],
+    };
+    const inventory = makeInventory([entry1, entry2, entry3, unmanaged]);
+
+    const counts = extractMcpTagCounts(inventory);
+    expect(counts).toEqual([
+      { tag: "starred", count: 2, isStarred: true },
+      { tag: "search", count: 2, isStarred: false },
+      { tag: "web", count: 1, isStarred: false },
+    ]);
+
+    const starredFiltered = filterMcpServersInUse(inventory, { search: "", pill: "all", tags: ["starred"] });
+    expect(starredFiltered.map((e) => e.name)).toEqual(["server1", "server3"]);
+
+    const searchFiltered = filterMcpServersInUse(inventory, { search: "", pill: "all", tags: ["search"] });
+    expect(searchFiltered.map((e) => e.name)).toEqual(["server1", "server2"]);
   });
 });
