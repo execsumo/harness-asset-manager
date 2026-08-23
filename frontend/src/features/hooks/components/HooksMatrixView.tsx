@@ -187,7 +187,7 @@ function HooksMatrixRow({
       >
         <div className="matrix-table__name-row">
           <OverflowTooltipText as="span" className="matrix-table__name-text">
-            {entry.displayName}
+            {entry.spec?.event ?? entry.displayName}
           </OverflowTooltipText>
         </div>
         <OverflowTooltipText as="p" className="matrix-table__description">

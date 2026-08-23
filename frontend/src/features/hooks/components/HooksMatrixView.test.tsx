@@ -34,9 +34,9 @@ const entries: HookInventoryEntryDto[] = [
   },
 ];
 
-function renderMatrix() {
-  const props = {
-    entries,
+function buildProps(testEntries: HookInventoryEntryDto[] = entries) {
+  return {
+    entries: testEntries,
     columns,
     pendingHookKeys: new Set<string>(),
     pendingPerHarnessKeys: new Set<string>(),
@@ -47,6 +47,10 @@ function renderMatrix() {
     onDisableHarness: vi.fn(),
     onAdopt: vi.fn(),
   };
+}
+
+function renderMatrix() {
+  const props = buildProps();
   render(<HooksMatrixView {...props} />);
   return props;
 }
@@ -65,6 +69,32 @@ describe("HooksMatrixView", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("renders the event as the row heading when a spec is present, command on the second line", () => {
+    const withSpec: HookInventoryEntryDto[] = [
+      {
+        ...entries[0],
+        spec: {
+          command: "dossier hook pre-compaction",
+          description: "",
+          event: "pre_compact",
+          id: "alpha-hook",
+          installedAt: "2026-01-01T00:00:00Z",
+          match: "any",
+          revision: "1",
+        },
+      },
+    ];
+    render(<HooksMatrixView {...buildProps(withSpec)} />);
+
+    const identity = screen.getByText("pre_compact").closest(".matrix-table__cell--identity");
+    expect(identity).not.toBeNull();
+    expect(identity?.querySelector(".matrix-table__name-text")?.textContent).toBe("pre_compact");
+    expect(identity?.querySelector(".matrix-table__description")?.textContent).toBe(
+      "dossier hook pre-compaction",
+    );
+    expect(screen.queryByText("Alpha Hook")).toBeNull();
   });
 
   it("renders a harness matrix with sortable rows", () => {

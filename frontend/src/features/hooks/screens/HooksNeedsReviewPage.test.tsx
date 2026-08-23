@@ -108,7 +108,7 @@ describe("Hooks unified inventory page", () => {
 
     renderPage();
     await waitFor(() => expect(screen.getByRole("table", { name: /Hooks harness matrix|Hooks Matrix/i })).toBeInTheDocument());
-    expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
+    expect(screen.getByText("PreCommit")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Adopt$/i })).toBeInTheDocument();
   });
 
@@ -124,7 +124,7 @@ describe("Hooks unified inventory page", () => {
     });
 
     renderPage();
-    await waitFor(() => expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("PreCommit")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /^Adopt$/i }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/promote"))).toBe(true),
@@ -139,7 +139,7 @@ describe("Hooks unified inventory page", () => {
     });
 
     renderPage("/hooks?status=untracked");
-    await waitFor(() => expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("PreCommit")).toBeInTheDocument());
     expect(screen.queryByText("Managed Hook")).not.toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe("Hooks legacy route redirects", () => {
     renderRoutes("/hooks/review");
     await waitFor(() => {
       expect(screen.getByTestId("hooks-location")).toHaveTextContent("/hooks?status=untracked");
-      expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
+      expect(screen.getByText("PreCommit")).toBeInTheDocument();
     });
   });
 
@@ -205,7 +205,7 @@ describe("Hooks legacy route redirects", () => {
     renderRoutes("/hooks/unmanaged");
     await waitFor(() => {
       expect(screen.getByTestId("hooks-location")).toHaveTextContent("/hooks?status=untracked");
-      expect(screen.getByText("Pre-Commit Check")).toBeInTheDocument();
+      expect(screen.getByText("PreCommit")).toBeInTheDocument();
     });
   });
 });
