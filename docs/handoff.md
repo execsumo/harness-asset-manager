@@ -2,6 +2,14 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-23 — Next feature decided: asset tags with a pinned `starred` system tag
+
+Plan of record: [`docs/plan-asset-tags.md`](plan-asset-tags.md). Decision: one tagging
+mechanism (sidecar `data/asset-tags.json`, family-generic keys, portable-store invariants
+apply), with `starred` surfaced as a pre-listed system tag / one-click star toggle. Phase 1 =
+Skills only; later phases generalize to the other families. Not started yet — next substantial
+implementation work, delegated per §7 of the plan.
+
 ## 2026-08-23 — Unmanaged agents are now editable in place (harness file rewritten directly)
 
 Follow-on to the read-only unmanaged detail fix (entry below). Clicking into an unmanaged
