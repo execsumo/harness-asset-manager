@@ -1,9 +1,10 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Star, Trash2 } from "lucide-react";
 
 import { DetailBindingIdentity } from "../../../../components/detail/DetailBindingIdentity";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
+import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
 import { DocumentSection } from "../../../../components/detail/editing/DocumentSection";
@@ -16,7 +17,7 @@ import {
 import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { useToast } from "../../../../components/Toast";
 import { useFormatPath } from "../../../../lib/paths";
-import { useUpdateSlashCommandMutation } from "../../api/queries";
+import { useSetSlashCommandTagsMutation, useUpdateSlashCommandMutation } from "../../api/queries";
 import type {
   SlashCommandDto,
   SlashSyncEntryDto,
@@ -49,6 +50,7 @@ export function SlashCommandDetailView({
   const copy = useSlashCommandsCopy();
   const { toast } = useToast();
   const updateMutation = useUpdateSlashCommandMutation();
+  const setTagsMutation = useSetSlashCommandTagsMutation();
 
   const commandPending = pendingName === command.name;
   const enabledTargetIds = useMemo(() => syncedTargetIds(command), [command]);
@@ -56,6 +58,40 @@ export function SlashCommandDetailView({
     () => writtenLocationEntries(command.syncTargets, targets),
     [command.syncTargets, targets],
   );
+
+  const isStarred = (command.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    const nextTags = isStarred
+      ? (command.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(command.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    try {
+      await setTagsMutation.mutateAsync({
+        name: command.name,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to toggle star.");
+    }
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    const nextTags = [...(command.tags || []), newTag];
+    await setTagsMutation.mutateAsync({
+      name: command.name,
+      tags: nextTags,
+    });
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    const nextTags = (command.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    await setTagsMutation.mutateAsync({
+      name: command.name,
+      tags: nextTags,
+    });
+  };
 
   // Frontmatter & Document editing state
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
@@ -190,7 +226,22 @@ export function SlashCommandDetailView({
     <>
       <div className="slash-command-detail-shell__chrome">
         <DetailHeader
-          title={<h2 id={headingId}>{command.name}</h2>}
+          title={
+            <h2 id={headingId} className="skill-detail__title">
+              {command.name}
+              <button
+                type="button"
+                className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                aria-label={isStarred ? `Unstar ${command.name}` : `Star ${command.name}`}
+                onClick={handleToggleStar}
+              >
+                <Star
+                  size={16}
+                  className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                />
+              </button>
+            </h2>
+          }
           closeLabel={copy.detail.close}
           onClose={handleRequestClose}
         />
@@ -205,6 +256,16 @@ export function SlashCommandDetailView({
             <p className="skill-detail__copy">
               {command.description || copy.detail.noDescription}
             </p>
+          </DetailSection>
+
+          <DetailSection heading="Tags">
+            <DetailTags
+              tags={command.tags || []}
+              canEdit={true}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
+              disabled={setTagsMutation.isPending}
+            />
           </DetailSection>
 
           <DocumentSection

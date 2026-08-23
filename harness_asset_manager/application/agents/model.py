@@ -93,6 +93,7 @@ class AgentEntry:
     bindings: tuple[AgentBinding, ...]
     can_adopt: bool
     can_delete: bool
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,7 @@ class AgentDetail:
     harnesses: tuple[AgentHarnessDetail, ...]
     can_delete: bool
     can_edit: bool = True
+    tags: tuple[str, ...] = ()
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
 

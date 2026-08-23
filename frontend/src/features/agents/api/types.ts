@@ -25,6 +25,7 @@ export interface AgentInventoryEntryDto {
     detail: string | null;
   }>;
   actions: { canAdopt: boolean; canDelete: boolean };
+  tags?: string[];
 }
 
 export interface AgentAdoptConflict {
@@ -88,4 +89,5 @@ export interface AgentDetailDto {
   canDelete: boolean;
   /** False for unmanaged agents: read-only until adopted. */
   canEdit: boolean;
+  tags?: string[];
 }

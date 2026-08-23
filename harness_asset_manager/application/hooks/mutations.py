@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from harness_asset_manager.errors import MutationError
 
 from .harness_application import HooksHarnessApplication
 from .read_models import HooksReadModelService
 from .store import HookSpec, HookStore
+
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
 
 
 class HooksMutationService:
@@ -18,10 +21,33 @@ class HooksMutationService:
         *,
         store: HookStore,
         read_models: HooksReadModelService,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self.read_models = read_models
+        self.asset_tags = asset_tags
         self.harness_application = HooksHarnessApplication(read_models)
+
+    def set_tags(self, id: str, tags: Iterable[str]) -> dict[str, object]:
+        if self.store.get_managed(id) is None:
+            snapshot = self.read_models.snapshot()
+            is_unmanaged = any(
+                entry.id == id
+                for scan in snapshot.harness_scans
+                for entry in scan.entries
+            )
+            if is_unmanaged:
+                raise MutationError(
+                    f"unmanaged hook '{id}' cannot be tagged; adopt it first",
+                    status=400,
+                    code="unmanaged_hook",
+                )
+            raise MutationError(f"unknown hook: {id}", status=404, code="hook_not_found")
+        if self.asset_tags is None:
+            raise MutationError("asset tag service is not configured", status=500)
+        updated_tags = self.asset_tags.set_tags("hooks", id, tags)
+        self.read_models.invalidate()
+        return {"tags": updated_tags}
 
     def create_hook(self, spec: HookSpec) -> HookSpec:
         if not spec.id:

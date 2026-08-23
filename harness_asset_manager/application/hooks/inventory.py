@@ -18,6 +18,7 @@ def build_inventory(
     specs: Iterable[HookSpec],
     scans: Iterable[HookHarnessScan],
     issues: Iterable[HookInventoryIssue] = (),
+    tags_by_ref: dict[str, list[str]] | None = None,
 ) -> HookInventory:
     scans_tuple = tuple(scans)
     specs_tuple = tuple(specs)
@@ -46,6 +47,7 @@ def build_inventory(
     for hook in sorted(managed_tuple, key=lambda h: h.id.lower()):
         spec = spec_by_id.get(hook.id)
         bindings = tuple(bindings_by_id.get(hook.id, ()))
+        tags = tuple(tags_by_ref.get(hook.id, ())) if tags_by_ref else ()
         entries.append(
             HookInventoryEntry(
                 id=hook.id,
@@ -54,6 +56,7 @@ def build_inventory(
                 sightings=bindings,
                 is_managed=True,
                 can_enable=spec is not None,
+                tags=tags,
             )
         )
         seen.add(hook.id)

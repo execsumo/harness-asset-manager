@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Star } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
@@ -32,6 +32,9 @@ interface AgentsMatrixViewProps {
   onEnableHarness: (ref: string, harness: string) => void;
   onDisableHarness: (ref: string, harness: string) => void;
   onAdopt: (ref: string) => void;
+  onToggleStar?: (ref: string) => void;
+  starredFilterActive?: boolean;
+  onToggleStarredFilter?: () => void;
 }
 
 const INITIAL_SORT: AgentSortState = { key: "name", direction: "asc" };
@@ -47,6 +50,9 @@ export function AgentsMatrixView({
   onEnableHarness,
   onDisableHarness,
   onAdopt,
+  onToggleStar,
+  starredFilterActive = false,
+  onToggleStarredFilter,
 }: AgentsMatrixViewProps) {
   const [sort, setSort] = useState<AgentSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortAgentsRows(entries, columns, sort), [entries, columns, sort]);
@@ -77,6 +83,20 @@ export function AgentsMatrixView({
             direction={sort.direction}
             onClick={() => requestSort("name")}
           />
+          <th className="matrix-table__th matrix-table__th--star">
+            <UiTooltip content="Starred">
+              <button
+                type="button"
+                className="matrix-table__sort-btn matrix-table__sort-btn--harness matrix-table__star-header-btn"
+                data-active={starredFilterActive ? "true" : undefined}
+                aria-pressed={starredFilterActive}
+                aria-label="Filter by starred"
+                onClick={onToggleStarredFilter}
+              >
+                <Star size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            </UiTooltip>
+          </th>
           {columns.map((column) => {
             const key: AgentSortKey = { harness: column.harness };
             return (
@@ -125,6 +145,7 @@ export function AgentsMatrixView({
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
             onAdopt={onAdopt}
+            onToggleStar={onToggleStar}
           />
         ))}
       </tbody>
@@ -143,6 +164,7 @@ function AgentsMatrixRow({
   onEnableHarness,
   onDisableHarness,
   onAdopt,
+  onToggleStar,
 }: {
   entry: AgentInventoryEntryDto;
   columns: AgentInventoryDto["columns"];
@@ -154,9 +176,12 @@ function AgentsMatrixRow({
   onEnableHarness: (ref: string, harness: string) => void;
   onDisableHarness: (ref: string, harness: string) => void;
   onAdopt: (ref: string) => void;
+  onToggleStar?: (ref: string) => void;
 }) {
   const isUntracked = entry.kind === "unmanaged";
   const enabledCount = entry.bindings.filter((binding) => binding.state === "enabled").length;
+  const isStarred = (entry.tags || []).some((t) => t.toLowerCase() === "starred");
+  const displayTags = (entry.tags || []).filter((t) => t.toLowerCase() !== "starred");
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
@@ -178,10 +203,42 @@ function AgentsMatrixRow({
           <OverflowTooltipText as="span" className="matrix-table__name-text">
             {entry.name}
           </OverflowTooltipText>
+          {displayTags.length > 0 ? (
+            <div className="matrix-table__tag-pills">
+              {displayTags.slice(0, 2).map((tag) => (
+                <span key={tag} className="matrix-table__tag-pill">
+                  {tag}
+                </span>
+              ))}
+              {displayTags.length > 2 ? (
+                <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                  +{displayTags.length - 2}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <OverflowTooltipText as="p" className="matrix-table__description">
           {entry.description}
         </OverflowTooltipText>
+      </td>
+      <td className="matrix-table__cell matrix-table__cell--star">
+        {onToggleStar && !isUntracked ? (
+          <button
+            type="button"
+            className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+            aria-label={isStarred ? `Unstar ${entry.name}` : `Star ${entry.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(entry.ref);
+            }}
+          >
+            <Star
+              size={14}
+              className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+            />
+          </button>
+        ) : null}
       </td>
       {columns.map((column) => {
         const cell = matrixCellFor(entry, column);

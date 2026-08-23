@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAgentsInventory, fetchAgentDetail, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent } from "./client";
+import { fetchAgentsInventory, fetchAgentDetail, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags } from "./client";
 import { agentsKeys } from "./keys";
 
 export function useAgentsInventoryQuery() {
@@ -13,6 +13,17 @@ export function useAgentDetailQuery(ref: string) {
   return useQuery({
     queryKey: agentsKeys.detail(ref),
     queryFn: () => fetchAgentDetail(ref),
+  });
+}
+
+export function useSetAgentTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ref, tags }: { ref: string; tags: string[] }) => setAgentTags(ref, tags),
+    onSuccess: (_, { ref }) => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
+    },
   });
 }
 

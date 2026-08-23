@@ -31,6 +31,7 @@ class AgentEntryResponse(BaseModel):
     harnessPath: str | None = None
     bindings: list[AgentBindingResponse]
     actions: AgentActionsResponse
+    tags: list[str] = Field(default_factory=list)
 
 
 class AgentIssueResponse(BaseModel):
@@ -142,6 +143,14 @@ class AgentHarnessDetailResponse(BaseModel):
     installed: bool
 
 
+class SetAgentTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
+class AgentTagsResponse(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
 class AgentDetailResponse(BaseModel):
     ref: str
     name: str
@@ -154,6 +163,7 @@ class AgentDetailResponse(BaseModel):
     configuration: list[AgentConfigEntryResponse] = Field(default_factory=list)
     canDelete: bool
     canEdit: bool = True
+    tags: list[str] = Field(default_factory=list)
 
 
 __all__ = [
@@ -174,8 +184,10 @@ __all__ = [
     "AgentRepairResponse",
     "AgentIssueResponse",
     "AgentMutationFailureResponse",
+    "AgentTagsResponse",
     "CreateAgentRequest",
     "SetAgentHarnessesRequest",
     "SetAgentHarnessesResultResponse",
+    "SetAgentTagsRequest",
     "UpdateAgentRequest",
 ]

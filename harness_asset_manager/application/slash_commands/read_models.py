@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from collections.abc import Callable
 from pathlib import Path
 
@@ -16,6 +17,9 @@ from .path_policy import SlashCommandPathPolicy
 from .store import SlashCommandStore
 from .sync_state import SlashCommandSyncRecord, SlashCommandSyncStateStore, hash_file
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class SlashCommandReadModelService:
     def __init__(
@@ -24,11 +28,13 @@ class SlashCommandReadModelService:
         sync_state: SlashCommandSyncStateStore,
         resolve_targets: Callable[[], tuple[SlashTarget, ...]],
         path_policy: SlashCommandPathPolicy | None = None,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self.sync_state = sync_state
         self.resolve_targets = resolve_targets
         self.path_policy = path_policy or SlashCommandPathPolicy()
+        self.asset_tags = asset_tags
 
     def list_commands(self) -> dict[str, object]:
         all_targets = self.resolve_targets()
@@ -87,12 +93,14 @@ class SlashCommandReadModelService:
                 continue
             metadata.append({"key": key, "value": _parse_scalar(raw_v.strip())})
 
+        tags = self.asset_tags.get_tags("slash_commands", command.name) if self.asset_tags is not None else []
         return {
             "name": command.name,
             "description": command.description,
             "prompt": command.prompt,
             "syncTargets": [entry.to_dict() for entry in self._sync_entries(command.name, records, targets)],
             "metadata": metadata,
+            "tags": tags,
         }
 
     def _sync_entries(

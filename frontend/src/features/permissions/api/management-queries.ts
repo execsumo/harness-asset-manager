@@ -14,6 +14,7 @@ import {
   promotePermission,
   reconcilePermission,
   setPermissionHarnesses,
+  setPermissionTags,
   uninstallPermission,
 } from "./management-client";
 import { invalidatePermissionsQueries } from "./invalidation";
@@ -28,6 +29,15 @@ export function usePermissionsInventoryQuery() {
     queryFn: fetchPermissionsInventory,
     refetchInterval: HOOKS_INVENTORY_REFETCH_INTERVAL_MS,
     ...queryPolicy(HOOKS_STALE_TIME_MS, HOOKS_GC_TIME_MS),
+  });
+}
+
+export function useSetPermissionTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
+      setPermissionTags(id, tags),
+    onSettled: () => invalidatePermissionsQueries(queryClient),
   });
 }
 

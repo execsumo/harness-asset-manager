@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type {
-  PermissionInventoryEntryDto,
   PermissionInventoryColumnDto,
+  PermissionInventoryDto,
+  PermissionInventoryEntryDto,
 } from "../api/management-types";
-import type { PermissionInventoryDto } from "../api/management-types";
-import { filterPermissions, matrixCellFor, permissionsSummary } from "./selectors";
+import {
+  extractPermissionsTagCounts,
+  filterPermissions,
+  matrixCellFor,
+  permissionsSummary,
+} from "./selectors";
 
 describe("permissions selectors", () => {
   const column: PermissionInventoryColumnDto = {
@@ -124,6 +129,50 @@ describe("permissions selectors", () => {
 
     it("permissionsSummary counts kinds", () => {
       expect(permissionsSummary(inventory)).toEqual({ total: 3, tracked: 2, untracked: 1, differs: 0 });
+    });
+
+    it("extracts permissions tag counts and filters by tags", () => {
+      const tagInventory: PermissionInventoryDto = {
+        columns: [column],
+        entries: [
+          {
+            ...inventory.entries[0],
+            tags: ["starred", "security"],
+          },
+          {
+            ...inventory.entries[1],
+            tags: ["security", "danger"],
+          },
+          {
+            ...inventory.entries[2],
+            tags: ["starred"],
+          },
+        ],
+        issues: [],
+      };
+
+      const counts = extractPermissionsTagCounts(tagInventory);
+      expect(counts).toEqual([
+        { tag: "starred", count: 1, isStarred: true },
+        { tag: "danger", count: 1, isStarred: false },
+        { tag: "security", count: 2, isStarred: false },
+      ]);
+
+      const starredFiltered = filterPermissions(tagInventory, {
+        search: "",
+        decision: "all",
+        status: "all",
+        tags: ["starred"],
+      });
+      expect(starredFiltered.map((e) => e.id)).toEqual(["managed-allow"]);
+
+      const securityFiltered = filterPermissions(tagInventory, {
+        search: "",
+        decision: "all",
+        status: "all",
+        tags: ["security"],
+      });
+      expect(securityFiltered.map((e) => e.id)).toEqual(["managed-allow", "managed-deny-unbound"]);
     });
   });
 

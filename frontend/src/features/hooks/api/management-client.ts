@@ -1,4 +1,4 @@
-import { deleteJson, fetchJson, postJson } from "../../../api/http";
+import { deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
 
 import type {
   HookApplyConfigResponseDto,
@@ -46,6 +46,16 @@ export async function uninstallHook(id: string): Promise<HookSetHarnessesRespons
 
 export async function fetchHookDetail(id: string): Promise<HookInventoryEntryDto> {
   return fetchJson<HookInventoryEntryDto>(`/hooks/${encodeURIComponent(id)}`);
+}
+
+export async function setHookTags(
+  id: string,
+  tags: string[],
+): Promise<{ tags: string[] }> {
+  return putJson<{ tags: string[] }>(
+    `/hooks/${encodeURIComponent(id)}/tags`,
+    { tags },
+  );
 }
 
 export async function createHook(body: {

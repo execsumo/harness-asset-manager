@@ -287,6 +287,7 @@ def build_backend_container(
         slash_command_sync_state,
         resolve_slash_snapshot,
         slash_command_path_policy,
+        asset_tags=asset_tags,
     )
     slash_command_queries = SlashCommandQueryService(slash_command_read_models)
     slash_command_mutations = SlashCommandMutationService(
@@ -296,6 +297,7 @@ def build_backend_container(
         slash_command_read_models,
         SlashCommandPlanner(slash_command_path_policy),
         resolve_slash_snapshot,
+        asset_tags=asset_tags,
     )
     slash_auto_adopt = SlashCommandsAutoAdoptService(
         read_models=slash_command_read_models,
@@ -342,6 +344,7 @@ def build_backend_container(
         marketplace_catalog=mcp_catalog,
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
+        asset_tags=asset_tags,
     )
     mcp_mutations = McpMutationService(
         store=mcp_store,
@@ -351,6 +354,7 @@ def build_backend_container(
         enrichment=mcp_enrichment,
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
+        asset_tags=asset_tags,
     )
     mcp_auto_adopt = McpAutoAdoptService(
         planner=mcp_planner,
@@ -364,10 +368,11 @@ def build_backend_container(
     hooks_store = HookStore(paths.hooks_store_manifest)
     hooks_read_models = HooksReadModelService.from_kernel(store=hooks_store, kernel=harness_kernel)
     invalidation.register(hooks_read_models)
-    hooks_queries = HooksQueryService(hooks_read_models)
+    hooks_queries = HooksQueryService(hooks_read_models, asset_tags=asset_tags)
     hooks_mutations = HooksMutationService(
         store=hooks_store,
         read_models=hooks_read_models,
+        asset_tags=asset_tags,
     )
     hooks_auto_adopt = ObservedConfigAutoAdoptService(
         read_models=hooks_read_models,
@@ -384,10 +389,11 @@ def build_backend_container(
     permissions_store = PermissionStore(paths.permissions_store_manifest)
     permissions_read_models = PermissionsReadModelService.from_kernel(store=permissions_store, kernel=harness_kernel)
     invalidation.register(permissions_read_models)
-    permissions_queries = PermissionsQueryService(permissions_read_models)
+    permissions_queries = PermissionsQueryService(permissions_read_models, asset_tags=asset_tags)
     permissions_mutations = PermissionsMutationService(
         store=permissions_store,
         read_models=permissions_read_models,
+        asset_tags=asset_tags,
     )
     permissions_auto_adopt = ObservedConfigAutoAdoptService(
         read_models=permissions_read_models,
@@ -453,7 +459,7 @@ def build_backend_container(
         default_harnesses=lambda: auto_adopt_defaults("agents"),
     )
     agents_mutations = AgentMutationService(
-        agents_store, resolve_agents_snapshot, agent_bindings
+        agents_store, resolve_agents_snapshot, agent_bindings, asset_tags=asset_tags
     )
 
     config_snapshots = ConfigSnapshotService(paths, context=harness_kernel.context)
@@ -503,6 +509,7 @@ def build_backend_container(
     permissions_tracker = MutationPathTracker(
         lambda: (
             (paths.permissions_store_manifest, False),
+            (paths.asset_tags_path, False),
             *((adapter.config_path, False) for adapter in permissions_read_models.adapters),
         )
     )
@@ -592,6 +599,7 @@ def build_backend_container(
         resolve_agents_snapshot,
         agent_bindings,
         audited_agents_reconcile.reconcile,
+        asset_tags=asset_tags,
     )
     audited_config_snapshots = AuditedMutationService(
         config_snapshots,

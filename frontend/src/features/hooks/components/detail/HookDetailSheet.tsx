@@ -1,13 +1,14 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Star, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import { DetailBindingIdentity } from "../../../../components/detail/DetailBindingIdentity";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
+import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
-import { useHookDetailQuery } from "../../api/management-queries";
+import { useHookDetailQuery, useSetHookTagsMutation } from "../../api/management-queries";
 import { useHooksCopy } from "../../i18n";
 import { isHooksHarnessAddressable } from "../../model/selectors";
 
@@ -43,6 +44,7 @@ export function HookDetailSheet({
   const headingId = useId();
   const copy = useHooksCopy();
   const detailQuery = useHookDetailQuery(id);
+  const setTagsMutation = useSetHookTagsMutation();
   const [resolvePending, setResolvePending] = useState(false);
   const [resolveError, setResolveError] = useState("");
 
@@ -52,6 +54,43 @@ export function HookDetailSheet({
   const spec = detail?.spec ?? null;
   const displayName = detail?.displayName ?? id;
   const errorMessage = detailQuery.error instanceof Error ? detailQuery.error.message : "";
+
+  const isStarred = (detail?.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    if (!detail) return;
+    const nextTags = isStarred
+      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    try {
+      await setTagsMutation.mutateAsync({
+        id: detail.id,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setResolveError(err instanceof Error ? err.message : "Failed to toggle star.");
+    }
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    if (!detail) return;
+    const nextTags = [...(detail.tags || []), newTag];
+    await setTagsMutation.mutateAsync({
+      id: detail.id,
+      tags: nextTags,
+    });
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!detail) return;
+    const nextTags = (detail.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    await setTagsMutation.mutateAsync({
+      id: detail.id,
+      tags: nextTags,
+    });
+  };
 
   async function handleResolve(sourceKind: "managed" | "harness", observedHarness: string): Promise<void> {
     setResolveError("");
@@ -84,7 +123,24 @@ export function HookDetailSheet({
           </div>
           
           <DetailHeader
-            title={<h2 id={headingId}>{displayName}</h2>}
+            title={
+              <h2 id={headingId} className="skill-detail__title">
+                {displayName}
+                {detail?.kind === "managed" ? (
+                  <button
+                    type="button"
+                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                    aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
+                    onClick={handleToggleStar}
+                  >
+                    <Star
+                      size={16}
+                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                    />
+                  </button>
+                ) : null}
+              </h2>
+            }
             closeLabel={copy.detail.close}
             onClose={onClose}
           />
@@ -130,6 +186,18 @@ export function HookDetailSheet({
                   </div>
                 </dl>
               </DetailSection>
+
+              {detail.kind === "managed" ? (
+                <DetailSection heading="Tags">
+                  <DetailTags
+                    tags={detail.tags || []}
+                    canEdit={true}
+                    onAddTag={handleAddTag}
+                    onRemoveTag={handleRemoveTag}
+                    disabled={setTagsMutation.isPending}
+                  />
+                </DetailSection>
+              ) : null}
 
               <DetailSection heading={copy.detail.bindings}>
                 <div className="detail-sheet__bindings">

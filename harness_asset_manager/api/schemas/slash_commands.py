@@ -63,6 +63,15 @@ class SlashCommandResponse(BaseModel):
     prompt: str
     syncTargets: list[SlashSyncEntryResponse]
     metadata: list[SlashMetadataEntryResponse] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+
+
+class SetSlashCommandTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
+class SlashCommandTagsResponse(BaseModel):
+    tags: list[str] = Field(default_factory=list)
 
 
 class SlashCommandReviewResponse(BaseModel):
@@ -130,6 +139,7 @@ class SlashCommandDeleteResponse(BaseModel):
 
 
 __all__ = [
+    "SetSlashCommandTagsRequest",
     "SlashCommandDeleteResponse",
     "SlashCommandScope",
     "SlashCommandImportRequest",
@@ -139,6 +149,7 @@ __all__ = [
     "SlashCommandResolveRequest",
     "SlashCommandResponse",
     "SlashCommandReviewResponse",
+    "SlashCommandTagsResponse",
     "SlashCommandUpdateRequest",
     "SlashMetadataEntryRequest",
     "SlashMetadataEntryResponse",

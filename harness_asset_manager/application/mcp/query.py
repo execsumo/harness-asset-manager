@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import threading
 from collections.abc import Callable
 
@@ -20,6 +21,9 @@ from .planner import McpAdoptionPlanner
 from .read_models import McpReadModelService
 from .redaction import annotate_redacted_env, redact_payload, redacted_spec_dict
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class McpQueryService:
     """Read-side service exposing raw managed MCP config and inventory views."""
@@ -34,6 +38,7 @@ class McpQueryService:
         availability_probe: McpAvailabilityProbe | None = None,
         availability_cache: AvailabilityCache | None = None,
         reconcile: Callable[[], object] | None = None,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.read_models = read_models
         self.planner = planner
@@ -42,6 +47,7 @@ class McpQueryService:
         self.availability_probe = availability_probe or McpAvailabilityProbe()
         self._availability_cache = availability_cache if availability_cache is not None else {}
         self._reconcile = reconcile
+        self.asset_tags = asset_tags
         # Reentrancy guard, per thread (mirrors SkillsQueryService). Reconcile does
         # not currently read back through this service, but the wiring is identical
         # to the slash-commands family where that assumption broke; keep the
@@ -213,11 +219,17 @@ class McpQueryService:
             for scan in scans
             if scan.scan_issue
         )
+        tags_by_ref = (
+            self.asset_tags.get_tags_for_family("mcp")
+            if self.asset_tags is not None
+            else {}
+        )
         return build_inventory(
             managed_servers=self.read_models.store.list_managed(),
             specs=self.read_models.store.list_public_specs(),
             scans=scans,
             issues=issues,
+            tags_by_ref=tags_by_ref,
         )
 
     def _records_by_name(self):

@@ -1,9 +1,10 @@
 import { type ReactNode, useId, useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Star, Trash2 } from "lucide-react";
 
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
 import { DetailSourceLinks } from "../../../../components/detail/DetailSourceLinks";
+import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
 import type {
@@ -11,7 +12,7 @@ import type {
   McpInventoryColumnDto,
   McpServerSpecDto,
 } from "../../api/management-types";
-import { useMcpServerDetailQuery } from "../../api/management-queries";
+import { useMcpServerDetailQuery, useSetMcpServerTagsMutation } from "../../api/management-queries";
 import { useMcpCopy, type McpCopy } from "../../i18n";
 import { formatDisplayHeaders } from "../../model/display-secrets";
 import type { McpInstallConfigValues } from "../../model/install-config";
@@ -63,6 +64,7 @@ export function McpServerDetailView({
   const copy = useMcpCopy();
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const detailQuery = useMcpServerDetailQuery(name);
+  const setTagsMutation = useSetMcpServerTagsMutation();
 
   const detail = detailQuery.data ?? null;
   const spec = detail?.spec ?? null;
@@ -77,6 +79,39 @@ export function McpServerDetailView({
   } = useMcpEnableWorkflow({
     loadErrorMessage: copy.detail.unableToLoadInstallConfig,
   });
+
+  const isStarred = (detail?.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    if (!detail) return;
+    const nextTags = isStarred
+      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    await setTagsMutation.mutateAsync({
+      name: detail.name,
+      tags: nextTags,
+    });
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    if (!detail) return;
+    const nextTags = [...(detail.tags || []), newTag];
+    await setTagsMutation.mutateAsync({
+      name: detail.name,
+      tags: nextTags,
+    });
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!detail) return;
+    const nextTags = (detail.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    await setTagsMutation.mutateAsync({
+      name: detail.name,
+      tags: nextTags,
+    });
+  };
 
   if (!detail && detailQuery.isPending) {
     return (
@@ -142,7 +177,24 @@ export function McpServerDetailView({
       <McpDetailShell
         chrome={(
           <DetailHeader
-            title={<h2 id={headingId}>{displayName}</h2>}
+            title={
+              <h2 id={headingId} className="skill-detail__title">
+                {displayName}
+                {detail.kind === "managed" ? (
+                  <button
+                    type="button"
+                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                    aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
+                    onClick={handleToggleStar}
+                  >
+                    <Star
+                      size={16}
+                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                    />
+                  </button>
+                ) : null}
+              </h2>
+            }
             meta={
               <div className="mcp-detail__meta-stack">
                 <div className="detail-sheet__meta">
@@ -190,6 +242,18 @@ export function McpServerDetailView({
             {description ? (
               <DetailSection heading={copy.detail.about}>
                 <p className="mcp-detail__about">{description}</p>
+              </DetailSection>
+            ) : null}
+
+            {detail.kind === "managed" ? (
+              <DetailSection heading="Tags">
+                <DetailTags
+                  tags={detail.tags || []}
+                  canEdit={true}
+                  onAddTag={handleAddTag}
+                  onRemoveTag={handleRemoveTag}
+                  disabled={setTagsMutation.isPending}
+                />
               </DetailSection>
             ) : null}
 

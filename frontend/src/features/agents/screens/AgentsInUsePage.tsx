@@ -14,8 +14,15 @@ import { AdoptConflictDialog } from "../components/AdoptConflictDialog";
 import { AgentsMatrixView } from "../components/AgentsMatrixView";
 import { CreateAgentDialog } from "../components/CreateAgentDialog";
 import { AgentDetailModal } from "../components/detail/AgentDetailModal";
-import { agentsStatusCounts, filterAgents, type AgentsStatusFilter } from "../model/selectors";
+import { TagFilterBar } from "../../../components/tags/TagFilterBar";
+import {
+  agentsStatusCounts,
+  extractAgentTagCounts,
+  filterAgents,
+  type AgentsStatusFilter,
+} from "../model/selectors";
 import { useAgentsController } from "../model/use-agents-controller";
+import { useSetAgentTagsMutation } from "../api/queries";
 import type { AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
@@ -66,6 +73,7 @@ export default function AgentsInUsePage() {
   const [detailRef, setDetailRef] = useState<string | null>(null);
   const common = useCommonCopy();
   const { toast } = useToast();
+  const setTagsMutation = useSetAgentTagsMutation();
 
   const statusParam = searchParams.get("status");
   const statusFilter: AgentsStatusFilter = isAgentsStatusFilter(statusParam) ? statusParam : "all";
@@ -87,15 +95,70 @@ export default function AgentsInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(() => extractAgentTagCounts(inventory?.entries), [inventory?.entries]);
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const current = params.getAll("tag");
+      const normalizedToggle = tagToToggle.toLowerCase();
+      params.delete("tag");
+      let found = false;
+      for (const t of current) {
+        if (t.toLowerCase() === normalizedToggle) {
+          found = true;
+        } else {
+          params.append("tag", t);
+        }
+      }
+      if (!found) {
+        params.append("tag", tagToToggle);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const onToggleStarredFilter = useCallback(() => {
+    toggleTagFilter("starred");
+  }, [toggleTagFilter]);
+
+  const handleToggleStar = useCallback(
+    async (ref: string) => {
+      const entry = inventory?.entries.find((e) => e.ref === ref);
+      if (!entry) return;
+      const currentTags = entry.tags || [];
+      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+      try {
+        await setTagsMutation.mutateAsync({ ref, tags: nextTags });
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "Failed to toggle star.");
+      }
+    },
+    [inventory, setTagsMutation, toast],
+  );
+
   const entries = useMemo(
-    () => filterAgents(inventory, { search, status: statusFilter, harness: harnessParam }),
-    [inventory, search, statusFilter, harnessParam],
+    () => filterAgents(inventory, { search, status: statusFilter, harness: harnessParam, tags: selectedTags }),
+    [inventory, search, statusFilter, harnessParam, selectedTags],
   );
   const counts = useMemo(() => agentsStatusCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const totalManaged = inventory?.entries.filter((entry) => entry.kind === "managed").length ?? 0;
   const isReady = status === "success" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
   const isReviewView = statusFilter === "untracked";
 
   useEffect(() => {
@@ -189,9 +252,12 @@ export default function AgentsInUsePage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter, setStatusFilter]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const issueCount = inventory?.issues?.length ?? 0;
   const inventoryIssueMessage = issueCount
@@ -222,46 +288,54 @@ export default function AgentsInUsePage() {
                   <Plus size={16} className="agent-icon-margin" />
                   Adopt all eligible
                 </button>
-              ) : null}
-              <button
-                type="button"
-                className="action-pill action-pill--md action-pill--accent"
-                onClick={() => setCreateDialogOpen(true)}
-              >
-                <Plus size={16} className="agent-icon-margin" />
-                Add Agent
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  className="action-pill action-pill--md action-pill--accent"
+                  onClick={() => setCreateDialogOpen(true)}
+                >
+                  <Plus size={16} className="agent-icon-margin" />
+                  Add Agent
+                </button>
+              )}
             </>
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search by name or description..."
-            searchLabel="Search agents"
-            trailing={
-              <>
-                {harnessParam ? (
-                  <HarnessFilterChip
-                    label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
-                    onClear={clearHarnessFilter}
+          <>
+            <FilterBar
+              searchPlaceholder="Search agents by name or description..."
+              searchValue={search}
+              onSearchChange={setSearch}
+              trailing={
+                <>
+                  {harnessParam ? (
+                    <HarnessFilterChip
+                      label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                      onClear={clearHarnessFilter}
+                    />
+                  ) : null}
+                  <SelectionMenu
+                    value={statusFilter}
+                    options={STATUS_VALUES.map((value) => ({
+                      value,
+                      label: statusLabel(value),
+                      meta: counts[value],
+                    }))}
+                    active={statusFilter !== "all"}
+                    ariaLabel={`Filter: ${statusLabel(statusFilter)}`}
+                    onChange={setStatusFilter}
                   />
-                ) : null}
-                <SelectionMenu
-                  value={statusFilter}
-                  options={STATUS_VALUES.map((value) => ({
-                    value,
-                    label: statusLabel(value),
-                    meta: counts[value],
-                  }))}
-                  active={statusFilter !== "all"}
-                  ariaLabel={`Filter: ${statusLabel(statusFilter)}`}
-                  onChange={setStatusFilter}
-                />
-              </>
-            }
-          />
+                </>
+              }
+            />
+            <TagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -295,7 +369,7 @@ export default function AgentsInUsePage() {
                   </span>
                   <span className="agent-repairs__time">{new Date(repair.at * 1000).toLocaleString()}</span>
                 </div>
-                <p className="agent-issues__reason">{repair.detail}</p>
+                <p className="agent-repairs__reason">{repair.detail}</p>
               </li>
             ))}
           </ul>
@@ -319,6 +393,9 @@ export default function AgentsInUsePage() {
             onEnableHarness={(ref, harness) => void handleToggleHarness(ref, harness, false)}
             onDisableHarness={(ref, harness) => void handleToggleHarness(ref, harness, true)}
             onAdopt={(ref) => void handleAdopt(ref)}
+            onToggleStar={handleToggleStar}
+            starredFilterActive={starredFilterActive}
+            onToggleStarredFilter={onToggleStarredFilter}
           />
         ) : hasData ? (
           <div className="empty-panel">

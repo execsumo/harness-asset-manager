@@ -108,7 +108,7 @@ describe("McpServerMatrixView", () => {
     expect(table.closest(".matrix-table-wrapper")).not.toHaveClass("matrix-table-wrapper--panel");
     // Header and body must agree cell-for-cell — every column's width is taken
     // from the header cell that sits above it.
-    expect(headerCells).toHaveLength(columns().length + 4);
+    expect(headerCells).toHaveLength(columns().length + 5);
     expect(bodyCells).toHaveLength(headerCells.length);
     expect(headerCells[0]).toHaveClass("matrix-table__th--checkbox");
     expect(headerCells[headerCells.length - 2]).toHaveClass("matrix-table__th--compact");
@@ -116,6 +116,14 @@ describe("McpServerMatrixView", () => {
     expect(screen.getByText("MCP Server").closest("th")).toHaveClass("matrix-table__th--identity");
     expect(screen.getByText("Active").closest("th")).toHaveClass("matrix-table__th--end");
     expect(screen.getByRole("button", { name: "Sort by Codex" })).toBeInTheDocument();
+  });
+
+  it("toggles star on an MCP server row", () => {
+    const onToggleStar = vi.fn();
+    renderMatrix({ onToggleStar });
+
+    fireEvent.click(screen.getByRole("button", { name: "Star exa" }));
+    expect(onToggleStar).toHaveBeenCalledWith("exa");
   });
 
   it("sorts rows by MCP Server name, active coverage, and harness state", () => {

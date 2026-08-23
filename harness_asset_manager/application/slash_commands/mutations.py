@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import get_args
+from typing import TYPE_CHECKING, Iterable, get_args
 
 from harness_asset_manager.errors import MutationError
 
@@ -15,6 +15,9 @@ from .store import SlashCommandStore, validate_command_name
 from .sync_state import SlashCommandSyncRecord, SlashCommandSyncStateStore, hash_file
 from .targets import default_target_ids, target_by_id
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class SlashCommandMutationService:
     def __init__(
@@ -25,6 +28,7 @@ class SlashCommandMutationService:
         read_models: SlashCommandReadModelService,
         planner: SlashCommandPlanner,
         resolve_targets: Callable[[], tuple[SlashTarget, ...]],
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self.sync_state = sync_state
@@ -32,9 +36,19 @@ class SlashCommandMutationService:
         self.read_models = read_models
         self.planner = planner
         self.resolve_targets = resolve_targets
+        self.asset_tags = asset_tags
         self.path_policy = planner.path_policy
         self.sync_executor = SlashCommandSyncExecutor(sync_state, planner, self.path_policy)
         self.review_resolver = SlashCommandReviewResolver(store, sync_state, queries, self.path_policy)
+
+    def set_tags(self, name: str, tags: Iterable[str]) -> dict[str, object]:
+        command = self.store.get_command(name)
+        if command is None:
+            raise MutationError(f"unknown slash command: {name}", status=404, code="slash_command_not_found")
+        if self.asset_tags is None:
+            raise MutationError("asset tag service is not configured", status=500)
+        updated_tags = self.asset_tags.set_tags("slash_commands", command.name, tags)
+        return {"tags": updated_tags}
 
     def create_command(
         self,

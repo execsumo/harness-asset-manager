@@ -13,11 +13,13 @@ from harness_asset_manager.api.schemas import (
     McpInventoryResponse,
     McpServerDetailResponse,
     McpServerMutationResponse,
+    McpServerTagsResponse,
     McpSetHarnessesResultResponse,
     McpUnmanagedByServerResponse,
     OkResponse,
     ReconcileMcpServerRequest,
     SetMcpServerHarnessesRequest,
+    SetMcpServerTagsRequest,
 )
 from harness_asset_manager.application import BackendContainer
 
@@ -27,6 +29,17 @@ router = APIRouter(prefix="/api/mcp")
 @router.get("/servers", response_model=McpInventoryResponse)
 def list_mcp_servers(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     return container.mcp_queries.list_servers()
+
+
+@router.put("/servers/{name}/tags", response_model=McpServerTagsResponse)
+def set_mcp_server_tags(
+    name: str,
+    body: SetMcpServerTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.mcp_mutations.set_tags(name, body.tags)
+    container.invalidation.invalidate_all()
+    return result
 
 
 @router.get("/servers/{name}", response_model=McpServerDetailResponse)

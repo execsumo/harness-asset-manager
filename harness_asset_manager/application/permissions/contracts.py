@@ -64,6 +64,7 @@ class PermissionInventoryEntry:
     sightings: tuple[PermissionBinding, ...]
     is_managed: bool
     can_enable: bool = True
+    tags: tuple[str, ...] = ()
 
     @property
     def kind(self) -> str:

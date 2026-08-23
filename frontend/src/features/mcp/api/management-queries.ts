@@ -15,6 +15,7 @@ import {
   fetchMcpNeedsReviewByServer,
   reconcileMcpServer,
   setMcpServerHarnesses,
+  setMcpServerTags,
   uninstallMcpServer,
 } from "./management-client";
 import { invalidateMcpQueries } from "./invalidation";
@@ -29,6 +30,15 @@ export function useMcpInventoryQuery() {
     queryFn: fetchMcpInventory,
     refetchInterval: MCP_INVENTORY_REFETCH_INTERVAL_MS,
     ...queryPolicy(MCP_STALE_TIME_MS, MCP_GC_TIME_MS),
+  });
+}
+
+export function useSetMcpServerTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, tags }: { name: string; tags: string[] }) =>
+      setMcpServerTags(name, tags),
+    onSettled: () => invalidateMcpQueries(queryClient),
   });
 }
 

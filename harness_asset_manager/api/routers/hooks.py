@@ -12,10 +12,12 @@ from harness_asset_manager.api.schemas import (
     HookInventoryResponse,
     HookMutationResponse,
     HookSetHarnessesResultResponse,
+    HookTagsResponse,
     OkResponse,
     PromoteHookRequest,
     ReconcileHookRequest,
     SetHookHarnessesRequest,
+    SetHookTagsRequest,
 )
 from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.hooks.store import HookSpec
@@ -26,6 +28,17 @@ router = APIRouter(prefix="/api/hooks")
 @router.get("", response_model=HookInventoryResponse)
 def list_hooks(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     return container.hooks_queries.list_hooks()
+
+
+@router.put("/{id}/tags", response_model=HookTagsResponse)
+def set_hook_tags(
+    id: str,
+    body: SetHookTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.hooks_mutations.set_tags(id, body.tags)
+    container.invalidation.invalidate_all()
+    return result
 
 
 @router.get("/{id}", response_model=HookInventoryEntryResponse)

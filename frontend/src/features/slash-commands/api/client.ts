@@ -55,3 +55,14 @@ export async function resolveSlashCommandReview(
 export async function deleteSlashCommand(name: string): Promise<SlashCommandDeleteResponse> {
   return deleteJson<SlashCommandDeleteResponse>(`/slash-commands/${encodeURIComponent(name)}`);
 }
+
+export async function setSlashCommandTags(
+  name: string,
+  tags: string[],
+): Promise<{ tags: string[] }> {
+  return putJson<{ tags: string[] }>(
+    `/slash-commands/${encodeURIComponent(name)}/tags`,
+    { tags },
+  );
+}
+

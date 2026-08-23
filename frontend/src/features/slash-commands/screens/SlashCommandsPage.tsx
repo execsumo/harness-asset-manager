@@ -9,6 +9,7 @@ import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
+import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import { useCommonCopy } from "../../../i18n";
 import { SlashCommandFormDialog } from "../components/SlashCommandFormDialog";
 import { SlashCommandMatrix } from "../components/SlashCommandMatrix";
@@ -16,12 +17,14 @@ import { SlashCommandDetailSheet } from "../components/detail/SlashCommandDetail
 import { SlashCommandReviewDetailSheet } from "../components/detail/SlashCommandReviewDetailSheet";
 import { useSlashCommandsCopy } from "../i18n";
 import {
+  extractSlashCommandTagCounts,
   filterSlashCommandEntries,
   primaryReviewAction,
   slashCommandStatusCounts,
   type SlashCommandsStatusFilter,
 } from "../model/selectors";
 import { useSlashCommandsController } from "../model/useSlashCommandsController";
+import { useSetSlashCommandTagsMutation } from "../api/queries";
 
 const STATUS_LABELS: Record<SlashCommandsStatusFilter, string> = {
   all: "All",
@@ -37,6 +40,7 @@ export default function SlashCommandsPage() {
   const [selectedRefs, setSelectedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const setTagsMutation = useSetSlashCommandTagsMutation();
 
   const statusParam = searchParams.get("status");
   const statusFilter: SlashCommandsStatusFilter = statusParam === "untracked" ? "untracked" : "all";
@@ -58,13 +62,71 @@ export default function SlashCommandsPage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(
+    () => extractSlashCommandTagCounts(controller.data?.commands),
+    [controller.data?.commands],
+  );
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const current = params.getAll("tag");
+      const normalizedToggle = tagToToggle.toLowerCase();
+      params.delete("tag");
+      let found = false;
+      for (const t of current) {
+        if (t.toLowerCase() === normalizedToggle) {
+          found = true;
+        } else {
+          params.append("tag", t);
+        }
+      }
+      if (!found) {
+        params.append("tag", tagToToggle);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const onToggleStarredFilter = useCallback(() => {
+    toggleTagFilter("starred");
+  }, [toggleTagFilter]);
+
+  const handleToggleStar = useCallback(
+    async (name: string) => {
+      const cmd = controller.data?.commands.find((c) => c.name === name);
+      if (!cmd) return;
+      const currentTags = cmd.tags || [];
+      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+      try {
+        await setTagsMutation.mutateAsync({ name, tags: nextTags });
+      } catch (err) {
+        controller.setActionError(err instanceof Error ? err.message : "Failed to toggle star.");
+      }
+    },
+    [controller, setTagsMutation],
+  );
+
   const entries = useMemo(
-    () => filterSlashCommandEntries(controller.entries, search, statusFilter, harnessParam),
-    [controller.entries, search, statusFilter, harnessParam],
+    () => filterSlashCommandEntries(controller.entries, search, statusFilter, harnessParam, selectedTags),
+    [controller.entries, search, statusFilter, harnessParam, selectedTags],
   );
   const counts = useMemo(() => slashCommandStatusCounts(controller.entries), [controller.entries]);
   const hasData = controller.entries.length > 0;
-  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
   useEffect(() => {
     setSelectedRefs((current) => {
@@ -83,9 +145,12 @@ export default function SlashCommandsPage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter, setStatusFilter]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleAdoptSelected = useCallback(async () => {
     const selectedRows = entries.flatMap((entry) => {
@@ -122,30 +187,38 @@ export default function SlashCommandsPage() {
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
-            searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
-            trailing={
-              <>
-                {harnessParam ? (
-                  <HarnessFilterChip label={harnessParam} onClear={clearHarnessFilter} />
-                ) : null}
-                <SelectionMenu
-                  value={statusFilter}
-                  options={(Object.keys(STATUS_LABELS) as SlashCommandsStatusFilter[]).map((value) => ({
-                    value,
-                    label: STATUS_LABELS[value],
-                    meta: counts[value],
-                  }))}
-                  active={statusFilter !== "all"}
-                  ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
-                  onChange={setStatusFilter}
-                />
-              </>
-            }
-          />
+          <>
+            <FilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
+              searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
+              trailing={
+                <>
+                  {harnessParam ? (
+                    <HarnessFilterChip label={harnessParam} onClear={clearHarnessFilter} />
+                  ) : null}
+                  <SelectionMenu
+                    value={statusFilter}
+                    options={(Object.keys(STATUS_LABELS) as SlashCommandsStatusFilter[]).map((value) => ({
+                      value,
+                      label: STATUS_LABELS[value],
+                      meta: counts[value],
+                    }))}
+                    active={statusFilter !== "all"}
+                    ariaLabel={`Filter: ${STATUS_LABELS[statusFilter]}`}
+                    onChange={setStatusFilter}
+                  />
+                </>
+              }
+            />
+            <TagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -174,6 +247,9 @@ export default function SlashCommandsPage() {
           }}
           onToggleTarget={(command, target) => void controller.handleToggleTarget(command, target)}
           onReviewAction={(row) => void controller.handleReviewAction(row)}
+          onToggleStar={handleToggleStar}
+          starredFilterActive={starredFilterActive}
+          onToggleStarredFilter={onToggleStarredFilter}
         />
       ) : hasData ? (
         <div className="empty-panel">

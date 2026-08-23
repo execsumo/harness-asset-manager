@@ -4,7 +4,7 @@ import type {
   HookInventoryEntryDto,
   HookInventoryColumnDto,
 } from "../api/management-types";
-import { filterHooks, filterHooksNeedsReview, matrixCellFor } from "./selectors";
+import { extractHookTagCounts, filterHooks, filterHooksNeedsReview, matrixCellFor } from "./selectors";
 
 describe("hooks selectors", () => {
   const column: HookInventoryColumnDto = {
@@ -146,5 +146,62 @@ describe("hooks selectors", () => {
     const cell = matrixCellFor(entry, column);
     expect(cell.state).toBe("enabled");
     expect(cell.tooltip).toBe("Enabled on Antigravity");
+  });
+
+  it("extracts hook tag counts and filters by tags", () => {
+    const inventory: HookInventoryDto = {
+      columns: [column],
+      entries: [
+        {
+          id: "hook-1",
+          displayName: "Hook 1",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          sightings: [],
+          tags: ["starred", "security"],
+        },
+        {
+          id: "hook-2",
+          displayName: "Hook 2",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          sightings: [],
+          tags: ["security", "audit"],
+        },
+        {
+          id: "hook-3",
+          displayName: "Hook 3",
+          kind: "managed",
+          canEnable: true,
+          enabledStatus: "enabled",
+          sightings: [],
+          tags: ["starred"],
+        },
+        {
+          id: "manual:123",
+          displayName: "Unmanaged Hook",
+          kind: "unmanaged",
+          canEnable: true,
+          enabledStatus: "disabled",
+          sightings: [],
+        },
+      ],
+      issues: [],
+    };
+
+    const counts = extractHookTagCounts(inventory);
+    expect(counts).toEqual([
+      { tag: "starred", count: 2, isStarred: true },
+      { tag: "audit", count: 1, isStarred: false },
+      { tag: "security", count: 2, isStarred: false },
+    ]);
+
+    const starredFiltered = filterHooks(inventory, { search: "", status: "all", tags: ["starred"] });
+    expect(starredFiltered.map((e) => e.id)).toEqual(["hook-1", "hook-3"]);
+
+    const securityFiltered = filterHooks(inventory, { search: "", status: "all", tags: ["security"] });
+    expect(securityFiltered.map((e) => e.id)).toEqual(["hook-1", "hook-2"]);
   });
 });

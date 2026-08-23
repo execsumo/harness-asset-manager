@@ -90,7 +90,20 @@ class PermissionInventoryEntryResponse(BaseModel):
     spec: PermissionSpecResponse | None = None
     canEnable: bool
     enabledStatus: Literal["enabled", "disabled"]
+    tags: list[str] = Field(default_factory=list)
     sightings: list[PermissionBindingResponse]
+
+
+class SetPermissionTagsRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    tags: list[str] = Field(default_factory=list)
+
+
+class PermissionTagsResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    tags: list[str] = Field(default_factory=list)
 
 
 class PermissionInventoryResponse(BaseModel):
@@ -136,7 +149,9 @@ __all__ = [
     "PermissionMutationResponse",
     "PermissionSetHarnessesResultResponse",
     "PermissionSpecResponse",
+    "PermissionTagsResponse",
     "PromotePermissionRequest",
     "ReconcilePermissionRequest",
     "SetPermissionHarnessesRequest",
+    "SetPermissionTagsRequest",
 ]

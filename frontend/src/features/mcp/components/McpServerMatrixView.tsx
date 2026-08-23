@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Star } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
@@ -43,6 +43,9 @@ interface McpServerMatrixViewProps {
   onDisableHarness: (name: string, harness: string) => void;
   onAdopt?: (name: string) => void;
   onChooseConfigToAdopt?: (name: string) => void;
+  onToggleStar?: (name: string) => void;
+  starredFilterActive?: boolean;
+  onToggleStarredFilter?: () => void;
 }
 
 const INITIAL_SORT: McpSortState = { key: "name", direction: "asc" };
@@ -63,6 +66,9 @@ export function McpServerMatrixView({
   onDisableHarness,
   onAdopt,
   onChooseConfigToAdopt,
+  onToggleStar,
+  starredFilterActive = false,
+  onToggleStarredFilter,
 }: McpServerMatrixViewProps) {
   const copy = useMcpCopy();
   const displayColumns = matrixColumns({ columns });
@@ -105,6 +111,20 @@ export function McpServerMatrixView({
             direction={sort.direction}
             onClick={() => requestSort("name")}
           />
+          <th className="matrix-table__th matrix-table__th--star">
+            <UiTooltip content="Starred">
+              <button
+                type="button"
+                className="matrix-table__sort-btn matrix-table__sort-btn--harness matrix-table__star-header-btn"
+                data-active={starredFilterActive ? "true" : undefined}
+                aria-pressed={starredFilterActive}
+                aria-label="Filter by starred"
+                onClick={onToggleStarredFilter}
+              >
+                <Star size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            </UiTooltip>
+          </th>
           {displayColumns.map((column) => {
             const key: McpSortKey = { harness: column.harness };
             return (
@@ -162,6 +182,7 @@ export function McpServerMatrixView({
               onDisableHarness={onDisableHarness}
               onAdopt={onAdopt}
               onChooseConfigToAdopt={onChooseConfigToAdopt}
+              onToggleStar={onToggleStar}
               copy={copy}
             />
           );
@@ -185,6 +206,7 @@ function McpMatrixRow({
   onDisableHarness,
   onAdopt,
   onChooseConfigToAdopt,
+  onToggleStar,
   copy,
 }: {
   entry: McpInventoryEntryDto;
@@ -200,6 +222,7 @@ function McpMatrixRow({
   onDisableHarness: (name: string, harness: string) => void;
   onAdopt?: (name: string) => void;
   onChooseConfigToAdopt?: (name: string) => void;
+  onToggleStar?: (name: string) => void;
   copy: McpCopy;
 }) {
   const coverage = matrixCoverage(entry, columns);
@@ -207,6 +230,8 @@ function McpMatrixRow({
   const isIdentical = group ? group.identical : true;
   const isSelectable = !isUntracked || isIdentical;
   const isRowPending = pendingServer || pendingAdopt;
+  const isStarred = (entry.tags || []).some((t) => t.toLowerCase() === "starred");
+  const displayTags = (entry.tags || []).filter((t) => t.toLowerCase() !== "starred");
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
@@ -227,6 +252,20 @@ function McpMatrixRow({
         >
           <span className="matrix-table__name-row">
             <span className="matrix-table__name-text">{entry.displayName}</span>
+            {displayTags.length > 0 ? (
+              <div className="matrix-table__tag-pills">
+                {displayTags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="matrix-table__tag-pill">
+                    {tag}
+                  </span>
+                ))}
+                {displayTags.length > 2 ? (
+                  <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                    +{displayTags.length - 2}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </span>
           <span className="matrix-table__description">
             {isUntracked
@@ -236,6 +275,24 @@ function McpMatrixRow({
               : `${entry.name} · ${entry.spec?.transport ?? "—"}`}
           </span>
         </button>
+      </td>
+      <td className="matrix-table__cell matrix-table__cell--star">
+        {!isUntracked && onToggleStar ? (
+          <button
+            type="button"
+            className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+            aria-label={isStarred ? `Unstar ${entry.name}` : `Star ${entry.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(entry.name);
+            }}
+          >
+            <Star
+              size={14}
+              className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+            />
+          </button>
+        ) : null}
       </td>
       {columns.map((column) => {
         const cell = matrixCellFor(entry, column, copy);
