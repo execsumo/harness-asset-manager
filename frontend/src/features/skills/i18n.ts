@@ -99,6 +99,16 @@ const englishSkillsCopy = {
     disableEverywhere: "Disable everywhere",
     inUseList: "Skills in use list",
     reviewList: "Skills to review list",
+    document: "Document",
+    save: "Save",
+    saving: "Saving",
+    cancel: "Cancel",
+    unsavedChanges: "Unsaved changes",
+    savedSuccess: "Skill document saved",
+    discardTitle: "Discard changes?",
+    discardDescription: "You have unsaved changes that will be lost. Are you sure you want to discard them?",
+    discardConfirm: "Discard changes",
+    skillPackageNote: "Skill packages may contain scripts/resources edited on disk; this edits SKILL.md.",
   },
 } as const;
 

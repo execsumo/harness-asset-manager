@@ -5,6 +5,7 @@ import type {
   HarnessColumn as HarnessColumnDto,
   SkillRowActionsDto,
   SkillLocation as SkillLocationDto,
+  SkillMetadataEntry as SkillMetadataEntryDto,
   SkillSourceLinks as SkillSourceLinksDto,
   SkillStatus as SkillStatusDto,
   SkillsSummary as SkillsSummaryDto,
@@ -24,6 +25,7 @@ export type HarnessCell = HarnessCellDto;
 export type SkillRowActions = SkillRowActionsDto;
 export type SkillLocation = SkillLocationDto;
 export type SkillSourceLinks = SkillSourceLinksDto;
+export type SkillMetadataEntry = SkillMetadataEntryDto;
 export type BulkManageResult = BulkManageResultDto;
 
 export interface SkillListRow {
@@ -56,4 +58,5 @@ export interface SkillDetail {
   locations: SkillLocation[];
   sourceLinks: SkillSourceLinks | null;
   documentMarkdown: string | null;
+  metadata: SkillMetadataEntry[];
 }

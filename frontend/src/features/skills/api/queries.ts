@@ -15,6 +15,7 @@ import {
   setSkillHarnesses,
   unmanageSkill,
   updateSkill,
+  updateSkillDocument,
 } from "./client";
 import {
   getDetailCellState,
@@ -318,6 +319,21 @@ export function useDeleteSkillMutation() {
       queryClient.removeQueries({ queryKey: skillsKeys.detail(variables.skillRef), exact: true });
       queryClient.removeQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef), exact: true });
       await invalidateSkillsQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateSkillDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillRef, body }: { skillRef: string; body: Parameters<typeof updateSkillDocument>[1] }) =>
+      updateSkillDocument(skillRef, body),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
+        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
+        queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
+      ]);
     },
   });
 }
