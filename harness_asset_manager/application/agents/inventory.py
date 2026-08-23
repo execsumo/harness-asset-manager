@@ -142,19 +142,35 @@ class AgentInventoryService:
             return None
 
         document = harness_path.read_text(encoding="utf-8")
-        try:
-            agent = parse_agent_document(document, slug=slug, path=harness_path)
-        except AgentParseError:
-            return None
+        if adapter.renders:
+            try:
+                codex_agent = parse_codex_agent(harness_path)
+            except AgentParseError:
+                return None
+            name = codex_agent.name
+            description = codex_agent.description
+            prompt = codex_agent.prompt
+            tools: tuple[str, ...] = ()
+            extra_metadata = tuple(codex_agent.extras.items())
+        else:
+            try:
+                agent = parse_agent_document(document, slug=slug, path=harness_path)
+            except AgentParseError:
+                return None
+            name = agent.name
+            description = agent.description
+            prompt = agent.prompt
+            tools = agent.tools
+            extra_metadata = agent.extra_metadata
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
         return AgentDetail(
             ref=ref,
-            name=agent.name,
-            description=agent.description,
-            prompt=agent.prompt,
-            tools=agent.tools,
+            name=name,
+            description=description,
+            prompt=prompt,
+            tools=tools,
             document=document,
             store_path=None,
             harnesses=tuple(harnesses),
@@ -162,7 +178,7 @@ class AgentInventoryService:
             # Rendered adapters (Codex TOML) have no Markdown frontmatter to edit.
             can_edit=not adapter.renders,
             configuration=tuple(
-                (key, _format_config_value(value)) for key, value in agent.extra_metadata
+                (key, _format_config_value(value)) for key, value in extra_metadata
             ),
         )
 

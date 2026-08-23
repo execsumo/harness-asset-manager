@@ -164,10 +164,10 @@ class AgentMutationService:
         self,
         ref: str,
         *,
-        name: str,
-        description: str,
-        prompt: str,
-        tools: tuple[str, ...],
+        name: str | None = None,
+        description: str | None = None,
+        prompt: str | None = None,
+        tools: tuple[str, ...] | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -181,13 +181,17 @@ class AgentMutationService:
         harness_id, separator, slug = ref.partition("/")
         if not separator or not harness_id or not slug:
             raise MutationError(f"expected an unmanaged ref of the form <harness>/<slug>: {ref}")
-        adapter = self._adapter(harness_id)
+        if slug != Path(slug).name or slug in {".", ".."}:
+            raise MutationError(f"unsafe agent ref: {ref!r}", status=404)
+        adapter = self.adapters.get(harness_id)
+        if adapter is None:
+            raise MutationError(f"harness does not support agents: {harness_id}", status=404)
         if adapter.renders:
             raise MutationError(
                 f"this agent is rendered as a native {harness_id} file; adopt it before editing"
             )
         path = adapter.binding_path(slug)
-        if slug != Path(slug).name or not path.is_file():
+        if not path.is_file() or path.is_symlink():
             raise MutationError(f"no unmanaged agent at {path}", status=404)
 
         try:
@@ -196,10 +200,11 @@ class AgentMutationService:
             raise MutationError(f"cannot parse {path}: {error}") from error
 
         rendered = render_agent_document(
-            name=name,
-            description=description,
-            prompt=prompt,
-            tools=tools,
+            name=name if name is not None else current.name,
+            description=description if description is not None else current.description,
+            prompt=prompt if prompt is not None else current.prompt,
+            tools=tools if tools is not None else current.tools,
+            base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )
         atomic_write_text(path, rendered)

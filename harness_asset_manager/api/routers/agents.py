@@ -139,8 +139,8 @@ def update_agent(
             agent_ref,
             name=body.name,
             description=body.description,
-            prompt=body.prompt or "",
-            tools=tuple(body.tools) if body.tools is not None else (),
+            prompt=body.prompt,
+            tools=tuple(body.tools) if body.tools is not None else None,
             metadata=extra_metadata,
         )
         container.invalidation.invalidate_all()
