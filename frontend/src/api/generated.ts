@@ -1290,6 +1290,11 @@ export interface components {
         AgentDetailResponse: {
             /** Candelete */
             canDelete: boolean;
+            /**
+             * Canedit
+             * @default true
+             */
+            canEdit: boolean;
             /** Configuration */
             configuration?: components["schemas"]["AgentConfigEntryResponse"][];
             /** Description */
@@ -1305,7 +1310,7 @@ export interface components {
             /** Ref */
             ref: string;
             /** Storepath */
-            storePath: string;
+            storePath?: string | null;
             /** Tools */
             tools: string[];
         };

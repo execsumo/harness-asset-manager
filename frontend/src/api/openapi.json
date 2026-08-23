@@ -390,6 +390,11 @@
             "title": "Candelete",
             "type": "boolean"
           },
+          "canEdit": {
+            "default": true,
+            "title": "Canedit",
+            "type": "boolean"
+          },
           "configuration": {
             "items": {
               "$ref": "#/components/schemas/AgentConfigEntryResponse"
@@ -425,8 +430,15 @@
             "type": "string"
           },
           "storePath": {
-            "title": "Storepath",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storepath"
           },
           "tools": {
             "items": {
@@ -443,7 +455,6 @@
           "prompt",
           "tools",
           "document",
-          "storePath",
           "harnesses",
           "canDelete"
         ],

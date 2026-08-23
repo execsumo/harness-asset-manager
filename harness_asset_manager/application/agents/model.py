@@ -123,9 +123,11 @@ class AgentDetail:
     prompt: str
     tools: tuple[str, ...]
     document: str
-    store_path: Path
+    # None for unmanaged inspections: there is no store copy until adoption.
+    store_path: Path | None
     harnesses: tuple[AgentHarnessDetail, ...]
     can_delete: bool
+    can_edit: bool = True
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
 

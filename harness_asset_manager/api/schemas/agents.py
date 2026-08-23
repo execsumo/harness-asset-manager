@@ -149,10 +149,11 @@ class AgentDetailResponse(BaseModel):
     prompt: str
     tools: list[str]
     document: str
-    storePath: str
+    storePath: str | None = None
     harnesses: list[AgentHarnessDetailResponse]
     configuration: list[AgentConfigEntryResponse] = Field(default_factory=list)
     canDelete: bool
+    canEdit: bool = True
 
 
 __all__ = [

@@ -119,6 +119,31 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertTrue((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
             self.assertEqual(self._entry(harness, "stray")["kind"], "managed")
 
+    def test_unmanaged_detail_inspects_the_harness_file_read_only(self) -> None:
+        """GET /api/agents/<harness>/<slug> serves an unmanaged agent read-only.
+
+        Regression: the detail route handed the namespaced ref to the store, whose
+        path_for() correctly refused it — clicking details on an unmanaged agent
+        always failed with "unsafe agent ref".
+        """
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            detail = harness.get_json("/api/agents/claude/stray")
+            self.assertEqual(detail["ref"], "claude/stray")
+            self.assertEqual(detail["name"], "Stray")
+            self.assertEqual(detail["description"], "found in claude")
+            self.assertIn("harness body", detail["document"])
+            self.assertTrue(detail["canEdit"] is False)
+            self.assertFalse(detail["canDelete"])
+            self.assertIsNone(detail["storePath"])
+            # The owning harness row shows the real file location.
+            owner = next(h for h in detail["harnesses"] if h["harness"] == "claude")
+            self.assertTrue(owner["path"].endswith("/.claude/agents/stray.md"))
+
+    def test_unmanaged_detail_rejects_unsafe_refs_and_missing_files(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            harness.get_json("/api/agents/claude/../escape", expected_status=404)
+            harness.get_json("/api/agents/claude/missing", expected_status=404)
+
     def test_adopt_collision_returns_409_with_both_paths_and_mutates_nothing(self) -> None:
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
             harness.post_json(

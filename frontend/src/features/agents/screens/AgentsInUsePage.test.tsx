@@ -48,6 +48,7 @@ function agentDetailFixture(): AgentDetailDto {
       }
     ],
     canDelete: true,
+    canEdit: true,
   };
 }
 

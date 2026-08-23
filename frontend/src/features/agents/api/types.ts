@@ -71,7 +71,8 @@ export interface AgentDetailDto {
   prompt: string;
   tools: string[];
   document: string;
-  storePath: string;
+  /** Null for unmanaged inspections — there is no store copy until adoption. */
+  storePath: string | null;
   harnesses: Array<{
     harness: string;
     label: string;
@@ -85,4 +86,6 @@ export interface AgentDetailDto {
   /** Frontmatter beyond name/description, verbatim and in file order. */
   configuration: Array<{ key: string; value: string }>;
   canDelete: boolean;
+  /** False for unmanaged agents: read-only until adopted. */
+  canEdit: boolean;
 }

@@ -228,7 +228,7 @@ def _detail(detail: AgentDetail) -> AgentDetailResponse:
         prompt=detail.prompt,
         tools=list(detail.tools),
         document=detail.document,
-        storePath=str(detail.store_path),
+        storePath=str(detail.store_path) if detail.store_path is not None else None,
         harnesses=[
             AgentHarnessDetailResponse(
                 harness=harness.harness,
@@ -246,6 +246,7 @@ def _detail(detail: AgentDetail) -> AgentDetailResponse:
             AgentConfigEntryResponse(key=key, value=value) for key, value in detail.configuration
         ],
         canDelete=detail.can_delete,
+        canEdit=detail.can_edit,
     )
 
 

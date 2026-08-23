@@ -269,6 +269,7 @@ export function AgentDetailContent({
             title="Document"
             mode={documentMode}
             onModeChange={setDocumentMode}
+            editable={detail.canEdit}
             previewContent={(
               <Suspense fallback={<LoadingSpinner size="sm" label="Loading document" />}>
                 <MarkdownDocument markdown={detail.prompt} />
@@ -357,13 +358,21 @@ export function AgentDetailContent({
 
           <DetailSection heading="Locations">
             <div className="skill-detail__locations">
-              <article className="skill-detail__location">
-                <div className="skill-detail__location-header">
-                  <strong>Harness Asset Manager's copy</strong>
-                </div>
-                <p className="skill-detail__location-path">{formatPath(detail.storePath)}</p>
-              </article>
-              {detail.harnesses.filter(h => h.state !== "disabled" && h.state !== "unsupported").map(h => (
+              {!detail.canEdit ? (
+                <p className="skill-detail__context-note">
+                  This agent is not managed by Harness Asset Manager yet. Adopt it from the
+                  agents list to edit it or enable it on more harnesses.
+                </p>
+              ) : null}
+              {detail.storePath ? (
+                <article className="skill-detail__location">
+                  <div className="skill-detail__location-header">
+                    <strong>Harness Asset Manager's copy</strong>
+                  </div>
+                  <p className="skill-detail__location-path">{formatPath(detail.storePath)}</p>
+                </article>
+              ) : null}
+              {detail.harnesses.filter(h => h.state === "enabled" || (!detail.canEdit && h.state !== "unsupported")).map(h => (
                 <article key={h.harness} className="skill-detail__location">
                   <div className="skill-detail__location-header">
                     <strong>{h.label}</strong>

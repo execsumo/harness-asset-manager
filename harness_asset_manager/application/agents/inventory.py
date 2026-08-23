@@ -15,7 +15,7 @@ from .model import (
     AgentParseError,
     AgentTarget,
 )
-from .parser import parse_agent_file
+from .parser import parse_agent_document, parse_agent_file
 from .reconcile import ReconcileOutcome
 from .store import AgentStore
 
@@ -91,15 +91,89 @@ class AgentInventoryService:
         )
 
     def detail(self, slug: str) -> AgentDetail | None:
-        """Everything the detail view needs, including where each harness copy lives."""
+        """Everything the detail view needs, including where each harness copy lives.
+
+        Managed agents are addressed by their store slug. Unmanaged agents are
+        addressed by ``<harness>/<slug>`` — their inventory ref — and resolve to a
+        read-only inspection of the harness file, so the detail view can show what
+        would be adopted before anything is adopted.
+        """
+        if "/" in slug:
+            return self._unmanaged_detail(slug)
         agent = self.store.get(slug)
         if agent is None:
             return None
         all_targets, adapters = self._resolve()
         targets = tuple(target for target in all_targets if target.installed)
         records = self.ledger.load().get(slug, {})
-        discarded_issues: list[AgentIssue] = []
-        harnesses: list[AgentHarnessDetail] = []
+        harnesses = self._harness_rows(targets, adapters, slug, records)
+        return AgentDetail(
+            ref=agent.slug,
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            document=agent.path.read_text(encoding="utf-8"),
+            store_path=agent.path,
+            harnesses=tuple(harnesses),
+            can_delete=True,
+            configuration=tuple(
+                (key, _format_config_value(value)) for key, value in agent.extra_metadata
+            ),
+        )
+
+    def _unmanaged_detail(self, ref: str) -> AgentDetail | None:
+        """Read-only inspection of a harness file that Harness Asset Manager does not own.
+
+        ``ref`` is ``<harness>/<slug>`` as the inventory lists it. Nothing here writes:
+        an unmanaged agent has no store copy, so there is nothing to edit or delete
+        until it is adopted.
+        """
+        harness_id, separator, slug = ref.partition("/")
+        if not separator or not harness_id or not slug or slug != Path(slug).name:
+            return None
+        all_targets, adapters = self._resolve()
+        owner = next((t for t in all_targets if t.id == harness_id), None)
+        adapter = adapters.get(harness_id)
+        if owner is None or adapter is None or not owner.supports_agents or not owner.installed:
+            return None
+        harness_path = adapter.binding_path(slug)
+        if not harness_path.is_file():
+            return None
+
+        document = harness_path.read_text(encoding="utf-8")
+        try:
+            agent = parse_agent_document(document, slug=slug, path=harness_path)
+        except AgentParseError:
+            return None
+
+        targets = tuple(target for target in all_targets if target.installed)
+        harnesses = self._harness_rows(targets, adapters, slug, {})
+        return AgentDetail(
+            ref=ref,
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            document=document,
+            store_path=None,
+            harnesses=tuple(harnesses),
+            can_delete=False,
+            can_edit=False,
+            configuration=tuple(
+                (key, _format_config_value(value)) for key, value in agent.extra_metadata
+            ),
+        )
+
+    def _harness_rows(
+        self,
+        targets: tuple[AgentTarget, ...],
+        adapters: dict[str, AgentHarnessAdapter],
+        slug: str,
+        records: dict[str, AgentBindingRecord],
+    ) -> list[AgentHarnessDetail]:
+        rows: list[AgentHarnessDetail] = []
+        issues: list[AgentIssue] = []
         for target in targets:
             adapter = adapters[target.id]
             if not target.supports_agents:
@@ -116,11 +190,11 @@ class AgentInventoryService:
                     # inventory, so it is dropped here rather than duplicated.
                     state = "disabled"
                     detail = self._diagnose_occupied_binding(
-                        adapter, target, slug, records.get(target.id), discarded_issues
+                        adapter, target, slug, records.get(target.id), issues
                     )
                 else:
                     state, detail = "disabled", None
-            harnesses.append(
+            rows.append(
                 AgentHarnessDetail(
                     harness=target.id,
                     label=target.label,
@@ -132,20 +206,7 @@ class AgentInventoryService:
                     installed=target.installed,
                 )
             )
-        return AgentDetail(
-            ref=agent.slug,
-            name=agent.name,
-            description=agent.description,
-            prompt=agent.prompt,
-            tools=agent.tools,
-            document=agent.path.read_text(encoding="utf-8"),
-            store_path=agent.path,
-            harnesses=tuple(harnesses),
-            can_delete=True,
-            configuration=tuple(
-                (key, _format_config_value(value)) for key, value in agent.extra_metadata
-            ),
-        )
+        return rows
 
     def _managed_entry(
         self,
