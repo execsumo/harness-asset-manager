@@ -9,9 +9,14 @@ vi.mock("../../../../components/Toast", () => ({
 }));
 
 const mockMutateAsync = vi.fn();
+const mockSetTagsMutateAsync = vi.fn();
 vi.mock("../../api/queries", () => ({
   useUpdateSkillDocumentMutation: () => ({
     mutateAsync: mockMutateAsync,
+    isPending: false,
+  }),
+  useSetSkillTagsMutation: () => ({
+    mutateAsync: mockSetTagsMutateAsync,
     isPending: false,
   }),
 }));
@@ -22,6 +27,7 @@ const unmanagedDetail: SkillDetail = {
   description: "Trace review workflow",
   displayStatus: "Unmanaged",
   attentionMessage: null,
+  tags: [],
   actions: {
     canManage: true,
     updateStatus: null,

@@ -16,6 +16,7 @@ describe("capability overview model", () => {
             name: "audit",
             description: "",
             displayStatus: "Managed",
+            tags: [],
             actions: { canDelete: true, canManage: true, canStopManaging: true },
             cells: [
               { harness: "codex", label: "Codex", state: "enabled", interactive: true },

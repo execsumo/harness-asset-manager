@@ -25,5 +25,7 @@ export type SkillSourceLinks = components["schemas"]["SkillSourceLinksResponse"]
 export type SkillMetadataEntry = components["schemas"]["SkillMetadataEntryResponse"];
 export type SkillDetailDto = components["schemas"]["SkillDetailResponse"];
 export type UpdateSkillDocumentRequest = components["schemas"]["UpdateSkillDocumentRequest"];
+export type SetSkillTagsRequest = components["schemas"]["SetSkillTagsRequest"];
+export type SkillTagsResponse = components["schemas"]["SkillTagsResponse"];
 export type BulkManageFailure = components["schemas"]["BulkManageFailureResponse"];
 export type BulkManageResult = components["schemas"]["BulkManageResultResponse"];

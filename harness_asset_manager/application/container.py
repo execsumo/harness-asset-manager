@@ -21,6 +21,7 @@ from .agents import (
     AgentStore,
     resolve_agent_targets,
 )
+from .asset_tags import AssetTagService, AssetTagStore
 from .cli_marketplace import CliMarketplaceCatalog
 from .config_auto_adopt import McpAutoAdoptService, ObservedConfigAutoAdoptService
 from .config_snapshots import ConfigSnapshotService
@@ -90,6 +91,8 @@ class BackendContainer:
     skills_read_models: SkillsReadModelService
     skills_queries: SkillsQueryService
     skills_mutations: SkillsMutationService
+    asset_tag_store: AssetTagStore
+    asset_tags: AssetTagService
     settings_queries: SettingsQueryService
     settings_mutations: SettingsMutationService
     slash_command_store: SlashCommandStore
@@ -243,9 +246,12 @@ def build_backend_container(
     skills_read_models = SkillsReadModelService.from_kernel(store=skills_store, kernel=harness_kernel, data_dir=paths.data_dir)
     invalidation.register(skills_read_models)
 
+    asset_tag_store = AssetTagStore(paths.asset_tags_path)
+    asset_tags = AssetTagService(asset_tag_store)
+
     active_source_fetcher = source_fetcher or SourceFetchService()
-    skills_queries = SkillsQueryService(skills_read_models, active_source_fetcher)
-    skills_mutations = SkillsMutationService(skills_read_models, skills_queries, active_source_fetcher)
+    skills_queries = SkillsQueryService(skills_read_models, active_source_fetcher, asset_tags=asset_tags)
+    skills_mutations = SkillsMutationService(skills_read_models, skills_queries, active_source_fetcher, asset_tags=asset_tags)
     auto_adopt_store = AutoAdoptStore(paths.settings_path)
     settings_queries = SettingsQueryService(harness_kernel, paths, auto_adopt_store)
 
@@ -467,6 +473,7 @@ def build_backend_container(
         lambda: (
             (paths.skills_store_manifest, False),
             (paths.skills_store_root, False),
+            (paths.asset_tags_path, False),
             *((adapter.managed_root, False) for adapter in skills_read_models.adapters),
         )
     )
@@ -612,6 +619,8 @@ def build_backend_container(
         skills_read_models=skills_read_models,
         skills_queries=skills_queries,
         skills_mutations=audited_skills_mutations,
+        asset_tag_store=asset_tag_store,
+        asset_tags=asset_tags,
         settings_queries=settings_queries,
         settings_mutations=audited_settings_mutations,
         slash_command_store=slash_command_store,

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { Star } from "lucide-react";
 
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailNote } from "../../../../components/detail/DetailNote";
@@ -20,11 +21,12 @@ import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { useFormatPath } from "../../../../lib/paths";
 import { skillStatusConcept } from "../../../../lib/product-language";
 import { useSkillsCopy, type SkillsCopy } from "../../i18n";
-import { useUpdateSkillDocumentMutation } from "../../api/queries";
+import { useSetSkillTagsMutation, useUpdateSkillDocumentMutation } from "../../api/queries";
 import type { StructuralSkillAction } from "../../model/pending";
 import type { HarnessCell, SkillDetail, SkillSourceLinks } from "../../model/types";
 import { SkillDetailHarnessMatrix } from "./SkillDetailHarnessMatrix";
 import { SkillDetailRemoveAction } from "./SkillDetailRemoveAction";
+import { SkillDetailTags } from "./SkillDetailTags";
 import { SkillDetailUpdateControl } from "./SkillDetailUpdateControl";
 import { SkillDetailShell } from "./SkillDetailShell";
 
@@ -62,6 +64,42 @@ export function SkillDetailContent({
   const formatPath = useFormatPath();
   const { toast } = useToast();
   const updateDocumentMutation = useUpdateSkillDocumentMutation();
+  const setTagsMutation = useSetSkillTagsMutation();
+
+  const isManaged = skillStatusConcept(detail.displayStatus) === "inUse";
+  const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    const nextTags = isStarred
+      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    try {
+      await setTagsMutation.mutateAsync({
+        skillRef: detail.skillRef,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to toggle star.");
+    }
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    const nextTags = [...(detail.tags || []), newTag];
+    await setTagsMutation.mutateAsync({
+      skillRef: detail.skillRef,
+      tags: nextTags,
+    });
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    const nextTags = (detail.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    await setTagsMutation.mutateAsync({
+      skillRef: detail.skillRef,
+      tags: nextTags,
+    });
+  };
 
   const showSkillManagerStoreNote =
     skillStatusConcept(detail.displayStatus) === "inUse" &&
@@ -222,6 +260,21 @@ export function SkillDetailContent({
           <div className="skill-detail__chrome">
             <DetailHeader
               title={<h2 id={headingId}>{detail.name}</h2>}
+              titleAction={
+                isManaged ? (
+                  <button
+                    type="button"
+                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                    aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
+                    onClick={handleToggleStar}
+                  >
+                    <Star
+                      size={18}
+                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                    />
+                  </button>
+                ) : null
+              }
               meta={detail.sourceLinks ? (
                 <div className="detail-sheet__meta">
                   <DetailSourceLinks
@@ -250,6 +303,16 @@ export function SkillDetailContent({
               {detail.attentionMessage ? (
                 <DetailNote>{detail.attentionMessage}</DetailNote>
               ) : null}
+            </DetailSection>
+
+            <DetailSection heading="Tags">
+              <SkillDetailTags
+                tags={detail.tags || []}
+                canEdit={isManaged}
+                onAddTag={handleAddTag}
+                onRemoveTag={handleRemoveTag}
+                disabled={setTagsMutation.isPending}
+              />
             </DetailSection>
 
             <DocumentSection

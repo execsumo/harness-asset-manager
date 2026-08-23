@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING, Iterable
 
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
@@ -23,6 +24,9 @@ from .queries import SkillsQueryService
 from .read_models import SkillsReadModelService
 from .source_fetch import SourceFetchService
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class SkillsMutationService:
     def __init__(
@@ -30,10 +34,25 @@ class SkillsMutationService:
         read_models: SkillsReadModelService,
         queries: SkillsQueryService,
         source_fetcher: SourceFetchService,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.read_models = read_models
         self.queries = queries
         self.source_fetcher = source_fetcher
+        self.asset_tags = asset_tags
+
+    def set_skill_tags(self, skill_ref: str, tags: Iterable[str]) -> dict[str, object]:
+        entry = self.queries.require_entry(skill_ref)
+        if entry.kind != "managed":
+            raise MutationError(
+                f"only managed skills can be tagged; this is {display_status(entry)}",
+                status=400,
+            )
+        if self.asset_tags is None:
+            raise MutationError("asset tag service is not configured", status=500)
+        updated_tags = self.asset_tags.set_tags("skills", entry.skill_ref, tags)
+        self.read_models.invalidate()
+        return {"tags": updated_tags}
 
     def enable_skill(self, skill_ref: str, harness: str) -> dict[str, bool]:
         entry = self.queries.require_entry(skill_ref)

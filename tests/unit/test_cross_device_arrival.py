@@ -71,6 +71,7 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 source_ref="main",
             )
             container_a.skills_mutations.enable_managed_package(skill_dest, "claude")
+            container_a.skills_mutations.set_skill_tags("shared:shared-audit", ["starred", "devops", "core"])
 
             # Agents
             container_a.agents_store.create(name="Auditor", description="audits", prompt="audit prompt")
@@ -117,6 +118,14 @@ class CrossDeviceArrivalTests(unittest.TestCase):
 
             skills_b = container_b.skills_queries.inventory()
             self.assertIn("shared-audit", [e.package_dir for e in skills_b.entries if e.package_dir])
+
+            # Assert 1b: Asset tags survive arrival on Machine B
+            skills_page_b = container_b.skills_queries.list_skills()
+            audit_row = next(r for r in skills_page_b["rows"] if r["skillRef"] == "shared:shared-audit")
+            self.assertEqual(audit_row["tags"], ["starred", "core", "devops"])
+            detail_b = container_b.skills_queries.get_skill_detail("shared:shared-audit")
+            self.assertIsNotNone(detail_b)
+            self.assertEqual(detail_b["tags"], ["starred", "core", "devops"])
 
             commands_b = container_b.slash_command_queries.list_commands()
             self.assertEqual([c["name"] for c in commands_b["commands"]], ["code-review"])

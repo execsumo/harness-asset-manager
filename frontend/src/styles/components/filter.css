@@ -232,4 +232,151 @@
   box-shadow: 0 0 0 3px var(--color-accent-softer);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Tag Filter Chips                                                           */
+/* -------------------------------------------------------------------------- */
+
+.skill-tag-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.skill-tag-filter-bar__chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.skill-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.skill-tag-chip:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.skill-tag-chip--active {
+  background: var(--color-accent-softer);
+  color: var(--color-accent);
+  border-color: var(--color-accent-soft);
+  font-weight: 600;
+}
+
+.skill-tag-chip--starred.skill-tag-chip--active {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.skill-tag-chip__star {
+  color: inherit;
+}
+
+.skill-tag-chip__star--filled {
+  fill: currentColor;
+}
+
+.skill-tag-chip__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: inherit;
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.skill-tag-filter-bar__search-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.skill-tag-filter-bar__search-input {
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  outline: none;
+  width: 90px;
+}
+
+.skill-tag-filter-bar__search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.skill-tag-filter-bar__search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.skill-tag-filter-bar__search-toggle:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.skill-tag-filter-bar__clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--color-text-subtle);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.skill-tag-filter-bar__clear-btn:hover {
+  color: var(--color-text);
+}
+
 }

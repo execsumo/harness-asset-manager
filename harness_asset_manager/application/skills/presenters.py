@@ -16,7 +16,11 @@ from .policy import (
 )
 
 
-def skills_page_payload(inventory: SkillInventory) -> dict[str, object]:
+def skills_page_payload(
+    inventory: SkillInventory,
+    tags: dict[str, list[str]] | None = None,
+) -> dict[str, object]:
+    tags_map = tags or {}
     counts = {
         "managed": sum(1 for entry in inventory.entries if display_status(entry) == "Managed"),
         "unmanaged": sum(1 for entry in inventory.entries if display_status(entry) == "Unmanaged"),
@@ -24,7 +28,10 @@ def skills_page_payload(inventory: SkillInventory) -> dict[str, object]:
     return {
         "summary": counts,
         "harnessColumns": [column_payload(column) for column in inventory.columns],
-        "rows": [row_payload(entry, inventory.columns) for entry in inventory.entries],
+        "rows": [
+            row_payload(entry, inventory.columns, tags=tags_map.get(entry.skill_ref, []))
+            for entry in inventory.entries
+        ],
     }
 
 
@@ -35,6 +42,7 @@ def skill_detail_payload(
     document_markdown: str | None,
     metadata: list[dict[str, str]] | None = None,
     source_links: dict[str, str | None] | None,
+    tags: list[str] | None = None,
 ) -> dict[str, object]:
     return {
         "skillRef": entry.skill_ref,
@@ -42,6 +50,7 @@ def skill_detail_payload(
         "description": entry.description,
         "displayStatus": display_status(entry),
         "attentionMessage": attention_message(entry),
+        "tags": tags or [],
         "actions": {
             "canManage": can_manage(entry),
             "stopManagingStatus": stop_managing_status_payload(entry),
@@ -70,12 +79,17 @@ def column_payload(column: InventoryColumn) -> dict[str, object]:
     }
 
 
-def row_payload(entry: InventoryEntry, columns: tuple[InventoryColumn, ...]) -> dict[str, object]:
+def row_payload(
+    entry: InventoryEntry,
+    columns: tuple[InventoryColumn, ...],
+    tags: list[str] | None = None,
+) -> dict[str, object]:
     return {
         "skillRef": entry.skill_ref,
         "name": entry.name,
         "description": entry.description,
         "displayStatus": display_status(entry),
+        "tags": tags or [],
         "actions": {
             "canManage": can_manage(entry),
             "canStopManaging": stop_managing_status(entry) == "available",

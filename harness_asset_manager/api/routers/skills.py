@@ -10,8 +10,10 @@ from harness_asset_manager.api.schemas import (
     OkResponse,
     SetSkillHarnessesRequest,
     SetSkillHarnessesResultResponse,
+    SetSkillTagsRequest,
     SkillDetailResponse,
     SkillSourceStatusResponse,
+    SkillTagsResponse,
     SkillsPageResponse,
     UpdateSkillDocumentRequest,
 )
@@ -45,6 +47,15 @@ def get_skill_detail(skill_ref: str, container: BackendContainer = Depends(get_c
             detail={"code": "skill_not_found", "error": f"unknown skill ref: {skill_ref}"},
         )
     return payload
+
+
+@router.put("/{skill_ref:path}/tags", response_model=SkillTagsResponse)
+def set_skill_tags(
+    skill_ref: str,
+    body: SetSkillTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    return container.skills_mutations.set_skill_tags(skill_ref, body.tags)
 
 
 @router.put("/{skill_ref:path}/document", response_model=OkResponse)

@@ -1016,6 +1016,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/skills/{skill_ref}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Skill Tags */
+        put: operations["set_skill_tags_api_skills__skill_ref__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/skills/{skill_ref}/unmanage": {
         parameters: {
             query?: never;
@@ -2612,6 +2629,11 @@ export interface components {
             /** Succeeded */
             succeeded: string[];
         };
+        /** SetSkillTagsRequest */
+        SetSkillTagsRequest: {
+            /** Tags */
+            tags?: string[];
+        };
         /**
          * SettingsAutoAdoptResponse
          * @description Whether Harness Asset Manager may repair drifted bindings without being asked.
@@ -2718,6 +2740,8 @@ export interface components {
             /** Skillref */
             skillRef: string;
             sourceLinks: components["schemas"]["SkillSourceLinksResponse"] | null;
+            /** Tags */
+            tags?: string[];
         };
         /** SkillLocationResponse */
         SkillLocationResponse: {
@@ -2789,6 +2813,13 @@ export interface components {
             name: string;
             /** Skillref */
             skillRef: string;
+            /** Tags */
+            tags?: string[];
+        };
+        /** SkillTagsResponse */
+        SkillTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** SkillsPageResponse */
         SkillsPageResponse: {
@@ -8279,6 +8310,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillSourceStatusResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_skill_tags_api_skills__skill_ref__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSkillTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillTagsResponse"];
                 };
             };
             /** @description Bad Request */

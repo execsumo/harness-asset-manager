@@ -1,3 +1,5 @@
+import { Star } from "lucide-react";
+
 import { CardSelectCheckbox } from "../../../../components/cards/CardSelectCheckbox";
 import { OverflowTooltipText } from "../../../../components/ui/OverflowTooltipText";
 import { HarnessChipStack } from "../cards/HarnessChipStack";
@@ -21,6 +23,7 @@ interface MatrixRowProps {
   onOpenSkill: (skillRef: string) => void;
   onToggleChecked: (skillRef: string) => void;
   onToggleCell: (row: SkillListRow, cell: HarnessCellType) => void;
+  onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
   untrackedSelectionOnly?: boolean;
@@ -52,6 +55,7 @@ export function MatrixRow({
   onOpenSkill,
   onToggleChecked,
   onToggleCell,
+  onToggleStar,
   onManageSkill,
   pendingStructuralActions,
   untrackedSelectionOnly = false,
@@ -63,6 +67,8 @@ export function MatrixRow({
   // limiting the adopt selection to eligible untracked rows.
   const selectable = untrackedSelectionOnly ? (!isUntracked || row.actions.canManage) : true;
   const pendingStructuralAction = pendingStructuralActions?.get(row.skillRef) ?? null;
+  const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+  const displayTags = (row.tags || []).filter((t) => t.toLowerCase() !== "starred");
 
   return (
     <tr
@@ -86,9 +92,39 @@ export function MatrixRow({
         onClick={() => onOpenSkill(row.skillRef)}
       >
         <div className="matrix-table__name-row">
+          {onToggleStar && !isUntracked ? (
+            <button
+              type="button"
+              className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+              aria-label={isStarred ? `Unstar ${row.name}` : `Star ${row.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStar(row.skillRef);
+              }}
+            >
+              <Star
+                size={14}
+                className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+              />
+            </button>
+          ) : null}
           <OverflowTooltipText as="span" className="matrix-table__name-text">
             {row.name}
           </OverflowTooltipText>
+          {displayTags.length > 0 ? (
+            <div className="matrix-table__tag-pills">
+              {displayTags.slice(0, 2).map((tag) => (
+                <span key={tag} className="matrix-table__tag-pill">
+                  {tag}
+                </span>
+              ))}
+              {displayTags.length > 2 ? (
+                <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                  +{displayTags.length - 2}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         {row.description ? (
           <OverflowTooltipText as="p" className="matrix-table__description">

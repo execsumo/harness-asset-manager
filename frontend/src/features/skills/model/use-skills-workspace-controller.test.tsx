@@ -36,6 +36,7 @@ const testData: SkillsWorkspaceData = {
       name: "Test Skill",
       description: "",
       displayStatus: "Managed",
+      tags: [],
       actions: { canManage: false, canStopManaging: true, canDelete: false },
       cells: [
         { harness: "codex", label: "Codex", state: "enabled", interactive: true },
@@ -79,6 +80,7 @@ vi.mock("../api/queries", () => ({
   }),
   useManageSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useManageAllSkillsMutation: () => ({ mutateAsync: vi.fn() }),
+  useSetSkillTagsMutation: () => ({ mutateAsync: vi.fn() }),
   useUpdateSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useUnmanageSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useDeleteSkillMutation: () => ({ mutateAsync: vi.fn() }),

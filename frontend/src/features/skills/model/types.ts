@@ -33,6 +33,7 @@ export interface SkillListRow {
   name: string;
   description: string;
   displayStatus: SkillStatus;
+  tags: string[];
   actions: SkillRowActions;
   cells: HarnessCell[];
 }
@@ -53,6 +54,7 @@ export interface SkillDetail {
   description: string;
   displayStatus: SkillStatus;
   attentionMessage: string | null;
+  tags: string[];
   actions: SkillActions;
   harnessCells: HarnessCell[];
   locations: SkillLocation[];

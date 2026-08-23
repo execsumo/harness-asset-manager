@@ -4,6 +4,7 @@ import type { SkillsWorkspaceData } from "./types";
 import {
   countAdoptableLocalSkillRows,
   countNeedsReviewRows,
+  extractSkillTagCounts,
   filterNeedsReviewRows,
   filterSkills,
   filterSkillsInUseRows,
@@ -20,6 +21,7 @@ const data: SkillsWorkspaceData = {
       name: "Shared Audit",
       description: "Shared audit workflow",
       displayStatus: "Managed",
+      tags: ["starred", "devops"],
       actions: { canManage: false, canStopManaging: true, canDelete: false },
       cells: [{ harness: "codex", label: "Codex", state: "disabled", interactive: true }],
     },
@@ -28,6 +30,7 @@ const data: SkillsWorkspaceData = {
       name: "Audit Skill",
       description: "Locally modified audit workflow",
       displayStatus: "Managed",
+      tags: ["core", "security"],
       actions: { canManage: false, canStopManaging: true, canDelete: true },
       cells: [{ harness: "codex", label: "Codex", state: "enabled", interactive: true }],
     },
@@ -36,6 +39,7 @@ const data: SkillsWorkspaceData = {
       name: "Trace Lens",
       description: "Trace review workflow",
       displayStatus: "Unmanaged",
+      tags: ["devops"],
       actions: { canManage: true, canStopManaging: false, canDelete: false },
       cells: [{ harness: "codex", label: "Codex", state: "found", interactive: false }],
     },
@@ -52,6 +56,39 @@ describe("skills workspace model", () => {
     ]);
     const missingHarness = filterSkills(data, { search: "", status: "all", harness: "claude" });
     expect(missingHarness).toHaveLength(0);
+  });
+
+  it("filters skills by single tag and multiple tags with OR semantics", () => {
+    const starredOnly = filterSkills(data, { search: "", status: "all", tags: ["starred"] });
+    expect(starredOnly.map((row) => row.skillRef)).toEqual(["shared:shared-audit"]);
+
+    const devopsOnly = filterSkills(data, { search: "", status: "all", tags: ["devops"] });
+    expect(devopsOnly.map((row) => row.skillRef)).toEqual([
+      "shared:shared-audit",
+      "unmanaged:trace-lens",
+    ]);
+
+    // OR within tags: matches either 'starred' or 'core'
+    const multiTags = filterSkills(data, { search: "", status: "all", tags: ["starred", "core"] });
+    expect(multiTags.map((row) => row.skillRef)).toEqual([
+      "shared:shared-audit",
+      "shared:audit-skill",
+    ]);
+
+    // Composes AND with status filter
+    const devopsEnabled = filterSkills(data, { search: "", status: "enabled", tags: ["devops"] });
+    // shared-audit is disabled, trace-lens is unmanaged (not in-use enabled)
+    expect(devopsEnabled).toHaveLength(0);
+  });
+
+  it("extracts unique tag counts with starred pinned first", () => {
+    const tagCounts = extractSkillTagCounts(data);
+    expect(tagCounts).toEqual([
+      { tag: "starred", count: 1, isStarred: true },
+      { tag: "core", count: 1, isStarred: false },
+      { tag: "devops", count: 2, isStarred: false },
+      { tag: "security", count: 1, isStarred: false },
+    ]);
   });
 
   it("partitions in-use and needs-review rows correctly", () => {
@@ -83,3 +120,4 @@ describe("skills workspace model", () => {
     expect(countAdoptableLocalSkillRows(data)).toBe(1);
   });
 });
+
