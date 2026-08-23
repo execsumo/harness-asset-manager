@@ -289,17 +289,19 @@
   min-width: 0;
   max-width: 100%;
   padding: 20px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(24, 28, 36, 0.94), rgba(18, 22, 30, 0.92)),
-    rgba(18, 22, 30, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-raised) 94%, var(--color-accent) 6%),
+    var(--color-surface)
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-text) 4%, transparent);
   overflow: hidden;
 }
 
 .skill-detail__markdown {
-  color: rgba(228, 232, 240, 0.9);
+  color: color-mix(in srgb, var(--color-text) 90%, transparent);
   line-height: 1.7;
 }
 
@@ -357,23 +359,23 @@
 
 .skill-detail__markdown blockquote {
   padding-left: 14px;
-  border-left: 2px solid rgba(240, 163, 107, 0.24);
+  border-left: 2px solid color-mix(in srgb, var(--color-accent) 24%, transparent);
   color: var(--color-text);
 }
 
 .skill-detail__markdown :not(pre) > code {
   padding: 0.1rem 0.34rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--color-surface-sunken) 72%, var(--color-surface) 28%);
   color: var(--color-text);
 }
 
 .skill-detail__markdown pre {
   overflow-x: auto;
   padding: 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: rgba(10, 13, 18, 0.94);
+  background: var(--color-bg);
 }
 
 .skill-detail__markdown pre code {
@@ -393,14 +395,14 @@
 .skill-detail__markdown th,
 .skill-detail__markdown td {
   padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   text-align: left;
   vertical-align: top;
 }
 
 .skill-detail__markdown thead th {
   color: var(--color-text);
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--color-surface-raised) 72%, transparent);
 }
 
 }
