@@ -204,7 +204,6 @@ export default function SlashCommandsPage() {
           pendingName={controller.pendingName}
           pendingTarget={controller.pendingTarget}
           onClose={controller.closeDetail}
-          onEdit={controller.openEdit}
           onDelete={controller.setDeleteCommand}
           onToggleTarget={(command, target) => void controller.handleToggleTarget(command, target)}
         />
