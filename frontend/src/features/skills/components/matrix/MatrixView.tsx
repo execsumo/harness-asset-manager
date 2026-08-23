@@ -65,6 +65,7 @@ export function MatrixView({
       <thead className="matrix-table__head">
         <tr>
           <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
+          <th className="matrix-table__th matrix-table__th--star" aria-label="Star" />
           <MatrixSortableHeader
             label="Skill"
             align="identity"

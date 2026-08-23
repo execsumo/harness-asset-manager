@@ -48,6 +48,12 @@
   padding-right: 0;
 }
 
+.matrix-table__th--star,
+.matrix-table__cell--star {
+  width: 36px;
+  text-align: center;
+}
+
 .matrix-table__th--identity,
 .matrix-table__cell--identity {
   padding-left: var(--space-4);

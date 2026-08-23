@@ -87,27 +87,30 @@ export function MatrixRow({
         ) : null}
       </td>
 
+      <td className="matrix-table__cell matrix-table__cell--star">
+        {onToggleStar && !isUntracked ? (
+          <button
+            type="button"
+            className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+            aria-label={isStarred ? `Unstar ${row.name}` : `Star ${row.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(row.skillRef);
+            }}
+          >
+            <Star
+              size={14}
+              className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+            />
+          </button>
+        ) : null}
+      </td>
+
       <td
         className="matrix-table__cell matrix-table__cell--identity"
         onClick={() => onOpenSkill(row.skillRef)}
       >
         <div className="matrix-table__name-row">
-          {onToggleStar && !isUntracked ? (
-            <button
-              type="button"
-              className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-              aria-label={isStarred ? `Unstar ${row.name}` : `Star ${row.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleStar(row.skillRef);
-              }}
-            >
-              <Star
-                size={14}
-                className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-              />
-            </button>
-          ) : null}
           <OverflowTooltipText as="span" className="matrix-table__name-text">
             {row.name}
           </OverflowTooltipText>

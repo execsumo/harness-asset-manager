@@ -46,6 +46,7 @@ function renderMatrix() {
     onOpenSkill: vi.fn(),
     onToggleChecked: vi.fn(),
     onToggleCell: vi.fn(),
+    onToggleStar: vi.fn(),
   };
   render(<MatrixView {...props} />);
   return props;
@@ -74,7 +75,7 @@ describe("Skills MatrixView", () => {
     // Column widths come from the header cells, so header and body have to
     // agree cell-for-cell (see MatrixTable.tsx).
     const headerCells = table.querySelectorAll("thead tr > th");
-    expect(headerCells).toHaveLength(harnessColumns.length + 4);
+    expect(headerCells).toHaveLength(harnessColumns.length + 5);
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha", "Zeta"]);
 
@@ -88,6 +89,22 @@ describe("Skills MatrixView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Disable Alpha on Codex" }));
 
     expect(onToggleCell).toHaveBeenCalledWith(rows[0], rows[0].cells[0]);
+  });
+
+  it("renders the star toggle in its own column between the checkbox and the skill name", () => {
+    renderMatrix();
+
+    const firstRow = screen.getByRole("table", { name: "Skills harness matrix" }).querySelector(
+      "tbody tr:first-child",
+    ) as HTMLElement;
+    const cells = firstRow.querySelectorAll("td");
+    expect(cells[1].className).toContain("matrix-table__cell--star");
+    expect(cells[2].className).toContain("matrix-table__cell--identity");
+
+    const starBtn = cells[1].querySelector("button");
+    expect(starBtn?.getAttribute("aria-label")).toBe("Unstar Alpha");
+    // The identity cell no longer embeds a star button.
+    expect(cells[2].querySelector(".skill-star-btn")).toBeNull();
   });
 
   it("keeps an undetected harness visible but not actionable", () => {
