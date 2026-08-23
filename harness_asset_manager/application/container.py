@@ -453,7 +453,7 @@ def build_backend_container(
         default_harnesses=lambda: auto_adopt_defaults("agents"),
     )
     agents_mutations = AgentMutationService(
-        agents_store, resolve_agents_snapshot, agent_bindings
+        agents_store, resolve_agents_snapshot, agent_bindings, asset_tags=asset_tags
     )
 
     config_snapshots = ConfigSnapshotService(paths, context=harness_kernel.context)
@@ -592,6 +592,7 @@ def build_backend_container(
         resolve_agents_snapshot,
         agent_bindings,
         audited_agents_reconcile.reconcile,
+        asset_tags=asset_tags,
     )
     audited_config_snapshots = AuditedMutationService(
         config_snapshots,

@@ -82,3 +82,8 @@ export async function disableAgent(ref: string, harness: string): Promise<void> 
 export async function setAgentHarnesses(ref: string, harnesses: string[]): Promise<void> {
   await postJson<void>(`/agents/${ref}/set-harnesses`, { harnesses });
 }
+
+export async function setAgentTags(ref: string, tags: string[]): Promise<{ tags: string[] }> {
+  return putJson<{ tags: string[] }>(`/agents/${ref}/tags`, { tags });
+}
+

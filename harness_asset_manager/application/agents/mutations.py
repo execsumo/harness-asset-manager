@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Iterable, Literal
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -14,6 +14,9 @@ from .ledger import AgentBindingLedger, build_record
 from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
 from .parser import parse_agent_document, render_agent_document
 from .store import AgentStore
+
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
 
 ConflictResolution = Literal["keep_store", "replace_store"]
 
@@ -40,10 +43,12 @@ class AgentMutationService:
         store: AgentStore,
         resolve: TargetResolver,
         ledger: AgentBindingLedger,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
         self.ledger = ledger
+        self.asset_tags = asset_tags
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -52,6 +57,21 @@ class AgentMutationService:
     @property
     def adapters(self) -> dict[str, AgentHarnessAdapter]:
         return self._resolve()[1]
+
+    # -- tags ---------------------------------------------------------------
+
+    def set_tags(self, ref: str, tags: Iterable[str]) -> dict[str, object]:
+        if "/" in ref:
+            raise MutationError("only managed agents can be tagged", status=400)
+        agent = self.store.get(ref)
+        if agent is None:
+            raise MutationError(f"unknown agent ref: {ref}", status=404, code="agent_not_found")
+        if self.asset_tags is None:
+            raise MutationError("asset tag service is not configured", status=500)
+        updated_tags = self.asset_tags.set_tags("agents", agent.slug, tags)
+        return {"tags": updated_tags}
+
+    set_agent_tags = set_tags
 
     # -- per-harness binding ------------------------------------------------
 

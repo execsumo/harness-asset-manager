@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/{agent_ref}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Agent Tags */
+        put: operations["set_agent_tags_api_agents__agent_ref__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/config-snapshots": {
         parameters: {
             query?: never;
@@ -1328,6 +1345,8 @@ export interface components {
             ref: string;
             /** Storepath */
             storePath?: string | null;
+            /** Tags */
+            tags?: string[];
             /** Tools */
             tools: string[];
         };
@@ -1349,6 +1368,8 @@ export interface components {
             name: string;
             /** Ref */
             ref: string;
+            /** Tags */
+            tags?: string[];
         };
         /** AgentHarnessDetailResponse */
         AgentHarnessDetailResponse: {
@@ -1426,6 +1447,11 @@ export interface components {
             harness: string;
             /** Ref */
             ref: string;
+        };
+        /** AgentTagsResponse */
+        AgentTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {
@@ -2560,6 +2586,11 @@ export interface components {
             ok: boolean;
             /** Succeeded */
             succeeded: string[];
+        };
+        /** SetAgentTagsRequest */
+        SetAgentTagsRequest: {
+            /** Tags */
+            tags?: string[];
         };
         /** SetAutoAdoptHarnessesRequest */
         SetAutoAdoptHarnessesRequest: {
@@ -3791,6 +3822,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SetAgentHarnessesResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_agent_tags_api_agents__agent_ref__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAgentTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTagsResponse"];
                 };
             };
             /** @description Bad Request */

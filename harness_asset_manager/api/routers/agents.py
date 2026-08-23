@@ -22,9 +22,11 @@ from harness_asset_manager.api.schemas.agents import (
     AgentIssueResponse,
     AgentMutationFailureResponse,
     AgentRepairResponse,
+    AgentTagsResponse,
     CreateAgentRequest,
     SetAgentHarnessesRequest,
     SetAgentHarnessesResultResponse,
+    SetAgentTagsRequest,
     UpdateAgentRequest,
 )
 from harness_asset_manager.api.schemas.common import OkResponse
@@ -64,6 +66,7 @@ def list_agents(container: BackendContainer = Depends(get_container)) -> AgentIn
                 actions=AgentActionsResponse(
                     canAdopt=entry.can_adopt, canDelete=entry.can_delete
                 ),
+                tags=list(entry.tags),
             )
             for entry in inventory.entries
         ],
@@ -109,6 +112,17 @@ def adopt_all_agents(
         adopted=list(result.adopted),
         skipped=[AdoptAllSkippedResponse(ref=ref, reason=reason) for ref, reason in result.skipped],
     )
+
+
+@router.put("/{agent_ref:path}/tags", response_model=AgentTagsResponse)
+def set_agent_tags(
+    agent_ref: str,
+    body: SetAgentTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.agents_mutations.set_tags(agent_ref, body.tags)
+    container.invalidation.invalidate_all()
+    return result
 
 
 @router.get("/{agent_ref:path}", response_model=AgentDetailResponse)
@@ -261,6 +275,7 @@ def _detail(detail: AgentDetail) -> AgentDetailResponse:
         ],
         canDelete=detail.can_delete,
         canEdit=detail.can_edit,
+        tags=list(detail.tags),
     )
 
 

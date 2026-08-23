@@ -74,7 +74,7 @@ describe("AgentsMatrixView", () => {
 
     const table = screen.getByRole("table", { name: "Agents harness matrix" });
     const headerCells = table.querySelectorAll("thead tr > th");
-    expect(headerCells).toHaveLength(columns.length + 4);
+    expect(headerCells).toHaveLength(columns.length + 5);
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha Agent", "Zeta Agent"]);
 
@@ -85,6 +85,43 @@ describe("AgentsMatrixView", () => {
     // Sort by Active
     fireEvent.click(screen.getByRole("button", { name: "Sort by Active" }));
     expect(rowNames()).toEqual(["Zeta Agent", "Alpha Agent"]);
+  });
+
+  it("renders star buttons and tag pills", () => {
+    const onToggleStar = vi.fn();
+    const onToggleStarredFilter = vi.fn();
+    render(
+      <AgentsMatrixView
+        entries={[
+          {
+            ...entries[0],
+            tags: ["starred", "backend"],
+          },
+        ]}
+        columns={columns}
+        pendingAgentKeys={new Set()}
+        pendingPerHarnessKeys={new Set()}
+        checkedRefs={new Set()}
+        onOpenDetail={vi.fn()}
+        onToggleChecked={vi.fn()}
+        onEnableHarness={vi.fn()}
+        onDisableHarness={vi.fn()}
+        onAdopt={vi.fn()}
+        onToggleStar={onToggleStar}
+        starredFilterActive={true}
+        onToggleStarredFilter={onToggleStarredFilter}
+      />
+    );
+
+    expect(screen.getByText("backend")).toBeInTheDocument();
+    const starBtn = screen.getByRole("button", { name: "Unstar Alpha Agent" });
+    expect(starBtn).toBeInTheDocument();
+    fireEvent.click(starBtn);
+    expect(onToggleStar).toHaveBeenCalledWith("shared:alpha");
+
+    const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
+    fireEvent.click(headerStarBtn);
+    expect(onToggleStarredFilter).toHaveBeenCalled();
   });
 
   it("sorts by harness column", () => {

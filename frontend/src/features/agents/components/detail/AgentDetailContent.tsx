@@ -1,8 +1,9 @@
 import "../../agents.css";
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
+import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
@@ -17,7 +18,7 @@ import { useToast } from "../../../../components/Toast";
 import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
-import { useAdoptAgentMutation, useDeleteAgentMutation, useUpdateAgentMutation } from "../../api/queries";
+import { useAdoptAgentMutation, useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import type { AgentDetailDto } from "../../api/types";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
@@ -48,6 +49,7 @@ export function AgentDetailContent({
   const deleteMutation = useDeleteAgentMutation();
   const updateMutation = useUpdateAgentMutation();
   const adoptMutation = useAdoptAgentMutation();
+  const setTagsMutation = useSetAgentTagsMutation();
   const [adoptDialogOpen, setAdoptDialogOpen] = useState(false);
   
   const [localActionError, setLocalActionError] = useState<string | null>(null);
@@ -55,6 +57,41 @@ export function AgentDetailContent({
   const dismissError = () => {
     onDismissActionError();
     setLocalActionError(null);
+  };
+
+  const isManaged = detail.storePath !== null;
+  const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    const nextTags = isStarred
+      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    try {
+      await setTagsMutation.mutateAsync({
+        ref: detail.ref,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setLocalActionError(err instanceof Error ? err.message : "Failed to toggle star.");
+    }
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    const nextTags = [...(detail.tags || []), newTag];
+    await setTagsMutation.mutateAsync({
+      ref: detail.ref,
+      tags: nextTags,
+    });
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    const nextTags = (detail.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    await setTagsMutation.mutateAsync({
+      ref: detail.ref,
+      tags: nextTags,
+    });
   };
 
   // Frontmatter & Document editing state
@@ -243,7 +280,24 @@ export function AgentDetailContent({
       <div className="skill-detail-shell__chrome">
         <div className="skill-detail__chrome">
           <DetailHeader
-            title={<h2 id={headingId}>{detail.name}</h2>}
+            title={
+              <h2 id={headingId} className="skill-detail__title">
+                {detail.name}
+                {isManaged ? (
+                  <button
+                    type="button"
+                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                    aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
+                    onClick={handleToggleStar}
+                  >
+                    <Star
+                      size={16}
+                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                    />
+                  </button>
+                ) : null}
+              </h2>
+            }
             closeLabel="Close"
             onClose={handleRequestClose}
           />
@@ -265,6 +319,16 @@ export function AgentDetailContent({
             <p className="skill-detail__copy">
               {detail.description || "No description provided."}
             </p>
+          </DetailSection>
+
+          <DetailSection heading="Tags">
+            <DetailTags
+              tags={detail.tags || []}
+              canEdit={isManaged}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
+              disabled={setTagsMutation.isPending}
+            />
           </DetailSection>
 
           <DocumentSection

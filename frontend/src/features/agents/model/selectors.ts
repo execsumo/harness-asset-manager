@@ -1,13 +1,22 @@
 import type { AgentInventoryDto, AgentInventoryEntryDto } from "../api/types";
+import {
+  extractAssetTagCounts,
+  matchesAssetTags,
+  type AssetTagCount,
+} from "../../../components/tags/tag-counts";
 
 export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "off";
 export type AgentsStatusFilter = InUsePillValue | "untracked";
+
+export type AgentTagCount = AssetTagCount;
 
 export interface AgentsFilters {
   search: string;
   status: AgentsStatusFilter;
   /** Restrict to entries bound on this harness (id). */
   harness?: string | null;
+  /** Restrict to entries matching any of these tags (OR within tags). */
+  tags?: string[] | null;
 }
 
 export type AgentMatrixCellState = "enabled" | "disabled" | "unavailable" | "observed" | "empty";
@@ -25,11 +34,15 @@ export function countEnabledBindings(entry: AgentInventoryEntryDto): number {
   return entry.bindings.filter((b) => b.state === "enabled").length;
 }
 
+export function extractAgentTagCounts(entries: AgentInventoryEntryDto[] | null | undefined): AgentTagCount[] {
+  return extractAssetTagCounts(entries);
+}
+
 export function filterAgentsInUse(
   inventory: AgentInventoryDto | null,
-  filters: { search: string; pill: InUsePillValue }
+  filters: { search: string; pill: InUsePillValue; tags?: string[] | null }
 ): AgentInventoryEntryDto[] {
-  return filterAgents(inventory, { search: filters.search, status: filters.pill });
+  return filterAgents(inventory, { search: filters.search, status: filters.pill, tags: filters.tags });
 }
 
 export function pillCounts(inventory: AgentInventoryDto | null): Record<InUsePillValue, number> {
@@ -77,6 +90,7 @@ export function filterAgents(
   return inventory.entries.filter((entry) => {
     if (!matchesSearch(entry, filters.search)) return false;
     if (!matchesHarnessBinding(entry, filters.harness)) return false;
+    if (!matchesAssetTags(entry, filters.tags)) return false;
     if (filters.status === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.status === "all";
 

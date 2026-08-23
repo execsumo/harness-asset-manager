@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from .adapters import AgentHarnessAdapter, TargetResolver, parse_codex_agent
 from .ledger import AgentBindingLedger, AgentBindingRecord, classify_drift, hash_file
@@ -18,6 +18,9 @@ from .model import (
 from .parser import parse_agent_document, parse_agent_file
 from .reconcile import ReconcileOutcome
 from .store import AgentStore
+
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
 
 
 class AgentInventoryService:
@@ -40,11 +43,13 @@ class AgentInventoryService:
         resolve: TargetResolver,
         ledger: AgentBindingLedger,
         reconcile: Callable[[], ReconcileOutcome] | None = None,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
         self.ledger = ledger
         self._reconcile = reconcile
+        self.asset_tags = asset_tags
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -70,6 +75,11 @@ class AgentInventoryService:
         # Read once per build, not per binding: the ledger is a single small file and
         # this runs on every list request.
         ledger_state = self.ledger.load()
+        tags_by_ref = (
+            self.asset_tags.get_tags_for_family("agents")
+            if self.asset_tags is not None
+            else {}
+        )
 
         entries = [
             self._managed_entry(
@@ -80,10 +90,11 @@ class AgentInventoryService:
                 agent.description,
                 ledger_state.get(agent.slug, {}),
                 issue_list,
+                tags=tuple(tags_by_ref.get(agent.slug, ())),
             )
             for agent in managed
         ]
-        entries.extend(self._unmanaged_entries(targets, adapters, issue_list))
+        entries.extend(self._unmanaged_entries(targets, adapters, issue_list, tags_by_ref=tags_by_ref))
         return AgentInventory(
             columns=targets,
             entries=tuple(entries),
@@ -107,6 +118,11 @@ class AgentInventoryService:
         targets = tuple(target for target in all_targets if target.installed)
         records = self.ledger.load().get(slug, {})
         harnesses = self._harness_rows(targets, adapters, slug, records)
+        tags = (
+            tuple(self.asset_tags.get_tags("agents", agent.slug))
+            if self.asset_tags is not None
+            else ()
+        )
         return AgentDetail(
             ref=agent.slug,
             name=agent.name,
@@ -117,6 +133,7 @@ class AgentInventoryService:
             store_path=agent.path,
             harnesses=tuple(harnesses),
             can_delete=True,
+            tags=tags,
             configuration=tuple(
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),
@@ -165,6 +182,11 @@ class AgentInventoryService:
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
+        tags = (
+            tuple(self.asset_tags.get_tags("agents", ref))
+            if self.asset_tags is not None
+            else ()
+        )
         return AgentDetail(
             ref=ref,
             name=name,
@@ -177,6 +199,7 @@ class AgentInventoryService:
             can_delete=False,
             # Rendered adapters (Codex TOML) have no Markdown frontmatter to edit.
             can_edit=not adapter.renders,
+            tags=tags,
             configuration=tuple(
                 (key, _format_config_value(value)) for key, value in extra_metadata
             ),
@@ -234,6 +257,7 @@ class AgentInventoryService:
         description: str,
         records: dict[str, AgentBindingRecord],
         issues: list[AgentIssue],
+        tags: tuple[str, ...] = (),
     ) -> AgentEntry:
         bindings: list[AgentBinding] = []
         for target in targets:
@@ -267,6 +291,7 @@ class AgentInventoryService:
             bindings=tuple(bindings),
             can_adopt=False,
             can_delete=True,
+            tags=tags,
         )
 
     def _diagnose_occupied_binding(
@@ -377,12 +402,23 @@ class AgentInventoryService:
         targets: tuple[AgentTarget, ...],
         adapters: dict[str, AgentHarnessAdapter],
         issues: list[AgentIssue],
+        tags_by_ref: dict[str, list[str]] | None = None,
     ) -> list[AgentEntry]:
         entries: list[AgentEntry] = []
+        tags_map = tags_by_ref or {}
         for target in targets:
             adapter = adapters[target.id]
             for path in adapter.unmanaged_paths():
-                entries.append(self._unmanaged_entry(targets, target, path, issues))
+                ref = f"{target.id}/{path.stem}"
+                entries.append(
+                    self._unmanaged_entry(
+                        targets,
+                        target,
+                        path,
+                        issues,
+                        tags=tuple(tags_map.get(ref, ())),
+                    )
+                )
             for path in adapter.orphaned_links():
                 issues.append(
                     AgentIssue(
@@ -401,6 +437,7 @@ class AgentInventoryService:
         target: AgentTarget,
         path: Path,
         issues: list[AgentIssue],
+        tags: tuple[str, ...] = (),
     ) -> AgentEntry:
         slug = path.stem
         try:
@@ -428,6 +465,7 @@ class AgentInventoryService:
             ),
             can_adopt=True,
             can_delete=False,
+            tags=tags,
         )
 
 

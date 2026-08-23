@@ -440,6 +440,13 @@
             ],
             "title": "Storepath"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "tools": {
             "items": {
               "type": "string"
@@ -503,6 +510,13 @@
           "ref": {
             "title": "Ref",
             "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -711,6 +725,19 @@
           "detail"
         ],
         "title": "AgentRepairResponse",
+        "type": "object"
+      },
+      "AgentTagsResponse": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "AgentTagsResponse",
         "type": "object"
       },
       "BulkManageFailureResponse": {
@@ -4181,6 +4208,19 @@
         "title": "SetAgentHarnessesResultResponse",
         "type": "object"
       },
+      "SetAgentTagsRequest": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "title": "SetAgentTagsRequest",
+        "type": "object"
+      },
       "SetAutoAdoptHarnessesRequest": {
         "properties": {
           "harnesses": {
@@ -6684,6 +6724,108 @@
           }
         },
         "summary": "Set Agent Harnesses",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/{agent_ref}/tags": {
+      "put": {
+        "operationId": "set_agent_tags_api_agents__agent_ref__tags_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAgentTagsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTagsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set Agent Tags",
         "tags": [
           "Agents"
         ]
