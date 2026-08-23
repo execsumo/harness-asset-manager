@@ -26,9 +26,9 @@
   background: linear-gradient(
     to top,
     var(--color-bg) 0%,
-    rgba(11, 12, 15, 0.96) 32%,
-    rgba(11, 12, 15, 0.7) 60%,
-    rgba(11, 12, 15, 0) 100%
+    color-mix(in srgb, var(--color-bg) 96%, transparent) 32%,
+    color-mix(in srgb, var(--color-bg) 70%, transparent) 60%,
+    color-mix(in srgb, var(--color-bg) 0%, transparent) 100%
   );
   pointer-events: none;
 }
