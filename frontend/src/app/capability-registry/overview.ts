@@ -63,7 +63,6 @@ export interface OverviewHarnessAvailabilityIssue {
 export interface OverviewReviewItem {
   key: string;
   label: string;
-  description: string;
   count: number;
   to: string;
   tone: "neutral" | "warning" | "danger";
@@ -168,6 +167,21 @@ export function buildOverviewModel(
         entry.kind === "managed" &&
         entry.sightings.some((sighting) => sighting.state === "drifted"),
     ).length ?? null;
+  const hooksToReview =
+    (hooks?.entries?.filter((entry) => entry.kind === "unmanaged").length ?? 0) +
+    (hooks?.entries?.filter(
+      (entry) =>
+        entry.kind === "managed" &&
+        entry.sightings.some((sighting) => sighting.state === "drifted"),
+    ).length ?? 0);
+  const permissionsToReview =
+    (permissions?.entries?.filter((entry) => entry.kind === "unmanaged").length ?? 0) +
+    (permissions?.entries?.filter(
+      (entry) =>
+        entry.kind === "managed" &&
+        entry.sightings.some((sighting) => sighting.state === "drifted"),
+    ).length ?? 0);
+  const agentsToReview = agents?.entries?.filter((entry) => entry.kind === "unmanaged").length ?? 0;
   const inventoryIssues = mcp?.issues?.length ?? null;
   const unavailableHarnesses = mcp?.columns?.filter((column) => column.mcpWritable === false).length ?? null;
   const reviewItems = buildReviewItems({
@@ -175,6 +189,9 @@ export function buildOverviewModel(
     slashCommandsToReview,
     mcpConfigsToReview,
     differentConfigMcpServers,
+    hooksToReview,
+    permissionsToReview,
+    agentsToReview,
     inventoryIssues,
     unavailableHarnesses,
     copy,
@@ -296,6 +313,9 @@ function buildReviewItems({
   slashCommandsToReview,
   mcpConfigsToReview,
   differentConfigMcpServers,
+  hooksToReview,
+  permissionsToReview,
+  agentsToReview,
   inventoryIssues,
   unavailableHarnesses,
   copy,
@@ -304,6 +324,9 @@ function buildReviewItems({
   slashCommandsToReview: number | null;
   mcpConfigsToReview: number | null;
   differentConfigMcpServers: number | null;
+  hooksToReview: number;
+  permissionsToReview: number;
+  agentsToReview: number;
   inventoryIssues: number | null;
   unavailableHarnesses: number | null;
   copy: OverviewCopy;
@@ -313,7 +336,6 @@ function buildReviewItems({
     items.push({
       key: "skills-review",
       label: copy.reviewItems.skillsLabel,
-      description: copy.reviewItems.skillsDescription,
       count: skillsToReview,
       to: skillsRoutes.needsReview,
       tone: "neutral",
@@ -323,7 +345,6 @@ function buildReviewItems({
     items.push({
       key: "slash-commands-review",
       label: copy.reviewItems.slashCommandsLabel,
-      description: copy.reviewItems.slashCommandsDescription,
       count: slashCommandsToReview,
       to: slashCommandRoutes.needsReview,
       tone: "warning",
@@ -333,7 +354,6 @@ function buildReviewItems({
     items.push({
       key: "mcp-review",
       label: copy.reviewItems.mcpConfigsLabel,
-      description: copy.reviewItems.mcpConfigsDescription,
       count: mcpConfigsToReview,
       to: mcpRoutes.needsReview,
       tone: "neutral",
@@ -343,17 +363,42 @@ function buildReviewItems({
     items.push({
       key: "different-mcp-configs",
       label: copy.reviewItems.differentMcpLabel,
-      description: copy.reviewItems.differentMcpDescription,
       count: differentConfigMcpServers,
       to: mcpRoutes.inUse,
       tone: "warning",
+    });
+  }
+  if (hooksToReview > 0) {
+    items.push({
+      key: "hooks-review",
+      label: copy.reviewItems.hooksLabel,
+      count: hooksToReview,
+      to: hooksRoutes.needsReview,
+      tone: "warning",
+    });
+  }
+  if (permissionsToReview > 0) {
+    items.push({
+      key: "permissions-review",
+      label: copy.reviewItems.permissionsLabel,
+      count: permissionsToReview,
+      to: permissionsRoutes.needsReview,
+      tone: "warning",
+    });
+  }
+  if (agentsToReview > 0) {
+    items.push({
+      key: "agents-review",
+      label: copy.reviewItems.agentsLabel,
+      count: agentsToReview,
+      to: agentsRoutes.needsReview,
+      tone: "neutral",
     });
   }
   if (inventoryIssues && inventoryIssues > 0) {
     items.push({
       key: "mcp-inventory-issues",
       label: copy.reviewItems.inventoryIssuesLabel,
-      description: copy.reviewItems.inventoryIssuesDescription,
       count: inventoryIssues,
       to: mcpRoutes.inUse,
       tone: "danger",
@@ -363,7 +408,6 @@ function buildReviewItems({
     items.push({
       key: "unavailable-mcp-harnesses",
       label: copy.reviewItems.unavailableHarnessLabel,
-      description: copy.reviewItems.unavailableHarnessDescription,
       count: unavailableHarnesses,
       to: "/settings",
       tone: "warning",

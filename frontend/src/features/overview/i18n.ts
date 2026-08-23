@@ -11,7 +11,7 @@ const englishOverviewCopy = {
   },
   sections: {
     shortcuts: "Shortcuts",
-    review: "Review",
+    review: "Review to Adopt",
     activeHarnesses: "Active harnesses",
     allHarnesses: "All harnesses",
     noReviewWaiting: "No local adoption or config review is waiting.",
@@ -47,17 +47,14 @@ const englishOverviewCopy = {
   },
   reviewItems: {
     skillsLabel: "Skills to review",
-    skillsDescription: "Adopt local skills so they can be enabled consistently.",
     slashCommandsLabel: "Slash commands",
-    slashCommandsDescription: "Unmanaged, changed, or missing command files need a decision.",
     mcpConfigsLabel: "MCP configs to review",
-    mcpConfigsDescription: "Adopt existing harness configs into Harness Asset Manager.",
     differentMcpLabel: "Different MCP configs",
-    differentMcpDescription: "Resolve which config should become the source of truth.",
     inventoryIssuesLabel: "MCP inventory issues",
-    inventoryIssuesDescription: "Some Harness Asset Manager MCP records could not be loaded cleanly.",
     unavailableHarnessLabel: "MCP harness unavailable",
-    unavailableHarnessDescription: "At least one harness cannot safely receive MCP writes.",
+    hooksLabel: "Hooks to review",
+    permissionsLabel: "Permissions to review",
+    agentsLabel: "Agents to review",
   },
 } as const;
 

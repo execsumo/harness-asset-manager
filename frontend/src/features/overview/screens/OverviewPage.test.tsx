@@ -374,7 +374,7 @@ describe("OverviewPage", () => {
     await waitFor(() =>
       expect(screen.getByRole("link", { name: /MCP configs to review/i })).toBeInTheDocument(),
     );
-    const queue = section("Review");
+    const queue = section("Review to Adopt");
     expect(within(queue).queryByRole("link", { name: /Skills to review/i })).not.toBeInTheDocument();
     expect(within(queue).getByRole("link", { name: /MCP configs to review/i })).toBeInTheDocument();
     expect(within(queue).getByRole("link", { name: /Different MCP configs/i })).toBeInTheDocument();

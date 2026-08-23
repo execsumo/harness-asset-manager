@@ -29,7 +29,6 @@ export function ReviewQueue({ items, loading }: ReviewQueueProps) {
               <span className="overview-review-row__count">{item.count}</span>
               <span className="overview-review-row__copy">
                 <strong>{item.label}</strong>
-                <span>{item.description}</span>
               </span>
             </Link>
           ))}

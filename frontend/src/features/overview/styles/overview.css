@@ -261,7 +261,7 @@
 }
 
 .overview-review-row--skeleton {
-  min-height: 70px;
+  min-height: 44px;
   opacity: 0.6;
 }
 
@@ -289,20 +289,12 @@
 }
 
 .overview-review-row__copy {
-  display: grid;
-  gap: var(--space-1);
   min-width: 0;
 }
 
 .overview-review-row__copy strong {
   color: var(--color-text);
   font-size: var(--font-size-sm);
-}
-
-.overview-review-row__copy span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1.4;
 }
 
 .overview-review-empty {
