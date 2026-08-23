@@ -58,7 +58,10 @@ function rowVisibleOnTab(row: SkillListRow, tab: SkillsWorkspaceTab): boolean {
   if (tab === "needsReview") {
     return skillStatusConcept(row.displayStatus) === "needsReview";
   }
-  return skillStatusConcept(row.displayStatus) === "inUse";
+  // The canonical family page is unified: its default/in-use route renders both
+  // managed and untracked rows. Do not close an untracked detail just because
+  // the URL does not carry the dedicated needs-review filter.
+  return true;
 }
 
 function useCompactDetailLayout(breakpointPx = 900): boolean {
