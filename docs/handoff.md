@@ -2,6 +2,41 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-23 — Star column: after identity + filterable starred header; NEXT = tags Phase 2
+
+### Running state
+
+- `main` = `origin/main` = `d0b7d92`. Checkout ON `main`, tree clean. Server live on :8000 from
+  merged main (real store, dist current). Tailnet URL as usual.
+
+### Shipped this entry (delegated to agy in its own worktree, independently verified)
+
+Owner UX feedback on the fresh tags feature: the star column moved from between checkbox and
+name to **after the identity (Skill name) column, right before the first harness column**
+(`MatrixRow.tsx`); the header gained a **filled-star button styled like the harness logo
+headers** (tooltip "Starred"); clicking it **toggles the URL-backed `?tag=starred` filter**
+(`starredFilterActive`/`onToggleStarredFilter` wired through `SkillsWorkspacePage.tsx`, amber
+active state via `data-active`, `aria-pressed`, composes with other `?tag=` values, clears with
+Clear filters). Validation re-run by owner: typecheck clean, Vitest 335/335 across 68 files,
+build OK.
+
+### NEXT SESSION: roll tags out to the other five families (Phase 2)
+
+Everything needed is written down:
+
+1. **[`docs/plan-asset-tags.md`](plan-asset-tags.md) §5** — rewritten as a concrete rollout
+   guide: per-family steps 1–5, reference-file table pointing at every Skills piece to copy,
+   suggested family order (agents → slash commands → hooks → MCP → permissions), and the open
+   question that needs an owner decision for permissions (what the taggable ref is).
+2. **`docs/adding-a-family.md`** — new checklist item in "API, CLI, and frontend" pinning tags
+   support as a family requirement, referencing the plan and the Skills implementation.
+3. Delegation discipline: give agy its OWN worktree off `origin/main`
+   (`git worktree add ../ham-<task> origin/main` + symlink `node_modules`; see the incident
+   note below) — never let it work in the primary checkout. Brief template from this session:
+   `/tmp/task-star-header.md` pattern (goal, scope files, do-nots, validation, deliver).
+4. After any backend merge: restart the server — rebuilt dist alone is not enough (405 incident
+   below).
+
 ## 2026-08-23 — Session wrap: asset tags Phase 1 LIVE; star column; routing 404 fix; clean tree
 
 ### Running state

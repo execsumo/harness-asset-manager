@@ -115,6 +115,16 @@ parts are actually invariant.
       convention; see `McpInUsePage.tsx` or `AgentsInUsePage.tsx`.
 - [ ] Make unsupported harnesses and unsupported scopes visible in the matrix.
       Do not hide a column or silently omit a record.
+- [ ] Wire the family into the shared asset-tags system (see
+      `docs/plan-asset-tags.md` §5 and the Skills implementation as the reference):
+      include each entry's sorted `tags` array (`starred` first) in list/detail
+      payloads via `AssetTagService` (`application/asset_tags/`, keyed
+      `<family>:<ref>`); add a `PUT /api/<family>/{ref}/tags` replace-set endpoint;
+      render the star column after the identity column with the filterable filled-star
+      header toggling `?tag=starred` (see `SkillsWorkspacePage.tsx`,
+      `MatrixView.tsx`/`MatrixRow.tsx`, `matrix-table__th/cell--star`); support tag
+      chips and bulk actions where the family's BulkActionBar supports them. Tagging
+      is sidecar-only — never write tags into documents or harness files.
 
 ## Catalog and documentation
 

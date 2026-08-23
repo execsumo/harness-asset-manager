@@ -1,8 +1,8 @@
 # Plan — Asset tags with a pinned `starred` system tag
 
-**Status: Planned (2026-08-23). Nothing shipped yet.** Phase 1 targets Skills only;
-the storage schema is family-generic from day one so later phases are presentation
-work, not migrations.
+**Status: Phase 1 (Skills) SHIPPED 2026-08-23** — store/service/API `d45e61e`, star column
+`945a0ad`, filterable starred header + column-after-identity layout `d0b7d92`. The schema is
+family-generic from day one; **Phase 2 is the active work** (see §5 rollout).
 
 **Goal:** give users a way to mark and group their most important assets. Skills
 routinely bloat into the hundreds; the owner wants to pull up "all skills tagged
@@ -113,15 +113,52 @@ file.
 
 ## 5. Phases
 
-1. **Skills (this plan's scope)** — store file + service, PUT endpoint, payload
-   fields, star toggle, tag filters, bulk-star. Ships when the validation suite
-   is green and the owner has used it live.
-2. **Generalize** — extend payloads/endpoints to agents, slash commands, MCP,
-   hooks, permissions; `docs/adding-a-family.md` checklist gains a "tags render
-   in matrix + detail and support `?tag=`" item. Presentation work only; the
-   schema already spans families.
-3. **Possible later** — unmanaged-asset tagging (qualified refs); tag rename/
-   merge tooling; marketplace-item tags.
+### Phase 1 — Skills ✅ SHIPPED (2026-08-23)
+
+All of §2–§4 as planned, plus one owner-driven UX amendment: the per-row star toggle and the
+filterable starred header live in a dedicated narrow matrix column positioned AFTER the identity
+column (not inside the name cell as originally sketched). Header click toggles the URL-backed
+`?tag=starred` filter with amber active state and `aria-pressed`. Reference implementation:
+
+| Piece | File(s) |
+|---|---|
+| Store (`data/asset-tags.json`, total reads, atomic writes) | `application/asset_tags/store.py` |
+| Normalization + sort (`starred` pinned first) | `application/asset_tags/service.py` |
+| Mutation entry point | `application/skills/mutations.py::set_skill_tags` |
+| Endpoint | `api/routers/skills.py::set_skill_tags` |
+| Payload wiring (list/detail) | `application/skills/presenters.py`, `queries.py` |
+| Matrix column + starred header filter | `features/skills/components/matrix/MatrixView.tsx`, `MatrixRow.tsx` |
+| Filter wiring (`?tag=`, multi-value OR) | `features/skills/screens/SkillsWorkspacePage.tsx` (+ controller) |
+| Tag chips / detail editor / bulk-star | `SkillTagFilterBar.tsx`, `SkillDetailTags.tsx`, `BulkActionBar.tsx` |
+
+### Phase 2 — Generalize to the remaining five families ← CURRENT WORK
+
+Per family (agents, slash commands, MCP, hooks, permissions), in this order:
+
+1. **Payload**: include sorted `tags` in list/detail responses via `AssetTagService.get_tags`
+   / `get_tags_for_family("<family>")` — mirror how skills presenters/queries wire it.
+2. **Mutation**: add `set_tags(ref, tags)` to the family's mutation service calling
+   `AssetTagService.set_tags("<family>", ref, tags)`; expose `PUT /api/<family>/{ref}/tags`.
+   Regenerate OpenAPI (`npm run codegen:openapi`). Decide per family whether unmanaged entries
+   are taggable — Phase 1 rejects unmanaged with 400; keep that default unless the owner asks.
+3. **Frontend matrix**: star column after identity, starred header filter toggling
+   `?tag=starred` — copy the Skills pattern into each family's MatrixView/MatrixRow. Family
+   matrices live under `frontend/src/features/<family>/components/matrix/`.
+4. **Detail + filters + bulk**: tag chips in the detail sheet, `?tag=` in the family's page
+   selectors/controller, "Star selected" in the family's BulkActionBar usage.
+5. **Tests at every step**, mirroring `tests/unit/test_asset_tags_store.py`,
+   `tests/integration/test_skills_tags_routes.py`, and the Skills selector/component tests.
+
+Suggested order: agents → slash commands → hooks → MCP → permissions (agents first: same
+unmanaged-ref semantics already exercised by agent editing; permissions last: rows are
+pattern-based and may need an owner decision on what "the ref" even is).
+
+When all families ship: add the checklist item reference to `docs/adding-a-family.md`
+(already added 2026-08-23) and update README's family deep-dives to mention tagging.
+
+### Phase 3 — Possible later
+
+Unmanaged-asset tagging (qualified refs); tag rename/merge tooling; marketplace-item tags.
 
 ## 6. Validation requirements (per phase)
 
