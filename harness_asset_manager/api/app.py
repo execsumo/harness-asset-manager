@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
@@ -92,12 +92,22 @@ def create_app(
     app.include_router(agents.router)
     app.include_router(config_snapshots.router)
 
-    @app.get("/{full_path:path}", include_in_schema=False, response_model=None)
-    def serve_frontend(full_path: str):
+    @app.api_route(
+        "/{full_path:path}",
+        methods=["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        include_in_schema=False,
+        response_model=None,
+    )
+    def serve_frontend(full_path: str, request: Request):
         if full_path.startswith("api/"):
             return JSONResponse(
                 status_code=404,
                 content={"code": "not_found", "error": f"unknown api path: /{full_path}"},
+            )
+        if request.method not in ("GET", "HEAD"):
+            return JSONResponse(
+                status_code=405,
+                content={"detail": "Method Not Allowed"},
             )
         dist = app.state.frontend_dist
         if dist is None:

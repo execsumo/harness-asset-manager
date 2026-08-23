@@ -27,7 +27,7 @@ def list_skills(container: BackendContainer = Depends(get_container)) -> dict[st
     return container.skills_queries.list_skills()
 
 
-@router.get("/{skill_ref:path}/source-status", response_model=SkillSourceStatusResponse)
+@router.get("/{skill_ref}/source-status", response_model=SkillSourceStatusResponse)
 def get_skill_source_status(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_queries.get_skill_source_status(skill_ref)
     if payload is None:
@@ -38,7 +38,7 @@ def get_skill_source_status(skill_ref: str, container: BackendContainer = Depend
     return payload
 
 
-@router.get("/{skill_ref:path}", response_model=SkillDetailResponse)
+@router.get("/{skill_ref}", response_model=SkillDetailResponse)
 def get_skill_detail(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     payload = container.skills_queries.get_skill_detail(skill_ref)
     if payload is None:
@@ -49,7 +49,7 @@ def get_skill_detail(skill_ref: str, container: BackendContainer = Depends(get_c
     return payload
 
 
-@router.put("/{skill_ref:path}/tags", response_model=SkillTagsResponse)
+@router.put("/{skill_ref}/tags", response_model=SkillTagsResponse)
 def set_skill_tags(
     skill_ref: str,
     body: SetSkillTagsRequest,
@@ -58,7 +58,7 @@ def set_skill_tags(
     return container.skills_mutations.set_skill_tags(skill_ref, body.tags)
 
 
-@router.put("/{skill_ref:path}/document", response_model=OkResponse)
+@router.put("/{skill_ref}/document", response_model=OkResponse)
 def update_skill_document(
     skill_ref: str,
     body: UpdateSkillDocumentRequest,
@@ -80,7 +80,7 @@ def update_skill_document(
     )
 
 
-@router.post("/{skill_ref:path}/enable", response_model=OkResponse)
+@router.post("/{skill_ref}/enable", response_model=OkResponse)
 def enable_skill(
     skill_ref: str,
     body: EnableSkillRequest,
@@ -89,7 +89,7 @@ def enable_skill(
     return container.skills_mutations.enable_skill(skill_ref, body.harness)
 
 
-@router.post("/{skill_ref:path}/disable", response_model=OkResponse)
+@router.post("/{skill_ref}/disable", response_model=OkResponse)
 def disable_skill(
     skill_ref: str,
     body: DisableSkillRequest,
@@ -98,7 +98,7 @@ def disable_skill(
     return container.skills_mutations.disable_skill(skill_ref, body.harness)
 
 
-@router.post("/{skill_ref:path}/set-harnesses", response_model=SetSkillHarnessesResultResponse)
+@router.post("/{skill_ref}/set-harnesses", response_model=SetSkillHarnessesResultResponse)
 def set_skill_harnesses(
     skill_ref: str,
     body: SetSkillHarnessesRequest,
@@ -107,7 +107,7 @@ def set_skill_harnesses(
     return container.skills_mutations.set_skill_all_harnesses(skill_ref, body.target)
 
 
-@router.post("/{skill_ref:path}/manage", response_model=OkResponse)
+@router.post("/{skill_ref}/manage", response_model=OkResponse)
 def manage_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
     return container.skills_mutations.manage_skill(skill_ref)
 
@@ -117,16 +117,16 @@ def manage_all_skills(container: BackendContainer = Depends(get_container)) -> d
     return container.skills_mutations.manage_all_skills()
 
 
-@router.post("/{skill_ref:path}/update", response_model=OkResponse)
+@router.post("/{skill_ref}/update", response_model=OkResponse)
 def update_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
     return container.skills_mutations.update_skill(skill_ref)
 
 
-@router.post("/{skill_ref:path}/unmanage", response_model=OkResponse)
+@router.post("/{skill_ref}/unmanage", response_model=OkResponse)
 def unmanage_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
     return container.skills_mutations.unmanage_skill(skill_ref)
 
 
-@router.post("/{skill_ref:path}/delete", response_model=OkResponse)
+@router.post("/{skill_ref}/delete", response_model=OkResponse)
 def delete_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
     return container.skills_mutations.delete_skill(skill_ref)

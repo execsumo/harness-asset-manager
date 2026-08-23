@@ -86,9 +86,9 @@ class CliMarketplaceApiTests(unittest.TestCase):
 
     def test_cli_marketplace_does_not_add_management_routes(self) -> None:
         with AppTestHarness(cli_marketplace=_fixture_catalog()) as harness:
-            payload = harness.post_json("/api/clis/install", {}, expected_status=405)
+            payload = harness.post_json("/api/clis/install", {}, expected_status=404)
 
-        self.assertIn("Method Not Allowed", payload.get("error", payload.get("detail", "")))
+        self.assertEqual(payload["code"], "not_found")
 
 
 if __name__ == "__main__":
