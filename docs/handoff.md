@@ -2,6 +2,30 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-23 — Unmanaged agents are now editable in place (harness file rewritten directly)
+
+Follow-on to the read-only unmanaged detail fix (entry below). Clicking into an unmanaged
+agent and editing it now works: `PUT /api/agents/<harness>/<slug>` dispatches slashed refs to
+`AgentMutationService.update_unmanaged`, which parses the harness Markdown file, re-renders it
+with the managed path's frontmatter contract, and writes atomically in place. Omitted fields
+carry forward (`prompt`/`tools`/custom frontmatter are never wiped by a partial update — that
+data-loss risk existed in the first WIP cut and was fixed before landing). Rendered adapters
+(Codex TOML) stay refuse-to-edit (`can_edit=false`); adopt-first is required there. Guards:
+unsafe slug → 404, missing file → 404, symlink target → 404 (already-managed binding).
+
+Bonus fix found during review: unmanaged Codex TOML detail inspection had been 404-ing because
+`_unmanaged_detail` ran Markdown frontmatter parsing on rendered adapters; it now branches on
+`adapter.renders` and parses TOML, keeping `can_edit=false`.
+
+Frontend unchanged beyond the WIP commit (DocumentSection already supported preview-only mode;
+the Locations note keys off `storePath`). Delegated to agy via herdr (branch
+`feat/unmanaged-agent-edit`: WIP `b3eab9a` by owner, fixes `4175087` + tests `fa3574a` by agy),
+independently verified — full suite re-run by owner — then fast-forward merged to `main` and
+pushed; branch deleted. Validation: typecheck clean; backend 588 unit + 203 integration OK at
+81% branch coverage; Vitest 322/322 across 66 files; build passes. New coverage: unit tests for
+in-place rewrite with custom metadata, omitted-field preservation, unsafe/missing/symlink/rendered
+refusals; integration tests incl. an end-to-end lifecycle (unmanaged edit → adopt → managed edit).
+
 ## 2026-08-23 — Launch pattern: real store vs `--state-dir`; tailnet relaunch; inline document editing shipped; unmanaged agent details fixed
 
 ### Relaunching the app — READ THIS FIRST
