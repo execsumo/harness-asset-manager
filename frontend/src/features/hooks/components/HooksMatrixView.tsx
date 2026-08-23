@@ -191,7 +191,7 @@ function HooksMatrixRow({
           </OverflowTooltipText>
         </div>
         <OverflowTooltipText as="p" className="matrix-table__description">
-          <code>{entry.spec?.command ?? "—"}</code> · {entry.spec?.event ?? "—"}
+          <code>{entry.spec?.command ?? "—"}</code>
         </OverflowTooltipText>
       </td>
       {columns.map((column) => {
