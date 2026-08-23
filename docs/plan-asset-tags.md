@@ -1,8 +1,8 @@
 # Plan — Asset tags with a pinned `starred` system tag
 
-**Status: Phase 1 (Skills) SHIPPED 2026-08-23** — store/service/API `d45e61e`, star column
-`945a0ad`, filterable starred header + column-after-identity layout `d0b7d92`. The schema is
-family-generic from day one; **Phase 2 is the active work** (see §5 rollout).
+**Status: Phases 1–2 SHIPPED 2026-08-23** — Skills Phase 1 plus the five-family rollout
+(agents, slash commands, hooks, MCP, permissions) merged in `b2dbbc9`. The schema and UI are
+now family-generic; **Phase 3 remains possible later** (see §5).
 
 **Goal:** give users a way to mark and group their most important assets. Skills
 routinely bloat into the hundreds; the owner wants to pull up "all skills tagged
@@ -131,30 +131,30 @@ column (not inside the name cell as originally sketched). Header click toggles t
 | Filter wiring (`?tag=`, multi-value OR) | `features/skills/screens/SkillsWorkspacePage.tsx` (+ controller) |
 | Tag chips / detail editor / bulk-star | `SkillTagFilterBar.tsx`, `SkillDetailTags.tsx`, `BulkActionBar.tsx` |
 
-### Phase 2 — Generalize to the remaining five families ← CURRENT WORK
+### Phase 2 — Generalize to the remaining five families ✅ SHIPPED (2026-08-23)
 
-Per family (agents, slash commands, MCP, hooks, permissions), in this order:
+The rollout is complete for agents, slash commands, hooks, MCP servers, and permissions. Each
+family now has sorted tags in list/detail payloads, a managed-only replace-set mutation, and the
+shared matrix/detail/filter presentation. Unmanaged entries remain untaggable by default and
+return a 4xx error envelope, matching the Skills contract.
 
-1. **Payload**: include sorted `tags` in list/detail responses via `AssetTagService.get_tags`
-   / `get_tags_for_family("<family>")` — mirror how skills presenters/queries wire it.
-2. **Mutation**: add `set_tags(ref, tags)` to the family's mutation service calling
-   `AssetTagService.set_tags("<family>", ref, tags)`; expose `PUT /api/<family>/{ref}/tags`.
-   Regenerate OpenAPI (`npm run codegen:openapi`). Decide per family whether unmanaged entries
-   are taggable — Phase 1 rejects unmanaged with 400; keep that default unless the owner asks.
-3. **Frontend matrix**: star column after identity, starred header filter toggling
-   `?tag=starred` — copy the Skills pattern into each family's MatrixView/MatrixRow. Family
-   matrices live under `frontend/src/features/<family>/components/matrix/`.
-4. **Detail + filters + bulk**: tag chips in the detail sheet, `?tag=` in the family's page
-   selectors/controller, "Star selected" in the family's BulkActionBar usage.
-5. **Tests at every step**, mirroring `tests/unit/test_asset_tags_store.py`,
-   `tests/integration/test_skills_tags_routes.py`, and the Skills selector/component tests.
+| Family | Tag mutation endpoint | Stable tag ref |
+|---|---|---|
+| Agents | `PUT /api/agents/{ref}/tags` | managed agent slug |
+| Slash commands | `PUT /api/slash-commands/{name}/tags` | command name |
+| Hooks | `PUT /api/hooks/{id}/tags` | hook ID |
+| MCP servers | `PUT /api/mcp/servers/{name}/tags` | server name |
+| Permissions | `PUT /api/permissions/{id}/tags` | permission spec ID |
 
-Suggested order: agents → slash commands → hooks → MCP → permissions (agents first: same
-unmanaged-ref semantics already exercised by agent editing; permissions last: rows are
-pattern-based and may need an owner decision on what "the ref" even is).
+Frontend coverage includes the star column after identity, the filled-star header filter, URL
+backed `?tag=` composition with existing filters, detail tag chips, and star actions where the
+family supports bulk selection. Shared UI pieces are `frontend/src/components/detail/DetailTags.tsx`
+and `frontend/src/components/tags/TagFilterBar.tsx`; OpenAPI and generated types are current.
 
-When all families ship: add the checklist item reference to `docs/adding-a-family.md`
-(already added 2026-08-23) and update README's family deep-dives to mention tagging.
+The family checklist in `docs/adding-a-family.md` now treats tags as a required capability, and
+README family deep-dives document the shared tagging behavior. Phase 2 landed as `b2dbbc9` after
+owner verification: backend 598 unit + 217 integration tests, frontend 345 tests, typecheck,
+build, codegen check, and the all-family live pressure test passed.
 
 ### Phase 3 — Possible later
 

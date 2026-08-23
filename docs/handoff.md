@@ -2,7 +2,42 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-23 — Star column: after identity + filterable starred header; NEXT = tags Phase 2
+## 2026-08-23 — Asset tags Phase 2 shipped; all six families tagged
+
+### Running state
+
+- `main` = `origin/main` = `b2dbbc9`, checkout ON `main`, tree clean. Server restarted from
+  merged main on :8000 against the real store (`homeDir: /home/dev`); dist is current.
+
+### Shipped this entry
+
+1. **Asset tags Phase 2 — shipped, delegated to agy in its own worktree and independently
+   verified.** Agents, slash commands, hooks, MCP servers, and permissions now share the
+   Skills tagging model: sorted `tags` arrays on list/detail payloads, managed-only replace-set
+   tag endpoints, sidecar persistence in `data/asset-tags.json`, star column after identity,
+   URL-backed `?tag=` filtering, detail tag chips, and star actions where the family supports
+   bulk actions. OpenAPI was regenerated.
+2. **Permission tagging ref decided:** `permissions:<id>`, using the stable permission spec ID
+   already used by the manifest, API, and frontend. Unmanaged entries remain read-only for
+   tagging across the five new families and return the existing 4xx error envelope.
+3. **Adjacent UI fix:** an unadopted Skill detail opened from the unified `/skills` page no
+   longer closes immediately; the selection guard now recognizes managed and untracked rows
+   on that route (`f8627f1`).
+
+### Validation
+
+Owner re-ran the final merged tree: typecheck clean; backend 598 unit + 217 integration tests;
+frontend Vitest 345/345 across 69 files; production build and OpenAPI codegen check clean.
+The live all-family tag pressure test passed for Skills, agents, slash commands, hooks, MCP,
+and permissions, including persistence and `starred` ordering.
+
+### Next steps
+
+- Dog-food tagging across the six family pages and watch for UX consistency issues.
+- Possible later work: unmanaged-asset tagging with qualified refs, tag rename/merge tooling,
+  and marketplace-item tags.
+
+## 2026-08-23 — Star column: after identity + filterable starred header (Phase 2 plan, completed above)
 
 ### Running state
 
@@ -20,22 +55,11 @@ active state via `data-active`, `aria-pressed`, composes with other `?tag=` valu
 Clear filters). Validation re-run by owner: typecheck clean, Vitest 335/335 across 68 files,
 build OK.
 
-### NEXT SESSION: roll tags out to the other five families (Phase 2)
+### Phase 2 rollout (completed in the entry above)
 
-Everything needed is written down:
-
-1. **[`docs/plan-asset-tags.md`](plan-asset-tags.md) §5** — rewritten as a concrete rollout
-   guide: per-family steps 1–5, reference-file table pointing at every Skills piece to copy,
-   suggested family order (agents → slash commands → hooks → MCP → permissions), and the open
-   question that needs an owner decision for permissions (what the taggable ref is).
-2. **`docs/adding-a-family.md`** — new checklist item in "API, CLI, and frontend" pinning tags
-   support as a family requirement, referencing the plan and the Skills implementation.
-3. Delegation discipline: give agy its OWN worktree off `origin/main`
-   (`git worktree add ../ham-<task> origin/main` + symlink `node_modules`; see the incident
-   note below) — never let it work in the primary checkout. Brief template from this session:
-   `/tmp/task-star-header.md` pattern (goal, scope files, do-nots, validation, deliver).
-4. After any backend merge: restart the server — rebuilt dist alone is not enough (405 incident
-   below).
+The rollout guide in [`docs/plan-asset-tags.md`](plan-asset-tags.md) §5 and the family checklist
+in [`docs/adding-a-family.md`](adding-a-family.md) remain the implementation reference. The
+separate-worktree delegation and post-backend-restart lessons were followed for this rollout.
 
 ## 2026-08-23 — Session wrap: asset tags Phase 1 LIVE; star column; routing 404 fix; clean tree
 

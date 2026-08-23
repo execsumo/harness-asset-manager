@@ -288,6 +288,12 @@ Harness Asset Manager keeps a flat store under its data directory: `skills/` hol
 
 Two earlier layouts are migrated one-time on first start — the pre-package `shared/` directory and the later `packages/local/` structure both fold into `skills/` and `agents/`. The migration is locked, idempotent, and skipped once the flat layout exists.
 
+All six asset families support the same sidecar tagging model. Tags are stored in
+`data/asset-tags.json`, never in asset documents or harness files; managed entries expose tags
+in list/detail views, and the `starred` tag is available through the matrix star control and
+URL-backed `?tag=starred` filter. Tag filters compose with each family's status and harness
+filters. Unmanaged entries remain read-only for tagging.
+
 ### Skills
 
 Before adoption, each harness points at its own local skill folder. After adoption, Harness Asset Manager keeps one canonical package in its shared local store and exposes it to selected harnesses with local links. Disabling a harness removes that harness binding without deleting the package.
@@ -295,6 +301,10 @@ Before adoption, each harness points at its own local skill folder. After adopti
 Harness Asset Manager treats managed Skills as portable by default: once a Skill is adopted into the shared store, it can be enabled for any supported harness. `originHarness` is retained only as provenance.
 
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
+
+Skills can be starred or assigned free-form tags from the matrix or detail view. Tag chips and
+filters use the shared sidecar store, while the star is surfaced as the pinned `starred` system
+tag.
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
@@ -310,6 +320,9 @@ MCP servers are stored as normalized Harness Asset Manager records, then transla
 - Factory Droid uses JSON under `mcpServers` in `~/.factory/mcp.json`.
 
 When Harness Asset Manager finds different configs for the same MCP server, it asks you to resolve the source of truth first.
+
+MCP servers support the shared managed-entry tagging controls: star a server in the matrix,
+edit tags in its detail view, or filter the page with `?tag=`.
 
 ![skill-market-overview](./assets/harness-asset-manager-mcp-translation.svg)
 
@@ -328,6 +341,9 @@ Disabling a harness in Settings removes its column here immediately, without a r
 
 Harness Asset Manager tracks target ownership with sync state and content hashes. With slash-command auto-adoption enabled, it adopts only equivalent unmanaged command files and never overwrites their contents. Otherwise it reports unmanaged, changed, or missing files for review. Review actions let you adopt unmanaged commands, restore managed content, adopt a changed harness command as the new source, or remove a broken binding while leaving the harness file untouched.
 
+Slash commands support the shared managed-entry tagging controls, including matrix starring,
+detail tag chips, and URL-backed tag filters.
+
 ### Hooks
 
 Hooks are stored as normalized Harness Asset Manager records using **canonical events** (`pre_tool_use`, `post_tool_use`, `user_prompt_submit`, `session_start`, `stop`, `pre_compact`) and **canonical tool categories** (`shell`, `file_read`, `file_write`, `mcp`, `web`, `any`). Each harness codec translates a canonical record into that harness's native event names and config shape, and merges it into the harness's hook config:
@@ -342,6 +358,9 @@ Hooks are stored as normalized Harness Asset Manager records using **canonical e
 Because harnesses differ, not every canonical event maps to every harness. Harness Asset Manager exposes a **representability matrix** showing where each hook can sync and where it cannot, including caveats — for example, an Antigravity `user_prompt_submit` hook maps to `PreInvocation`, which fires before every model invocation rather than only on prompt submit.
 
 Harness Asset Manager owns only the specific hook entries it writes. It merges into each harness's config without disturbing hooks or other keys it does not manage, and it tracks ownership with content hashes. When a managed hook is edited outside Harness Asset Manager it is reported as drifted, and hooks found in a harness that Harness Asset Manager does not manage are reported as unmanaged for review.
+
+Hooks support the shared managed-entry tagging controls, including matrix starring, detail tag
+chips, and URL-backed tag filters.
 
 ### Agents
 
@@ -364,6 +383,9 @@ The agents matrix shows the same harnesses as every other family — whichever y
 Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** is best effort: HAM can manage the files in its conventional agents directory, but Hermes does not consume them automatically without separate Hermes-side support.
 
 Harness Asset Manager only ever removes files it owns — a symlink into its store, or a file carrying its generated marker. Anything else in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store (converting Codex TOML to Markdown) and installs it back. If the name is already taken in the store, Harness Asset Manager refuses to guess and asks which version to keep.
+
+Agents support the shared managed-entry tagging controls, including matrix starring, detail tag
+chips, and URL-backed tag filters.
 
 #### When a harness breaks the link
 
@@ -402,6 +424,10 @@ Each harness codec translates rules into that harness's native deny surface:
 
 - Codex's native config currently supports HAM's file and web deny rules, but not shell-command or MCP deny rules.
 - Cursor maps rules onto deny tokens in `~/.cursor/cli-config.json` — `Shell()`, `Read()`, `Write()`, `WebFetch()`, `Mcp()`. Multi-token shell patterns and bare-server MCP patterns are correctly reported unsupported, since Cursor's own tokens can't express either. Enabling a Cursor rule writes `approvalMode = "unrestricted"`; disabling the final rule cleans it up.
+
+Permissions support the shared managed-entry tagging controls. Permission tags are keyed by the
+stable permission spec ID, so a rule can be starred, grouped with free-form tags, and found via
+`?tag=` without changing its native deny configuration.
 
 Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model.
 
