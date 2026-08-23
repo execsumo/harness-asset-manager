@@ -20,8 +20,12 @@ class CommandDocumentCodec(Protocol):
 class FrontmatterMarkdownCommandCodec:
     """Codec that edits ``description`` without discarding unowned frontmatter."""
 
-    def render(self, command: SlashCommand) -> str:
-        metadata_lines = _render_frontmatter(command)
+    def render(
+        self,
+        command: SlashCommand,
+        custom_metadata: list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[dict[str, str]] | list[str] | tuple[str, ...] | None = None,
+    ) -> str:
+        metadata_lines = _render_frontmatter(command, custom_metadata)
         return "\n".join(
             [
                 "---",
@@ -97,8 +101,15 @@ def codec_for_render_format(render_format: CommandFileRenderFormat) -> CommandDo
     return CODECS[render_format]
 
 
-def render_slash_command(command: SlashCommand, render_format: CommandFileRenderFormat) -> str:
-    return codec_for_render_format(render_format).render(command)
+def render_slash_command(
+    command: SlashCommand,
+    render_format: CommandFileRenderFormat,
+    custom_metadata: list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[dict[str, str]] | list[str] | tuple[str, ...] | None = None,
+) -> str:
+    codec = codec_for_render_format(render_format)
+    if isinstance(codec, FrontmatterMarkdownCommandCodec):
+        return codec.render(command, custom_metadata)
+    return codec.render(command)
 
 
 def parse_slash_command_document(
@@ -125,10 +136,36 @@ def _parse_frontmatter_metadata(lines: list[str]) -> dict[str, str]:
     return metadata
 
 
-def _render_frontmatter(command: SlashCommand) -> list[str]:
+def _render_frontmatter(
+    command: SlashCommand,
+    custom_metadata: list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[dict[str, str]] | list[str] | tuple[str, ...] | None = None,
+) -> list[str]:
     """Preserve every unowned line verbatim and replace only ``description``."""
 
     description_line = f"description: {json.dumps(command.description.strip())}"
+    if custom_metadata is not None:
+        rendered = [description_line]
+        for item in custom_metadata:
+            if isinstance(item, str):
+                stripped = item.strip()
+                if not stripped:
+                    continue
+                k = stripped.split(":", 1)[0].strip() if ":" in stripped else ""
+                if k == "description" and not stripped.startswith("#"):
+                    continue
+                rendered.append(item)
+            elif isinstance(item, dict):
+                k = str(item.get("key", "")).strip()
+                v = item.get("value", "")
+                if k and k != "description":
+                    rendered.append(f"{k}: {v}")
+            elif isinstance(item, (tuple, list)) and len(item) == 2:
+                k = str(item[0]).strip()
+                v = item[1]
+                if k and k != "description":
+                    rendered.append(f"{k}: {v}")
+        return rendered
+
     rendered: list[str] = []
     replaced = False
     for line in command.frontmatter:

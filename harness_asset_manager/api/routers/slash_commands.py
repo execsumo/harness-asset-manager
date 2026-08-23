@@ -77,11 +77,15 @@ def update_slash_command(
     body: SlashCommandUpdateRequest,
     container: BackendContainer = Depends(get_container),
 ) -> dict[str, object]:
+    metadata_entries = None
+    if body.metadata is not None:
+        metadata_entries = [{"key": m.key, "value": m.value} for m in body.metadata]
     return container.slash_command_mutations.update_command(
         name,
         description=body.description,
         prompt=body.prompt,
         targets=body.targets,
+        metadata=metadata_entries,
     )
 
 

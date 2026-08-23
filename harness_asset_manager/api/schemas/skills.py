@@ -130,6 +130,16 @@ class SkillSourceLinksResponse(BaseModel):
     folderUrl: str | None
 
 
+class SkillMetadataEntryResponse(BaseModel):
+    key: str
+    value: str
+
+
+class UpdateSkillDocumentRequest(BaseModel):
+    body: str
+    metadata: list[SkillMetadataEntryResponse] | dict[str, str] | None = None
+
+
 class SkillDetailResponse(BaseModel):
     skillRef: str
     name: str
@@ -141,6 +151,7 @@ class SkillDetailResponse(BaseModel):
     locations: list[SkillLocationResponse]
     sourceLinks: SkillSourceLinksResponse | None
     documentMarkdown: str | None
+    metadata: list[SkillMetadataEntryResponse] = Field(default_factory=list)
 
 
 class SkillSourceStatusResponse(BaseModel):
@@ -162,6 +173,7 @@ __all__ = [
     "SkillDetailActionsResponse",
     "SkillDetailResponse",
     "SkillLocationResponse",
+    "SkillMetadataEntryResponse",
     "SkillRowActionsResponse",
     "SkillSourceLinksResponse",
     "SkillSourceStatusResponse",
@@ -171,4 +183,5 @@ __all__ = [
     "SkillUpdateStatus",
     "SkillsPageResponse",
     "SkillsSummaryResponse",
+    "UpdateSkillDocumentRequest",
 ]

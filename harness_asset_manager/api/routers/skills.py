@@ -13,6 +13,7 @@ from harness_asset_manager.api.schemas import (
     SkillDetailResponse,
     SkillSourceStatusResponse,
     SkillsPageResponse,
+    UpdateSkillDocumentRequest,
 )
 from harness_asset_manager.application import BackendContainer
 
@@ -44,6 +45,28 @@ def get_skill_detail(skill_ref: str, container: BackendContainer = Depends(get_c
             detail={"code": "skill_not_found", "error": f"unknown skill ref: {skill_ref}"},
         )
     return payload
+
+
+@router.put("/{skill_ref:path}/document", response_model=OkResponse)
+def update_skill_document(
+    skill_ref: str,
+    body: UpdateSkillDocumentRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, bool]:
+    metadata_entries: list[dict[str, str]] | None = None
+    if body.metadata is not None:
+        if isinstance(body.metadata, list):
+            metadata_entries = [
+                {"key": m.key if hasattr(m, "key") else m["key"], "value": m.value if hasattr(m, "value") else m["value"]}
+                for m in body.metadata
+            ]
+        elif isinstance(body.metadata, dict):
+            metadata_entries = [{"key": k, "value": str(v)} for k, v in body.metadata.items()]
+    return container.skills_mutations.update_skill_document(
+        skill_ref,
+        body=body.body,
+        metadata=metadata_entries,
+    )
 
 
 @router.post("/{skill_ref:path}/enable", response_model=OkResponse)

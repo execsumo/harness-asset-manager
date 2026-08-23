@@ -56,8 +56,9 @@ class SlashCommandMutationService:
         description: str,
         prompt: str,
         targets: list[str] | None = None,
+        metadata: list[dict[str, str]] | list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[str] | tuple[str, ...] | None = None,
     ) -> dict[str, object]:
-        self.store.update_command(name, description=description, prompt=prompt)
+        self.store.update_command(name, description=description, prompt=prompt, metadata=metadata)
         sync = self.sync_command(name, targets=targets)
         payload = self.queries.get_command(name)
         return {"ok": sync["ok"], "command": payload, "sync": sync["sync"]}

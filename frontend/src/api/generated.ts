@@ -931,6 +931,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/skills/{skill_ref}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Skill Document */
+        put: operations["update_skill_document_api_skills__skill_ref__document_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/skills/{skill_ref}/enable": {
         parameters: {
             query?: never;
@@ -2689,6 +2706,8 @@ export interface components {
             harnessCells: components["schemas"]["HarnessCellResponse"][];
             /** Locations */
             locations: components["schemas"]["SkillLocationResponse"][];
+            /** Metadata */
+            metadata?: components["schemas"]["SkillMetadataEntryResponse"][];
             /** Name */
             name: string;
             /** Skillref */
@@ -2718,6 +2737,13 @@ export interface components {
             sourceKind: string;
             /** Sourcelocator */
             sourceLocator: string;
+        };
+        /** SkillMetadataEntryResponse */
+        SkillMetadataEntryResponse: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
         };
         /** SkillRowActionsResponse */
         SkillRowActionsResponse: {
@@ -2844,6 +2870,8 @@ export interface components {
         SlashCommandResponse: {
             /** Description */
             description: string;
+            /** Metadata */
+            metadata?: components["schemas"]["SlashMetadataEntryResponse"][];
             /** Name */
             name: string;
             /** Prompt */
@@ -2888,10 +2916,26 @@ export interface components {
         SlashCommandUpdateRequest: {
             /** Description */
             description: string;
+            /** Metadata */
+            metadata?: components["schemas"]["SlashMetadataEntryRequest"][] | null;
             /** Prompt */
             prompt: string;
             /** Targets */
             targets?: ("claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes" | "droid")[] | null;
+        };
+        /** SlashMetadataEntryRequest */
+        SlashMetadataEntryRequest: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
+        };
+        /** SlashMetadataEntryResponse */
+        SlashMetadataEntryResponse: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: string;
         };
         /** SlashSyncEntryResponse */
         SlashSyncEntryResponse: {
@@ -2964,12 +3008,23 @@ export interface components {
         UpdateAgentRequest: {
             /** Description */
             description?: string | null;
+            /** Metadata */
+            metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
             /** Name */
             name?: string | null;
             /** Prompt */
             prompt?: string | null;
             /** Tools */
             tools?: string[] | null;
+        };
+        /** UpdateSkillDocumentRequest */
+        UpdateSkillDocumentRequest: {
+            /** Body */
+            body: string;
+            /** Metadata */
+            metadata?: components["schemas"]["SkillMetadataEntryResponse"][] | {
+                [key: string]: string;
+            } | null;
         };
     };
     responses: never;
@@ -7817,6 +7872,86 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["DisableSkillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_skill_document_api_skills__skill_ref__document_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_ref: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSkillDocumentRequest"];
             };
         };
         responses: {

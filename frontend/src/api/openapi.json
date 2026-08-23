@@ -4626,6 +4626,13 @@
             "title": "Locations",
             "type": "array"
           },
+          "metadata": {
+            "items": {
+              "$ref": "#/components/schemas/SkillMetadataEntryResponse"
+            },
+            "title": "Metadata",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -4750,6 +4757,24 @@
           "detail"
         ],
         "title": "SkillLocationResponse",
+        "type": "object"
+      },
+      "SkillMetadataEntryResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "SkillMetadataEntryResponse",
         "type": "object"
       },
       "SkillRowActionsResponse": {
@@ -5154,6 +5179,13 @@
             "title": "Description",
             "type": "string"
           },
+          "metadata": {
+            "items": {
+              "$ref": "#/components/schemas/SlashMetadataEntryResponse"
+            },
+            "title": "Metadata",
+            "type": "array"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -5283,6 +5315,20 @@
             "title": "Description",
             "type": "string"
           },
+          "metadata": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SlashMetadataEntryRequest"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
           "prompt": {
             "minLength": 1,
             "title": "Prompt",
@@ -5317,6 +5363,42 @@
           "prompt"
         ],
         "title": "SlashCommandUpdateRequest",
+        "type": "object"
+      },
+      "SlashMetadataEntryRequest": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "SlashMetadataEntryRequest",
+        "type": "object"
+      },
+      "SlashMetadataEntryResponse": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "title": "SlashMetadataEntryResponse",
         "type": "object"
       },
       "SlashSyncEntryResponse": {
@@ -5520,6 +5602,20 @@
             ],
             "title": "Description"
           },
+          "metadata": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AgentConfigEntryResponse"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
           "name": {
             "anyOf": [
               {
@@ -5558,6 +5654,39 @@
           }
         },
         "title": "UpdateAgentRequest",
+        "type": "object"
+      },
+      "UpdateSkillDocumentRequest": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkillMetadataEntryResponse"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "UpdateSkillDocumentRequest",
         "type": "object"
       }
     }
@@ -11490,6 +11619,105 @@
           }
         },
         "summary": "Disable Skill"
+      }
+    },
+    "/api/skills/{skill_ref}/document": {
+      "put": {
+        "operationId": "update_skill_document_api_skills__skill_ref__document_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_ref",
+            "required": true,
+            "schema": {
+              "title": "Skill Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSkillDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Update Skill Document"
       }
     },
     "/api/skills/{skill_ref}/enable": {

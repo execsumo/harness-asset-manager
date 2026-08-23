@@ -56,28 +56,56 @@ def render_agent_document(
     prompt: str,
     tools: tuple[str, ...] = (),
     base_metadata: Mapping[str, object] | None = None,
+    extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
     """Render an agent file.
 
-    When ``base_metadata`` is supplied (any edit of an existing agent) the original
-    frontmatter is the starting point and only the edited keys are replaced, so keys
-    Harness Asset Manager does not interpret survive. Harness agents routinely carry `model`,
-    `permissionMode`, `maxTurns`, `disallowedTools`, hooks and more; re-rendering from
-    the three fields we understand would delete all of it on the first save.
+    When ``extra_metadata`` is supplied, it replaces the non-known frontmatter keys
+    with the user's ordered key/value pairs.
+    When ``base_metadata`` is supplied (any edit where extra_metadata is not explicitly set)
+    the original frontmatter is the starting point and only the edited keys are replaced.
     """
-    metadata: dict[str, object] = {
-        key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
-    }
-    metadata["name"] = name
-    metadata["description"] = description
-    if tools:
-        metadata["tools"] = ", ".join(tools)
-    elif "tools" in metadata:
-        # An explicit empty edit clears it; leave the key out rather than writing null.
-        del metadata["tools"]
+    if extra_metadata is not None:
+        metadata: dict[str, object] = {
+            "name": name,
+            "description": description,
+        }
+        if tools:
+            metadata["tools"] = ", ".join(tools)
 
-    # `name` and `description` lead, then everything else in its original order.
-    ordered = ["name", "description"] + [k for k in metadata if k not in {"name", "description"}]
+        custom_keys: list[str] = []
+        for item in extra_metadata:
+            if isinstance(item, dict):
+                k = str(item.get("key", "")).strip()
+                v = item.get("value", "")
+            elif isinstance(item, (tuple, list)) and len(item) == 2:
+                k = str(item[0]).strip()
+                v = item[1]
+            else:
+                continue
+            if k and k not in {"name", "description", "tools"} and k not in RETIRED_KEYS:
+                metadata[k] = v
+                custom_keys.append(k)
+
+        ordered = ["name", "description"]
+        if "tools" in metadata:
+            ordered.append("tools")
+        ordered.extend(custom_keys)
+    else:
+        metadata = {
+            key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
+        }
+        metadata["name"] = name
+        metadata["description"] = description
+        if tools:
+            metadata["tools"] = ", ".join(tools)
+        elif "tools" in metadata:
+            # An explicit empty edit clears it; leave the key out rather than writing null.
+            del metadata["tools"]
+
+        # `name` and `description` lead, then everything else in its original order.
+        ordered = ["name", "description"] + [k for k in metadata if k not in {"name", "description"}]
+
     lines = ["---"]
     for key in ordered:
         lines.extend(_render_entry(key, metadata[key]))

@@ -33,6 +33,7 @@ def skill_detail_payload(
     *,
     columns: tuple[InventoryColumn, ...],
     document_markdown: str | None,
+    metadata: list[dict[str, str]] | None = None,
     source_links: dict[str, str | None] | None,
 ) -> dict[str, object]:
     return {
@@ -52,6 +53,7 @@ def skill_detail_payload(
         "locations": [sighting_payload(sighting) for sighting in entry.detail_sightings()],
         "sourceLinks": source_links,
         "documentMarkdown": document_markdown,
+        "metadata": metadata or [],
     }
 
 

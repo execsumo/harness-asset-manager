@@ -5,7 +5,7 @@ from pathlib import Path
 
 from harness_asset_manager.errors import MutationError
 
-from .codecs import parse_slash_command_document
+from .codecs import _parse_scalar, parse_slash_command_document
 from .models import (
     SlashCommand,
     SlashCommandReviewRow,
@@ -76,11 +76,23 @@ class SlashCommandReadModelService:
         records: dict[str, SlashCommandSyncRecord],
         targets: tuple[SlashTarget, ...],
     ) -> dict[str, object]:
+        metadata: list[dict[str, str]] = []
+        for line in command.frontmatter:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or ":" not in stripped:
+                continue
+            k, raw_v = stripped.split(":", 1)
+            key = k.strip()
+            if not key or key == "description":
+                continue
+            metadata.append({"key": key, "value": _parse_scalar(raw_v.strip())})
+
         return {
             "name": command.name,
             "description": command.description,
             "prompt": command.prompt,
             "syncTargets": [entry.to_dict() for entry in self._sync_entries(command.name, records, targets)],
+            "metadata": metadata,
         }
 
     def _sync_entries(

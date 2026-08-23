@@ -47,11 +47,22 @@ class SlashSyncEntryResponse(BaseModel):
     error: str | None = None
 
 
+class SlashMetadataEntryResponse(BaseModel):
+    key: str
+    value: str
+
+
+class SlashMetadataEntryRequest(BaseModel):
+    key: str
+    value: str
+
+
 class SlashCommandResponse(BaseModel):
     name: str
     description: str
     prompt: str
     syncTargets: list[SlashSyncEntryResponse]
+    metadata: list[SlashMetadataEntryResponse] = Field(default_factory=list)
 
 
 class SlashCommandReviewResponse(BaseModel):
@@ -89,6 +100,7 @@ class SlashCommandUpdateRequest(BaseModel):
     description: str = Field(..., min_length=1)
     prompt: str = Field(..., min_length=1)
     targets: list[SlashTargetId] | None = None
+    metadata: list[SlashMetadataEntryRequest] | None = None
 
 
 class SlashSyncRequest(BaseModel):
@@ -128,6 +140,8 @@ __all__ = [
     "SlashCommandResponse",
     "SlashCommandReviewResponse",
     "SlashCommandUpdateRequest",
+    "SlashMetadataEntryRequest",
+    "SlashMetadataEntryResponse",
     "SlashReviewAction",
     "SlashReviewKind",
     "SlashReviewResolveAction",
