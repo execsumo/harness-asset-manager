@@ -69,3 +69,6 @@ class AssetTagService:
         sorted_tags = sort_tags(normalized)
         self.store.set_tags(f"{family}:{ref}", sorted_tags)
         return sorted_tags
+
+    def delete_tags_for_ref(self, family: str, ref: str) -> None:
+        self.store.set_tags(f"{family}:{ref}", [])
