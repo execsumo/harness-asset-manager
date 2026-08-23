@@ -7,7 +7,7 @@ from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 
 from .contracts import SkillsHarnessAdapter
-from .document_utils import render_skill_document
+from .document_utils import read_skill_document_and_metadata, render_skill_document
 from .identity import SourceDescriptor
 from .inventory import InventoryEntry
 from .package import parse_skill_package
@@ -115,6 +115,13 @@ class SkillsMutationService:
         package_root = self.queries.resolve_detail_package_root(entry)
         if package_root is None or not package_root.is_dir():
             raise MutationError(f"skill package root not found: {skill_ref}", status=404)
+
+        if metadata is None:
+            # Omitted metadata carries the current frontmatter forward, mirroring the
+            # agents contract: an edit that does not mention metadata must never
+            # silently strip keys the caller did not touch.
+            _body, current_metadata = read_skill_document_and_metadata(package_root)
+            metadata = [{"key": m["key"], "value": m["value"]} for m in current_metadata]
 
         rendered = render_skill_document(body=body, metadata=metadata)
         skill_file = package_root / "SKILL.md"

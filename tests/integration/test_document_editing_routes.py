@@ -64,6 +64,52 @@ class DocumentEditingRoutesTests(unittest.TestCase):
             self.assertEqual(metadata_dict["custom-tag"], "production")
             self.assertEqual(metadata_dict["author"], "Alice")
 
+    def test_update_skill_document_without_metadata_carries_frontmatter_forward(self) -> None:
+        """An edit that omits metadata must not silently strip existing frontmatter."""
+        with AppTestHarness() as harness:
+            package_root = seed_skill_package(
+                harness.spec.skills_store_root,
+                "doc-skill",
+                "Document Skill",
+                body="Original markdown body.",
+                source_kind="github",
+                source_locator="github:mode-io/doc-skill",
+            )
+            # Add a custom frontmatter key HAM does not interpret.
+            skill_md = package_root / "SKILL.md"
+            skill_md.write_text(
+                skill_md.read_text(encoding="utf-8").replace(
+                    "---\n", "---\ncustom-k: custom-v\n", 1
+                ),
+                encoding="utf-8",
+            )
+            revision, _ = fingerprint_package(package_root)
+            seed_store_manifest(
+                harness.spec,
+                [
+                    SkillStoreEntry(
+                        package_dir="doc-skill",
+                        declared_name="Document Skill",
+                        source_kind="github",
+                        source_locator="github:mode-io/doc-skill",
+                        revision=revision,
+                    )
+                ],
+            )
+
+            update_resp = harness.put_json(
+                "/api/skills/shared:doc-skill/document",
+                {"body": "Updated markdown body."},
+            )
+            self.assertTrue(update_resp["ok"])
+
+            updated_detail = harness.get_json("/api/skills/shared:doc-skill")
+            self.assertEqual(updated_detail["documentMarkdown"], "Updated markdown body.")
+            # Frontmatter untouched by the request survives verbatim.
+            self.assertEqual(updated_detail["name"], "Document Skill")
+            metadata_dict = {m["key"]: m["value"] for m in updated_detail["metadata"]}
+            self.assertEqual(metadata_dict.get("custom-k"), "custom-v")
+
     def test_agents_update_with_metadata_roundtrip(self) -> None:
         with AppTestHarness() as harness:
             # Create an agent
