@@ -39,6 +39,9 @@ export interface SkillsWorkspaceContextValue {
   onMultiSelectEnableAll: () => Promise<void>;
   onMultiSelectDisableAll: () => Promise<void>;
   onMultiSelectDelete: () => Promise<void>;
+  onMultiSelectStar: () => Promise<void>;
+  onToggleStar: (skillRef: string) => Promise<void>;
+  onSetTags: (skillRef: string, tags: string[]) => Promise<void>;
   onSetSkillAllHarnesses: (skillRef: string, target: SetAllHarnessesTarget) => Promise<SetAllHarnessesResult>;
   onSetManySkillsAllHarnesses: (
     skillRefs: string[],

@@ -5,9 +5,11 @@ import type {
   OkResponse,
   SetSkillHarnessesRequest,
   SetSkillHarnessesResultDto,
+  SetSkillTagsRequest,
   SkillDetailDto,
   SkillsPageDto,
   SkillSourceStatusDto,
+  SkillTagsResponse,
   UpdateSkillDocumentRequest,
 } from "./types";
 import { fetchJson, postJson, putJson } from "../../../api/http";
@@ -18,6 +20,14 @@ export async function fetchSkillsPage(): Promise<SkillsPageDto> {
 
 export async function fetchSkillDetail(skillRef: string): Promise<SkillDetailDto> {
   return fetchJson<SkillDetailDto>(`/skills/${encodeURIComponent(skillRef)}`);
+}
+
+export async function setSkillTags(
+  skillRef: string,
+  tags: string[],
+): Promise<SkillTagsResponse> {
+  const body: SetSkillTagsRequest = { tags };
+  return putJson<SkillTagsResponse>(`/skills/${encodeURIComponent(skillRef)}/tags`, body);
 }
 
 export async function updateSkillDocument(

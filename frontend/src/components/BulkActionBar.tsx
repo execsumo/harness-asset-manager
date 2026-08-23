@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Check, CircleSlash2, Trash2, X } from "lucide-react";
+import { Check, CircleSlash2, Star, Trash2, X } from "lucide-react";
 
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
 
-export type MultiSelectAction = "enable-all" | "disable-all" | "delete";
+export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star";
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -14,6 +14,8 @@ interface BulkActionBarProps {
   onEnableAll: () => Promise<void>;
   onDisableAll: () => Promise<void>;
   onDelete: () => Promise<void>;
+  onStarSelected?: () => Promise<void>;
+  starLabel?: string;
   destructive: {
     /** Button aria-label + confirm button text (e.g. "Delete" / "Uninstall"). */
     actionLabel: string;
@@ -33,6 +35,8 @@ export function BulkActionBar({
   onEnableAll,
   onDisableAll,
   onDelete,
+  onStarSelected,
+  starLabel,
   destructive,
 }: BulkActionBarProps) {
   const [visible, setVisible] = useState(selectedCount > 0);
@@ -84,6 +88,21 @@ export function BulkActionBar({
           <span className="bulk-bar__divider" aria-hidden="true" />
 
           <div className="bulk-bar__group">
+            {onStarSelected ? (
+              <button
+                type="button"
+                className="bulk-bar__action"
+                onClick={() => void onStarSelected()}
+                disabled={disabled}
+              >
+                {pending === "star" ? (
+                  <LoadingSpinner size="sm" label="Starring" />
+                ) : (
+                  <Star size={15} />
+                )}
+                {starLabel ?? "Star selected"}
+              </button>
+            ) : null}
             <button
               type="button"
               className="bulk-bar__action"

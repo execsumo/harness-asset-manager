@@ -33,6 +33,7 @@ class ConfigSnapshotServiceTests(unittest.TestCase):
                 skills_store_manifest=tmp_path / "data" / "skills-manifest.json",
                 agents_root=tmp_path / "data" / "agents",
                 bindings_ledger_path=tmp_path / "data" / "bindings.json",
+                asset_tags_path=tmp_path / "data" / "asset-tags.json",
                 agents_audit_path=tmp_path / "data" / "agents-audit.json",
                 agents_conflicts_root=tmp_path / "data" / "agents" / "conflicts",
                 agents_reconcile_lock_path=tmp_path / "data" / "agents-reconcile.lock",

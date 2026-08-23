@@ -15,6 +15,7 @@ const rows: SkillListRow[] = [
     name: "Alpha",
     description: "First skill",
     displayStatus: "Managed",
+    tags: ["starred"],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
     cells: [
       { harness: "codex", label: "Codex", logoKey: "codex", state: "enabled", interactive: true },
@@ -26,6 +27,7 @@ const rows: SkillListRow[] = [
     name: "Zeta",
     description: "Last skill",
     displayStatus: "Managed",
+    tags: ["core"],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
     cells: [
       { harness: "codex", label: "Codex", logoKey: "codex", state: "disabled", interactive: true },

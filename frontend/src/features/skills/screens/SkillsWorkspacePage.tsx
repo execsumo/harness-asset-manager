@@ -12,10 +12,12 @@ import { useToast } from "../../../components/Toast";
 import { useCommonCopy } from "../../../i18n";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import { SkillDetailModal } from "../components/detail/SkillDetailModal";
+import { SkillTagFilterBar } from "../components/tags/SkillTagFilterBar";
 import { MatrixView } from "../components/matrix/MatrixView";
 import { SkillsEmptyState } from "../components/pane/SkillsEmptyState";
 import { useSkillsCopy } from "../i18n";
 import {
+  extractSkillTagCounts,
   filterSkills,
   skillsStatusCounts,
   type SkillsStatusFilter,
@@ -64,6 +66,8 @@ export default function SkillsWorkspacePage() {
     onMultiSelectEnableAll,
     onMultiSelectDisableAll,
     onMultiSelectDelete,
+    onMultiSelectStar,
+    onToggleStar,
     onManageAll,
     onManageSkill,
   } = context;
@@ -87,6 +91,40 @@ export default function SkillsWorkspacePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(() => extractSkillTagCounts(data), [data]);
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const currentTags = params.getAll("tag");
+      const normalized = tagToToggle.toLowerCase();
+      const hasTag = currentTags.some((t) => t.toLowerCase() === normalized);
+      params.delete("tag");
+      if (!hasTag) {
+        for (const t of currentTags) {
+          params.append("tag", t);
+        }
+        params.append("tag", tagToToggle);
+      } else {
+        for (const t of currentTags) {
+          if (t.toLowerCase() !== normalized) {
+            params.append("tag", t);
+          }
+        }
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // URL-backed harness deep-link filter (from Overview coverage cells).
   const harnessParam = searchParams.get("harness");
   const clearHarnessFilter = useCallback(() => {
@@ -96,8 +134,14 @@ export default function SkillsWorkspacePage() {
   }, [searchParams, setSearchParams]);
 
   const rows = useMemo(
-    () => filterSkills(data, { search: filters.search, status: statusFilter, harness: harnessParam }),
-    [data, filters.search, statusFilter, harnessParam],
+    () =>
+      filterSkills(data, {
+        search: filters.search,
+        status: statusFilter,
+        harness: harnessParam,
+        tags: selectedTags,
+      }),
+    [data, filters.search, statusFilter, harnessParam, selectedTags],
   );
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
@@ -110,7 +154,7 @@ export default function SkillsWorkspacePage() {
   const hasData = (data?.rows.length ?? 0) > 0;
   const isReady = controllerStatus === "ready" && Boolean(data);
   const hasActiveFilters =
-    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null;
+    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
   useEffect(() => {
     setSelectedUntrackedRefs((current) => {
@@ -168,9 +212,12 @@ export default function SkillsWorkspacePage() {
 
   const clearFilters = useCallback(() => {
     updateFilters({ search: "" });
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter, setStatusFilter, updateFilters]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams, updateFilters]);
 
   const statusOptions = useMemo(
     () => STATUS_VALUES.map((value) => ({ value, label: statusLabel(copy, value), meta: counts[value] })),
@@ -217,29 +264,37 @@ export default function SkillsWorkspacePage() {
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={filters.search}
-            onSearchChange={(search) => updateFilters({ search })}
-            searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
-            searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
-            trailing={
-              <>
-                {harnessParam ? (
-                  <HarnessFilterChip
-                    label={data?.harnessColumns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
-                    onClear={clearHarnessFilter}
+          <>
+            <FilterBar
+              searchValue={filters.search}
+              onSearchChange={(search) => updateFilters({ search })}
+              searchPlaceholder={statusFilter === "untracked" ? copy.review.searchPlaceholder : copy.inUse.searchPlaceholder}
+              searchLabel={statusFilter === "untracked" ? copy.review.searchLabel : copy.inUse.searchLabel}
+              trailing={
+                <>
+                  {harnessParam ? (
+                    <HarnessFilterChip
+                      label={data?.harnessColumns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                      onClear={clearHarnessFilter}
+                    />
+                  ) : null}
+                  <SelectionMenu
+                    value={statusFilter}
+                    options={statusOptions}
+                    active={statusFilter !== "all"}
+                    ariaLabel={statusLabel(copy, statusFilter)}
+                    onChange={setStatusFilter}
                   />
-                ) : null}
-                <SelectionMenu
-                  value={statusFilter}
-                  options={statusOptions}
-                  active={statusFilter !== "all"}
-                  ariaLabel={statusLabel(copy, statusFilter)}
-                  onChange={setStatusFilter}
-                />
-              </>
-            }
-          />
+                </>
+              }
+            />
+            <SkillTagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -258,6 +313,7 @@ export default function SkillsWorkspacePage() {
             onOpenSkill={onOpenSkill}
             onToggleChecked={toggleChecked}
             onToggleCell={onToggleCell}
+            onToggleStar={onToggleStar}
             onManageSkill={(ref) => void onManageSkill(ref)}
             pendingStructuralActions={pendingStructuralActions}
             untrackedSelectionOnly
@@ -285,6 +341,8 @@ export default function SkillsWorkspacePage() {
           onEnableAll={onMultiSelectEnableAll}
           onDisableAll={onMultiSelectDisableAll}
           onDelete={onMultiSelectDelete}
+          onStarSelected={onMultiSelectStar}
+          starLabel="Star selected"
           destructive={{
             actionLabel: copy.bulk.delete,
             confirmTitle: copy.bulk.confirmTitle(multiSelectedRefs.size),

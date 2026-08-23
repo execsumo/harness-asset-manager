@@ -13,6 +13,7 @@ import {
   manageAllSkills,
   manageSkill,
   setSkillHarnesses,
+  setSkillTags,
   unmanageSkill,
   updateSkill,
   updateSkillDocument,
@@ -337,3 +338,71 @@ export function useUpdateSkillDocumentMutation() {
     },
   });
 }
+
+export function useSetSkillTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillRef, tags }: { skillRef: string; tags: string[] }) =>
+      setSkillTags(skillRef, tags),
+    onMutate: async ({ skillRef, tags }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: skillsKeys.list() }),
+        queryClient.cancelQueries({ queryKey: skillsKeys.detail(skillRef) }),
+      ]);
+
+      const previousList = queryClient.getQueryData<SkillsPageDto>(skillsKeys.list());
+      const previousDetail = queryClient.getQueryData<SkillDetailDto>(skillsKeys.detail(skillRef));
+
+      if (previousList) {
+        queryClient.setQueryData<SkillsPageDto>(skillsKeys.list(), {
+          ...previousList,
+          rows: previousList.rows.map((row) =>
+            row.skillRef === skillRef ? { ...row, tags } : row,
+          ),
+        });
+      }
+
+      if (previousDetail) {
+        queryClient.setQueryData<SkillDetailDto>(skillsKeys.detail(skillRef), {
+          ...previousDetail,
+          tags,
+        });
+      }
+
+      return { previousList, previousDetail, skillRef };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousList) {
+        queryClient.setQueryData(skillsKeys.list(), context.previousList);
+      }
+      if (context?.previousDetail) {
+        queryClient.setQueryData(skillsKeys.detail(context.skillRef), context.previousDetail);
+      }
+    },
+    onSuccess: async (data, variables) => {
+      if (data?.tags) {
+        const previousList = queryClient.getQueryData<SkillsPageDto>(skillsKeys.list());
+        if (previousList) {
+          queryClient.setQueryData<SkillsPageDto>(skillsKeys.list(), {
+            ...previousList,
+            rows: previousList.rows.map((row) =>
+              row.skillRef === variables.skillRef ? { ...row, tags: data.tags } : row,
+            ),
+          });
+        }
+        const previousDetail = queryClient.getQueryData<SkillDetailDto>(skillsKeys.detail(variables.skillRef));
+        if (previousDetail) {
+          queryClient.setQueryData<SkillDetailDto>(skillsKeys.detail(variables.skillRef), {
+            ...previousDetail,
+            tags: data.tags,
+          });
+        }
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
+        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
+      ]);
+    },
+  });
+}
+

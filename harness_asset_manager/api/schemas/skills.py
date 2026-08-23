@@ -94,6 +94,7 @@ class SkillTableRowResponse(BaseModel):
     name: str
     description: str
     displayStatus: SkillStatus
+    tags: list[str] = Field(default_factory=list)
     actions: SkillRowActionsResponse
     cells: list[HarnessCellResponse]
 
@@ -140,12 +141,21 @@ class UpdateSkillDocumentRequest(BaseModel):
     metadata: list[SkillMetadataEntryResponse] | dict[str, str] | None = None
 
 
+class SetSkillTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
+class SkillTagsResponse(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
 class SkillDetailResponse(BaseModel):
     skillRef: str
     name: str
     description: str
     displayStatus: SkillStatus
     attentionMessage: str | None
+    tags: list[str] = Field(default_factory=list)
     actions: SkillDetailActionsResponse
     harnessCells: list[HarnessCellResponse]
     locations: list[SkillLocationResponse]
@@ -170,6 +180,7 @@ __all__ = [
     "SetSkillHarnessesFailureResponse",
     "SetSkillHarnessesRequest",
     "SetSkillHarnessesResultResponse",
+    "SetSkillTagsRequest",
     "SkillDetailActionsResponse",
     "SkillDetailResponse",
     "SkillLocationResponse",
@@ -180,6 +191,7 @@ __all__ = [
     "SkillStatus",
     "SkillStopManagingStatus",
     "SkillTableRowResponse",
+    "SkillTagsResponse",
     "SkillUpdateStatus",
     "SkillsPageResponse",
     "SkillsSummaryResponse",

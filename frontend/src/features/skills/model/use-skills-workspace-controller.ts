@@ -20,6 +20,7 @@ import {
   useManageAllSkillsMutation,
   useManageSkillMutation,
   useSetSkillHarnessesMutation,
+  useSetSkillTagsMutation,
   useSkillsListQuery,
   useToggleSkillMutation,
   useUnmanageSkillMutation,
@@ -37,6 +38,8 @@ export interface SkillsWorkspaceController {
   closeSelectedSkill: () => void;
   handleManageSkill: (skillRef: string) => Promise<void>;
   handleToggleSkill: (skillRef: string, harness: string, currentState: HarnessCellState) => Promise<void>;
+  handleToggleStar: (skillRef: string) => Promise<void>;
+  handleSetTags: (skillRef: string, tags: string[]) => Promise<void>;
   handleUpdateSkill: (skillRef: string) => Promise<void>;
   handleRemoveSkill: (skillRef: string) => Promise<void>;
   handleDeleteSkill: (skillRef: string) => Promise<void>;
@@ -47,6 +50,7 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
   const listQuery = useSkillsListQuery();
   const toggleMutation = useToggleSkillMutation();
   const setHarnessesMutation = useSetSkillHarnessesMutation();
+  const setTagsMutation = useSetSkillTagsMutation();
   const manageMutation = useManageSkillMutation();
   const manageAllMutation = useManageAllSkillsMutation();
   const updateMutation = useUpdateSkillMutation();
@@ -417,6 +421,66 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     return byRef;
   }
 
+  const handleToggleStar = useCallback(
+    async (skillRef: string): Promise<void> => {
+      const row = data?.rows.find((candidate) => candidate.skillRef === skillRef);
+      if (!row) return;
+      const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? (row.tags || []).filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...(row.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+
+      try {
+        await setTagsMutation.mutateAsync({
+          skillRef,
+          tags: nextTags,
+        });
+      } catch (err) {
+        setActionErrorMessage(err instanceof Error ? err.message : "Failed to update star.");
+      }
+    },
+    [data, setTagsMutation],
+  );
+
+  const handleSetTags = useCallback(
+    async (skillRef: string, tags: string[]): Promise<void> => {
+      try {
+        await setTagsMutation.mutateAsync({
+          skillRef,
+          tags,
+        });
+      } catch (err) {
+        setActionErrorMessage(err instanceof Error ? err.message : "Failed to update tags.");
+        throw err;
+      }
+    },
+    [setTagsMutation],
+  );
+
+  const handleMultiSelectStar = useCallback(async (): Promise<void> => {
+    if (multiSelectedRefs.size === 0) return;
+    setMultiSelectPending("star");
+    try {
+      const refs = Array.from(multiSelectedRefs);
+      for (const ref of refs) {
+        const row = data?.rows.find((r) => r.skillRef === ref);
+        if (!row) continue;
+        const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+        if (!isStarred) {
+          const nextTags = ["starred", ...(row.tags || [])];
+          try {
+            await setTagsMutation.mutateAsync({ skillRef: ref, tags: nextTags });
+          } catch {
+            // continue with remaining
+          }
+        }
+      }
+      setMultiSelectedRefs(new Set());
+    } finally {
+      setMultiSelectPending(null);
+    }
+  }, [data, multiSelectedRefs, setTagsMutation]);
+
   const context: SkillsWorkspaceContextValue = {
     data,
     hasData,
@@ -438,6 +502,9 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     onMultiSelectEnableAll: handleMultiSelectEnableAll,
     onMultiSelectDisableAll: handleMultiSelectDisableAll,
     onMultiSelectDelete: handleMultiSelectDelete,
+    onMultiSelectStar: handleMultiSelectStar,
+    onToggleStar: handleToggleStar,
+    onSetTags: handleSetTags,
     onSetSkillAllHarnesses: handleSetSkillAllHarnesses,
     onSetManySkillsAllHarnesses: handleSetManySkillsAllHarnesses,
     onUpdateSkill: handleUpdateSkill,
@@ -455,6 +522,8 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     closeSelectedSkill,
     handleManageSkill,
     handleToggleSkill,
+    handleToggleStar,
+    handleSetTags,
     handleUpdateSkill,
     handleRemoveSkill,
     handleDeleteSkill,

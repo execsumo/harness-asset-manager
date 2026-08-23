@@ -20,6 +20,7 @@ interface MatrixViewProps {
   onOpenSkill: (skillRef: string) => void;
   onToggleChecked: (skillRef: string) => void;
   onToggleCell: (row: SkillListRow, cell: HarnessCell) => void;
+  onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
   untrackedSelectionOnly?: boolean;
@@ -36,6 +37,7 @@ export function MatrixView({
   onOpenSkill,
   onToggleChecked,
   onToggleCell,
+  onToggleStar,
   onManageSkill,
   pendingStructuralActions,
   untrackedSelectionOnly = false,
@@ -116,6 +118,7 @@ export function MatrixView({
             onOpenSkill={onOpenSkill}
             onToggleChecked={onToggleChecked}
             onToggleCell={onToggleCell}
+            onToggleStar={onToggleStar}
             onManageSkill={onManageSkill}
             pendingStructuralActions={pendingStructuralActions}
             untrackedSelectionOnly={untrackedSelectionOnly}

@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.sources import (
@@ -20,16 +20,21 @@ from .presenters import skill_detail_payload, skills_page_payload, source_status
 from .read_models import SkillsReadModelService
 from .source_fetch import SourceFetchService
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class SkillsQueryService:
     def __init__(
         self,
         read_models: SkillsReadModelService,
         source_fetcher: SourceFetchService,
+        asset_tags: AssetTagService | None = None,
         reconcile: Callable[[], object] | None = None,
     ) -> None:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
+        self.asset_tags = asset_tags
         self._reconcile = reconcile
         # Reentrancy guard, per thread. A plain instance flag would let a concurrent
         # reader see another thread's in-flight reconcile and skip its own, returning a
@@ -50,7 +55,8 @@ class SkillsQueryService:
         }
 
     def list_skills(self) -> dict[str, object]:
-        return skills_page_payload(self.inventory())
+        all_tags = self.asset_tags.get_tags_for_family("skills") if self.asset_tags is not None else {}
+        return skills_page_payload(self.inventory(), tags=all_tags)
 
     def get_skill_detail(self, skill_ref: str) -> dict[str, object] | None:
         inventory = self.inventory()
@@ -59,12 +65,14 @@ class SkillsQueryService:
             return None
         package_root = self.resolve_detail_package_root(entry)
         document_markdown, metadata = read_skill_document_and_metadata(package_root)
+        tags = self.asset_tags.get_tags("skills", entry.skill_ref) if self.asset_tags is not None else []
         return skill_detail_payload(
             entry,
             columns=inventory.columns,
             document_markdown=document_markdown,
             metadata=metadata,
             source_links=self.build_source_links(entry),
+            tags=tags,
         )
 
     def get_skill_source_status(self, skill_ref: str) -> dict[str, object] | None:

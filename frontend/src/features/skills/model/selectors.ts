@@ -16,11 +16,19 @@ export interface SkillsFilters {
   status: SkillsStatusFilter;
   /** Restrict to rows that touch this harness (id). */
   harness?: string | null;
+  /** Restrict to rows matching any of these tags (OR within tags). */
+  tags?: string[] | null;
 }
 
 export interface AlignedHarnessCell {
   column: HarnessColumn;
   cell: SkillListRow["cells"][number] | null;
+}
+
+export interface SkillTagCount {
+  tag: string;
+  count: number;
+  isStarred: boolean;
 }
 
 export function hasActiveSkillsInUseFilters(filters: SkillsInUseFilterState): boolean {
@@ -60,7 +68,8 @@ export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFi
   const matchingRows = [...managedRows, ...untrackedRows].filter(
     (row) =>
       matchesSearch(row, filters.search, filters.status === "untracked" ? ["found"] : ["enabled", "disabled", "found"]) &&
-      matchesHarness(row, filters.harness),
+      matchesHarness(row, filters.harness) &&
+      matchesTags(row, filters.tags),
   );
 
   if (filters.status === "untracked") return matchingRows.filter((row) => untrackedRows.includes(row));
@@ -80,6 +89,47 @@ export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFi
         return true;
     }
   });
+}
+
+function matchesTags(row: SkillListRow, tags: string[] | null | undefined): boolean {
+  if (!tags || tags.length === 0) return true;
+  const rowTags = (row.tags || []).map((t) => t.toLowerCase());
+  return tags.some((tag) => rowTags.includes(tag.toLowerCase()));
+}
+
+export function extractSkillTagCounts(data: SkillsWorkspaceData | null): SkillTagCount[] {
+  if (!data) return [{ tag: "starred", count: 0, isStarred: true }];
+  const countsMap = new Map<string, { display: string; count: number }>();
+  let starredCount = 0;
+
+  for (const row of data.rows) {
+    const seenInRow = new Set<string>();
+    for (const tag of row.tags || []) {
+      const lower = tag.toLowerCase();
+      if (seenInRow.has(lower)) continue;
+      seenInRow.add(lower);
+
+      if (lower === "starred") {
+        starredCount += 1;
+      } else {
+        const existing = countsMap.get(lower);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          countsMap.set(lower, { display: tag, count: 1 });
+        }
+      }
+    }
+  }
+
+  const regularTags = Array.from(countsMap.values())
+    .sort((a, b) => a.display.localeCompare(b.display, undefined, { sensitivity: "base" }))
+    .map(({ display, count }) => ({ tag: display, count, isStarred: false }));
+
+  return [
+    { tag: "starred", count: starredCount, isStarred: true },
+    ...regularTags,
+  ];
 }
 
 export function skillsStatusCounts(data: SkillsWorkspaceData | null): Record<SkillsStatusFilter, number> {

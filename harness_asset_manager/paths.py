@@ -30,6 +30,7 @@ class AppPaths:
     skills_store_manifest: Path
     agents_root: Path
     bindings_ledger_path: Path
+    asset_tags_path: Path
     agents_audit_path: Path
     agents_conflicts_root: Path
     agents_reconcile_lock_path: Path
@@ -63,6 +64,7 @@ def resolve_app_paths(env: dict[str, str] | None = None) -> AppPaths:
         # Resolved from data_dir rather than hardcoded, so store migrations move the
         # complete central store without another family-specific path.
         bindings_ledger_path=data_dir / "bindings.json",
+        asset_tags_path=data_dir / "asset-tags.json",
         agents_audit_path=data_dir / "agents-audit.json",
         # A subdirectory, deliberately: AgentStore.scan() globs the agents root's top
         # level only, so a preserved conflict copy can never be read back as an agent.
