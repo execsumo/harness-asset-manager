@@ -2,6 +2,76 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-23 — Launch pattern: real store vs `--state-dir`; tailnet relaunch; inline document editing shipped; unmanaged agent details fixed
+
+### Relaunching the app — READ THIS FIRST
+
+**The running instance must use the REAL store (`~/.harnessam`), which means NO `--state-dir`.**
+`--state-dir` is a full isolation override: it relocates config, data, AND runtime state
+to the given directory (`paths.py::_base_dirs`). Launching with
+`--state-dir .artifacts/runtime` (as `scripts/start-dev.sh` does — it exists for sandboxed
+dev/CI runs) silently points the app at an empty scratch store: the Overview showed zero
+assets and all 73 skills "disappeared". Nothing was lost; the store was just invisible.
+
+The correct production/local launch (also what serves over tailnet):
+
+```bash
+./.venv/bin/python -m harness_asset_manager start \
+  --host 0.0.0.0 --port 8000 --allow-remote --no-open-browser
+```
+
+- `--allow-remote` is required for any non-loopback `--host` and also relaxes the loopback
+  Host/Origin guards so tailnet peers can reach it. The API is UNAUTHENTICATED — tailnet-only,
+  never funnel/public.
+- Tailnet URL: `http://vibebox.goose-marlin.ts.net:8000/` (Tailscale IP `100.119.233.79`).
+- One process serves API + built SPA; rebuild `frontend/dist` (`npm run build`) after any
+  frontend change, then restart.
+- Stop with `bash scripts/stop-dev.sh`. Note: `start` refuses to double-start via runtime
+  state in the (omitted) state dir — if stop says "not running" but the port answers, kill
+  the pid from the previous launch directly.
+- Verify after launch: `/api/health` must report `"homeDir": "/home/dev"` (i.e. `~/.harnessam`),
+  NOT `.artifacts/runtime`, and `/api/skills` summary should show ~73 managed.
+
+### Inline document editing in detail views (delegated to agy, merged)
+
+Skills, Agents, and Slash Commands detail views now have a universal Document section
+(Preview|Edit) with a structured frontmatter editor — known fields as labeled inputs per
+family (agents: name/description/tools; skills: name/description; slash: name locked +
+description), all custom/user-added frontmatter keys as order-preserving editable rows,
+optional raw-YAML mode, dirty-state Save/Cancel with an unsaved-changes discard guard.
+The agents modal Edit dialog was removed in favor of inline editing. Branch
+`detail-editing` (7 commits), independently verified then merged to `main` and pushed.
+
+Backend: new `PUT /api/skills/{ref}/document` (atomic write, inventory invalidation);
+agent update requests carry ordered extra-frontmatter `metadata`; slash-command codec passes
+custom frontmatter lines through verbatim. OpenAPI regenerated. Owner review caught one real
+data-loss bug before merge: the skills endpoint silently dropped ALL frontmatter when a
+request omitted `metadata` — fixed to carry current frontmatter forward (mirroring the agents
+contract), regression-tested at the integration level (`78445a5`).
+
+### Unmanaged agent details fixed (owner, this session)
+
+Clicking details on an unmanaged agent (ref `<harness>/<slug>`) always failed with
+`unsafe agent ref` — pre-existing: the route handed the namespaced ref to `AgentStore.path_for()`,
+which correctly rejects path separators. Managed agents were unaffected; the owner's agents are
+all unadopted droid entries, which is why every click failed. Fix:
+
+- `AgentsInventory.detail()` now dispatches slashed refs to `_unmanaged_detail()`: parses the
+  harness file read-only, returns detail with `storePath=null`, `canEdit=false`,
+  `canDelete=false`, plus a note pointing at Adopt. Per-harness row logic extracted into
+  `_harness_rows()` shared by both paths. `AgentDetail.store_path` is now `Path | None`;
+  response schema gained nullable `storePath` and `canEdit` (OpenAPI regenerated).
+- Frontend: `DocumentSection` gained `editable=false` mode (preview-only, no toggle/save bar);
+  agent locations section hides the store card when there is no store copy and lists the owning
+  harness's file path instead.
+- Regression tests in `tests/integration/test_agents_routes.py` (read-only inspection shape;
+  unsafe/missing refs → 404).
+
+Validation on the final tree: typecheck clean; backend 583 unit + 197 integration OK; Vitest
+322/322 across 66 files; build passes; codegen check clean once the regenerated files are
+committed. Server relaunched from merged tree against the real store; unmanaged agent detail
+verified live over HTTP.
+
 ## 2026-08-22 — Overview redesigned around the Active-harnesses table; coverage cells deep-link
 
 Two commits on `main` (`7c77bed`, `ae3d9e2`). The Overview page is now action-first:
