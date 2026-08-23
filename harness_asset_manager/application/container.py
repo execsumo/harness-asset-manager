@@ -366,10 +366,11 @@ def build_backend_container(
     hooks_store = HookStore(paths.hooks_store_manifest)
     hooks_read_models = HooksReadModelService.from_kernel(store=hooks_store, kernel=harness_kernel)
     invalidation.register(hooks_read_models)
-    hooks_queries = HooksQueryService(hooks_read_models)
+    hooks_queries = HooksQueryService(hooks_read_models, asset_tags=asset_tags)
     hooks_mutations = HooksMutationService(
         store=hooks_store,
         read_models=hooks_read_models,
+        asset_tags=asset_tags,
     )
     hooks_auto_adopt = ObservedConfigAutoAdoptService(
         read_models=hooks_read_models,

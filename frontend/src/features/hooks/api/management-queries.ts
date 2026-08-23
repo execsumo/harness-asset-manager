@@ -14,6 +14,7 @@ import {
   promoteHook,
   reconcileHook,
   setHookHarnesses,
+  setHookTags,
   uninstallHook,
 } from "./management-client";
 import { invalidateHooksQueries } from "./invalidation";
@@ -28,6 +29,15 @@ export function useHooksInventoryQuery() {
     queryFn: fetchHooksInventory,
     refetchInterval: HOOKS_INVENTORY_REFETCH_INTERVAL_MS,
     ...queryPolicy(HOOKS_STALE_TIME_MS, HOOKS_GC_TIME_MS),
+  });
+}
+
+export function useSetHookTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
+      setHookTags(id, tags),
+    onSettled: () => invalidateHooksQueries(queryClient),
   });
 }
 

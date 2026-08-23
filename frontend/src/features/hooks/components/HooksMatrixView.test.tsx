@@ -102,7 +102,7 @@ describe("HooksMatrixView", () => {
 
     const table = screen.getByRole("table", { name: "Hooks harness matrix" });
     const headerCells = table.querySelectorAll("thead tr > th");
-    expect(headerCells).toHaveLength(columns.length + 4);
+    expect(headerCells).toHaveLength(columns.length + 5);
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha Hook", "Zeta Hook"]);
 
@@ -120,6 +120,15 @@ describe("HooksMatrixView", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sort by Codex" }));
     expect(rowNames()).toEqual(["Alpha Hook", "Zeta Hook"]);
+  });
+
+  it("toggles star on a hook row", () => {
+    const onToggleStar = vi.fn();
+    const props = { ...buildProps(), onToggleStar };
+    render(<HooksMatrixView {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Star alpha-hook" }));
+    expect(onToggleStar).toHaveBeenCalledWith("alpha-hook");
   });
 });
 

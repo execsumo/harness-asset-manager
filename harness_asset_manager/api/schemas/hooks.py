@@ -93,6 +93,15 @@ class HookInventoryEntryResponse(BaseModel):
     canEnable: bool
     enabledStatus: Literal["enabled", "disabled"]
     sightings: list[HookBindingResponse]
+    tags: list[str] = Field(default_factory=list)
+
+
+class SetHookTagsRequest(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+
+
+class HookTagsResponse(BaseModel):
+    tags: list[str] = Field(default_factory=list)
 
 
 class HookInventoryResponse(BaseModel):
@@ -138,7 +147,9 @@ __all__ = [
     "HookMutationResponse",
     "HookSetHarnessesResultResponse",
     "HookSpecResponse",
+    "HookTagsResponse",
     "PromoteHookRequest",
     "ReconcileHookRequest",
     "SetHookHarnessesRequest",
+    "SetHookTagsRequest",
 ]

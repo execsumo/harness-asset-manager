@@ -5,13 +5,21 @@ import type {
   HookInventoryEntryDto,
 } from "../api/management-types";
 import { hooksCopy, type HooksCopy } from "../i18n";
+import {
+  extractAssetTagCounts,
+  matchesAssetTags,
+  type AssetTagCount,
+} from "../../../components/tags/tag-counts";
 
 export type HooksStatusFilter = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked";
 export type InUsePillValue = Exclude<HooksStatusFilter, "untracked">;
 
+export type HookTagCount = AssetTagCount;
+
 export interface HooksInUseFilters {
   search: string;
   pill: InUsePillValue;
+  tags?: string[] | null;
 }
 
 export interface HooksFilters {
@@ -19,6 +27,14 @@ export interface HooksFilters {
   status: HooksStatusFilter;
   /** Restrict to entries sighted on this harness (id). */
   harness?: string | null;
+  tags?: string[] | null;
+}
+
+export function extractHookTagCounts(
+  inventory: HookInventoryDto | null | undefined,
+): HookTagCount[] {
+  const managed = inventory?.entries.filter((entry) => entry.kind === "managed");
+  return extractAssetTagCounts(managed);
 }
 
 export type HooksMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
@@ -83,6 +99,7 @@ export function filterHooksInUse(
   const harnessCount = addressable.size;
   return inventory.entries.filter((entry) => {
     if (entry.kind !== "managed") return false;
+    if (filters.tags && filters.tags.length > 0 && !matchesAssetTags(entry, filters.tags)) return false;
     if (!matchesSearch(entry, filters.search.trim())) return false;
     const enabledCount = inUseBindingCount(entry, addressable);
     switch (filters.pill) {
@@ -113,6 +130,11 @@ export function filterHooks(
   const needle = filters.search.trim();
 
   return inventory.entries.filter((entry) => {
+    if (filters.tags && filters.tags.length > 0) {
+      if (entry.kind !== "managed" || !matchesAssetTags(entry, filters.tags)) {
+        return false;
+      }
+    }
     if (!matchesSearch(entry, needle)) return false;
     if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.status === "untracked") return entry.kind === "unmanaged";

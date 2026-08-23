@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import threading
 from collections.abc import Callable
 
@@ -10,6 +11,9 @@ from .inventory import build_inventory
 from .managed_state import entry_payload, inventory_payload
 from .read_models import HooksReadModelService
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags import AssetTagService
+
 
 class HooksQueryService:
     """Read-side service exposing canonical hooks config and inventory views."""
@@ -18,9 +22,11 @@ class HooksQueryService:
         self,
         read_models: HooksReadModelService,
         reconcile: Callable[[], object] | None = None,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.read_models = read_models
         self._reconcile = reconcile
+        self.asset_tags = asset_tags
         # Reentrancy guard, per thread (mirrors SkillsQueryService). Reconcile does
         # not currently read back through this service, but the wiring is identical
         # to the slash-commands family where that assumption broke; keep the
@@ -79,11 +85,17 @@ class HooksQueryService:
             for scan in scans
             if scan.scan_issue
         )
+        tags_by_ref = (
+            self.asset_tags.get_tags_for_family("hooks")
+            if self.asset_tags is not None
+            else {}
+        )
         return build_inventory(
             managed_hooks=self.read_models.store.list_managed(),
             specs=self.read_models.store.list_managed(),
             scans=scans,
             issues=issues,
+            tags_by_ref=tags_by_ref,
         )
 
 

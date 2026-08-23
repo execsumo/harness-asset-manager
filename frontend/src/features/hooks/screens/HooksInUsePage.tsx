@@ -8,14 +8,21 @@ import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import { useCommonCopy } from "../../../i18n";
 import { HooksMatrixView } from "../components/HooksMatrixView";
 import { HookDetailSheet } from "../components/detail/HookDetailSheet";
 import { HookFormDialog } from "../components/edit/HookFormDialog";
 import { HooksFilterMenu } from "../components/HooksFilterMenu";
 import { useHooksCopy } from "../i18n";
-import { filterHooks, hooksStatusCounts, type HooksStatusFilter } from "../model/selectors";
+import {
+  extractHookTagCounts,
+  filterHooks,
+  hooksStatusCounts,
+  type HooksStatusFilter,
+} from "../model/selectors";
 import { useHooksManagementController } from "../model/use-hooks-management-controller";
+import { useSetHookTagsMutation } from "../api/management-queries";
 
 const DETAIL_PARAM = "hook";
 const STATUS_VALUES: HooksStatusFilter[] = [
@@ -57,6 +64,7 @@ export default function HooksInUsePage() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const setTagsMutation = useSetHookTagsMutation();
   const copy = useHooksCopy();
   const common = useCommonCopy();
 
@@ -80,14 +88,68 @@ export default function HooksInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(
+    () => extractHookTagCounts(inventory),
+    [inventory],
+  );
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const current = params.getAll("tag");
+      const normalizedToggle = tagToToggle.toLowerCase();
+      params.delete("tag");
+      let found = false;
+      for (const t of current) {
+        if (t.toLowerCase() === normalizedToggle) {
+          found = true;
+        } else {
+          params.append("tag", t);
+        }
+      }
+      if (!found) {
+        params.append("tag", tagToToggle);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const onToggleStarredFilter = useCallback(() => {
+    toggleTagFilter("starred");
+  }, [toggleTagFilter]);
+
+  const handleToggleStar = useCallback(
+    async (id: string) => {
+      const hookEntry = inventory?.entries.find((e) => e.id === id);
+      if (!hookEntry) return;
+      const currentTags = hookEntry.tags || [];
+      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+      await setTagsMutation.mutateAsync({ id, tags: nextTags });
+    },
+    [inventory, setTagsMutation],
+  );
+
   const entries = useMemo(
-    () => filterHooks(inventory, { search, status: statusFilter, harness: harnessParam }),
-    [inventory, search, statusFilter, harnessParam],
+    () => filterHooks(inventory, { search, status: statusFilter, harness: harnessParam, tags: selectedTags }),
+    [inventory, search, statusFilter, harnessParam, selectedTags],
   );
   const counts = useMemo(() => hooksStatusCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
   const isReady = status === "ready" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
   // Keep only currently visible, untracked rows selected as filters or inventory change.
   useEffect(() => {
@@ -179,9 +241,12 @@ export default function HooksInUsePage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter, setStatusFilter]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const harnessFilterLabel = harnessParam
     ? inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam
@@ -207,24 +272,32 @@ export default function HooksInUsePage() {
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={copy.inUse.searchPlaceholder}
-            searchLabel={copy.inUse.searchLabel}
-            trailing={
-              <>
-                {harnessFilterLabel ? (
-                  <HarnessFilterChip label={harnessFilterLabel} onClear={clearHarnessFilter} />
-                ) : null}
-                <HooksFilterMenu
-                  pill={statusFilter}
-                  counts={counts}
-                  onChange={setStatusFilter}
-                />
-              </>
-            }
-          />
+          <>
+            <FilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={copy.inUse.searchPlaceholder}
+              searchLabel={copy.inUse.searchLabel}
+              trailing={
+                <>
+                  {harnessFilterLabel ? (
+                    <HarnessFilterChip label={harnessFilterLabel} onClear={clearHarnessFilter} />
+                  ) : null}
+                  <HooksFilterMenu
+                    pill={statusFilter}
+                    counts={counts}
+                    onChange={setStatusFilter}
+                  />
+                </>
+              }
+            />
+            <TagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -249,6 +322,9 @@ export default function HooksInUsePage() {
             onEnableHarness={(id, harness) => void handleToggleHarness(id, harness, false)}
             onDisableHarness={(id, harness) => void handleToggleHarness(id, harness, true)}
             onAdopt={(id) => void handlePromoteHook(id)}
+            onToggleStar={handleToggleStar}
+            starredFilterActive={starredFilterActive}
+            onToggleStarredFilter={onToggleStarredFilter}
           />
         ) : hasData ? (
           <div className="empty-panel">

@@ -43,9 +43,11 @@ from .hooks import (
     HookMutationResponse,
     HookSetHarnessesResultResponse,
     HookSpecResponse,
+    HookTagsResponse,
     PromoteHookRequest,
     ReconcileHookRequest,
     SetHookHarnessesRequest,
+    SetHookTagsRequest,
 )
 from .mcp import (
     AddMcpServerRequest,
@@ -296,9 +298,11 @@ __all__ = [
     "HookMutationResponse",
     "HookSetHarnessesResultResponse",
     "HookSpecResponse",
+    "HookTagsResponse",
     "PromoteHookRequest",
     "ReconcileHookRequest",
     "SetHookHarnessesRequest",
+    "SetHookTagsRequest",
     "AddPermissionRequest",
     "DisablePermissionRequest",
     "EnablePermissionRequest",

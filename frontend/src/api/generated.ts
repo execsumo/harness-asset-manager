@@ -315,6 +315,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/hooks/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Hook Tags */
+        put: operations["set_hook_tags_api_hooks__id__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/marketplace/clis/items/{slug}": {
         parameters: {
             query?: never;
@@ -1764,6 +1781,8 @@ export interface components {
             /** Sightings */
             sightings: components["schemas"]["HookBindingResponse"][];
             spec?: components["schemas"]["HookSpecResponse"] | null;
+            /** Tags */
+            tags?: string[];
         };
         /** HookInventoryIssueResponse */
         HookInventoryIssueResponse: {
@@ -1821,6 +1840,11 @@ export interface components {
             revision: string;
             /** Timeout */
             timeout?: number | null;
+        };
+        /** HookTagsResponse */
+        HookTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** InstallMarketplaceSkillRequest */
         InstallMarketplaceSkillRequest: {
@@ -2631,6 +2655,11 @@ export interface components {
              * @enum {string}
              */
             target: "enabled" | "disabled";
+        };
+        /** SetHookTagsRequest */
+        SetHookTagsRequest: {
+            /** Tags */
+            tags?: string[];
         };
         /** SetMcpServerHarnessesRequest */
         SetMcpServerHarnessesRequest: {
@@ -4865,6 +4894,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HookSetHarnessesResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_hook_tags_api_hooks__id__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHookTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HookTagsResponse"];
                 };
             };
             /** @description Bad Request */

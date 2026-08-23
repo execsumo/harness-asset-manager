@@ -64,6 +64,7 @@ class HookInventoryEntry:
     sightings: tuple[HookBinding, ...]
     is_managed: bool
     can_enable: bool = True
+    tags: tuple[str, ...] = ()
 
     @property
     def kind(self) -> str:
