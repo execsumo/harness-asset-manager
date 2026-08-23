@@ -287,6 +287,7 @@ def build_backend_container(
         slash_command_sync_state,
         resolve_slash_snapshot,
         slash_command_path_policy,
+        asset_tags=asset_tags,
     )
     slash_command_queries = SlashCommandQueryService(slash_command_read_models)
     slash_command_mutations = SlashCommandMutationService(
@@ -296,6 +297,7 @@ def build_backend_container(
         slash_command_read_models,
         SlashCommandPlanner(slash_command_path_policy),
         resolve_slash_snapshot,
+        asset_tags=asset_tags,
     )
     slash_auto_adopt = SlashCommandsAutoAdoptService(
         read_models=slash_command_read_models,

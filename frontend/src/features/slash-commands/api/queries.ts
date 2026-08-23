@@ -7,6 +7,7 @@ import {
   fetchSlashCommands,
   importSlashCommand,
   resolveSlashCommandReview,
+  setSlashCommandTags,
   syncSlashCommand,
   updateSlashCommand,
 } from "./client";
@@ -34,6 +35,15 @@ export function useSlashCommandsQuery() {
 
 export async function invalidateSlashCommandQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: slashCommandKeys.all });
+}
+
+export function useSetSlashCommandTagsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name, tags }: { name: string; tags: string[] }) =>
+      setSlashCommandTags(name, tags),
+    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+  });
 }
 
 export function useCreateSlashCommandMutation() {

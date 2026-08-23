@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SlashCommandDto, SlashCommandReviewDto, SlashTargetId } from "../api/types";
 import {
   countSyncedTargets,
+  extractSlashCommandTagCounts,
   filterSlashCommandEntries,
   filterSlashCommands,
   filterSlashReviewRows,
@@ -91,6 +92,32 @@ describe("slash command selectors", () => {
       "Changed in Codex",
       "Missing from Codex",
     ]);
+  });
+
+  it("extracts tag counts and filters by tags", () => {
+    const taggedCommands: SlashCommandDto[] = [
+      { ...command("cmd1", ["codex"]), tags: ["starred", "devops"] },
+      { ...command("cmd2", ["claude"]), tags: ["devops", "core"] },
+      { ...command("cmd3", ["agy"]), tags: ["starred"] },
+    ];
+
+    const tagCounts = extractSlashCommandTagCounts(taggedCommands);
+    expect(tagCounts).toEqual([
+      { tag: "starred", count: 2, isStarred: true },
+      { tag: "core", count: 1, isStarred: false },
+      { tag: "devops", count: 2, isStarred: false },
+    ]);
+
+    const entries = slashCommandInventoryEntries({
+      commands: taggedCommands,
+      reviewCommands: [reviewRow("unmanaged", ["import"])],
+    });
+
+    const starredFiltered = filterSlashCommandEntries(entries, "", "all", null, ["starred"]);
+    expect(starredFiltered.map((e) => e.id)).toEqual(["cmd1", "cmd3"]);
+
+    const devopsFiltered = filterSlashCommandEntries(entries, "", "all", null, ["devops"]);
+    expect(devopsFiltered.map((e) => e.id)).toEqual(["cmd1", "cmd2"]);
   });
 });
 

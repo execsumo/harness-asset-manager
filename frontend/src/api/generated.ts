@@ -1172,6 +1172,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/slash-commands/{name}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Slash Command Tags */
+        put: operations["set_slash_command_tags_api_slash_commands__name__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2665,6 +2682,11 @@ export interface components {
             /** Tags */
             tags?: string[];
         };
+        /** SetSlashCommandTagsRequest */
+        SetSlashCommandTagsRequest: {
+            /** Tags */
+            tags?: string[];
+        };
         /**
          * SettingsAutoAdoptResponse
          * @description Whether Harness Asset Manager may repair drifted bindings without being asked.
@@ -2945,6 +2967,8 @@ export interface components {
             prompt: string;
             /** Synctargets */
             syncTargets: components["schemas"]["SlashSyncEntryResponse"][];
+            /** Tags */
+            tags?: string[];
         };
         /** SlashCommandReviewResponse */
         SlashCommandReviewResponse: {
@@ -2978,6 +3002,11 @@ export interface components {
             target: "claude" | "codex" | "agy" | "cursor" | "opencode" | "hermes" | "droid";
             /** Targetlabel */
             targetLabel: string;
+        };
+        /** SlashCommandTagsResponse */
+        SlashCommandTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** SlashCommandUpdateRequest */
         SlashCommandUpdateRequest: {
@@ -9273,6 +9302,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SlashCommandMutationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_slash_command_tags_api_slash_commands__name__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSlashCommandTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlashCommandTagsResponse"];
                 };
             };
             /** @description Bad Request */

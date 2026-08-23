@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.api.schemas import (
+    SetSlashCommandTagsRequest,
     SlashCommandDeleteResponse,
     SlashCommandImportRequest,
     SlashCommandListResponse,
@@ -11,6 +12,7 @@ from harness_asset_manager.api.schemas import (
     SlashCommandMutationResponse,
     SlashCommandResolveRequest,
     SlashCommandResponse,
+    SlashCommandTagsResponse,
     SlashCommandUpdateRequest,
     SlashSyncRequest,
 )
@@ -22,6 +24,17 @@ router = APIRouter(prefix="/api/slash-commands")
 @router.get("", response_model=SlashCommandListResponse)
 def list_slash_commands(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     return container.slash_command_queries.list_commands()
+
+
+@router.put("/{name}/tags", response_model=SlashCommandTagsResponse)
+def set_slash_command_tags(
+    name: str,
+    body: SetSlashCommandTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.slash_command_mutations.set_tags(name, body.tags)
+    container.invalidation.invalidate_all()
+    return result
 
 
 @router.get("/{name}", response_model=SlashCommandResponse)

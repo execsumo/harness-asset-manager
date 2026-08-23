@@ -4,11 +4,18 @@ import type {
   SlashReviewAction,
   SlashTargetDto,
 } from "../api/types";
+import {
+  extractAssetTagCounts,
+  matchesAssetTags,
+  type AssetTagCount,
+} from "../../../components/tags/tag-counts";
 
 export type SlashMatrixSortKey = "name" | "coverage" | { target: string };
 export type SlashMatrixSortDirection = "asc" | "desc";
 
 export type SlashCommandsStatusFilter = "all" | "untracked";
+
+export type SlashCommandTagCount = AssetTagCount;
 
 export type SlashCommandInventoryEntry =
   | { id: string; kind: "managed"; command: SlashCommandDto }
@@ -17,6 +24,12 @@ export type SlashCommandInventoryEntry =
 export interface SlashMatrixSortState {
   key: SlashMatrixSortKey;
   direction: SlashMatrixSortDirection;
+}
+
+export function extractSlashCommandTagCounts(
+  commands: SlashCommandDto[] | null | undefined,
+): SlashCommandTagCount[] {
+  return extractAssetTagCounts(commands);
 }
 
 export function slashCommandInventoryEntries(
@@ -34,11 +47,17 @@ export function filterSlashCommandEntries(
   search: string,
   status: SlashCommandsStatusFilter,
   harness?: string | null,
+  tags?: string[] | null,
 ): SlashCommandInventoryEntry[] {
   const needle = search.trim().toLowerCase();
   return entries.filter((entry) => {
     if (status === "untracked" && entry.kind !== "unmanaged") return false;
     if (status !== "untracked" && entry.kind === "unmanaged" && status !== "all") return false;
+    if (tags && tags.length > 0) {
+      if (entry.kind !== "managed" || !matchesAssetTags(entry.command, tags)) {
+        return false;
+      }
+    }
     if (harness) {
       const touchesHarness =
         entry.kind === "managed"
@@ -85,12 +104,14 @@ export function countSyncedTargets(command: SlashCommandDto): number {
 export function filterSlashCommands(
   commands: SlashCommandDto[],
   search: string,
+  tags?: string[] | null,
 ): SlashCommandDto[] {
   const needle = search.trim().toLowerCase();
-  if (!needle) return commands;
-  return commands.filter((command) =>
-    `${command.name} ${command.description}`.toLowerCase().includes(needle),
-  );
+  return commands.filter((command) => {
+    if (tags && tags.length > 0 && !matchesAssetTags(command, tags)) return false;
+    if (!needle) return true;
+    return `${command.name} ${command.description}`.toLowerCase().includes(needle);
+  });
 }
 
 export function enabledTargetsForCommand(
