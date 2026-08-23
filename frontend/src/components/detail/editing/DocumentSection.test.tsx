@@ -13,6 +13,10 @@ describe("DocumentSection", () => {
         editFrontmatter={<div>Frontmatter inputs</div>}
         bodyValue="# Header"
         onBodyChange={vi.fn()}
+        isDirty={false}
+        isSaving={false}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -36,6 +40,10 @@ describe("DocumentSection", () => {
         bodyValue="# Header"
         onBodyChange={onBodyChange}
         bodyLabel="Body (SKILL.md)"
+        isDirty={false}
+        isSaving={false}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -64,6 +72,7 @@ describe("DocumentSection", () => {
         bodyValue="# Header"
         onBodyChange={vi.fn()}
         isDirty={true}
+        isSaving={false}
         onSave={onSave}
         onCancel={onCancel}
         saveLabel="Save"
