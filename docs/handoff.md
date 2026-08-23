@@ -2,6 +2,26 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-23 — Hooks rows simplified (event / command); ⚠ agy is working IN this checkout
+
+**⚠ Checkout state warning:** the delegated `feat/asset-tags` work (agy, pane wA:p17) is being
+implemented **in this shared checkout**, which is currently switched to `feat/asset-tags` with
+large uncommitted changes — NOT on `main`. Do not reset/switch branches here until agy's work
+lands; do not trust "run app off main" assumptions for this tree until then. The running
+server's `frontend/dist` was rebuilt from `main` (`1cf3a98`) and copied in manually.
+Incident note: a same-checkout ff-merge briefly moved the `feat/asset-tags` ref; it was restored
+via `git update-ref` without touching files. **Future delegation must give agy its own worktree**
+(`git worktree add ../ham-<task> origin/main`) so this never recurs.
+
+**Hooks row simplification** (`main` @ `1cf3a98`, pushed): per owner dog-fooding feedback,
+hooks matrix rows now render line 1 = event only (e.g. `pre_compact`) and line 2 = command;
+the old identity cell showed the dense server-side composite `event · match: command`
+(`_display_name` in hooks/inventory.py). Frontend-only change in `HooksMatrixView.tsx` with
+test updates + a new regression test pinning event-as-heading; falls back to `displayName`
+when no spec parses. Note `match` no longer shows on the row (it was almost always `any`) —
+it remains in the detail view; flag if that hurts. Validation: typecheck clean, Vitest 323/323
+across 66 files, build OK, backend 598 unit + 205 integration OK (run on agy's tree).
+
 ## 2026-08-23 — Next feature decided: asset tags with a pinned `starred` system tag
 
 Plan of record: [`docs/plan-asset-tags.md`](plan-asset-tags.md). Decision: one tagging
