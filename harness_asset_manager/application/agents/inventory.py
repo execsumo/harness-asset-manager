@@ -159,7 +159,8 @@ class AgentInventoryService:
             store_path=None,
             harnesses=tuple(harnesses),
             can_delete=False,
-            can_edit=False,
+            # Rendered adapters (Codex TOML) have no Markdown frontmatter to edit.
+            can_edit=not adapter.renders,
             configuration=tuple(
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),

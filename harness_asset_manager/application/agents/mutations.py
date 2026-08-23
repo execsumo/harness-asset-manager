@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 
 from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
 from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
+from .parser import parse_agent_document, render_agent_document
 from .store import AgentStore
 
 ConflictResolution = Literal["keep_store", "replace_store"]
@@ -157,6 +159,50 @@ class AgentMutationService:
         return BulkAdoptResult(tuple(adopted), tuple(skipped))
 
     # -- store lifecycle ----------------------------------------------------
+
+    def update_unmanaged(
+        self,
+        ref: str,
+        *,
+        name: str,
+        description: str,
+        prompt: str,
+        tools: tuple[str, ...],
+        metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
+    ) -> None:
+        """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
+
+        Same rendering contract as the managed path: ``name``/``description``/
+        ``tools`` are structured arguments and ``metadata`` carries the ordered
+        custom frontmatter keys, so nothing the user added is silently dropped.
+        Rendered adapters (Codex TOML) are refused: their files have no Markdown
+        frontmatter to edit — adopt first, then edit the store copy.
+        """
+        harness_id, separator, slug = ref.partition("/")
+        if not separator or not harness_id or not slug:
+            raise MutationError(f"expected an unmanaged ref of the form <harness>/<slug>: {ref}")
+        adapter = self._adapter(harness_id)
+        if adapter.renders:
+            raise MutationError(
+                f"this agent is rendered as a native {harness_id} file; adopt it before editing"
+            )
+        path = adapter.binding_path(slug)
+        if slug != Path(slug).name or not path.is_file():
+            raise MutationError(f"no unmanaged agent at {path}", status=404)
+
+        try:
+            current = parse_agent_document(path.read_text(encoding="utf-8"), slug=slug, path=path)
+        except Exception as error:  # noqa: BLE001 - surfaced verbatim as a 4xx/5xx body
+            raise MutationError(f"cannot parse {path}: {error}") from error
+
+        rendered = render_agent_document(
+            name=name,
+            description=description,
+            prompt=prompt,
+            tools=tools,
+            extra_metadata=metadata,
+        )
+        atomic_write_text(path, rendered)
 
     def delete(self, slug: str) -> None:
         self._require_agent(slug)

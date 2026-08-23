@@ -131,6 +131,20 @@ def update_agent(
     extra_metadata = None
     if body.metadata is not None:
         extra_metadata = [(entry.key, entry.value) for entry in body.metadata]
+    if "/" in agent_ref:
+        # Unmanaged ref (<harness>/<slug>): edit the harness file in place.
+        if body.name is None or body.description is None:
+            raise MutationError("name and description are required to edit an unmanaged agent")
+        container.agents_mutations.update_unmanaged(
+            agent_ref,
+            name=body.name,
+            description=body.description,
+            prompt=body.prompt or "",
+            tools=tuple(body.tools) if body.tools is not None else (),
+            metadata=extra_metadata,
+        )
+        container.invalidation.invalidate_all()
+        return _require_detail(container, agent_ref)
     agent = container.agents_store.update(
         agent_ref,
         name=body.name,

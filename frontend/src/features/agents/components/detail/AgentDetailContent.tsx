@@ -17,7 +17,7 @@ import { useToast } from "../../../../components/Toast";
 import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
-import { useDeleteAgentMutation, useUpdateAgentMutation } from "../../api/queries";
+import { useAdoptAgentMutation, useDeleteAgentMutation, useUpdateAgentMutation } from "../../api/queries";
 import type { AgentDetailDto } from "../../api/types";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
@@ -47,6 +47,8 @@ export function AgentDetailContent({
   
   const deleteMutation = useDeleteAgentMutation();
   const updateMutation = useUpdateAgentMutation();
+  const adoptMutation = useAdoptAgentMutation();
+  const [adoptDialogOpen, setAdoptDialogOpen] = useState(false);
   
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;
@@ -358,10 +360,10 @@ export function AgentDetailContent({
 
           <DetailSection heading="Locations">
             <div className="skill-detail__locations">
-              {!detail.canEdit ? (
+              {!detail.storePath ? (
                 <p className="skill-detail__context-note">
-                  This agent is not managed by Harness Asset Manager yet. Adopt it from the
-                  agents list to edit it or enable it on more harnesses.
+                  This agent is not managed by Harness Asset Manager yet. Edits save directly to
+                  the harness file below; adopt it to manage it across harnesses.
                 </p>
               ) : null}
               {detail.storePath ? (
@@ -372,7 +374,7 @@ export function AgentDetailContent({
                   <p className="skill-detail__location-path">{formatPath(detail.storePath)}</p>
                 </article>
               ) : null}
-              {detail.harnesses.filter(h => h.state === "enabled" || (!detail.canEdit && h.state !== "unsupported")).map(h => (
+              {detail.harnesses.filter(h => h.state === "enabled" || (!detail.storePath && h.state !== "unsupported")).map(h => (
                 <article key={h.harness} className="skill-detail__location">
                   <div className="skill-detail__location-header">
                     <strong>{h.label}</strong>
