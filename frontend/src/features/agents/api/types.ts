@@ -52,6 +52,7 @@ export interface AgentUpdateRequest {
   description?: string;
   prompt?: string;
   tools?: string[];
+  metadata?: Array<{ key: string; value: string }>;
 }
 
 export interface AgentSummaryResponse {

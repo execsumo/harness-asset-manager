@@ -10,7 +10,6 @@ interface AgentDetailViewProps {
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
-  onEdit: () => void;
 }
 
 export function AgentDetailView({
@@ -18,7 +17,6 @@ export function AgentDetailView({
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
-  onEdit,
 }: AgentDetailViewProps) {
   const fallbackHeadingId = useId();
   const { data: detail, isLoading, error } = useAgentDetailQuery(agentRef);
@@ -69,7 +67,6 @@ export function AgentDetailView({
       actionErrorMessage={actionErrorMessage}
       onClose={onClose}
       onDismissActionError={() => setActionErrorMessage(null)}
-      onEdit={onEdit}
     />
   );
 }

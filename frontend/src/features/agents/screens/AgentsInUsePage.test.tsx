@@ -168,25 +168,27 @@ describe("AgentsInUsePage", () => {
       });
     });
 
-    it("renders name, description, configuration, and harness rows", async () => {
+    it("renders name, description, document section, and harness rows", async () => {
       renderPage();
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
       
       await waitFor(() => expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument());
       expect(screen.getByText("Detail description")).toBeInTheDocument();
-      // Every frontmatter key we do not interpret is shown verbatim, not dropped.
-      expect(screen.getByText("model")).toBeInTheDocument();
-      expect(screen.getByText("sonnet")).toBeInTheDocument();
-      expect(screen.getByText("permissionMode")).toBeInTheDocument();
-      expect(screen.getByText("acceptEdits")).toBeInTheDocument();
-      expect(screen.getByText("maxTurns")).toBeInTheDocument();
-      expect(screen.getByText("hooks")).toBeInTheDocument();
-      expect(screen.getByText("(1 entry)")).toBeInTheDocument();
-      // name/description have their own sections and must not repeat here.
-      expect(screen.queryByText("description")).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Document" })).toBeInTheDocument();
       expect(screen.getByText("Cursor")).toBeInTheDocument();
       expect(screen.getByText("Windsurf")).toBeInTheDocument();
+
+      // Switch to edit mode to see all frontmatter keys and fields
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(screen.getByLabelText("Agent Name")).toHaveValue("Test Agent Real Name");
+      expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
+      expect(screen.getByLabelText("Tools (comma-separated)")).toHaveValue("tool1, tool2");
+      expect(screen.getByLabelText("System Prompt")).toHaveValue("Test prompt");
+      expect(screen.getByDisplayValue("model")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("sonnet")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("permissionMode")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("acceptEdits")).toBeInTheDocument();
     });
 
     it("renders unsupported harness row with disabled control showing detail", async () => {
@@ -229,7 +231,22 @@ describe("AgentsInUsePage", () => {
       expect(fetchMock.mock.calls.some(call => String(call[0]) === "/api/agents/agent-1/enable")).toBe(true);
     });
 
-    it("opening the edit dialog prepopulates every field", async () => {
+    it("editing fields in the document section saves via PUT /api/agents/{ref}", async () => {
+      let capturedBody: any;
+      fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents/agent-1" && init?.method === "PUT") {
+          capturedBody = JSON.parse(String(init?.body));
+          return okJson({
+            ...agentDetailFixture(),
+            name: "Updated Agent Name",
+          });
+        }
+        if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
+        throw new Error(`Unhandled URL ${url}`);
+      });
+
       renderPage();
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
@@ -237,19 +254,13 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument());
       fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
-      await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
-      
       const nameInput = screen.getByLabelText(/Agent Name/i) as HTMLInputElement;
-      await waitFor(() => expect(nameInput.value).toBe("Test Agent Real Name")); // not agent-1 slug
+      expect(nameInput.value).toBe("Test Agent Real Name");
 
-      const descInput = screen.getByLabelText(/Description/i) as HTMLTextAreaElement;
-      expect(descInput.value).toBe("Detail description");
+      fireEvent.change(nameInput, { target: { value: "Updated Agent Name" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-      const promptInput = screen.getByLabelText(/Prompt/i) as HTMLTextAreaElement;
-      expect(promptInput.value).toBe("Test prompt");
-
-      const toolsInput = screen.getByLabelText(/Tools/i) as HTMLInputElement;
-      expect(toolsInput.value).toBe("tool1, tool2");
+      await waitFor(() => expect(capturedBody?.name).toBe("Updated Agent Name"));
     });
 
     it("delete asks for confirmation before issuing DELETE", async () => {
