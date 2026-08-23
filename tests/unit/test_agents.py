@@ -317,6 +317,16 @@ class CodexAgentTests(unittest.TestCase):
             self.mutations.disable("pr-reviewer", "codex")
         self.assertTrue(hand_written.is_file())
 
+    def test_update_unmanaged_refuses_rendered_adapter(self) -> None:
+        unmanaged = self.harness_dir / "auditor.toml"
+        content = 'name = "auditor"\ndescription = "d"\n'
+        unmanaged.write_text(content, encoding="utf-8")
+
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("codex/auditor", name="Auditor", description="new d")
+        self.assertIn("adopt it before editing", str(ctx.exception))
+        self.assertEqual(unmanaged.read_text(encoding="utf-8"), content)
+
     def test_enable_refuses_to_overwrite_a_hand_written_file(self) -> None:
         self.store.create(name="PR Reviewer", description="d", prompt="p")
         (self.harness_dir / "pr-reviewer.toml").write_text(
@@ -564,6 +574,111 @@ class AgentAdoptTests(AgentsFixture):
     def test_adopt_rejects_a_ref_without_a_harness(self) -> None:
         with self.assertRaises(MutationError):
             self.mutations.adopt("stray")
+
+
+class AgentUnmanagedEditTests(AgentsFixture):
+    def test_update_unmanaged_rewrites_file_in_place_with_custom_metadata(self) -> None:
+        doc = (
+            "---\n"
+            "name: Stray\n"
+            "description: found in claude\n"
+            "model: claude-3-5-sonnet\n"
+            "tools: Read, Grep\n"
+            "customKey: customVal\n"
+            "---\n"
+            "harness prompt body\n"
+        )
+        _write(self.harness_dir / "stray.md", doc)
+
+        self.mutations.update_unmanaged(
+            "claude/stray",
+            name="Stray Renamed",
+            description="updated desc",
+            prompt="new prompt body",
+            tools=("Read", "Bash"),
+            metadata=[
+                ("model", "claude-3-7-sonnet"),
+                ("permissionMode", "acceptEdits"),
+                ("customKey", "newVal"),
+                ("extraKey", "extraVal"),
+            ],
+        )
+
+        harness_file = self.harness_dir / "stray.md"
+        self.assertTrue(harness_file.is_file())
+        self.assertFalse(harness_file.is_symlink())
+        self.assertFalse((self.store_root / "stray.md").exists())
+
+        parsed = parse_agent_document(
+            harness_file.read_text(encoding="utf-8"), slug="stray", path=harness_file
+        )
+        self.assertEqual(parsed.name, "Stray Renamed")
+        self.assertEqual(parsed.description, "updated desc")
+        self.assertEqual(parsed.prompt, "new prompt body")
+        self.assertEqual(parsed.tools, ("Read", "Bash"))
+        self.assertEqual(parsed.metadata.get("model"), "claude-3-7-sonnet")
+        self.assertEqual(parsed.metadata.get("permissionMode"), "acceptEdits")
+        self.assertEqual(parsed.metadata.get("customKey"), "newVal")
+        self.assertEqual(parsed.metadata.get("extraKey"), "extraVal")
+
+    def test_update_unmanaged_omitted_metadata_prompt_and_tools_preserves_existing(self) -> None:
+        doc = (
+            "---\n"
+            "name: Stray\n"
+            "description: found in claude\n"
+            "model: claude-3-5-sonnet\n"
+            "tools: Read, Grep\n"
+            "customKey: customVal\n"
+            "---\n"
+            "original prompt body\n"
+        )
+        _write(self.harness_dir / "stray.md", doc)
+
+        self.mutations.update_unmanaged(
+            "claude/stray",
+            name="Stray Updated",
+            description="updated desc",
+        )
+
+        harness_file = self.harness_dir / "stray.md"
+        parsed = parse_agent_document(
+            harness_file.read_text(encoding="utf-8"), slug="stray", path=harness_file
+        )
+        self.assertEqual(parsed.name, "Stray Updated")
+        self.assertEqual(parsed.description, "updated desc")
+        self.assertEqual(parsed.prompt, "original prompt body")
+        self.assertEqual(parsed.tools, ("Read", "Grep"))
+        self.assertEqual(parsed.metadata.get("model"), "claude-3-5-sonnet")
+        self.assertEqual(parsed.metadata.get("customKey"), "customVal")
+
+    def test_update_unmanaged_rejects_unsafe_ref_and_missing_file(self) -> None:
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("claude/missing", name="M", description="d")
+        self.assertEqual(ctx.exception.status, 404)
+
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("claude/../escape", name="E", description="d")
+        self.assertEqual(ctx.exception.status, 404)
+
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("claude/.", name="E", description="d")
+        self.assertEqual(ctx.exception.status, 404)
+
+        with self.assertRaises(MutationError):
+            self.mutations.update_unmanaged("invalid-ref", name="I", description="d")
+
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("unknown/slug", name="U", description="d")
+        self.assertEqual(ctx.exception.status, 404)
+
+    def test_update_unmanaged_rejects_symlink(self) -> None:
+        self.store.create(name="Stray", description="ours", prompt="ours")
+        self.mutations.enable("stray", "claude")
+        self.assertTrue((self.harness_dir / "stray.md").is_symlink())
+
+        with self.assertRaises(MutationError) as ctx:
+            self.mutations.update_unmanaged("claude/stray", name="S", description="d")
+        self.assertEqual(ctx.exception.status, 404)
 
 
 class AgentStoreTests(AgentsFixture):

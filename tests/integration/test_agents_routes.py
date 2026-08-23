@@ -17,6 +17,15 @@ def _seed_unmanaged_claude_agent(spec: FakeHomeSpec, slug: str = "stray") -> Non
     )
 
 
+def _seed_unmanaged_codex_agent(spec: FakeHomeSpec, slug: str = "auditor") -> None:
+    agents_dir = spec.home / ".codex" / "agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    (agents_dir / f"{slug}.toml").write_text(
+        f'name = "{slug}"\ndescription = "found in codex"\ndeveloper_instructions = "codex instructions"\n',
+        encoding="utf-8",
+    )
+
+
 class AgentRoutesTests(unittest.TestCase):
     def test_agent_columns_match_the_skills_columns(self) -> None:
         """The two pages must never disagree about which harnesses exist.
@@ -119,30 +128,247 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertTrue((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
             self.assertEqual(self._entry(harness, "stray")["kind"], "managed")
 
-    def test_unmanaged_detail_inspects_the_harness_file_read_only(self) -> None:
-        """GET /api/agents/<harness>/<slug> serves an unmanaged agent read-only.
+    def test_unmanaged_detail_inspects_the_harness_file(self) -> None:
+        """GET /api/agents/<harness>/<slug> serves unmanaged detail."""
+        def seed(spec: FakeHomeSpec) -> None:
+            _seed_unmanaged_claude_agent(spec, "stray")
+            _seed_unmanaged_codex_agent(spec, "auditor")
 
-        Regression: the detail route handed the namespaced ref to the store, whose
-        path_for() correctly refused it — clicking details on an unmanaged agent
-        always failed with "unsafe agent ref".
-        """
-        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+        with AppTestHarness(fixture_factory=seed) as harness:
+            # Markdown unmanaged agent is editable in place
             detail = harness.get_json("/api/agents/claude/stray")
             self.assertEqual(detail["ref"], "claude/stray")
             self.assertEqual(detail["name"], "Stray")
             self.assertEqual(detail["description"], "found in claude")
             self.assertIn("harness body", detail["document"])
-            self.assertTrue(detail["canEdit"] is False)
+            self.assertTrue(detail["canEdit"])
             self.assertFalse(detail["canDelete"])
             self.assertIsNone(detail["storePath"])
-            # The owning harness row shows the real file location.
             owner = next(h for h in detail["harnesses"] if h["harness"] == "claude")
             self.assertTrue(owner["path"].endswith("/.claude/agents/stray.md"))
+
+            # Rendered (Codex TOML) unmanaged agent is not editable in place
+            codex_detail = harness.get_json("/api/agents/codex/auditor")
+            self.assertEqual(codex_detail["ref"], "codex/auditor")
+            self.assertEqual(codex_detail["name"], "auditor")
+            self.assertFalse(codex_detail["canEdit"])
+            self.assertFalse(codex_detail["canDelete"])
+            self.assertIsNone(codex_detail["storePath"])
+
+    def test_unmanaged_edit_succeeds_and_preserves_custom_frontmatter_in_order(self) -> None:
+        """PUT /api/agents/<harness>/<slug> rewrites the harness file in place."""
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "stray.md").write_text(
+                "---\n"
+                "name: Stray\n"
+                "description: found in claude\n"
+                "model: claude-3-5-sonnet\n"
+                "tools: Read, Grep\n"
+                "customKey: customVal\n"
+                "---\n\n"
+                "harness body\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            updated = harness.put_json(
+                "/api/agents/claude/stray",
+                {
+                    "name": "Stray Agent",
+                    "description": "updated description",
+                    "prompt": "new harness prompt body",
+                    "tools": ["Read", "Bash"],
+                    "metadata": [
+                        {"key": "model", "value": "claude-3-7-sonnet"},
+                        {"key": "permissionMode", "value": "acceptEdits"},
+                        {"key": "customKey", "value": "customVal2"},
+                    ],
+                },
+            )
+            self.assertEqual(updated["ref"], "claude/stray")
+            self.assertEqual(updated["name"], "Stray Agent")
+            self.assertEqual(updated["description"], "updated description")
+            self.assertEqual(updated["prompt"], "new harness prompt body")
+            self.assertEqual(updated["tools"], ["Read", "Bash"])
+            self.assertIsNone(updated["storePath"])
+
+            config_dict = {c["key"]: c["value"] for c in updated["configuration"]}
+            self.assertEqual(config_dict["model"], "claude-3-7-sonnet")
+            self.assertEqual(config_dict["permissionMode"], "acceptEdits")
+            self.assertEqual(config_dict["customKey"], "customVal2")
+
+            # File on disk was rewritten in place and remains a regular file, not a symlink
+            harness_file = harness.spec.home / ".claude" / "agents" / "stray.md"
+            self.assertTrue(harness_file.is_file())
+            self.assertFalse(harness_file.is_symlink())
+            self.assertFalse((harness.spec.agents_root / "stray.md").exists())
+
+            content = harness_file.read_text(encoding="utf-8")
+            self.assertIn("name: Stray Agent", content)
+            self.assertIn("description: updated description", content)
+            self.assertIn("model: claude-3-7-sonnet", content)
+            self.assertIn("permissionMode: acceptEdits", content)
+            self.assertIn("customKey: customVal2", content)
+            self.assertIn("new harness prompt body", content)
+
+            # Re-read detail via GET
+            detail = harness.get_json("/api/agents/claude/stray")
+            self.assertEqual(detail["name"], "Stray Agent")
+            self.assertEqual(detail["description"], "updated description")
+
+    def test_unmanaged_edit_without_metadata_preserves_custom_frontmatter(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "stray.md").write_text(
+                "---\n"
+                "name: Stray\n"
+                "description: found in claude\n"
+                "model: claude-3-5-sonnet\n"
+                "tools: Read, Grep\n"
+                "customKey: customVal\n"
+                "---\n\n"
+                "harness body\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            updated = harness.put_json(
+                "/api/agents/claude/stray",
+                {
+                    "name": "Stray Renamed",
+                    "description": "new desc",
+                },
+            )
+            self.assertEqual(updated["name"], "Stray Renamed")
+            self.assertEqual(updated["description"], "new desc")
+            self.assertEqual(updated["prompt"], "harness body")
+            self.assertEqual(updated["tools"], ["Read", "Grep"])
+
+            config_dict = {c["key"]: c["value"] for c in updated["configuration"]}
+            self.assertEqual(config_dict["model"], "claude-3-5-sonnet")
+            self.assertEqual(config_dict["customKey"], "customVal")
+
+    def test_unmanaged_edit_rendered_adapter_returns_400_and_leaves_file_untouched(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_codex_agent) as harness:
+            codex_file = harness.spec.home / ".codex" / "agents" / "auditor.toml"
+            before_content = codex_file.read_text(encoding="utf-8")
+
+            resp = harness.put_json(
+                "/api/agents/codex/auditor",
+                {"name": "auditor", "description": "new desc"},
+                expected_status=409,
+            )
+            self.assertIn("adopt it before editing", resp.get("error", resp.get("detail", "")))
+            self.assertEqual(codex_file.read_text(encoding="utf-8"), before_content)
+
+    def test_unmanaged_edit_rejects_missing_and_unsafe_slug(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            harness.put_json(
+                "/api/agents/claude/missing",
+                {"name": "Missing", "description": "d"},
+                expected_status=404,
+            )
+            harness.put_json(
+                "/api/agents/claude/../escape",
+                {"name": "Escape", "description": "d"},
+                expected_status=404,
+            )
+            harness.put_json(
+                "/api/agents/claude/.",
+                {"name": "Dot", "description": "d"},
+                expected_status=404,
+            )
+
+    def test_unmanaged_edit_requires_name_and_description(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            harness_file = harness.spec.home / ".claude" / "agents" / "stray.md"
+            before_content = harness_file.read_text(encoding="utf-8")
+
+            # Missing both
+            harness.put_json(
+                "/api/agents/claude/stray",
+                {"prompt": "new prompt"},
+                expected_status=409,
+            )
+            # Missing description
+            harness.put_json(
+                "/api/agents/claude/stray",
+                {"name": "New Name"},
+                expected_status=409,
+            )
+            # Missing name
+            harness.put_json(
+                "/api/agents/claude/stray",
+                {"description": "New Desc"},
+                expected_status=409,
+            )
+            self.assertEqual(harness_file.read_text(encoding="utf-8"), before_content)
 
     def test_unmanaged_detail_rejects_unsafe_refs_and_missing_files(self) -> None:
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
             harness.get_json("/api/agents/claude/../escape", expected_status=404)
             harness.get_json("/api/agents/claude/missing", expected_status=404)
+
+    def test_unmanaged_agent_lifecycle_edit_then_adopt_and_manage(self) -> None:
+        """Complete lifecycle: unmanaged -> in-place edit -> list -> adopt -> managed edit."""
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            # 1. Start with unmanaged agent
+            entry = self._entry(harness, "claude/stray")
+            self.assertEqual(entry["kind"], "unmanaged")
+            self.assertTrue(entry["actions"]["canAdopt"])
+
+            # 2. In-place edit while unmanaged
+            updated = harness.put_json(
+                "/api/agents/claude/stray",
+                {
+                    "name": "Stray Master",
+                    "description": "edited in harness",
+                    "prompt": "harness prompt v2",
+                    "tools": ["Read", "Edit"],
+                    "metadata": [{"key": "customKey", "value": "customVal"}],
+                },
+            )
+            self.assertEqual(updated["name"], "Stray Master")
+            self.assertEqual(updated["description"], "edited in harness")
+
+            # 3. List agents: inventory reflects the in-place edit
+            entry = self._entry(harness, "claude/stray")
+            self.assertEqual(entry["name"], "Stray Master")
+            self.assertEqual(entry["description"], "edited in harness")
+
+            # 4. Adopt the edited unmanaged agent
+            adopt_res = harness.post_json("/api/agents/claude/stray/adopt", {})
+            self.assertTrue(adopt_res["ok"])
+            self.assertEqual(adopt_res["ref"], "stray")
+
+            # 5. Now it is managed in the store
+            managed_detail = harness.get_json("/api/agents/stray")
+            self.assertEqual(managed_detail["name"], "Stray Master")
+            self.assertEqual(managed_detail["prompt"], "harness prompt v2")
+            self.assertEqual(managed_detail["tools"], ["Read", "Edit"])
+            self.assertIsNotNone(managed_detail["storePath"])
+            self.assertTrue(managed_detail["canDelete"])
+
+            config_dict = {c["key"]: c["value"] for c in managed_detail["configuration"]}
+            self.assertEqual(config_dict["customKey"], "customVal")
+
+            # 6. Subsequent managed edit updates the store and linked harness
+            managed_updated = harness.put_json(
+                "/api/agents/stray",
+                {
+                    "name": "Stray Final",
+                    "description": "final description",
+                    "prompt": "final prompt",
+                    "tools": ["Bash"],
+                },
+            )
+            self.assertEqual(managed_updated["name"], "Stray Final")
+            harness_file = harness.spec.home / ".claude" / "agents" / "stray.md"
+            self.assertTrue(harness_file.is_symlink())
+            self.assertIn("name: Stray Final", harness_file.read_text(encoding="utf-8"))
 
     def test_adopt_collision_returns_409_with_both_paths_and_mutates_nothing(self) -> None:
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
