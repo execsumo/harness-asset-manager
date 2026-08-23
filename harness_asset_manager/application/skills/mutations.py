@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 
 from .contracts import SkillsHarnessAdapter
+from .document_utils import read_skill_document_and_metadata, render_skill_document
 from .identity import SourceDescriptor
 from .inventory import InventoryEntry
 from .package import parse_skill_package
@@ -101,6 +103,37 @@ class SkillsMutationService:
             "succeeded": succeeded,
             "failed": failures,
         }
+
+    def update_skill_document(
+        self,
+        skill_ref: str,
+        *,
+        body: str,
+        metadata: list[dict[str, str]] | dict[str, str] | None = None,
+    ) -> dict[str, bool]:
+        entry = self.queries.require_entry(skill_ref)
+        package_root = self.queries.resolve_detail_package_root(entry)
+        if package_root is None or not package_root.is_dir():
+            raise MutationError(f"skill package root not found: {skill_ref}", status=404)
+
+        if metadata is None:
+            # Omitted metadata carries the current frontmatter forward, mirroring the
+            # agents contract: an edit that does not mention metadata must never
+            # silently strip keys the caller did not touch.
+            _body, current_metadata = read_skill_document_and_metadata(package_root)
+            metadata = [{"key": m["key"], "value": m["value"]} for m in current_metadata]
+
+        rendered = render_skill_document(body=body, metadata=metadata)
+        skill_file = package_root / "SKILL.md"
+
+        if entry.package_path is not None and entry.kind == "managed":
+            with file_lock(self.read_models.store.lock_path):
+                atomic_write_text(skill_file, rendered)
+        else:
+            atomic_write_text(skill_file, rendered)
+
+        self.read_models.invalidate()
+        return {"ok": True}
 
     def manage_skill(self, skill_ref: str) -> dict[str, bool]:
         entry = self.queries.require_entry(skill_ref)

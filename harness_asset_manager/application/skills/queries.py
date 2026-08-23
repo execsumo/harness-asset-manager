@@ -12,7 +12,7 @@ from harness_asset_manager.sources import (
     github_repo_url,
 )
 
-from .document_utils import read_skill_document_markdown
+from .document_utils import read_skill_document_and_metadata, read_skill_document_markdown
 from .inventory import InventoryEntry, SkillInventory
 from .package import fingerprint_package
 from .policy import can_stop_managing, can_update, has_local_changes
@@ -58,10 +58,12 @@ class SkillsQueryService:
         if entry is None:
             return None
         package_root = self.resolve_detail_package_root(entry)
+        document_markdown, metadata = read_skill_document_and_metadata(package_root)
         return skill_detail_payload(
             entry,
             columns=inventory.columns,
-            document_markdown=read_skill_document_markdown(package_root),
+            document_markdown=document_markdown,
+            metadata=metadata,
             source_links=self.build_source_links(entry),
         )
 

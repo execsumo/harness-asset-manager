@@ -45,6 +45,7 @@ export interface SlashCommandDto {
   description: string;
   prompt: string;
   syncTargets: SlashSyncEntryDto[];
+  metadata?: Array<{ key: string; value: string }>;
 }
 
 export interface SlashCommandListDto {
@@ -67,6 +68,7 @@ export interface SlashCommandUpdateRequest {
   description: string;
   prompt: string;
   targets?: SlashTargetId[];
+  metadata?: Array<{ key: string; value: string }>;
 }
 
 export interface SlashSyncRequest {

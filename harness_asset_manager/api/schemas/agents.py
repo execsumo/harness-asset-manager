@@ -116,11 +116,19 @@ class CreateAgentRequest(BaseModel):
     tools: list[str] = Field(default_factory=list)
 
 
+class AgentConfigEntryResponse(BaseModel):
+    """One frontmatter key we do not interpret, shown verbatim."""
+
+    key: str
+    value: str
+
+
 class UpdateAgentRequest(BaseModel):
     name: str | None = None
     description: str | None = None
     prompt: str | None = None
     tools: list[str] | None = None
+    metadata: list[AgentConfigEntryResponse] | None = None
 
 
 class AgentHarnessDetailResponse(BaseModel):
@@ -132,13 +140,6 @@ class AgentHarnessDetailResponse(BaseModel):
     path: str
     installMethod: Literal["symlink", "rendered", "none"]
     installed: bool
-
-
-class AgentConfigEntryResponse(BaseModel):
-    """One frontmatter key we do not interpret, shown verbatim."""
-
-    key: str
-    value: str
 
 
 class AgentDetailResponse(BaseModel):

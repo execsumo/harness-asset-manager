@@ -105,6 +105,7 @@ class AgentStore:
         description: str | None = None,
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
+        metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
     ) -> AgentDefinition:
         current = self.get(slug)
         if current is None:
@@ -116,9 +117,8 @@ class AgentStore:
                 description=description if description is not None else current.description,
                 prompt=prompt if prompt is not None else current.prompt,
                 tools=tools if tools is not None else current.tools,
-                # Carry the original frontmatter forward so keys we do not interpret
-                # (model, permissionMode, hooks, …) survive the edit.
-                base_metadata=current.metadata,
+                base_metadata=current.metadata if metadata is None else None,
+                extra_metadata=metadata,
             ),
         )
         self._notify_write(slug)

@@ -9,7 +9,6 @@ interface SlashCommandDetailSheetProps {
   pendingName: string | null;
   pendingTarget: string | null;
   onClose: () => void;
-  onEdit: (command: SlashCommandDto) => void;
   onDelete: (command: SlashCommandDto) => void;
   onToggleTarget: (command: SlashCommandDto, target: SlashTargetDto) => void;
 }
@@ -20,7 +19,6 @@ export function SlashCommandDetailSheet({
   pendingName,
   pendingTarget,
   onClose,
-  onEdit,
   onDelete,
   onToggleTarget,
 }: SlashCommandDetailSheetProps) {
@@ -51,7 +49,6 @@ export function SlashCommandDetailSheet({
             pendingName={pendingName}
             pendingTarget={pendingTarget}
             onClose={onClose}
-            onEdit={onEdit}
             onDelete={onDelete}
             onToggleTarget={onToggleTarget}
           />

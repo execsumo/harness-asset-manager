@@ -7,7 +7,6 @@ interface AgentDetailModalProps {
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
-  onEdit: (agentRef: string) => void;
 }
 
 export function AgentDetailModal({
@@ -16,7 +15,6 @@ export function AgentDetailModal({
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
-  onEdit,
 }: AgentDetailModalProps) {
   return (
     <Dialog.Root open={open && Boolean(agentRef)} onOpenChange={(next) => (next ? null : onClose())}>
@@ -33,7 +31,6 @@ export function AgentDetailModal({
               pendingPerHarnessKeys={pendingPerHarnessKeys}
               onToggleHarness={onToggleHarness}
               onClose={onClose}
-              onEdit={() => onEdit(agentRef)}
             />
           ) : null}
         </Dialog.Content>

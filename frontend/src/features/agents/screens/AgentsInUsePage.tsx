@@ -13,7 +13,6 @@ import { useToast } from "../../../components/Toast";
 import { AdoptConflictDialog } from "../components/AdoptConflictDialog";
 import { AgentsMatrixView } from "../components/AgentsMatrixView";
 import { CreateAgentDialog } from "../components/CreateAgentDialog";
-import { EditAgentDialog } from "../components/EditAgentDialog";
 import { AgentDetailModal } from "../components/detail/AgentDetailModal";
 import { agentsStatusCounts, filterAgents, type AgentsStatusFilter } from "../model/selectors";
 import { useAgentsController } from "../model/use-agents-controller";
@@ -65,7 +64,6 @@ export default function AgentsInUsePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailRef, setDetailRef] = useState<string | null>(null);
-  const [editRef, setEditRef] = useState<string | null>(null);
   const common = useCommonCopy();
   const { toast } = useToast();
 
@@ -356,14 +354,7 @@ export default function AgentsInUsePage() {
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
         onClose={() => setDetailRef(null)}
-        onEdit={(ref) => {
-          setDetailRef(null);
-          setEditRef(ref);
-        }}
       />
-      {editRef ? (
-        <EditAgentDialog open onOpenChange={(open) => !open && setEditRef(null)} agentRef={editRef} />
-      ) : null}
 
       {selectedCount > 0 ? (
         <div className="bulk-dock">

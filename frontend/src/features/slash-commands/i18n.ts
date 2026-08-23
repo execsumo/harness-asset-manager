@@ -52,6 +52,7 @@ const englishSlashCommandsCopy = {
     },
   },
   detail: {
+    about: "About",
     delete: "Delete",
     enableTargetFor: (target: string, name: string) => `Enable ${target} for ${name}`,
     disableTargetFor: (target: string, name: string) => `Disable ${target} for ${name}`,
@@ -71,6 +72,15 @@ const englishSlashCommandsCopy = {
     prompt: "Prompt",
     noDescription: "No description provided.",
     noPrompt: "No prompt content.",
+    document: "Document",
+    save: "Save",
+    saving: "Saving",
+    cancel: "Cancel",
+    unsavedChanges: "Unsaved changes",
+    savedSuccess: (name: string) => `Successfully updated ${name}`,
+    discardTitle: "Discard changes?",
+    discardDescription: "You have unsaved changes that will be lost. Are you sure you want to discard them?",
+    discardConfirm: "Discard changes",
     form: {
       createTitle: "New slash command",
       editTitle: "Edit command",

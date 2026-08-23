@@ -1,16 +1,23 @@
 import "../../agents.css";
-import { lazy, Suspense, useId, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { DetailDisclosure } from "../../../../components/detail/DetailDisclosure";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
+import { DocumentSection } from "../../../../components/detail/editing/DocumentSection";
+import {
+  FrontmatterEditor,
+  parseFrontmatterFromYaml,
+  type KnownFieldConfig,
+  type OtherFrontmatterEntry,
+} from "../../../../components/detail/editing/FrontmatterEditor";
+import { useToast } from "../../../../components/Toast";
 import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
-import { useDeleteAgentMutation } from "../../api/queries";
+import { useDeleteAgentMutation, useUpdateAgentMutation } from "../../api/queries";
 import type { AgentDetailDto } from "../../api/types";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
@@ -22,7 +29,6 @@ interface AgentDetailContentProps {
   actionErrorMessage: string | null;
   onClose: () => void;
   onDismissActionError: () => void;
-  onEdit: () => void;
 }
 
 export function AgentDetailContent({
@@ -32,19 +38,177 @@ export function AgentDetailContent({
   actionErrorMessage,
   onClose,
   onDismissActionError,
-  onEdit,
 }: AgentDetailContentProps) {
   const headingId = useId();
   const formatPath = useFormatPath();
+  const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   
   const deleteMutation = useDeleteAgentMutation();
+  const updateMutation = useUpdateAgentMutation();
   
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;
   const dismissError = () => {
     onDismissActionError();
     setLocalActionError(null);
+  };
+
+  // Frontmatter & Document editing state
+  const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
+    return (detail.configuration || [])
+      .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools")
+      .map((c, idx) => ({
+        id: `entry-${idx}-${c.key}`,
+        key: c.key,
+        value: c.value,
+      }));
+  }, [detail.configuration]);
+
+  const [documentMode, setDocumentMode] = useState<"preview" | "edit">("preview");
+  const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
+  const [name, setName] = useState(detail.name);
+  const [description, setDescription] = useState(detail.description);
+  const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
+  const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
+  const [rawYaml, setRawYaml] = useState("");
+  const [prompt, setPrompt] = useState(detail.prompt);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(detail.name);
+    setDescription(detail.description);
+    setToolsStr(detail.tools.join(", "));
+    setOtherEntries(
+      (detail.configuration || [])
+        .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools")
+        .map((c, idx) => ({
+          id: `entry-${idx}-${c.key}`,
+          key: c.key,
+          value: c.value,
+        })),
+    );
+    setPrompt(detail.prompt);
+    setSaveError(null);
+  }, [detail.ref]);
+
+  const knownFields: KnownFieldConfig[] = useMemo(
+    () => [
+      {
+        key: "name",
+        label: "Agent Name",
+        value: name,
+        onChange: setName,
+      },
+      {
+        key: "description",
+        label: "Description",
+        value: description,
+        onChange: setDescription,
+      },
+      {
+        key: "tools",
+        label: "Tools (comma-separated)",
+        value: toolsStr,
+        onChange: setToolsStr,
+        placeholder: "e.g. bash, edit, grep",
+      },
+    ],
+    [name, description, toolsStr],
+  );
+
+  const isDirty = useMemo(() => {
+    if (name !== detail.name) return true;
+    if (description !== detail.description) return true;
+    if (toolsStr !== detail.tools.join(", ")) return true;
+    if (prompt !== detail.prompt) return true;
+
+    if (otherEntries.length !== initialOtherEntries.length) return true;
+    for (let i = 0; i < otherEntries.length; i++) {
+      if (
+        otherEntries[i].key !== initialOtherEntries[i].key ||
+        otherEntries[i].value !== initialOtherEntries[i].value
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }, [name, description, toolsStr, prompt, otherEntries, detail, initialOtherEntries]);
+
+  const handleCancelEdit = () => {
+    setName(detail.name);
+    setDescription(detail.description);
+    setToolsStr(detail.tools.join(", "));
+    setOtherEntries(initialOtherEntries);
+    setPrompt(detail.prompt);
+    setSaveError(null);
+    setFrontmatterMode("structured");
+  };
+
+  const handleSaveDocument = async () => {
+    setSaveError(null);
+
+    let finalName = name;
+    let finalDesc = description;
+    let finalToolsStr = toolsStr;
+    let finalOther = otherEntries;
+
+    if (frontmatterMode === "raw") {
+      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "tools"]);
+      if (parsed.error) {
+        setSaveError(parsed.error);
+        return;
+      }
+      finalName = parsed.known.name ?? name;
+      finalDesc = parsed.known.description ?? description;
+      finalToolsStr = parsed.known.tools ?? toolsStr;
+      finalOther = parsed.other;
+      setName(finalName);
+      setDescription(finalDesc);
+      setToolsStr(finalToolsStr);
+      setOtherEntries(finalOther);
+    }
+
+    if (!finalName.trim()) {
+      setSaveError("Agent name cannot be empty.");
+      return;
+    }
+
+    const toolsList = finalToolsStr
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    const metadataPayload = finalOther
+      .filter((e) => e.key.trim().length > 0)
+      .map((e) => ({ key: e.key.trim(), value: e.value }));
+
+    try {
+      await updateMutation.mutateAsync({
+        ref: detail.ref,
+        request: {
+          name: finalName.trim(),
+          description: finalDesc.trim(),
+          prompt: prompt,
+          tools: toolsList,
+          metadata: metadataPayload,
+        },
+      });
+      toast(`Successfully updated ${finalName.trim()}`);
+      setFrontmatterMode("structured");
+      setDocumentMode("preview");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save agent.");
+    }
+  };
+
+  const handleRequestClose = () => {
+    if (isDirty) {
+      setDiscardDialogOpen(true);
+    } else {
+      onClose();
+    }
   };
 
   const handleToggleHarness = async (harness: string, currentState: "enabled" | "disabled" | "unsupported") => {
@@ -62,10 +226,9 @@ export function AgentDetailContent({
     try {
       const promise = deleteMutation.mutateAsync(detail.ref);
       setDeleteDialogOpen(false);
-      onClose(); // Close modal immediately to avoid 404 on refetch
+      onClose();
       await promise;
     } catch (err) {
-      // The modal is closed, but this is a best-effort catch.
       setLocalActionError(err instanceof Error ? err.message : "Failed to delete agent");
       setDeleteDialogOpen(false);
     }
@@ -80,10 +243,13 @@ export function AgentDetailContent({
           <DetailHeader
             title={<h2 id={headingId}>{detail.name}</h2>}
             closeLabel="Close"
-            onClose={onClose}
+            onClose={handleRequestClose}
           />
           {errorMessage ? (
             <ErrorBanner message={errorMessage} onDismiss={dismissError} />
+          ) : null}
+          {saveError ? (
+            <ErrorBanner message={saveError} onDismiss={() => setSaveError(null)} />
           ) : null}
         </div>
       </div>
@@ -99,34 +265,41 @@ export function AgentDetailContent({
             </p>
           </DetailSection>
 
-          <DetailDisclosure
-            title="System prompt"
-            defaultOpen={false}
-            className="skill-detail__disclosure skill-detail__disclosure--document"
-          >
-            <div className="skill-detail__document-surface">
+          <DocumentSection
+            title="Document"
+            mode={documentMode}
+            onModeChange={setDocumentMode}
+            previewContent={(
               <Suspense fallback={<LoadingSpinner size="sm" label="Loading document" />}>
                 <MarkdownDocument markdown={detail.prompt} />
               </Suspense>
-            </div>
-          </DetailDisclosure>
-
-          {detail.configuration.length > 0 ? (
-            <DetailSection heading="Configuration">
-              {/* Frontmatter Harness Asset Manager does not interpret, shown verbatim so a
-                  harness's own settings are visible rather than invisible-and-fragile. */}
-              <dl className="agent-detail__config">
-                {detail.configuration.map(({ key, value }) => (
-                  <div key={key} className="agent-detail__config-row">
-                    <dt className="agent-detail__config-key">{key}</dt>
-                    <dd className="agent-detail__config-value">
-                      {value === "" ? <span className="agent-detail__config-empty">—</span> : value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </DetailSection>
-          ) : null}
+            )}
+            editFrontmatter={(
+              <FrontmatterEditor
+                knownFields={knownFields}
+                otherEntries={otherEntries}
+                onChangeOtherEntries={setOtherEntries}
+                rawYaml={rawYaml}
+                onChangeRawYaml={setRawYaml}
+                mode={frontmatterMode}
+                onModeChange={setFrontmatterMode}
+                validationError={null}
+                disabled={updateMutation.isPending}
+              />
+            )}
+            bodyValue={prompt}
+            onBodyChange={setPrompt}
+            bodyLabel="System Prompt"
+            bodyPlaceholder="Agent system prompt..."
+            isDirty={isDirty}
+            isSaving={updateMutation.isPending}
+            saveDisabled={!name.trim()}
+            onSave={handleSaveDocument}
+            onCancel={handleCancelEdit}
+            saveLabel="Save"
+            cancelLabel="Cancel"
+            unsavedLabel="Unsaved changes"
+          />
 
           <DetailSection heading="Harnesses">
             <div className="detail-sheet__bindings" aria-label={`Harness access for ${detail.name}`}>
@@ -208,16 +381,8 @@ export function AgentDetailContent({
         </div>
       </div>
 
-      <footer className="skill-detail-shell__footer" aria-label="Agent actions">
-        <button
-          type="button"
-          className="action-pill action-pill--md"
-          disabled={isDeleting}
-          onClick={onEdit}
-        >
-          Edit
-        </button>
-        {detail.canDelete ? (
+      {detail.canDelete ? (
+        <footer className="skill-detail-shell__footer" aria-label="Agent actions">
           <button
             type="button"
             className="action-pill action-pill--md action-pill--danger"
@@ -227,8 +392,8 @@ export function AgentDetailContent({
             {isDeleting ? <Loader2 size={14} className="animate-spin agent-action-spinner" /> : null}
             Delete
           </button>
-        ) : null}
-      </footer>
+        </footer>
+      ) : null}
 
       {detail.canDelete ? (
         <ConfirmActionDialog
@@ -242,6 +407,21 @@ export function AgentDetailContent({
           onConfirm={handleDelete}
         />
       ) : null}
+
+      <ConfirmActionDialog
+        open={discardDialogOpen}
+        title="Discard changes?"
+        description="You have unsaved changes that will be lost. Are you sure you want to discard them?"
+        confirmLabel="Discard changes"
+        pendingLabel="Discarding..."
+        isPending={false}
+        confirmTone="danger"
+        onOpenChange={setDiscardDialogOpen}
+        onConfirm={() => {
+          setDiscardDialogOpen(false);
+          onClose();
+        }}
+      />
     </>
   );
 }

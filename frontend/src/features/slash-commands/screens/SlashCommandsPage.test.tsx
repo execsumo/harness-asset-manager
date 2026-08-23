@@ -66,8 +66,8 @@ describe("SlashCommandsPage", () => {
     const dialog = await screen.findByRole("dialog", { name: "Slash command details code-review" });
     expect(within(dialog).getByRole("heading", { name: "code-review", level: 2 })).toBeInTheDocument();
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Description" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Prompt" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
     expect(within(dialog).getByText("$ARGUMENTS")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "New slash command" })).not.toBeInTheDocument();
   });
@@ -112,70 +112,71 @@ describe("SlashCommandsPage", () => {
     expect(within(dialog).queryByText("/prompts:code-review")).not.toBeInTheDocument();
     expect(within(dialog).queryByLabelText("Name")).not.toBeInTheDocument();
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
-    expect(within(dialog).queryByRole("heading", { name: "Command content" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
     expect(within(dialog).getByText("Review code")).toBeInTheDocument();
 
-    const descriptionHeading = within(dialog).getByRole("heading", { name: "Description" });
-    const promptHeading = within(dialog).getByRole("heading", { name: "Prompt" });
+    const aboutHeading = within(dialog).getByRole("heading", { name: "About" });
+    const documentHeading = within(dialog).getByRole("heading", { name: "Document" });
     const harnessesHeading = within(dialog).getByRole("heading", { name: "Harnesses" });
     const locationsHeading = within(dialog).getByRole("heading", { name: "Locations" });
-    expect(within(dialog).getAllByText("Prompt")).toHaveLength(1);
-    expect(Boolean(descriptionHeading.compareDocumentPosition(promptHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
-    expect(Boolean(promptHeading.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(aboutHeading.compareDocumentPosition(documentHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(documentHeading.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(Boolean(harnessesHeading.compareDocumentPosition(locationsHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(within(dialog).getByText("/tmp/home/.claude/commands/code-review.md")).toBeInTheDocument();
     expect(within(dialog).queryByText("/tmp/home/.codex/prompts/not-written.md")).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
-    expect(screen.getByRole("heading", { name: "Edit command" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("Review code")).toBeInTheDocument();
   });
 
   it("returns to read-only detail after editing a command", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
+    let commands = [
+      {
+        name: "code-review",
+        description: "Review code",
+        prompt: "$ARGUMENTS",
+        syncTargets: [
+          {
+            target: "claude",
+            path: "/tmp/home/.claude/commands/code-review.md",
+            status: "synced",
+          },
+        ],
+      },
+    ];
+
     fetchMock.mockImplementation(
       createRouteFetchMock([
         {
           match: (url, _input, init) => url === "/api/slash-commands/code-review" && init?.method === "PUT",
           response: (url: string, _input: RequestInfo | URL, init?: RequestInit) => {
-            requests.push({ url, body: JSON.parse(String(init?.body)) });
+            const parsedBody = JSON.parse(String(init?.body));
+            requests.push({ url, body: parsedBody });
+            const updated = {
+              name: "code-review",
+              description: parsedBody.description,
+              prompt: parsedBody.prompt,
+              syncTargets: [
+                {
+                  target: "claude",
+                  path: "/tmp/home/.claude/commands/code-review.md",
+                  status: "synced",
+                },
+              ],
+            };
+            commands = [updated];
             return okJson({
               ok: true,
-              command: {
-                name: "code-review",
-                description: "Review code carefully",
-                prompt: "Review this diff carefully.",
-                syncTargets: [
-                  {
-                    target: "claude",
-                    path: "/tmp/home/.claude/commands/code-review.md",
-                    status: "synced",
-                  },
-                ],
-              },
+              command: updated,
               sync: [],
             });
           },
         },
         {
           match: "/api/slash-commands",
-          response: slashCommandsPayload({
-            commands: [
-              {
-                name: "code-review",
-                description: "Review code",
-                prompt: "$ARGUMENTS",
-                syncTargets: [
-                  {
-                    target: "claude",
-                    path: "/tmp/home/.claude/commands/code-review.md",
-                    status: "synced",
-                  },
-                ],
-              },
-            ],
-          }),
+          response: () => slashCommandsPayload({ commands }),
         },
       ]),
     );
@@ -186,7 +187,7 @@ describe("SlashCommandsPage", () => {
     let dialog = screen.getByRole("dialog", { name: "Slash command details code-review" });
     fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Review code carefully" } });
-    fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: "Review this diff carefully." } });
+    fireEvent.change(screen.getByLabelText("Prompt Body"), { target: { value: "Review this diff carefully." } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(requests).toHaveLength(1));
@@ -194,12 +195,12 @@ describe("SlashCommandsPage", () => {
       description: "Review code carefully",
       prompt: "Review this diff carefully.",
       targets: ["claude"],
+      metadata: [],
     });
 
     dialog = await screen.findByRole("dialog", { name: "Slash command details code-review" });
     expect(within(dialog).getByText("Review code carefully")).toBeInTheDocument();
     expect(within(dialog).getByText("Review this diff carefully.")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Edit command" })).not.toBeInTheDocument();
   });
 
   it("keeps the edit form open when saving fails", async () => {
@@ -234,8 +235,7 @@ describe("SlashCommandsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(screen.getByText("Unable to save slash command.")).toBeInTheDocument());
-    expect(screen.getByRole("heading", { name: "Edit command" })).toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "Slash command details code-review" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("Review code carefully");
   });
 
   it("keeps all sync targets unchecked when an existing command is disabled everywhere", async () => {

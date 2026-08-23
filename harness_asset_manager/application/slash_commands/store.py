@@ -10,6 +10,7 @@ import tomli_w
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 
+from .codecs import _render_frontmatter
 from .models import SlashCommand
 
 COMMAND_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -62,18 +63,33 @@ class SlashCommandStore:
             self._write_command_path(self.command_path(command.name), command)
         return command
 
-    def update_command(self, name: str, *, description: str, prompt: str) -> SlashCommand:
+    def update_command(
+        self,
+        name: str,
+        *,
+        description: str,
+        prompt: str,
+        metadata: list[dict[str, str]] | list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[str] | tuple[str, ...] | None = None,
+    ) -> SlashCommand:
         validate_command_name(name)
         with file_lock(self.lock_path):
             path = self.command_path(name)
             if not path.is_file():
                 raise MutationError(f"unknown slash command: {name}", status=404)
             existing = self._read_command_path(path)
+            if metadata is not None:
+                frontmatter_lines = _render_frontmatter(
+                    SlashCommand(name=name, description=description, prompt=prompt),
+                    custom_metadata=metadata,
+                )
+                frontmatter = tuple(frontmatter_lines)
+            else:
+                frontmatter = existing.frontmatter
             command = SlashCommand(
                 name=name,
                 description=description,
                 prompt=prompt,
-                frontmatter=existing.frontmatter,
+                frontmatter=frontmatter,
             )
             validate_command(command)
             self._write_command_path(path, command)

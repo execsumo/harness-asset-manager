@@ -8,8 +8,9 @@ import type {
   SkillDetailDto,
   SkillsPageDto,
   SkillSourceStatusDto,
+  UpdateSkillDocumentRequest,
 } from "./types";
-import { fetchJson, postJson } from "../../../api/http";
+import { fetchJson, postJson, putJson } from "../../../api/http";
 
 export async function fetchSkillsPage(): Promise<SkillsPageDto> {
   return fetchJson<SkillsPageDto>("/skills");
@@ -17,6 +18,13 @@ export async function fetchSkillsPage(): Promise<SkillsPageDto> {
 
 export async function fetchSkillDetail(skillRef: string): Promise<SkillDetailDto> {
   return fetchJson<SkillDetailDto>(`/skills/${encodeURIComponent(skillRef)}`);
+}
+
+export async function updateSkillDocument(
+  skillRef: string,
+  body: UpdateSkillDocumentRequest,
+): Promise<OkResponse> {
+  return putJson<OkResponse>(`/skills/${encodeURIComponent(skillRef)}/document`, body);
 }
 
 export async function fetchSkillSourceStatus(skillRef: string): Promise<SkillSourceStatusDto> {
