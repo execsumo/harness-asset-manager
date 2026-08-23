@@ -389,10 +389,11 @@ def build_backend_container(
     permissions_store = PermissionStore(paths.permissions_store_manifest)
     permissions_read_models = PermissionsReadModelService.from_kernel(store=permissions_store, kernel=harness_kernel)
     invalidation.register(permissions_read_models)
-    permissions_queries = PermissionsQueryService(permissions_read_models)
+    permissions_queries = PermissionsQueryService(permissions_read_models, asset_tags=asset_tags)
     permissions_mutations = PermissionsMutationService(
         store=permissions_store,
         read_models=permissions_read_models,
+        asset_tags=asset_tags,
     )
     permissions_auto_adopt = ObservedConfigAutoAdoptService(
         read_models=permissions_read_models,
@@ -508,6 +509,7 @@ def build_backend_container(
     permissions_tracker = MutationPathTracker(
         lambda: (
             (paths.permissions_store_manifest, False),
+            (paths.asset_tags_path, False),
             *((adapter.config_path, False) for adapter in permissions_read_models.adapters),
         )
     )

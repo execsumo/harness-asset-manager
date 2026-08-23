@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 
 from harness_asset_manager.errors import MutationError
 
 from .harness_application import PermissionsHarnessApplication
 from .read_models import PermissionsReadModelService
 from .store import PermissionSpec, PermissionStore
+
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags.service import AssetTagService
 
 
 class PermissionsMutationService:
@@ -18,10 +21,21 @@ class PermissionsMutationService:
         *,
         store: PermissionStore,
         read_models: PermissionsReadModelService,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.store = store
         self.read_models = read_models
+        self._asset_tags = asset_tags
         self.harness_application = PermissionsHarnessApplication(read_models)
+
+    def set_tags(self, id: str, tags: Iterable[str]) -> dict[str, object]:
+        if self.store.get_managed(id) is None:
+            raise MutationError(f"unknown permission: {id}", status=404)
+        if self._asset_tags is None:
+            raise MutationError("asset tags service not configured", status=500)
+        cleaned = self._asset_tags.set_tags("permissions", id, tags)
+        self.read_models.invalidate()
+        return {"tags": cleaned}
 
     def create_permission(self, spec: PermissionSpec) -> PermissionSpec:
         if not spec.id:
@@ -60,10 +74,16 @@ class PermissionsMutationService:
         if self.store.get_managed(id) is None:
             raise MutationError(f"unknown permission: {id}", status=404)
         bound_harnesses = self._harnesses_in_states(id, {"managed", "drifted"})
+
+        def _remove() -> None:
+            self.store.remove(id)
+            if self._asset_tags is not None:
+                self._asset_tags.delete_tags_for_ref("permissions", id)
+
         return self.harness_application.disable_many(
             id,
             bound_harnesses,
-            remove_after_full_success=lambda: self.store.remove(id),
+            remove_after_full_success=_remove,
         ).to_dict()
 
     def enable_permission(

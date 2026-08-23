@@ -1,4 +1,4 @@
-import { deleteJson, fetchJson, postJson } from "../../../api/http";
+import { deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
 
 import type {
   PermissionApplyConfigResponseDto,
@@ -46,6 +46,16 @@ export async function uninstallPermission(id: string): Promise<PermissionSetHarn
 
 export async function fetchPermissionDetail(id: string): Promise<PermissionInventoryEntryDto> {
   return fetchJson<PermissionInventoryEntryDto>(`/permissions/${encodeURIComponent(id)}`);
+}
+
+export async function setPermissionTags(
+  id: string,
+  tags: string[],
+): Promise<{ tags: string[] }> {
+  return putJson<{ tags: string[] }>(
+    `/permissions/${encodeURIComponent(id)}/tags`,
+    { tags },
+  );
 }
 
 export async function createPermission(body: {

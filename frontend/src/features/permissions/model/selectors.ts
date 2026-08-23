@@ -5,8 +5,22 @@ import type {
   PermissionInventoryEntryDto,
 } from "../api/management-types";
 import { permissionsCopy, type PermissionsCopy } from "../i18n";
+import {
+  extractAssetTagCounts,
+  matchesAssetTags,
+  type AssetTagCount,
+} from "../../../components/tags/tag-counts";
 
 export type PermissionsMatrixCellState = "enabled" | "disabled" | "different" | "unavailable" | "observed";
+
+export type PermissionTagCount = AssetTagCount;
+
+export function extractPermissionsTagCounts(
+  inventory: PermissionInventoryDto | null | undefined,
+): PermissionTagCount[] {
+  const managed = inventory?.entries.filter((entry) => entry.kind === "managed");
+  return extractAssetTagCounts(managed);
+}
 
 export interface PermissionsMatrixCellModel {
   state: PermissionsMatrixCellState;
@@ -69,6 +83,7 @@ export interface PermissionsFilters {
   status: PermissionsStatusFilter;
   /** Restrict to entries sighted on this harness (id). */
   harness?: string | null;
+  tags?: string[] | null;
 }
 
 function matchesStatus(
@@ -103,6 +118,11 @@ export function filterPermissions(
   const addressable = addressableHarnesses(inventory);
   const needle = filters.search.trim();
   return inventory.entries.filter((entry) => {
+    if (filters.tags && filters.tags.length > 0) {
+      if (entry.kind !== "managed" || !matchesAssetTags(entry, filters.tags)) {
+        return false;
+      }
+    }
     if (!matchesSearch(entry, needle)) return false;
     if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
     if (filters.decision !== "all" && entry.spec?.decision !== filters.decision) return false;

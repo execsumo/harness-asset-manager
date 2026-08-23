@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from harness_asset_manager.errors import MutationError
 
@@ -14,6 +15,9 @@ from .inventory import build_inventory
 from .managed_state import entry_payload, inventory_payload
 from .read_models import PermissionsReadModelService
 
+if TYPE_CHECKING:
+    from harness_asset_manager.application.asset_tags.service import AssetTagService
+
 
 class PermissionsQueryService:
     """Read-side service exposing canonical permissions config and inventory views."""
@@ -22,9 +26,12 @@ class PermissionsQueryService:
         self,
         read_models: PermissionsReadModelService,
         reconcile: Callable[[], object] | None = None,
+        *,
+        asset_tags: AssetTagService | None = None,
     ) -> None:
         self.read_models = read_models
         self._reconcile = reconcile
+        self._asset_tags = asset_tags
         # Reentrancy guard, per thread (mirrors SkillsQueryService). Reconcile does
         # not currently read back through this service, but the wiring is identical
         # to the slash-commands family where that assumption broke; keep the
@@ -83,11 +90,17 @@ class PermissionsQueryService:
             for scan in scans
             if scan.scan_issue
         )
+        tags_by_ref = (
+            self._asset_tags.get_tags_for_family("permissions")
+            if self._asset_tags is not None
+            else {}
+        )
         return build_inventory(
             managed_permissions=self.read_models.store.list_managed(),
             specs=self.read_models.store.list_managed(),
             scans=scans,
             issues=issues,
+            tags_by_ref=tags_by_ref,
         )
 
 

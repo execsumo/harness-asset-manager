@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Star } from "lucide-react";
 
 import {
   MatrixHarnessCellTarget,
@@ -35,6 +35,9 @@ interface PermissionsMatrixViewProps {
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
   onAdopt: (id: string) => void;
+  onToggleStar?: (id: string) => void;
+  starredFilterActive?: boolean;
+  onToggleStarredFilter?: () => void;
 }
 
 export function PermissionsMatrixView({
@@ -48,6 +51,9 @@ export function PermissionsMatrixView({
   onEnableHarness,
   onDisableHarness,
   onAdopt,
+  onToggleStar,
+  starredFilterActive = false,
+  onToggleStarredFilter,
 }: PermissionsMatrixViewProps) {
   const copy = usePermissionsCopy();
   const displayColumns = matrixColumns({ columns });
@@ -84,6 +90,20 @@ export function PermissionsMatrixView({
             direction={sort.direction}
             onClick={() => requestSort("name")}
           />
+          <th className="matrix-table__th matrix-table__th--star">
+            <UiTooltip content="Starred">
+              <button
+                type="button"
+                className="matrix-table__sort-btn matrix-table__sort-btn--harness matrix-table__star-header-btn"
+                data-active={starredFilterActive ? "true" : undefined}
+                aria-pressed={starredFilterActive}
+                aria-label="Filter by starred"
+                onClick={onToggleStarredFilter}
+              >
+                <Star size={16} fill="currentColor" aria-hidden="true" />
+              </button>
+            </UiTooltip>
+          </th>
           {displayColumns.map((column) => {
             const key: PermissionsSortKey = { harness: column.harness };
             return (
@@ -132,6 +152,7 @@ export function PermissionsMatrixView({
             onEnableHarness={onEnableHarness}
             onDisableHarness={onDisableHarness}
             onAdopt={onAdopt}
+            onToggleStar={onToggleStar}
             copy={copy}
           />
         ))}
@@ -151,6 +172,7 @@ function PermissionsMatrixRow({
   onEnableHarness,
   onDisableHarness,
   onAdopt,
+  onToggleStar,
   copy,
 }: {
   entry: PermissionInventoryEntryDto;
@@ -163,11 +185,14 @@ function PermissionsMatrixRow({
   onEnableHarness: (id: string, harness: string) => void;
   onDisableHarness: (id: string, harness: string) => void;
   onAdopt: (id: string) => void;
+  onToggleStar?: (id: string) => void;
   copy: PermissionsCopy;
 }) {
   const coverage = matrixCoverage(entry, columns);
   const isUntracked = entry.kind === "unmanaged";
   const ruleName = entry.spec?.pattern ?? entry.displayName;
+  const isStarred = (entry.tags || []).some((t) => t.toLowerCase() === "starred");
+  const displayTags = (entry.tags || []).filter((t) => t.toLowerCase() !== "starred");
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
@@ -191,11 +216,43 @@ function PermissionsMatrixRow({
             {entry.spec ? (
               <PermissionsStatusChip decision={entry.spec.decision} scope={entry.spec.scope} />
             ) : null}
+            {displayTags.length > 0 ? (
+              <div className="matrix-table__tag-pills">
+                {displayTags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="matrix-table__tag-pill">
+                    {tag}
+                  </span>
+                ))}
+                {displayTags.length > 2 ? (
+                  <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                    +{displayTags.length - 2}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </span>
           {entry.spec?.description ? (
             <span className="matrix-table__description">{entry.spec.description}</span>
           ) : null}
         </button>
+      </td>
+      <td className="matrix-table__cell matrix-table__cell--star">
+        {!isUntracked && onToggleStar ? (
+          <button
+            type="button"
+            className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+            aria-label={isStarred ? `Unstar ${entry.displayName}` : `Star ${entry.displayName}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(entry.id);
+            }}
+          >
+            <Star
+              size={14}
+              className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+            />
+          </button>
+        ) : null}
       </td>
       {columns.map((column) => {
         const cell = matrixCellFor(entry, column, copy);

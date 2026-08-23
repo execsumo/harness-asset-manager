@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .contracts import (
     PermissionBinding,
@@ -18,6 +18,7 @@ def build_inventory(
     specs: Iterable[PermissionSpec],
     scans: Iterable[PermissionHarnessScan],
     issues: Iterable[PermissionInventoryIssue] = (),
+    tags_by_ref: Mapping[str, Iterable[str]] | None = None,
 ) -> PermissionInventory:
     scans_tuple = tuple(scans)
     specs_tuple = tuple(specs)
@@ -46,6 +47,7 @@ def build_inventory(
     for perm in sorted(managed_tuple, key=lambda p: p.id.lower()):
         spec = spec_by_id.get(perm.id)
         bindings = tuple(bindings_by_id.get(perm.id, ()))
+        tags = tuple(tags_by_ref.get(perm.id, ())) if tags_by_ref else ()
         entries.append(
             PermissionInventoryEntry(
                 id=perm.id,
@@ -54,6 +56,7 @@ def build_inventory(
                 sightings=bindings,
                 is_managed=True,
                 can_enable=spec is not None,
+                tags=tags,
             )
         )
         seen.add(perm.id)

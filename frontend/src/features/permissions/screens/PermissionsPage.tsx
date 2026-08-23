@@ -9,6 +9,7 @@ import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import { useCommonCopy } from "../../../i18n";
 import { usePermissionsCopy } from "../i18n";
@@ -16,11 +17,13 @@ import { PermissionsMatrixView } from "../components/PermissionsMatrixView";
 import { PermissionDetailSheet } from "../components/detail/PermissionDetailSheet";
 import { PermissionFormDialog } from "../components/edit/PermissionFormDialog";
 import {
+  extractPermissionsTagCounts,
   filterPermissions,
   permissionsSummary,
   type PermissionsStatusFilter,
 } from "../model/selectors";
 import { usePermissionsManagementController } from "../model/use-permissions-management-controller";
+import { useSetPermissionTagsMutation } from "../api/management-queries";
 
 const DETAIL_PARAM = "permission";
 
@@ -57,6 +60,7 @@ export default function PermissionsPage() {
   const [confirmUninstallId, setConfirmUninstallId] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addPending, setAddPending] = useState(false);
+  const setTagsMutation = useSetPermissionTagsMutation();
 
   const [search, setSearch] = useState("");
   const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -94,9 +98,63 @@ export default function PermissionsPage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  // URL-backed tag filters (?tag=)
+  const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
+  const knownTags = useMemo(
+    () => extractPermissionsTagCounts(inventory),
+    [inventory],
+  );
+
+  const toggleTagFilter = useCallback(
+    (tagToToggle: string) => {
+      const params = new URLSearchParams(searchParams);
+      const current = params.getAll("tag");
+      const normalizedToggle = tagToToggle.toLowerCase();
+      params.delete("tag");
+      let found = false;
+      for (const t of current) {
+        if (t.toLowerCase() === normalizedToggle) {
+          found = true;
+        } else {
+          params.append("tag", t);
+        }
+      }
+      if (!found) {
+        params.append("tag", tagToToggle);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearTagFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const onToggleStarredFilter = useCallback(() => {
+    toggleTagFilter("starred");
+  }, [toggleTagFilter]);
+
+  const handleToggleStar = useCallback(
+    async (id: string) => {
+      const permEntry = inventory?.entries.find((e) => e.id === id);
+      if (!permEntry) return;
+      const currentTags = permEntry.tags || [];
+      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const nextTags = isStarred
+        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
+        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+      await setTagsMutation.mutateAsync({ id, tags: nextTags });
+    },
+    [inventory, setTagsMutation],
+  );
+
   const entries = useMemo(
-    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter, harness: harnessParam }),
-    [inventory, search, statusFilter, harnessParam],
+    () => filterPermissions(inventory, { search, decision: "deny", status: statusFilter, harness: harnessParam, tags: selectedTags }),
+    [inventory, search, statusFilter, harnessParam, selectedTags],
   );
   const summary = useMemo(() => permissionsSummary(inventory), [inventory]);
   const statusCounts = useMemo<Record<PermissionsStatusFilter, number>>(
@@ -112,7 +170,7 @@ export default function PermissionsPage() {
 
   const hasData = summary.total > 0;
   const isReady = status === "ready" && Boolean(inventory);
-  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null;
+  const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
   // Keep only currently visible rows selected as filters or inventory change.
   useEffect(() => {
@@ -258,9 +316,12 @@ export default function PermissionsPage() {
 
   const clearFilters = useCallback(() => {
     setSearch("");
-    setStatusFilter("all");
-    clearHarnessFilter();
-  }, [clearHarnessFilter]);
+    const params = new URLSearchParams(searchParams);
+    params.delete("status");
+    params.delete("harness");
+    params.delete("tag");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   return (
     <>
@@ -280,33 +341,41 @@ export default function PermissionsPage() {
           }
         />
         {hasData ? (
-          <FilterBar
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder={copy.inUse.searchPlaceholder}
-            searchLabel={copy.inUse.searchLabel}
-            trailing={
-              <>
-                {harnessParam ? (
-                  <HarnessFilterChip
-                    label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
-                    onClear={clearHarnessFilter}
+          <>
+            <FilterBar
+              searchValue={search}
+              onSearchChange={setSearch}
+              searchPlaceholder={copy.inUse.searchPlaceholder}
+              searchLabel={copy.inUse.searchLabel}
+              trailing={
+                <>
+                  {harnessParam ? (
+                    <HarnessFilterChip
+                      label={inventory?.columns.find((column) => column.harness === harnessParam)?.label ?? harnessParam}
+                      onClear={clearHarnessFilter}
+                    />
+                  ) : null}
+                  <SelectionMenu
+                  value={statusFilter}
+                  options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
+                    value,
+                    label: STATUS_LABELS[value],
+                    meta: statusCounts[value],
+                  }))}
+                  active={statusFilter !== "all"}
+                  ariaLabel={copy.inUse.filters.aria(STATUS_LABELS[statusFilter])}
+                  onChange={setStatusFilter}
                   />
-                ) : null}
-                <SelectionMenu
-                value={statusFilter}
-                options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
-                  value,
-                  label: STATUS_LABELS[value],
-                  meta: statusCounts[value],
-                }))}
-                active={statusFilter !== "all"}
-                ariaLabel={copy.inUse.filters.aria(STATUS_LABELS[statusFilter])}
-                onChange={setStatusFilter}
-                />
-              </>
-            }
-          />
+                </>
+              }
+            />
+            <TagFilterBar
+              tags={knownTags}
+              selectedTags={selectedTags}
+              onToggleTag={toggleTagFilter}
+              onClearTags={clearTagFilters}
+            />
+          </>
         ) : null}
       </div>
 
@@ -342,6 +411,9 @@ export default function PermissionsPage() {
             onAdopt={(id) => {
               void handlePromotePermission(id);
             }}
+            onToggleStar={handleToggleStar}
+            starredFilterActive={starredFilterActive}
+            onToggleStarredFilter={onToggleStarredFilter}
           />
         ) : hasData ? (
           <div className="empty-panel">

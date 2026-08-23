@@ -58,6 +58,7 @@ def entry_payload(
         "spec": spec_payload,
         "canEnable": entry.can_enable,
         "enabledStatus": enabled_status,
+        "tags": list(entry.tags),
         "sightings": [
             _binding_to_dict(binding)
             for binding in entry.sightings

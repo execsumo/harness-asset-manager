@@ -75,7 +75,7 @@ describe("PermissionsMatrixView", () => {
 
     const table = screen.getByRole("table", { name: "Permissions harness matrix" });
     const headerCells = table.querySelectorAll("thead tr > th");
-    expect(headerCells).toHaveLength(columns.length + 4);
+    expect(headerCells).toHaveLength(columns.length + 5);
     expect(table.querySelectorAll("tbody tr:first-child > td")).toHaveLength(headerCells.length);
     expect(rowNames()).toEqual(["Alpha Rule", "Zeta Rule"]);
 
@@ -86,6 +86,27 @@ describe("PermissionsMatrixView", () => {
     // Sort by Active
     fireEvent.click(screen.getByRole("button", { name: "Sort by Active" }));
     expect(rowNames()).toEqual(["Zeta Rule", "Alpha Rule"]);
+  });
+
+  it("toggles star on a permission row", () => {
+    const onToggleStar = vi.fn();
+    const props = {
+      entries,
+      columns,
+      pendingPermissionKeys: new Set<string>(),
+      pendingPerHarnessKeys: new Set<string>(),
+      checkedIds: new Set<string>(),
+      onOpenDetail: vi.fn(),
+      onToggleChecked: vi.fn(),
+      onEnableHarness: vi.fn(),
+      onDisableHarness: vi.fn(),
+      onAdopt: vi.fn(),
+      onToggleStar,
+    };
+    render(<PermissionsMatrixView {...props} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Star Alpha Rule" }));
+    expect(onToggleStar).toHaveBeenCalledWith("alpha-rule");
   });
 
   it("sorts by harness column", () => {

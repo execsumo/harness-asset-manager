@@ -812,6 +812,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/permissions/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Permission Tags */
+        put: operations["set_permission_tags_api_permissions__id__tags_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/scaffold": {
         parameters: {
             query?: never;
@@ -2524,6 +2541,8 @@ export interface components {
             /** Sightings */
             sightings: components["schemas"]["PermissionBindingResponse"][];
             spec?: components["schemas"]["PermissionSpecResponse"] | null;
+            /** Tags */
+            tags?: string[];
         };
         /** PermissionInventoryIssueResponse */
         PermissionInventoryIssueResponse: {
@@ -2579,6 +2598,11 @@ export interface components {
             revision: string;
             /** Scope */
             scope: string;
+        };
+        /** PermissionTagsResponse */
+        PermissionTagsResponse: {
+            /** Tags */
+            tags?: string[];
         };
         /** PromoteHookRequest */
         PromoteHookRequest: {
@@ -2711,6 +2735,11 @@ export interface components {
              * @enum {string}
              */
             target: "enabled" | "disabled";
+        };
+        /** SetPermissionTagsRequest */
+        SetPermissionTagsRequest: {
+            /** Tags */
+            tags?: string[];
         };
         /** SetSkillHarnessesFailureResponse */
         SetSkillHarnessesFailureResponse: {
@@ -7500,6 +7529,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionSetHarnessesResultResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_permission_tags_api_permissions__id__tags_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPermissionTagsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PermissionTagsResponse"];
                 };
             };
             /** @description Bad Request */

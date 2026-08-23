@@ -106,9 +106,11 @@ from .permissions import (
     PermissionMutationResponse,
     PermissionSetHarnessesResultResponse,
     PermissionSpecResponse,
+    PermissionTagsResponse,
     PromotePermissionRequest,
     ReconcilePermissionRequest,
     SetPermissionHarnessesRequest,
+    SetPermissionTagsRequest,
 )
 from .settings import (
     SetAutoAdoptHarnessesRequest,
@@ -320,7 +322,9 @@ __all__ = [
     "PermissionMutationResponse",
     "PermissionSetHarnessesResultResponse",
     "PermissionSpecResponse",
+    "PermissionTagsResponse",
     "PromotePermissionRequest",
     "ReconcilePermissionRequest",
     "SetPermissionHarnessesRequest",
+    "SetPermissionTagsRequest",
 ]

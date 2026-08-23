@@ -13,9 +13,11 @@ from harness_asset_manager.api.schemas import (
     PermissionInventoryResponse,
     PermissionMutationResponse,
     PermissionSetHarnessesResultResponse,
+    PermissionTagsResponse,
     PromotePermissionRequest,
     ReconcilePermissionRequest,
     SetPermissionHarnessesRequest,
+    SetPermissionTagsRequest,
 )
 from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.permissions.store import PermissionSpec
@@ -34,6 +36,15 @@ def get_permission(
     container: BackendContainer = Depends(get_container),
 ) -> dict[str, object]:
     return container.permissions_queries.get_permission(id)
+
+
+@router.put("/{id}/tags", response_model=PermissionTagsResponse)
+def set_permission_tags(
+    id: str,
+    body: SetPermissionTagsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    return container.permissions_mutations.set_tags(id, body.tags)
 
 
 @router.post("", response_model=PermissionMutationResponse)
