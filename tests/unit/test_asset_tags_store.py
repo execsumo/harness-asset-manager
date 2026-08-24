@@ -8,7 +8,6 @@ from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.asset_tags import (
     MAX_TAG_LENGTH,
-    STARRED_TAG,
     AssetTagService,
     AssetTagStore,
     normalize_and_dedupe_tags,

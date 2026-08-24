@@ -10,10 +10,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import seed_skill_package, seed_store_manifest
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
+from tests.support.app_harness import AppTestHarness
+from tests.support.fake_home import seed_skill_package, seed_store_manifest
 
 
 def run_pressure_test() -> None:
@@ -59,6 +59,7 @@ def run_pressure_test() -> None:
         # DoD Item 2: GET /api/skills/shared%3Aacademic-research/source-status -> 200
         # -----------------------------------------------------------------
         source_status = harness.get_json("/api/skills/shared%3Aacademic-research/source-status")
+        assert isinstance(source_status, dict)
         assert "updateStatus" in source_status
         print("✓ [DoD 2] GET /api/skills/shared%3Aacademic-research/source-status returned 200 OK")
 

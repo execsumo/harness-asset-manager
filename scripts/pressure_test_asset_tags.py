@@ -6,16 +6,15 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 # Add repo root to sys.path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import seed_skill_package, seed_store_manifest
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
+from tests.support.app_harness import AppTestHarness
+from tests.support.fake_home import seed_skill_package, seed_store_manifest
 
 
 def run_pressure_test() -> None:

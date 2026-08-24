@@ -18,7 +18,7 @@ import { useToast } from "../../../../components/Toast";
 import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
-import { useAdoptAgentMutation, useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
+import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import type { AgentDetailDto } from "../../api/types";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
@@ -50,9 +50,7 @@ export function AgentDetailContent({
   
   const deleteMutation = useDeleteAgentMutation();
   const updateMutation = useUpdateAgentMutation();
-  const adoptMutation = useAdoptAgentMutation();
   const setTagsMutation = useSetAgentTagsMutation();
-  const [adoptDialogOpen, setAdoptDialogOpen] = useState(false);
   
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;

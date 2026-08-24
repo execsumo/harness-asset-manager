@@ -4,18 +4,17 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from harness_asset_manager.application.agents.parser import (
+    parse_agent_document,
+    render_agent_document,
+)
 from harness_asset_manager.application.skills.document_utils import (
     parse_skill_document,
     read_skill_document_and_metadata,
     render_skill_document,
 )
-from harness_asset_manager.application.agents.parser import (
-    parse_agent_document,
-    render_agent_document,
-)
 from harness_asset_manager.application.slash_commands.codecs import (
     FrontmatterMarkdownCommandCodec,
-    _render_frontmatter,
 )
 from harness_asset_manager.application.slash_commands.models import SlashCommand
 

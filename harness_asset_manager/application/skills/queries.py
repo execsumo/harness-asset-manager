@@ -12,7 +12,7 @@ from harness_asset_manager.sources import (
     github_repo_url,
 )
 
-from .document_utils import read_skill_document_and_metadata, read_skill_document_markdown
+from .document_utils import read_skill_document_and_metadata
 from .inventory import InventoryEntry, SkillInventory
 from .package import fingerprint_package
 from .policy import can_stop_managing, can_update, has_local_changes

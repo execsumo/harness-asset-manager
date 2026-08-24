@@ -13,8 +13,8 @@ from harness_asset_manager.api.schemas import (
     SetSkillTagsRequest,
     SkillDetailResponse,
     SkillSourceStatusResponse,
-    SkillTagsResponse,
     SkillsPageResponse,
+    SkillTagsResponse,
     UpdateSkillDocumentRequest,
 )
 from harness_asset_manager.application import BackendContainer

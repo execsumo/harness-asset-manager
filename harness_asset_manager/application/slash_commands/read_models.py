@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from harness_asset_manager.errors import MutationError
 

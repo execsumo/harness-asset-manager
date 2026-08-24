@@ -13,7 +13,6 @@ import { DocumentSection } from "../../../../components/detail/editing/DocumentS
 import {
   FrontmatterEditor,
   parseFrontmatterFromYaml,
-  serializeFrontmatterToYaml,
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
