@@ -294,6 +294,12 @@ in list/detail views, and the `starred` tag is available through the matrix star
 URL-backed `?tag=starred` filter. Tag filters compose with each family's status and harness
 filters. Unmanaged entries remain read-only for tagging.
 
+Every tag editor suggests existing tags while you type, so a portfolio converges on a shared
+tag vocabulary instead of splintering into near-duplicates. Families whose managed rows carry
+select checkboxes (Skills, MCP Servers, Permissions) also support bulk tagging: select rows,
+then use **Tag** in the bulk action bar to apply one or more tags to all selected assets at
+once — tags are merged into each asset's existing set, never replaced.
+
 ### Skills
 
 Before adoption, each harness points at its own local skill folder. After adoption, Harness Asset Manager keeps one canonical package in its shared local store and exposes it to selected harnesses with local links. Disabling a harness removes that harness binding without deleting the package.
@@ -418,7 +424,7 @@ Denylist rules restrict shell commands, file paths, web domains, and MCP tools a
 
 Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default.
 
-The permissions matrix behaves like every other family view: sortable rule, harness, and applied-count columns, plus a select checkbox on each row. Managed rules support bulk apply, remove, and delete; untracked rules support bulk adopt.
+The permissions matrix behaves like every other family view: sortable rule, harness, and applied-count columns, plus a select checkbox on each row. Managed rules support bulk apply, remove, delete, and tag; untracked rules support bulk adopt.
 
 Each harness codec translates rules into that harness's native deny surface:
 

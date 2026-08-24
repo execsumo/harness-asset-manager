@@ -275,7 +275,10 @@ All five family matrices are built from `components/matrix/` (`MatrixTable`,
   logo stacks stand in for wide columns on narrow viewports.
 - Rows carry a leading select checkbox. Managed rows selected → bulk action bar (apply /
   remove everywhere / delete, with confirm dialog); untracked rows → a bulk-dock Adopt bar.
-  Unmanaged rows render inline with no special tint, identically across families.
+  Families with the full managed-row bar (Skills, MCP, Permissions) also get a **Tag** action
+  (`BulkTagPopover`): staged multi-tag input with existing-tag autocomplete, merged into each
+  selected asset's tags via the family's per-asset replace-set endpoint. Unmanaged rows render
+  inline with no special tint, identically across families.
 
 ### Enabled-and-detected column filtering
 

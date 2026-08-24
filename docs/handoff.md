@@ -2,6 +2,44 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-24 — Bulk tag actions + tag autocomplete fix; docs updated
+
+### Running state
+
+- `main` = `origin/main` = `bcb96d2`, checkout ON `main`, tree clean. Server restarted from
+  merged main on :8000 against the real store (`homeDir: /home/dev`); dist rebuilt from main.
+
+### Shipped this entry (delegated to agy in its own worktree, independently verified)
+
+1. **Bulk tagging** — the bulk action bar on Skills, MCP, and Permissions gained a **Tag**
+   action (`BulkTagPopover`): staged multi-tag chips with Enter/comma commit and Backspace
+   removal, existing-tag autocomplete while typing, 64-char + case-insensitive duplicate
+   validation. Apply **union-merges** into each selected asset's existing tags via the family's
+   per-asset replace-set endpoint (never replaces), skips already-tagged assets, accumulates
+   per-ref failures into one summary error, clears selection on success. Agents/Hooks/Slash
+   Commands intentionally excluded: their bulk bars are adopt-only bars for untracked rows —
+   they have no managed-row multi-select to hang a tag action on.
+2. **Tag autocomplete fixed** — root cause was pure dead wiring: `DetailTags`/
+   `SkillDetailTags` always implemented a suggestion dropdown behind a `knownTags` prop that
+   no caller passed. `knownTags` is now threaded from every page's `extract*TagCounts`
+   selector through all six detail views, so typing proposes existing tags instead of letting
+   the vocabulary splinter.
+
+Frontend-only; no backend/API/OpenAPI changes. New tests: `BulkActionBar.test.tsx`,
+`DetailTags.test.tsx`, plus controller/detail regression tests (Vitest up from 345/69 to
+363/71).
+
+### Validation
+
+Owner independently re-ran the full suite on agy's worktree before merging: typecheck clean;
+backend 598 unit + 217 integration OK at 81% coverage; Vitest 363/363 across 71 files;
+production build clean. Agy also ran an isolated-state pressure test (`--state-dir`, port
+8765) proving union-not-replace merge semantics and the 4xx envelope on unknown refs.
+
+Docs updated in the same pass: README tagging section now documents autocomplete + bulk
+tagging (and the permissions bulk list gained "tag"); ARCHITECTURE frontend-conventions
+bullet describes the Tag action / `BulkTagPopover` and which families have it.
+
 ## 2026-08-23 — Asset tags Phase 2 shipped; all six families tagged
 
 ### Running state
