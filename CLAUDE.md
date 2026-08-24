@@ -46,6 +46,22 @@ Serve/run from `main`. After switching branches or building on a different branc
 npm run build
 ```
 
+### Serving over a tailnet
+
+Where the app is published to a tailnet, it stays on its loopback port and `tailscale serve`
+terminates TLS in front of it. That mapping lives in tailscaled's own state and survives
+reboots, so it needs no boot-time step — and it is per-machine, never checked in. Ports and
+hostnames are therefore a property of the host, not of this repo.
+
+`scripts/serve-tailnet.sh` applies or re-applies the mapping — after a tailscaled state loss,
+or to move the front door — reading `HAM_TAILNET_PORT` (default `7443`) and `HAM_BACKEND_PORT`
+(default `8000`) from the environment. It is idempotent and **never deletes mappings**: a host
+usually proxies unrelated apps on other ports, and `tailscale serve reset` would take them all
+out. To retire a port, run the `tailscale serve --https=<port> off` line the script prints.
+
+If the app was launched by hand (`nohup … serve --allow-remote`) rather than by a supervisor,
+it does **not** survive a reboot, and the front door will proxy nothing until it is relaunched.
+
 ## Delegating development (herdr + agy)
 
 We work inside **herdr** (`HERDR_ENV=1`) — use the `ogulcancelik--herdr` skill. Delegate
