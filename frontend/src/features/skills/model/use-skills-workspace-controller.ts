@@ -481,6 +481,41 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     }
   }, [data, multiSelectedRefs, setTagsMutation]);
 
+  const handleMultiSelectTag = useCallback(
+    async (tagsToAdd: string[]): Promise<void> => {
+      if (multiSelectedRefs.size === 0 || tagsToAdd.length === 0) return;
+      setMultiSelectPending("tag");
+      setActionErrorMessage("");
+      const failedRefs: string[] = [];
+      try {
+        const refs = Array.from(multiSelectedRefs);
+        for (const ref of refs) {
+          const row = data?.rows.find((r) => r.skillRef === ref);
+          if (!row) continue;
+          const currentTags = row.tags || [];
+          const currentLower = new Set(currentTags.map((t) => t.toLowerCase()));
+          const toAdd = tagsToAdd.filter((t) => !currentLower.has(t.toLowerCase()));
+          if (toAdd.length === 0) {
+            continue;
+          }
+          const nextTags = [...currentTags, ...toAdd];
+          try {
+            await setTagsMutation.mutateAsync({ skillRef: ref, tags: nextTags });
+          } catch {
+            failedRefs.push(ref);
+          }
+        }
+        if (failedRefs.length > 0) {
+          setActionErrorMessage(`Failed to add tags for: ${failedRefs.join(", ")}`);
+        }
+        setMultiSelectedRefs(new Set());
+      } finally {
+        setMultiSelectPending(null);
+      }
+    },
+    [data, multiSelectedRefs, setTagsMutation],
+  );
+
   const context: SkillsWorkspaceContextValue = {
     data,
     hasData,
@@ -503,6 +538,7 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     onMultiSelectDisableAll: handleMultiSelectDisableAll,
     onMultiSelectDelete: handleMultiSelectDelete,
     onMultiSelectStar: handleMultiSelectStar,
+    onMultiSelectTag: handleMultiSelectTag,
     onToggleStar: handleToggleStar,
     onSetTags: handleSetTags,
     onSetSkillAllHarnesses: handleSetSkillAllHarnesses,

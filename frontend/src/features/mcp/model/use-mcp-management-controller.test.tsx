@@ -5,11 +5,18 @@ const hoisted = vi.hoisted(() => ({
   setHarnessesMutate: vi.fn(),
   enableMutate: vi.fn(),
   availabilityMutate: vi.fn(),
+  setTagsMutate: vi.fn(),
 }));
 
 vi.mock("../api/management-queries", () => ({
   useMcpInventoryQuery: () => ({
-    data: { columns: [], entries: [] },
+    data: {
+      columns: [],
+      entries: [
+        { name: "server-a", kind: "managed", tags: ["core"], mcpStatus: { kind: "running" } },
+        { name: "server-b", kind: "managed", tags: ["starred", "database"], mcpStatus: { kind: "running" } },
+      ],
+    },
     isPending: false,
     error: null,
   }),
@@ -26,6 +33,9 @@ vi.mock("../api/management-queries", () => ({
   }),
   useCheckMcpServerAvailabilityMutation: () => ({
     mutateAsync: hoisted.availabilityMutate,
+  }),
+  useSetMcpServerTagsMutation: () => ({
+    mutateAsync: hoisted.setTagsMutate,
   }),
   useDisableMcpServerMutation: () => ({ mutateAsync: vi.fn() }),
   useUninstallMcpServerMutation: () => ({ mutateAsync: vi.fn() }),
@@ -75,5 +85,82 @@ describe("useMcpManagementController availability refresh", () => {
     expect(hoisted.enableMutate).toHaveBeenCalledWith({ name: "exa", harness: "cursor" });
     expect(hoisted.availabilityMutate).toHaveBeenCalledWith("exa");
     expect(settled).toBe(true);
+  });
+});
+
+describe("useMcpManagementController handleMultiSelectTag", () => {
+  beforeEach(() => {
+    hoisted.setTagsMutate.mockReset();
+    hoisted.setTagsMutate.mockResolvedValue({});
+  });
+
+  it("merges tags into selected managed servers and clears selection", async () => {
+    const { result } = renderHook(() => useMcpManagementController());
+
+    act(() => {
+      result.current.handleToggleMultiSelect("server-a");
+      result.current.handleToggleMultiSelect("server-b");
+    });
+
+    expect(result.current.multiSelectedNames.size).toBe(2);
+
+    await act(async () => {
+      await result.current.handleMultiSelectTag(["analytics", "database"]);
+    });
+
+    // server-a gets ["core", "analytics", "database"]
+    // server-b already had "database", so gets ["starred", "database", "analytics"]
+    expect(hoisted.setTagsMutate).toHaveBeenCalledWith({
+      name: "server-a",
+      tags: ["core", "analytics", "database"],
+    });
+    expect(hoisted.setTagsMutate).toHaveBeenCalledWith({
+      name: "server-b",
+      tags: ["starred", "database", "analytics"],
+    });
+
+    expect(result.current.multiSelectedNames.size).toBe(0);
+    expect(result.current.actionErrorMessage).toBe("");
+  });
+
+  it("skips server if all tags are already present", async () => {
+    const { result } = renderHook(() => useMcpManagementController());
+
+    act(() => {
+      result.current.handleToggleMultiSelect("server-a");
+    });
+
+    await act(async () => {
+      await result.current.handleMultiSelectTag(["core"]);
+    });
+
+    expect(hoisted.setTagsMutate).not.toHaveBeenCalled();
+    expect(result.current.multiSelectedNames.size).toBe(0);
+  });
+
+  it("handles per-server failures and sets error message", async () => {
+    hoisted.setTagsMutate.mockImplementation(async ({ name }: { name: string }) => {
+      if (name === "server-a") throw new Error("Permission denied");
+      return {};
+    });
+
+    const { result } = renderHook(() => useMcpManagementController());
+
+    act(() => {
+      result.current.handleToggleMultiSelect("server-a");
+      result.current.handleToggleMultiSelect("server-b");
+    });
+
+    await act(async () => {
+      await result.current.handleMultiSelectTag(["new-tag"]);
+    });
+
+    expect(hoisted.setTagsMutate).toHaveBeenCalledWith({
+      name: "server-b",
+      tags: ["starred", "database", "new-tag"],
+    });
+
+    expect(result.current.actionErrorMessage).toContain("server-a");
+    expect(result.current.multiSelectedNames.size).toBe(0);
   });
 });

@@ -7,11 +7,15 @@ import type { SkillsWorkspaceData } from "./types";
 
 const hoisted = vi.hoisted(() => {
   const setHarnessesCalls: Array<{ skillRef: string; target: "enabled" | "disabled" }> = [];
+  const setTagsCalls: Array<{ skillRef: string; tags: string[] }> = [];
   const failFor = new Set<string>();
+  const failTagsFor = new Set<string>();
   let nextResponse: { succeeded: string[]; failed: Array<{ harness: string; error: string }> } | null = null;
   return {
     setHarnessesCalls,
+    setTagsCalls,
     failFor,
+    failTagsFor,
     setNextResponse(value: typeof nextResponse) {
       nextResponse = value;
     },
@@ -24,7 +28,7 @@ const hoisted = vi.hoisted(() => {
 });
 
 const testData: SkillsWorkspaceData = {
-  summary: { managed: 1, unmanaged: 0 },
+  summary: { managed: 2, unmanaged: 0 },
   harnessColumns: [
     { harness: "codex", label: "Codex", installed: true },
     { harness: "cursor", label: "Cursor", installed: true },
@@ -36,7 +40,20 @@ const testData: SkillsWorkspaceData = {
       name: "Test Skill",
       description: "",
       displayStatus: "Managed",
-      tags: [],
+      tags: ["starred", "frontend"],
+      actions: { canManage: false, canStopManaging: true, canDelete: false },
+      cells: [
+        { harness: "codex", label: "Codex", state: "enabled", interactive: true },
+        { harness: "cursor", label: "Cursor", state: "disabled", interactive: true },
+        { harness: "claude", label: "Claude", state: "empty", interactive: false },
+      ],
+    },
+    {
+      skillRef: "shared:other-skill",
+      name: "Other Skill",
+      description: "",
+      displayStatus: "Managed",
+      tags: ["backend"],
       actions: { canManage: false, canStopManaging: true, canDelete: false },
       cells: [
         { harness: "codex", label: "Codex", state: "enabled", interactive: true },
@@ -80,7 +97,15 @@ vi.mock("../api/queries", () => ({
   }),
   useManageSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useManageAllSkillsMutation: () => ({ mutateAsync: vi.fn() }),
-  useSetSkillTagsMutation: () => ({ mutateAsync: vi.fn() }),
+  useSetSkillTagsMutation: () => ({
+    mutateAsync: async (vars: { skillRef: string; tags: string[] }) => {
+      if (hoisted.failTagsFor.has(vars.skillRef)) {
+        throw new Error(`Failed tags for ${vars.skillRef}`);
+      }
+      hoisted.setTagsCalls.push(vars);
+      return {};
+    },
+  }),
   useUpdateSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useUnmanageSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useDeleteSkillMutation: () => ({ mutateAsync: vi.fn() }),
@@ -147,5 +172,88 @@ describe("useSkillsWorkspaceController > onSetSkillAllHarnesses", () => {
       { skillRef: "shared:test-skill", target: "disabled" },
     ]);
     expect(outcome?.succeeded).toEqual(["codex"]);
+  });
+});
+
+describe("useSkillsWorkspaceController > onMultiSelectTag", () => {
+  beforeEach(() => {
+    hoisted.setTagsCalls.length = 0;
+    hoisted.failTagsFor.clear();
+  });
+
+  it("merges new tags into existing tags case-insensitively and preserves casing", async () => {
+    const { result } = renderHook(() => useSkillsWorkspaceController(), { wrapper });
+
+    // Select both skills
+    act(() => {
+      result.current.context.onToggleMultiSelect("shared:test-skill");
+      result.current.context.onToggleMultiSelect("shared:other-skill");
+    });
+
+    expect(result.current.context.multiSelectedRefs.size).toBe(2);
+
+    // Apply tags ["frontend", "analytics", "v2"]
+    await act(async () => {
+      await result.current.context.onMultiSelectTag(["FRONTEND", "analytics", "v2"]);
+    });
+
+    // test-skill had ["starred", "frontend"]. "FRONTEND" was already present, so it gets ["starred", "frontend", "analytics", "v2"].
+    // other-skill had ["backend"]. It gets ["backend", "FRONTEND", "analytics", "v2"].
+    expect(hoisted.setTagsCalls).toEqual([
+      {
+        skillRef: "shared:test-skill",
+        tags: ["starred", "frontend", "analytics", "v2"],
+      },
+      {
+        skillRef: "shared:other-skill",
+        tags: ["backend", "FRONTEND", "analytics", "v2"],
+      },
+    ]);
+
+    // Multi-selection should be cleared
+    expect(result.current.context.multiSelectedRefs.size).toBe(0);
+    expect(result.current.actionErrorMessage).toBe("");
+  });
+
+  it("skips assets silently if they already have all requested tags", async () => {
+    const { result } = renderHook(() => useSkillsWorkspaceController(), { wrapper });
+
+    act(() => {
+      result.current.context.onToggleMultiSelect("shared:test-skill");
+    });
+
+    // test-skill already has "frontend" and "starred"
+    await act(async () => {
+      await result.current.context.onMultiSelectTag(["frontend", "STARRED"]);
+    });
+
+    expect(hoisted.setTagsCalls).toHaveLength(0);
+    expect(result.current.context.multiSelectedRefs.size).toBe(0);
+  });
+
+  it("continues on per-ref failure and surfaces error summary listing failed refs", async () => {
+    hoisted.failTagsFor.add("shared:test-skill");
+
+    const { result } = renderHook(() => useSkillsWorkspaceController(), { wrapper });
+
+    act(() => {
+      result.current.context.onToggleMultiSelect("shared:test-skill");
+      result.current.context.onToggleMultiSelect("shared:other-skill");
+    });
+
+    await act(async () => {
+      await result.current.context.onMultiSelectTag(["new-tag"]);
+    });
+
+    // other-skill still succeeded
+    expect(hoisted.setTagsCalls).toEqual([
+      {
+        skillRef: "shared:other-skill",
+        tags: ["backend", "new-tag"],
+      },
+    ]);
+
+    expect(result.current.actionErrorMessage).toContain("shared:test-skill");
+    expect(result.current.context.multiSelectedRefs.size).toBe(0);
   });
 });

@@ -241,6 +241,41 @@ export default function PermissionsPage() {
     [handleUninstallPermission, runBulkAction],
   );
 
+  const handleBulkTag = useCallback(
+    async (tagsToAdd: string[]): Promise<void> => {
+      if (checkedIds.size === 0 || tagsToAdd.length === 0) return;
+      setBulkPending("tag");
+      setBulkErrorMessage("");
+      const failedIds: string[] = [];
+      try {
+        const ids = Array.from(checkedIds);
+        for (const id of ids) {
+          const entry = inventory?.entries.find((e) => e.id === id);
+          if (!entry || entry.kind !== "managed") continue;
+          const currentTags = entry.tags || [];
+          const currentLower = new Set(currentTags.map((t) => t.toLowerCase()));
+          const toAdd = tagsToAdd.filter((t) => !currentLower.has(t.toLowerCase()));
+          if (toAdd.length === 0) {
+            continue;
+          }
+          const nextTags = [...currentTags, ...toAdd];
+          try {
+            await setTagsMutation.mutateAsync({ id, tags: nextTags });
+          } catch {
+            failedIds.push(id);
+          }
+        }
+        if (failedIds.length > 0) {
+          setBulkErrorMessage(`Failed to add tags for: ${failedIds.join(", ")}`);
+        }
+        setCheckedIds(new Set());
+      } finally {
+        setBulkPending(null);
+      }
+    },
+    [checkedIds, inventory, setTagsMutation],
+  );
+
   const selectedManagedCount = useMemo(
     () => entries.filter((entry) => entry.kind === "managed" && checkedIds.has(entry.id)).length,
     [checkedIds, entries],
@@ -496,6 +531,8 @@ export default function PermissionsPage() {
           onEnableAll={handleBulkEnableAll}
           onDisableAll={handleBulkDisableAll}
           onDelete={handleBulkDelete}
+          onTagSelected={handleBulkTag}
+          knownTags={knownTagNames}
           destructive={{
             actionLabel: copy.inUse.uninstall.action,
             confirmTitle: copy.inUse.uninstall.bulkTitle(selectedManagedCount),

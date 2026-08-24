@@ -11,6 +11,7 @@ import {
   useMcpNeedsReviewByServerQuery,
   useReconcileMcpServerMutation,
   useSetMcpServerHarnessesMutation,
+  useSetMcpServerTagsMutation,
   useUninstallMcpServerMutation,
 } from "../api/management-queries";
 import type { McpInstallConfigValues } from "./install-config";
@@ -27,6 +28,7 @@ export function useMcpManagementController() {
   const enableMutation = useEnableMcpServerMutation();
   const disableMutation = useDisableMcpServerMutation();
   const availabilityMutation = useCheckMcpServerAvailabilityMutation();
+  const setTagsMutation = useSetMcpServerTagsMutation();
   const autoAvailabilityChecks = useRef<Set<string>>(new Set());
 
   const pendingServerRegistry = usePendingRegistry<string>();
@@ -256,6 +258,41 @@ export function useMcpManagementController() {
     });
   }, [runBulkAction, uninstallMutation]);
 
+  const handleMultiSelectTag = useCallback(
+    async (tagsToAdd: string[]): Promise<void> => {
+      if (multiSelectedNames.size === 0 || tagsToAdd.length === 0) return;
+      setMultiSelectPending("tag");
+      setActionErrorMessage("");
+      const failedNames: string[] = [];
+      try {
+        const names = Array.from(multiSelectedNames);
+        for (const name of names) {
+          const entry = inventory?.entries.find((e) => e.name === name);
+          if (!entry || entry.kind !== "managed") continue;
+          const currentTags = entry.tags || [];
+          const currentLower = new Set(currentTags.map((t) => t.toLowerCase()));
+          const toAdd = tagsToAdd.filter((t) => !currentLower.has(t.toLowerCase()));
+          if (toAdd.length === 0) {
+            continue;
+          }
+          const nextTags = [...currentTags, ...toAdd];
+          try {
+            await setTagsMutation.mutateAsync({ name, tags: nextTags });
+          } catch {
+            failedNames.push(name);
+          }
+        }
+        if (failedNames.length > 0) {
+          setActionErrorMessage(`Failed to add tags for: ${failedNames.join(", ")}`);
+        }
+        setMultiSelectedNames(new Set());
+      } finally {
+        setMultiSelectPending(null);
+      }
+    },
+    [inventory, multiSelectedNames, setTagsMutation],
+  );
+
   const dismissActionError = useCallback(() => setActionErrorMessage(""), []);
 
   return {
@@ -283,6 +320,7 @@ export function useMcpManagementController() {
     handleMultiSelectEnableAll,
     handleMultiSelectDisableAll,
     handleMultiSelectUninstall,
+    handleMultiSelectTag,
   };
 }
 

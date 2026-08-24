@@ -67,6 +67,7 @@ export default function SkillsWorkspacePage() {
     onMultiSelectDisableAll,
     onMultiSelectDelete,
     onMultiSelectStar,
+    onMultiSelectTag,
     onToggleStar,
     onManageAll,
     onManageSkill,
@@ -346,6 +347,8 @@ export default function SkillsWorkspacePage() {
           onDelete={onMultiSelectDelete}
           onStarSelected={onMultiSelectStar}
           starLabel="Star selected"
+          onTagSelected={onMultiSelectTag}
+          knownTags={knownTagNames}
           destructive={{
             actionLabel: copy.bulk.delete,
             confirmTitle: copy.bulk.confirmTitle(multiSelectedRefs.size),
