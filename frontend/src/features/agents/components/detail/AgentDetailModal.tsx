@@ -4,6 +4,7 @@ import { AgentDetailView } from "./AgentDetailView";
 interface AgentDetailModalProps {
   open: boolean;
   agentRef: string | null;
+  knownTags?: string[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
@@ -12,6 +13,7 @@ interface AgentDetailModalProps {
 export function AgentDetailModal({
   open,
   agentRef,
+  knownTags,
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
@@ -28,6 +30,7 @@ export function AgentDetailModal({
           {agentRef ? (
             <AgentDetailView
               agentRef={agentRef}
+              knownTags={knownTags}
               pendingPerHarnessKeys={pendingPerHarnessKeys}
               onToggleHarness={onToggleHarness}
               onClose={onClose}

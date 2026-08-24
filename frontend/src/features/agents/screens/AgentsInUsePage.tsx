@@ -98,6 +98,7 @@ export default function AgentsInUsePage() {
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
   const knownTags = useMemo(() => extractAgentTagCounts(inventory?.entries), [inventory?.entries]);
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -428,6 +429,7 @@ export default function AgentsInUsePage() {
       <AgentDetailModal
         open={Boolean(detailRef)}
         agentRef={detailRef}
+        knownTags={knownTagNames}
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
         onClose={() => setDetailRef(null)}

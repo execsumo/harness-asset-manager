@@ -32,6 +32,7 @@ import { SkillDetailShell } from "./SkillDetailShell";
 
 interface SkillDetailContentProps {
   detail: SkillDetail;
+  knownTags?: string[];
   actionErrorMessage: string;
   queryErrorMessage: string;
   pendingToggleHarnesses: ReadonlySet<string>;
@@ -47,6 +48,7 @@ interface SkillDetailContentProps {
 
 export function SkillDetailContent({
   detail,
+  knownTags,
   actionErrorMessage,
   queryErrorMessage,
   pendingToggleHarnesses,
@@ -308,6 +310,7 @@ export function SkillDetailContent({
             <DetailSection heading="Tags">
               <SkillDetailTags
                 tags={detail.tags || []}
+                knownTags={knownTags}
                 canEdit={isManaged}
                 onAddTag={handleAddTag}
                 onRemoveTag={handleRemoveTag}

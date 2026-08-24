@@ -5,6 +5,7 @@ import { SlashCommandDetailView } from "./SlashCommandDetailView";
 
 interface SlashCommandDetailSheetProps {
   command: SlashCommandDto | null;
+  knownTags?: string[];
   targets: SlashTargetDto[];
   pendingName: string | null;
   pendingTarget: string | null;
@@ -15,6 +16,7 @@ interface SlashCommandDetailSheetProps {
 
 export function SlashCommandDetailSheet({
   command,
+  knownTags,
   targets,
   pendingName,
   pendingTarget,
@@ -45,6 +47,7 @@ export function SlashCommandDetailSheet({
           </Dialog.Description>
           <SlashCommandDetailView
             command={command}
+            knownTags={knownTags}
             targets={targets}
             pendingName={pendingName}
             pendingTarget={pendingTarget}

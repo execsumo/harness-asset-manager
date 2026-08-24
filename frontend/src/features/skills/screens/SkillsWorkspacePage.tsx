@@ -94,6 +94,7 @@ export default function SkillsWorkspacePage() {
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
   const knownTags = useMemo(() => extractSkillTagCounts(data), [data]);
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -387,6 +388,7 @@ export default function SkillsWorkspacePage() {
       <SkillDetailModal
         open={isDesktopDetailOpen || Boolean(selectedSkillRef)}
         skillRef={selectedSkillRef}
+        knownTags={knownTagNames}
         pendingToggleHarnesses={selectedPendingToggleHarnesses}
         pendingStructuralAction={selectedSkillRef ? pendingStructuralActions.get(selectedSkillRef) ?? null : null}
         onClose={closeSelectedSkill}

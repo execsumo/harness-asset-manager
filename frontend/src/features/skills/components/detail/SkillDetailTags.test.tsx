@@ -52,4 +52,41 @@ describe("SkillDetailTags", () => {
     expect(screen.queryByRole("button", { name: /remove tag/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /add tag/i })).not.toBeInTheDocument();
   });
+
+  it("displays suggestions from knownTags excluding existing tags and filters by input", async () => {
+    const onAddTag = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <SkillDetailTags
+        tags={["starred", "devops"]}
+        knownTags={["starred", "devops", "Core", "Security", "productivity"]}
+        canEdit={true}
+        onAddTag={onAddTag}
+        onRemoveTag={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+
+    const list = screen.getByRole("listbox");
+    expect(list).toBeInTheDocument();
+
+    // starred and devops excluded
+    expect(screen.queryByRole("option", { name: "starred" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "devops" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Core" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Security" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "productivity" })).toBeInTheDocument();
+
+    // Type "sec"
+    const input = screen.getByPlaceholderText("Tag name...");
+    fireEvent.change(input, { target: { value: "sec" } });
+
+    expect(screen.getByRole("option", { name: "Security" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Core" })).not.toBeInTheDocument();
+
+    // Click suggestion
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Security" }));
+    expect(onAddTag).toHaveBeenCalledWith("Security");
+  });
 });

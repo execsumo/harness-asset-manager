@@ -119,6 +119,7 @@ export default function McpInUsePage() {
     () => extractMcpTagCounts(inventory),
     [inventory],
   );
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -583,6 +584,7 @@ export default function McpInUsePage() {
       ) : selectedName && inventory ? (
         <McpServerDetailSheet
           name={selectedName}
+          knownTags={knownTagNames}
           columns={inventory.columns}
           pendingPerHarness={pendingForSelected}
           isServerPending={isServerPendingSelected}

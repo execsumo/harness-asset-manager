@@ -14,6 +14,7 @@ import { isHooksHarnessAddressable } from "../../model/selectors";
 
 interface HookDetailSheetProps {
   id: string | null;
+  knownTags?: string[];
   columns: any[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;
@@ -31,6 +32,7 @@ interface HookDetailSheetProps {
 
 export function HookDetailSheet({
   id,
+  knownTags,
   columns,
   pendingPerHarness,
   isServerPending,
@@ -191,6 +193,7 @@ export function HookDetailSheet({
                 <DetailSection heading="Tags">
                   <DetailTags
                     tags={detail.tags || []}
+                    knownTags={knownTags}
                     canEdit={true}
                     onAddTag={handleAddTag}
                     onRemoveTag={handleRemoveTag}

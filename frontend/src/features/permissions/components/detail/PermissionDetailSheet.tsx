@@ -14,6 +14,7 @@ import { isPermissionsHarnessAddressable } from "../../model/selectors";
 
 interface PermissionDetailSheetProps {
   id: string | null;
+  knownTags?: string[];
   columns: any[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;
@@ -31,6 +32,7 @@ interface PermissionDetailSheetProps {
 
 export function PermissionDetailSheet({
   id,
+  knownTags,
   columns,
   pendingPerHarness,
   isServerPending,
@@ -180,6 +182,7 @@ export function PermissionDetailSheet({
                 <DetailSection heading="Tags">
                   <DetailTags
                     tags={detail.tags || []}
+                    knownTags={knownTags}
                     canEdit={true}
                     onAddTag={handleAddTag}
                     onRemoveTag={handleRemoveTag}

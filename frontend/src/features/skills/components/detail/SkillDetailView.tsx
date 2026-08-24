@@ -13,6 +13,7 @@ import { SkillDetailShell } from "./SkillDetailShell";
 
 interface SkillDetailViewProps {
   skillRef: string;
+  knownTags?: string[];
   pendingToggleHarnesses: ReadonlySet<string>;
   pendingStructuralAction: StructuralSkillAction | null;
   onClose: () => void;
@@ -25,6 +26,7 @@ interface SkillDetailViewProps {
 
 export function SkillDetailView({
   skillRef,
+  knownTags,
   pendingToggleHarnesses,
   pendingStructuralAction,
   onClose,
@@ -96,6 +98,7 @@ export function SkillDetailView({
     <>
       <SkillDetailContent
         detail={detail}
+        knownTags={knownTags}
         actionErrorMessage={actionErrorMessage}
         queryErrorMessage={queryErrorMessage}
         pendingToggleHarnesses={pendingToggleHarnesses}

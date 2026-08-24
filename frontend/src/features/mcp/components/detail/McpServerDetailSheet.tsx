@@ -7,6 +7,7 @@ import { McpServerDetailView } from "./McpServerDetailView";
 
 interface McpServerDetailSheetProps {
   name: string | null;
+  knownTags?: string[];
   columns: McpInventoryColumnDto[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;

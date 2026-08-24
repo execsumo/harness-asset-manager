@@ -25,6 +25,7 @@ const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocum
 
 interface AgentDetailContentProps {
   detail: AgentDetailDto;
+  knownTags?: string[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   actionErrorMessage: string | null;
@@ -34,6 +35,7 @@ interface AgentDetailContentProps {
 
 export function AgentDetailContent({
   detail,
+  knownTags,
   pendingPerHarnessKeys,
   onToggleHarness,
   actionErrorMessage,
@@ -324,6 +326,7 @@ export function AgentDetailContent({
           <DetailSection heading="Tags">
             <DetailTags
               tags={detail.tags || []}
+              knownTags={knownTags}
               canEdit={isManaged}
               onAddTag={handleAddTag}
               onRemoveTag={handleRemoveTag}

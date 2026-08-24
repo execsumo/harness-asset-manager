@@ -104,6 +104,7 @@ export default function PermissionsPage() {
     () => extractPermissionsTagCounts(inventory),
     [inventory],
   );
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -445,6 +446,7 @@ export default function PermissionsPage() {
       {inventory ? (
         <PermissionDetailSheet
           id={selectedId}
+          knownTags={knownTagNames}
           columns={inventory.columns}
           pendingPerHarness={pendingForSelected}
           isServerPending={isPermissionPendingSelected}

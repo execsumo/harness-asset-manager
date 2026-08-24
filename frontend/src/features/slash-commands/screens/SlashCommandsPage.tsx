@@ -68,6 +68,7 @@ export default function SlashCommandsPage() {
     () => extractSlashCommandTagCounts(controller.data?.commands),
     [controller.data?.commands],
   );
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -276,6 +277,7 @@ export default function SlashCommandsPage() {
       {controller.data ? (
         <SlashCommandDetailSheet
           command={controller.selectedCommand}
+          knownTags={knownTagNames}
           targets={controller.data.targets}
           pendingName={controller.pendingName}
           pendingTarget={controller.pendingTarget}

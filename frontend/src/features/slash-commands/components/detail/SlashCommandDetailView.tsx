@@ -29,6 +29,7 @@ import { syncedTargetIds } from "../../model/selectors";
 
 interface SlashCommandDetailViewProps {
   command: SlashCommandDto;
+  knownTags?: string[];
   targets: SlashTargetDto[];
   pendingName: string | null;
   pendingTarget: string | null;
@@ -39,6 +40,7 @@ interface SlashCommandDetailViewProps {
 
 export function SlashCommandDetailView({
   command,
+  knownTags,
   targets,
   pendingName,
   pendingTarget,
@@ -261,6 +263,7 @@ export function SlashCommandDetailView({
           <DetailSection heading="Tags">
             <DetailTags
               tags={command.tags || []}
+              knownTags={knownTags}
               canEdit={true}
               onAddTag={handleAddTag}
               onRemoveTag={handleRemoveTag}

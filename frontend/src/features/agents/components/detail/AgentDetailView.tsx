@@ -7,6 +7,7 @@ import { AgentDetailSkeleton } from "./AgentDetailSkeleton";
 
 interface AgentDetailViewProps {
   agentRef: string;
+  knownTags?: string[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
@@ -14,6 +15,7 @@ interface AgentDetailViewProps {
 
 export function AgentDetailView({
   agentRef,
+  knownTags,
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
@@ -62,6 +64,7 @@ export function AgentDetailView({
   return (
     <AgentDetailContent
       detail={detail}
+      knownTags={knownTags}
       pendingPerHarnessKeys={pendingPerHarnessKeys}
       onToggleHarness={onToggleHarness}
       actionErrorMessage={actionErrorMessage}

@@ -7,6 +7,7 @@ import { SkillDetailView } from "./SkillDetailView";
 interface SkillDetailModalProps {
   open: boolean;
   skillRef: string | null;
+  knownTags?: string[];
   pendingToggleHarnesses: ReadonlySet<string>;
   pendingStructuralAction: StructuralSkillAction | null;
   onClose: () => void;
@@ -20,6 +21,7 @@ interface SkillDetailModalProps {
 export function SkillDetailModal({
   open,
   skillRef,
+  knownTags,
   pendingToggleHarnesses,
   pendingStructuralAction,
   onClose,
@@ -41,6 +43,7 @@ export function SkillDetailModal({
           {skillRef ? (
             <SkillDetailView
               skillRef={skillRef}
+              knownTags={knownTags}
               pendingToggleHarnesses={pendingToggleHarnesses}
               pendingStructuralAction={pendingStructuralAction}
               onClose={onClose}

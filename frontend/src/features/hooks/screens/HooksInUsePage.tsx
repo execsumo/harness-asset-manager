@@ -94,6 +94,7 @@ export default function HooksInUsePage() {
     () => extractHookTagCounts(inventory),
     [inventory],
   );
+  const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -368,6 +369,7 @@ export default function HooksInUsePage() {
       {inventory ? (
         <HookDetailSheet
           id={selectedId}
+          knownTags={knownTagNames}
           columns={inventory.columns}
           pendingPerHarness={pendingForSelected}
           isServerPending={isHookPendingSelected}

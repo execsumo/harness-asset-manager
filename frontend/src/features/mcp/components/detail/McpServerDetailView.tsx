@@ -31,6 +31,7 @@ import { McpEnvTable } from "./McpEnvTable";
 
 interface McpServerDetailViewProps {
   name: string;
+  knownTags?: string[];
   columns: McpInventoryColumnDto[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;
@@ -50,6 +51,7 @@ interface McpServerDetailViewProps {
 
 export function McpServerDetailView({
   name,
+  knownTags,
   columns,
   pendingPerHarness,
   isServerPending,
@@ -249,6 +251,7 @@ export function McpServerDetailView({
               <DetailSection heading="Tags">
                 <DetailTags
                   tags={detail.tags || []}
+                  knownTags={knownTags}
                   canEdit={true}
                   onAddTag={handleAddTag}
                   onRemoveTag={handleRemoveTag}
