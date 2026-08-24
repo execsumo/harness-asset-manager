@@ -108,7 +108,7 @@ separate-worktree delegation and post-backend-restart lessons were followed for 
 - Server running from merged `main` (`./.venv/bin/python -m harness_asset_manager start --host
   0.0.0.0 --port 8000 --allow-remote --no-open-browser`), real store verified (`homeDir:
   /home/dev`), `/api/skills` returns 80 rows (73 managed). `frontend/dist` rebuilt from main.
-  Tailnet URL as usual: `http://vibebox.goose-marlin.ts.net:8000/`.
+  Tailnet URL as usual: `http://<tailnet-host>:8000/`.
 
 ### What shipped this session
 
@@ -214,7 +214,7 @@ The correct production/local launch (also what serves over tailnet):
 - `--allow-remote` is required for any non-loopback `--host` and also relaxes the loopback
   Host/Origin guards so tailnet peers can reach it. The API is UNAUTHENTICATED — tailnet-only,
   never funnel/public.
-- Tailnet URL: `http://vibebox.goose-marlin.ts.net:8000/` (Tailscale IP `100.119.233.79`).
+- Tailnet URL: `http://<tailnet-host>:8000/` (Tailscale IP `<tailscale-ip>`).
 - One process serves API + built SPA; rebuild `frontend/dist` (`npm run build`) after any
   frontend change, then restart.
 - Stop with `bash scripts/stop-dev.sh`. Note: `start` refuses to double-start via runtime
@@ -734,7 +734,7 @@ runs on `unittest` via `scripts/test_backend.sh`. Use
   frontend was rebuilt from that checkout on 2026-08-18.
 - The app is running with
   `./.venv/bin/python -m harness_asset_manager serve --host 127.0.0.1 --port 8000 --allow-remote --no-open-browser`.
-- Tailnet URL: <https://vibebox.goose-marlin.ts.net/>. Tailscale Serve maps `/` to
+- Tailnet URL: `https://<tailnet-host>/`. Tailscale Serve maps `/` to
   `http://127.0.0.1:8000`; the root, `/api/health`, and `/api/skills` all returned
   HTTP 200 through tailnet HTTPS after launch.
 - This is tailnet-only, not a Funnel/public route. The API is unauthenticated, so
@@ -2027,7 +2027,7 @@ TS7) ships support. PR #14 left open with findings commented; branch untouched.
 
 ## 2026-07-26 — TODO: retire the `~/.skill-manager` data dir (stale slug, and it is unversioned)
 
-**Not started.** Filed from a vibebox session that tripped over the live symlink chain. Nothing
+**Not started.** Filed from a tailnet-host session that tripped over the live symlink chain. Nothing
 here has been changed — this is a note, not a shipped change.
 
 The project rename to `harness-asset-manager` landed in the code (`APP_NAME` in
@@ -2625,7 +2625,7 @@ server restarts were running alongside it. Re-run on an idle machine: 300/300. T
 This is the load flakiness described under "Gotchas" below, not a defect.
 
 **Running instance:** served from the repo checkout on `0.0.0.0:8000` with `--allow-remote`, reachable
-at `http://vibebox.goose-marlin.ts.net:8000/`. Note the API is **unauthenticated** — anyone who can
+at `http://<tailnet-host>:8000/`. Note the API is **unauthenticated** — anyone who can
 reach the port can mutate local harness config. Restart with `--host <tailscale-ip>` if tailnet-only
 exposure is wanted.
 
