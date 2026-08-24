@@ -59,7 +59,7 @@ def _is_detected(
     definition,
     profile: CommandFileBindingProfile,
 ) -> bool:
-    """Derive detection from a configured root, CLI, app probe, or config present."""
+    """Derive detection from a CLI, app probe, or config present."""
     import shutil
 
     from harness_asset_manager.harness.contracts import (
@@ -67,8 +67,6 @@ def _is_detected(
         FileTreeBindingProfile,
     )
 
-    if profile.resolve_root_path(kernel.context).exists():
-        return True
     if shutil.which(definition.install_probe, path=kernel.context.env.get("PATH")) is not None:
         return True
     skills_binding = definition.binding_for("skills")

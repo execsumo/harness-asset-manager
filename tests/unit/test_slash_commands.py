@@ -38,8 +38,18 @@ from harness_asset_manager.harness.resolution import resolve_context
 
 def _services(home: Path, root: Path):
     settings = root / "settings.json"
+    bin_dir = root / "bin"
+    bin_dir.mkdir(parents=True)
+    for executable in ("claude", "codex"):
+        stub = bin_dir / executable
+        stub.write_text("#!/bin/sh\n", encoding="utf-8")
+        stub.chmod(0o755)
     kernel = HarnessKernelService.from_environment(
-        {"HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config")},
+        {
+            "HOME": str(home),
+            "XDG_CONFIG_HOME": str(home / ".config"),
+            "PATH": str(bin_dir),
+        },
         support_store=HarnessSupportStore(settings),
     )
     targets = resolve_slash_targets(kernel)
