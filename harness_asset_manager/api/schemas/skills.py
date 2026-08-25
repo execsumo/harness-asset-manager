@@ -162,6 +162,7 @@ class SkillDetailResponse(BaseModel):
     sourceLinks: SkillSourceLinksResponse | None
     documentMarkdown: str | None
     metadata: list[SkillMetadataEntryResponse] = Field(default_factory=list)
+    packageFiles: list[str] = Field(default_factory=list)
 
 
 class SkillSourceStatusResponse(BaseModel):

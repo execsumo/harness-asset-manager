@@ -63,6 +63,9 @@ def skill_detail_payload(
         "sourceLinks": source_links,
         "documentMarkdown": document_markdown,
         "metadata": metadata or [],
+        # The whole package, not just SKILL.md: adoption copies the folder, so a
+        # user has to be able to see what else came with it before running it.
+        "packageFiles": list(entry.files),
     }
 
 

@@ -218,6 +218,62 @@
   word-break: break-word;
 }
 
+.skill-package-contents {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skill-package-contents__group {
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.skill-package-contents__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text);
+}
+
+.skill-package-contents__name {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.skill-package-contents__badge {
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.skill-package-contents__count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+}
+
+.skill-package-contents__files {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding-left: 19px;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  word-break: break-word;
+}
+
 .skill-detail-disclosure {
   display: grid;
   gap: 0;

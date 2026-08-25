@@ -2925,6 +2925,8 @@ export interface components {
             metadata?: components["schemas"]["SkillMetadataEntryResponse"][];
             /** Name */
             name: string;
+            /** Packagefiles */
+            packageFiles?: string[];
             /** Skillref */
             skillRef: string;
             sourceLinks: components["schemas"]["SkillSourceLinksResponse"] | null;

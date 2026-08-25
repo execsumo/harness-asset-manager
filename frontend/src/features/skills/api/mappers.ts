@@ -26,6 +26,7 @@ export function mapSkillDetail(dto: SkillDetailDto): SkillDetail {
     sourceLinks: dto.sourceLinks,
     documentMarkdown: dto.documentMarkdown,
     metadata: dto.metadata ?? [],
+    packageFiles: dto.packageFiles ?? [],
   };
 }
 

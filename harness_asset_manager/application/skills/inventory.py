@@ -44,6 +44,10 @@ class InventoryEntry:
     package_dir: str | None = None
     package_path: Path | None = None
     origin_harness: str | None = None
+    # Every file in the package, relative to its root, as the parser enumerated it.
+    # A skill is a folder, not just SKILL.md, and the detail view has to be able to
+    # say what else is in there — scripts especially.
+    files: tuple[str, ...] = ()
     sightings: list[InventorySighting] = field(default_factory=list)
 
     def add_sighting(self, sighting: InventorySighting) -> None:
@@ -131,6 +135,7 @@ class SkillInventory:
                 package_dir=package.root_path.name,
                 package_path=package.root_path,
                 origin_harness=store_package.origin_harness,
+                files=package.relative_files,
             )
             entry.add_sighting(
                 InventorySighting(
@@ -193,6 +198,7 @@ class SkillInventory:
                         kind="unmanaged",
                         source=observation.package.source,
                         current_revision=observation.package.revision,
+                        files=observation.package.relative_files,
                     )
                     unmanaged_entries[key] = entry
                 entry.add_sighting(sighting)

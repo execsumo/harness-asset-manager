@@ -28,6 +28,7 @@ import { SkillDetailRemoveAction } from "./SkillDetailRemoveAction";
 import { SkillDetailTags } from "./SkillDetailTags";
 import { SkillDetailUpdateControl } from "./SkillDetailUpdateControl";
 import { SkillDetailShell } from "./SkillDetailShell";
+import { SkillPackageContents } from "./SkillPackageContents";
 
 interface SkillDetailContentProps {
   detail: SkillDetail;
@@ -364,6 +365,12 @@ export function SkillDetailContent({
                   pendingStructuralAction={pendingStructuralAction}
                   onToggleCell={onToggleHarness}
                 />
+              </DetailSection>
+            ) : null}
+
+            {detail.packageFiles.length > 0 ? (
+              <DetailSection heading={copy.detail.packageContents}>
+                <SkillPackageContents files={detail.packageFiles} />
               </DetailSection>
             ) : null}
 

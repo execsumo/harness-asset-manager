@@ -61,4 +61,5 @@ export interface SkillDetail {
   sourceLinks: SkillSourceLinks | null;
   documentMarkdown: string | null;
   metadata: SkillMetadataEntry[];
+  packageFiles: string[];
 }

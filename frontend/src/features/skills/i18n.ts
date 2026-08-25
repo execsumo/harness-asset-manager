@@ -83,6 +83,7 @@ const englishSkillsCopy = {
     loadingDocument: "Loading document",
     noDocument: "No SKILL.md document is available for this entry.",
     harnesses: "Harnesses",
+    packageContents: "Package contents",
     locations: "Locations",
     storeNote:
       "Harness Asset Manager Store is the canonical physical package. Tool locations are symlinks to it when enabled.",

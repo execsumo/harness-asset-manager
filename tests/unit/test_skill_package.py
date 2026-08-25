@@ -13,6 +13,7 @@ from harness_asset_manager.application.skills.identity import SourceDescriptor
 from harness_asset_manager.application.skills.package import (
     SkillPackageCache,
     SkillParseError,
+    find_skill_roots,
     fingerprint_package,
     parse_skill_manifest_text,
     parse_skill_package,
@@ -675,6 +676,33 @@ class SkillParsingTests(unittest.TestCase):
                 package_root, default_source=SourceDescriptor(kind="shared-store", locator="fixture:test"),
             )
             self.assertEqual(package.description, "")
+
+
+class SkillRootDiscoveryTests(unittest.TestCase):
+    """A skill is a directory holding SKILL.md — nothing else is one.
+
+    This is what keeps `SkillStore.ingest`'s `copytree` from ever being handed a
+    plain file: every sighting in the inventory, and so every adoption source,
+    comes from here. A loose `foo.md` in a harness skills dir is not a skill.
+    """
+
+    def test_a_loose_markdown_file_is_not_a_skill_root(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "foo.md").write_text("---\nname: Foo\n---\n\nbody\n", encoding="utf-8")
+            (root / "SKILL.md").write_text("---\nname: Bare\n---\n\nbody\n", encoding="utf-8")
+            seed_skill_package(root, "real-skill", "Real Skill")
+
+            self.assertEqual(find_skill_roots(root), (root / "real-skill",))
+
+    def test_a_directory_without_skill_md_is_not_a_skill_root(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "not-a-skill").mkdir()
+            (root / "not-a-skill" / "README.md").write_text("hi", encoding="utf-8")
+
+            self.assertEqual(find_skill_roots(root), ())
+
 
 
 if __name__ == "__main__":

@@ -54,6 +54,7 @@ const unmanagedDetail: SkillDetail = {
     { key: "description", value: "Trace review workflow" },
     { key: "custom-key", value: "custom-value" },
   ],
+  packageFiles: ["SKILL.md", "references/traces.md", "scripts/collect.py", "scripts/render.py"],
 };
 
 describe("SkillDetailContent", () => {
@@ -221,5 +222,30 @@ describe("SkillDetailContent", () => {
     expect(screen.queryByLabelText("Skill actions")).not.toBeInTheDocument();
     expect(screen.queryByText("No Update Available")).not.toBeInTheDocument();
     expect(screen.queryByText("No Source Available")).not.toBeInTheDocument();
+  });
+
+  it("shows what the package holds besides SKILL.md, flagging executable material", async () => {
+    render(
+      <SkillDetailContent
+        detail={unmanagedDetail}
+        actionErrorMessage=""
+        queryErrorMessage=""
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+        onManage={vi.fn()}
+        onToggleHarness={vi.fn()}
+        onUpdate={vi.fn()}
+        onRequestRemove={vi.fn()}
+        onRequestDelete={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Package contents")).toBeInTheDocument();
+    expect(screen.getByText("scripts/")).toBeInTheDocument();
+    expect(screen.getByText("Executable")).toBeInTheDocument();
+    expect(screen.getByText("collect.py")).toBeInTheDocument();
+    expect(screen.getByText("references/")).toBeInTheDocument();
   });
 });

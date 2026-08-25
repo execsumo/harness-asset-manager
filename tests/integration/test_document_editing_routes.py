@@ -182,3 +182,43 @@ class DocumentEditingRoutesTests(unittest.TestCase):
             meta_dict = {m["key"]: m["value"] for m in cmd["metadata"]}
             self.assertEqual(meta_dict["argument-hint"], "[text]")
             self.assertEqual(meta_dict["max-tokens"], "500")
+
+class SkillPackageContentsTests(unittest.TestCase):
+    """A skill is a folder. The detail payload has to say what is in it.
+
+    Adoption copies the whole package — scripts, references, assets — so a user
+    who cannot see the file list cannot tell whether a skill ships code they are
+    about to run.
+    """
+
+    def test_detail_lists_every_file_in_the_package(self) -> None:
+        with AppTestHarness() as harness:
+            seed_skill_package(
+                harness.spec.skills_store_root,
+                "toolkit",
+                "Toolkit",
+                support_files={
+                    "scripts/run.sh": "#!/bin/sh\necho hi\n",
+                    "references/notes.md": "notes",
+                    "assets/logo.svg": "<svg/>",
+                },
+            )
+
+            detail = harness.get_json("/api/skills/shared:toolkit")
+
+            self.assertEqual(
+                detail["packageFiles"],
+                ["SKILL.md", "assets/logo.svg", "references/notes.md", "scripts/run.sh"],
+            )
+
+    def test_a_single_file_package_lists_only_its_document(self) -> None:
+        with AppTestHarness() as harness:
+            seed_skill_package(harness.spec.skills_store_root, "plain", "Plain")
+
+            detail = harness.get_json("/api/skills/shared:plain")
+
+            self.assertEqual(detail["packageFiles"], ["SKILL.md"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -4965,6 +4965,13 @@
             "title": "Name",
             "type": "string"
           },
+          "packageFiles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Packagefiles",
+            "type": "array"
+          },
           "skillRef": {
             "title": "Skillref",
             "type": "string"
