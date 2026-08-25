@@ -2,6 +2,125 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-25 (later) — spec conformance, frontmatter round-trip, Overview rework
+
+### Running state
+
+- **`main` = `origin/main`**, checkout on `main`, tree clean. `feat/skills-conformance`
+  merged fast-forward and deleted.
+- `:8000` restarted from merged `main` with `dist` rebuilt from the same tree.
+- Pressure-testing again ran on a **second instance on `:8123`** against the real store,
+  now stopped. One real skill (`academic-research`) was saved through the API and then
+  restored from backup; the store is byte-identical to how it was found.
+
+### Nothing is waiting on the owner
+
+The spec triage is closed — see [`docs/spec-triage-agent-skills.md`](spec-triage-agent-skills.md),
+which now records what shipped against each row.
+
+### Shipped this entry
+
+1. **The document editor no longer destroys frontmatter** (`47c8d94`, `6943c7f`). Two
+   defects in one parse/render pair, both fired by any inline edit of a `SKILL.md`:
+
+   - **Nested structures were dropped.** A key whose value was a map, a list, a list of
+     maps, or a literal `|` scalar parsed as an empty string and its indented lines were
+     skipped, so a save rewrote `metadata:\n  author: x` as `metadata: ""` plus a hoisted
+     top-level `author: x`. A value carrying a newline is now a **verbatim block** —
+     everything after the colon, indentation included — re-emitted unchanged. One rule
+     covers all four shapes and needs no schema change, because a flat scalar cannot
+     contain a newline.
+   - **Quoted scalars were unwrapped and written back plain.** `description: "toolkit:
+     paper discovery"` became `description: toolkit: paper discovery`, which is *not valid
+     YAML*. Scalars are re-quoted when plain emission would be invalid; deliberately narrow,
+     so `[linux, macos]` is left alone rather than being quoted into a string.
+
+   **Scale, measured not assumed: 47 of 74 skills carried nested frontmatter and 18 carried
+   a description that would have become invalid YAML.** Nothing had been damaged yet — no
+   skill in the store bore the `metadata: ""` signature — because the inline editor had
+   never been used. All 74 now round-trip to identical parsed data.
+
+   The editor half matters as much: a controlled single-line `<input>` strips newlines back
+   out on the next render, which would have moved the destruction into the UI where it
+   *looks* fixed. Multi-line values get a textarea with `white-space: pre`.
+
+2. **HAM has its own Agent Skills conformance check** (`a527796`, `11c6764`). Owner chose
+   this over the spec's `skills-ref` binary; rows 3–6 of the triage *are* that validator, so
+   nothing separate was built and **no dependency was added**. `skills/conformance.py` checks
+   `name` charset/length, `name` vs package directory, and `description` presence/length.
+
+   **It reports and never enforces.** HAM keys skills on the package directory and uses
+   `name` for display, so gating would retroactively invalidate skills that work. Each issue
+   is phrased as the correction, not the rule.
+
+   Two things had to be fixed first or the validator would have been wrong about the very
+   thing it checks:
+   - `declared_name` falls back to the document's first heading, so it could not tell "no
+     `name` field" from "unconventional name" — a fallback like `Academic Research Toolkit`
+     would have reported as a charset error, sending the reader to fix the wrong thing.
+     `name_declared` now carries the distinction out of the parser.
+   - **There were two flat frontmatter parsers.** The copy in `package.py` hoisted a nested
+     block's keys to the top level, so a `metadata:` map containing its own `name:`
+     overwrote the real one. It now delegates to the document parser: one reader, not two.
+
+   Conformance rides the **row** payload as well as detail, so the Overview needs no request
+   per skill. On the real store it flags 4 of 74, all `name_directory_mismatch`.
+
+3. **Overview reworked** (`0df8504`). **Shortcuts is gone** — all nine links were already one
+   click away in the sidebar, marketplace included (checked before deleting). Its space now
+   holds **Needs correcting**: one notice per issue, naming the asset, stating the fix, and
+   linking to that asset's detail drawer. **Review to Adopt is recessed** — transparent
+   ground, muted heading, smaller count chips, brightening on hover — because a standing
+   backlog is not an alert. **Active harnesses** keeps the solid panel and is the object of
+   the page.
+
+   *Trap the suite caught:* the notice link first used `skillsRoutes.inUse`, which is the
+   legacy `/skills/use` **redirect** — and a redirect drops the query string, so `?skill=`
+   would never have reached the page and the drawer would never have opened. Now
+   `skillsRoutes.index`, pinned by a test.
+
+   Full deletion sweep: component, model type, builder, registry export, i18n keys, and every
+   `.overview-shortcuts*` / `.overview-route-chip*` CSS rule. Nothing orphaned.
+
+### Deliberately not done
+
+- **#8's `compatibility` length cap.** Optional field, unused on this store; a rule nobody
+  can trip is a rule not worth writing.
+- **Conformance for other families.** The specification is about skills. Extending the
+  Overview panel to agents or commands is a separate decision, and the panel's shape would
+  carry it if asked.
+- **Dismissing or muting notices.** Nobody asked, and it needs persistence.
+
+### Validation
+
+Full gate on the final tree, all green:
+
+```
+ruff            clean
+pyright         0 errors, 216 warnings
+backend         640 unit + 233 integration OK, 81% branch coverage
+lint:frontend   0 errors, 11 warnings (all pre-existing exhaustive-deps)
+typecheck       clean
+codegen:check   clean
+test:coverage   390 tests / 75 files
+build           clean
+```
+
+Coverage: branches 58.54 -> 58.60 and functions unchanged; statements 63.74 -> 63.73 and
+lines 64.51 -> 64.50, a 0.01pp wobble from a larger denominator. Every configured threshold
+(60/55/55/60) is clear by more than three points.
+
+Live pressure test on the real store, via a second instance:
+- `GET /api/skills` flags exactly the 4 predicted skills; the message names the correction
+  and the link resolves to `/skills?skill=<encoded ref>`.
+- A real nested-frontmatter skill (`academic-research`) was saved through
+  `PUT /api/skills/{ref}/document`: **frontmatter byte-identical**, `metadata.hermes.tags`
+  intact, `platforms` still a list. The same file through the pre-fix code produced
+  `metadata: ""` and a hoisted `hermes: ""`. File restored from backup afterwards.
+- Conformance never blocks: a flagged skill still reports `Managed` and `canDelete`.
+
+Every behaviour change ships with a test verified red against the unfixed tree.
+
 ## 2026-08-25 (queue worked) — items 1-6 shipped and live on `main`
 
 ### Running state
@@ -20,12 +139,11 @@ Running status for in-flight work. Read this before resuming. Newest session on 
   throwaway probe agents it created are deleted — store clean, no `bindings.json`
   residue.
 
-### Waiting on the owner
+### Waiting on the owner — both settled since
 
-1. **Approve `docs/spec-triage-agent-skills.md`** (item 6). Nothing from it is
-   implemented. It contains one finding worth reading first — see item 6 below.
-2. **One decision recorded, flag it if wrong** — item 4's out-of-set effort handling,
-   below. No agent on this box is affected today.
+1. ~~Approve `docs/spec-triage-agent-skills.md`~~ — **done.** Rows 2-6 approved and
+   shipped; see the entry above and the triage doc itself.
+2. ~~The effort decision~~ — **stands as built.** Reviewed and left as is.
 
 Still open from before, unchanged: dog-food tagging across the six family pages; the
 `marketplace_clis.py` narrowing recommendation; the later/possible tags work.
