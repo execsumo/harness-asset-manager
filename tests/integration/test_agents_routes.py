@@ -180,8 +180,8 @@ class AgentRoutesTests(unittest.TestCase):
                     "description": "updated description",
                     "prompt": "new harness prompt body",
                     "tools": ["Read", "Bash"],
+                    "model": "claude-3-7-sonnet",
                     "metadata": [
-                        {"key": "model", "value": "claude-3-7-sonnet"},
                         {"key": "permissionMode", "value": "acceptEdits"},
                         {"key": "customKey", "value": "customVal2"},
                     ],
@@ -192,10 +192,11 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(updated["description"], "updated description")
             self.assertEqual(updated["prompt"], "new harness prompt body")
             self.assertEqual(updated["tools"], ["Read", "Bash"])
+            self.assertEqual(updated["model"], "claude-3-7-sonnet")
             self.assertIsNone(updated["storePath"])
 
             config_dict = {c["key"]: c["value"] for c in updated["configuration"]}
-            self.assertEqual(config_dict["model"], "claude-3-7-sonnet")
+            self.assertNotIn("model", config_dict)
             self.assertEqual(config_dict["permissionMode"], "acceptEdits")
             self.assertEqual(config_dict["customKey"], "customVal2")
 
@@ -246,10 +247,56 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(updated["description"], "new desc")
             self.assertEqual(updated["prompt"], "harness body")
             self.assertEqual(updated["tools"], ["Read", "Grep"])
+            self.assertEqual(updated["model"], "claude-3-5-sonnet")
 
             config_dict = {c["key"]: c["value"] for c in updated["configuration"]}
-            self.assertEqual(config_dict["model"], "claude-3-5-sonnet")
+            self.assertNotIn("model", config_dict)
             self.assertEqual(config_dict["customKey"], "customVal")
+
+    def test_unmanaged_edit_model_and_effort_are_contract_fields(self) -> None:
+        """model/effort ride their dedicated request fields: set, carried forward when
+        omitted, and cleared by an explicit empty string — never via metadata rows."""
+
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "stray.md").write_text(
+                "---\n"
+                "name: Stray\n"
+                "description: found in claude\n"
+                "customKey: customVal\n"
+                "---\n\n"
+                "harness body\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            updated = harness.put_json(
+                "/api/agents/claude/stray",
+                {"name": "Stray", "description": "d", "prompt": "harness body", "model": "opus", "effort": "high"},
+            )
+            self.assertEqual(updated["model"], "opus")
+            self.assertEqual(updated["effort"], "high")
+            content = (harness.spec.home / ".claude" / "agents" / "stray.md").read_text(encoding="utf-8")
+            self.assertIn("name: Stray\ndescription: d\nmodel: opus\neffort: high\n", content)
+
+            # Omitted model/effort carry the current values forward.
+            carried = harness.put_json(
+                "/api/agents/claude/stray",
+                {"name": "Stray", "description": "d2", "prompt": "harness body"},
+            )
+            self.assertEqual(carried["model"], "opus")
+            self.assertEqual(carried["effort"], "high")
+
+            # Explicit empty string clears the key.
+            cleared = harness.put_json(
+                "/api/agents/claude/stray",
+                {"name": "Stray", "description": "d2", "prompt": "harness body", "effort": ""},
+            )
+            self.assertIsNone(cleared["effort"])
+            self.assertEqual(cleared["model"], "opus")
+            content = (harness.spec.home / ".claude" / "agents" / "stray.md").read_text(encoding="utf-8")
+            self.assertNotIn("effort", content.split("---")[1])
 
     def test_unmanaged_edit_rendered_adapter_returns_400_and_leaves_file_untouched(self) -> None:
         with AppTestHarness(fixture_factory=_seed_unmanaged_codex_agent) as harness:
@@ -553,7 +600,9 @@ class AgentRoutesTests(unittest.TestCase):
             detail = harness.get_json("/api/agents/bookman")
             config = {row["key"]: row["value"] for row in detail["configuration"]}
             self.assertEqual(detail["description"], "Vault librarian.")
-            self.assertEqual(config["model"], "sonnet")
+            self.assertEqual(detail["model"], "sonnet")
+            self.assertEqual(detail["effort"], None)
+            self.assertNotIn("model", config)
             self.assertEqual(config["permissionMode"], "acceptEdits")
             self.assertEqual(config["maxTurns"], "50")
             self.assertEqual(config["disallowedTools"], "[]")

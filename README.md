@@ -264,7 +264,8 @@ Typical flow:
 
 1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
 2. Turn it on for the harnesses that should have it.
-3. Review agents discovered in harness directories and adopt the ones worth keeping.
+3. In the detail editor, attach adopted Skills to the agent; suggestions appear as you type.
+4. Review agents discovered in harness directories and adopt the ones worth keeping.
 
 If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
 
@@ -372,7 +373,9 @@ chips, and URL-backed tag filters.
 
 Agents are Markdown files with YAML frontmatter and the system prompt as the body. They live in Harness Asset Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
 
-Harness Asset Manager reads `name`, `description`, and `tools`, and **leaves every other frontmatter key alone**. Harness agents routinely carry settings we have no business interpreting — Claude's `model`, `permissionMode`, `maxTurns`, `hooks`; Cursor's `readonly` and `is_background`; Codex's `sandbox_mode` — so an edit merges into the original frontmatter rather than re-rendering it, and unrecognized keys survive untouched. The detail view lists them verbatim under **Configuration**, which means a new harness field shows up without any code change here. The only keys dropped on write are `capabilities:` and `harnesses:` from the retired compile model, which nothing reads.
+Harness Asset Manager's standard agent frontmatter contract is `name`, `description`, `model`, `effort`, `tools`, and `skills`. The detail editor exposes those fields directly; `skills` accepts only adopted HAM Skills and offers typeahead suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
+
+Other frontmatter keys — Claude's `permissionMode`, `maxTurns`, and `hooks`; Cursor's `readonly` and `is_background`; Codex's `sandbox_mode` — remain custom configuration and are preserved on edit. The detail view lists those keys verbatim under **Configuration**, so a new harness field shows up without code changes here. The only keys dropped on write are `capabilities:` and `harnesses:` from the retired compile model, which nothing reads.
 
 The agents matrix shows the same harnesses as every other family — whichever you have enabled in Settings:
 
@@ -392,6 +395,14 @@ Harness Asset Manager only ever removes files it owns — a symlink into its sto
 
 Agents support the shared managed-entry tagging controls, including matrix starring, detail tag
 chips, and URL-backed tag filters.
+
+#### Agent Skills
+
+The agent detail editor can attach adopted Skills through the `skills:` frontmatter list. HAM
+validates each slug against the managed Skills inventory, suggests adopted Skills while typing,
+and automatically enables newly attached Skills on every installed harness where the agent is
+enabled. Removing a Skill from an agent only changes that agent's frontmatter; it never removes
+a Skill binding that may be used independently.
 
 #### When a harness breaks the link
 

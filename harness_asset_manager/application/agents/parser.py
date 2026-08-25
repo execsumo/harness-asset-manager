@@ -13,6 +13,10 @@ _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
 _rt_yaml.default_flow_style = False
 
+# Frontmatter keys that are part of the agent contract: parsed into their own fields
+# and rendered in canonical order. Never surfaced as custom configuration rows.
+_CONTRACT_KEYS = frozenset({"name", "description", "model", "effort", "tools", "skills"})
+
 # Written by the retired compile model and read by nothing. Unknown *harness* keys are
 # preserved on write; these two are ours, dead, and dropped so they stop showing up as
 # configuration. Everything else survives untouched.
@@ -36,6 +40,13 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
     must display those without interpreting or destroying them. The only keys dropped
     on write are ``RETIRED_KEYS``, which the retired compile model wrote and nothing
     reads.
+    ``name``, ``description``, ``tools``, ``skills``, ``model``, and ``effort`` drive
+    behavior as contract fields. Every other frontmatter key is kept verbatim in
+    ``metadata`` — harness agents carry `permissionMode`, `maxTurns`, Cursor's
+    `readonly`, and so on, and Harness Asset Manager must display those without
+    interpreting or destroying them. The only keys dropped on write are
+    ``RETIRED_KEYS`` and attempts to smuggle standard contract fields through the
+    custom metadata channel.
     """
     metadata, prompt = split_frontmatter(document)
     return AgentDefinition(
@@ -47,6 +58,8 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         path=path,
         metadata=dict(metadata),
         skills=_str_tuple(metadata.get("skills"), "skills", dedupe=True),
+        model=_optional_str(metadata, "model"),
+        effort=_optional_str(metadata, "effort"),
     )
 
 
@@ -57,6 +70,8 @@ def render_agent_document(
     prompt: str,
     tools: tuple[str, ...] = (),
     skills: tuple[str, ...] = (),
+    model: str | None = None,
+    effort: str | None = None,
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -76,6 +91,10 @@ def render_agent_document(
             metadata["tools"] = ", ".join(tools)
         if skills:
             metadata["skills"] = list(skills)
+        if model:
+            metadata["model"] = model
+        if effort:
+            metadata["effort"] = effort
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -87,15 +106,11 @@ def render_agent_document(
                 v = item[1]
             else:
                 continue
-            if k and k not in {"name", "description", "tools", "skills"} and k not in RETIRED_KEYS:
+            if k and k not in _CONTRACT_KEYS and k not in RETIRED_KEYS:
                 metadata[k] = v
                 custom_keys.append(k)
 
-        ordered = ["name", "description"]
-        if "tools" in metadata:
-            ordered.append("tools")
-        if "skills" in metadata:
-            ordered.append("skills")
+        ordered = [k for k in ("name", "description", "model", "effort", "tools", "skills") if k in metadata]
         ordered.extend(custom_keys)
     else:
         metadata = {
@@ -114,8 +129,19 @@ def render_agent_document(
         elif "skills" in metadata:
             del metadata["skills"]
 
-        # `name` and `description` lead, then everything else in its original order.
-        ordered = ["name", "description"] + [k for k in metadata if k not in {"name", "description"}]
+        # Contract fields: an explicit empty string clears the key; None leaves
+        # whatever base_metadata carries untouched.
+        for contract_key, contract_value in (("model", model), ("effort", effort)):
+            if contract_value is None:
+                continue
+            if contract_value:
+                metadata[contract_key] = contract_value
+            elif contract_key in metadata:
+                del metadata[contract_key]
+
+        # Contract fields lead in canonical order, then everything else in its original order.
+        lead = [k for k in ("name", "description", "model", "effort", "tools", "skills") if k in metadata]
+        ordered = lead + [k for k in metadata if k not in lead]
 
     lines = ["---"]
     for key in ordered:
@@ -166,6 +192,13 @@ def split_frontmatter(document: str) -> tuple[dict, str]:
 def _required_str(metadata: dict, key: str, fallback: str) -> str:
     value = str(metadata.get(key, "") or "").strip()
     return value or fallback
+
+
+def _optional_str(metadata: dict, key: str) -> str | None:
+    """Absent/null → None; otherwise the stripped string, empty string included."""
+    if key not in metadata or metadata[key] is None:
+        return None
+    return str(metadata[key]).strip()
 
 
 def _str_tuple(value: object, label: str, *, dedupe: bool = False) -> tuple[str, ...]:

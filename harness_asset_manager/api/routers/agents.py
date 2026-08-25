@@ -104,6 +104,8 @@ def create_agent(
         prompt=body.prompt,
         tools=tuple(body.tools),
         skills=validated_skills,
+        model=body.model,
+        effort=body.effort,
     )
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug)
@@ -175,6 +177,8 @@ def update_agent(
             prompt=body.prompt,
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
+            model=body.model,
+            effort=body.effort,
             metadata=extra_metadata,
         )
     else:
@@ -189,6 +193,8 @@ def update_agent(
             prompt=body.prompt,
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
+            model=body.model,
+            effort=body.effort,
             metadata=extra_metadata,
         )
 
@@ -329,6 +335,8 @@ def _detail(
         skills=[
             AgentSkillResponse(slug=s.slug, name=s.name) for s in detail.skills
         ],
+        model=detail.model,
+        effort=detail.effort,
         ok=len(failed_list) == 0,
         autoEnabled=auto_enabled or [],
         failed=failed_list,

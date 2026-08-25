@@ -154,6 +154,8 @@ class AgentInventoryService:
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),
             skills=self._resolve_agent_skills(agent.skills),
+            model=agent.model,
+            effort=agent.effort,
         )
 
     def _unmanaged_detail(self, ref: str) -> AgentDetail | None:
@@ -187,6 +189,8 @@ class AgentInventoryService:
             tools: tuple[str, ...] = ()
             extra_metadata = tuple(codex_agent.extras.items())
             skills: tuple[AgentSkill, ...] = ()
+            model: str | None = None
+            effort: str | None = None
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -198,6 +202,8 @@ class AgentInventoryService:
             tools = agent.tools
             extra_metadata = agent.extra_metadata
             skills = self._resolve_agent_skills(agent.skills)
+            model = agent.model
+            effort = agent.effort
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -223,6 +229,8 @@ class AgentInventoryService:
                 (key, _format_config_value(value)) for key, value in extra_metadata
             ),
             skills=skills,
+            model=model,
+            effort=effort,
         )
 
     def _harness_rows(

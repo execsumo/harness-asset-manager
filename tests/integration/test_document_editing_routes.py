@@ -131,8 +131,9 @@ class DocumentEditingRoutesTests(unittest.TestCase):
                     "description": "Plans execution paths with speed",
                     "prompt": "You plan fast.",
                     "tools": ["Read", "Edit", "Bash"],
+                    "model": "claude-3-5-sonnet",
+                    "effort": "high",
                     "metadata": [
-                        {"key": "model", "value": "claude-3-5-sonnet"},
                         {"key": "permissionMode", "value": "acceptEdits"},
                         {"key": "customKey", "value": "customVal"},
                     ],
@@ -141,8 +142,11 @@ class DocumentEditingRoutesTests(unittest.TestCase):
             self.assertEqual(updated["name"], "Planner Agent v2")
             self.assertEqual(updated["description"], "Plans execution paths with speed")
             self.assertEqual(updated["tools"], ["Read", "Edit", "Bash"])
+            self.assertEqual(updated["model"], "claude-3-5-sonnet")
+            self.assertEqual(updated["effort"], "high")
             config_dict = {c["key"]: c["value"] for c in updated["configuration"]}
-            self.assertEqual(config_dict["model"], "claude-3-5-sonnet")
+            self.assertNotIn("model", config_dict)
+            self.assertNotIn("effort", config_dict)
             self.assertEqual(config_dict["permissionMode"], "acceptEdits")
             self.assertEqual(config_dict["customKey"], "customVal")
 

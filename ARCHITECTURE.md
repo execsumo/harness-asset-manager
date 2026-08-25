@@ -84,9 +84,11 @@ Harness Asset Manager manages six core extension families:
 - **Harness Sync**: Translated to native event structures in `settings.json` (Claude), `config.toml` (Codex), `hooks.json` (Cursor/AGY), or `opencode.jsonc` (OpenCode).
 
 ### 5. Subagents
-- **Storage**: Markdown files with YAML frontmatter (`name`, `description`, system prompt body) under `agents/`. Unrecognized frontmatter keys are preserved byte-for-byte on edit.
+- **Storage**: Markdown files with YAML frontmatter under `agents/`. The standard contract fields are `name`, `description`, `model`, `effort`, `tools`, and `skills`; the system prompt remains the document body. Contract fields are parsed and rendered separately, never treated as custom metadata.
+- **Attached Skills**: `skills` is an ordered list of adopted Skill slugs. Agent detail editing validates entries against the managed Skills inventory and offers typeahead suggestions. Saving an agent auto-enables each newly attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the list does not disable its harness bindings.
+- **Custom frontmatter**: Other keys are preserved verbatim and surfaced as configuration. They cannot overwrite standard contract fields through the custom metadata channel.
 - **Harness Integration**:
-  - **Claude, Cursor, AGY, OpenCode**: Installed via direct symlinks. Unrecognized frontmatter keys (`model`, `permissionMode`, `hooks`) are preserved on write.
+  - **Claude, Cursor, AGY, OpenCode**: Installed via direct symlinks. Standard and custom frontmatter are preserved on write.
   - **Factory Droid**: Installed via direct symlinks into `~/.factory/droids/`; Droid frontmatter keys are preserved.
   - **Codex**: Rendered into TOML agent files (`.codex/agents/*.toml`) carrying a `# harness-asset-manager:generated` header.
 

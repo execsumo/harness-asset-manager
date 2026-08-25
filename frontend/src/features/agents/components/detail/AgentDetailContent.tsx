@@ -118,7 +118,7 @@ export function AgentDetailContent({
   // Frontmatter & Document editing state
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
     return (detail.configuration || [])
-      .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools" && c.key !== "skills")
+      .filter((c) => !["name", "description", "model", "effort", "tools", "skills"].includes(c.key))
       .map((c, idx) => ({
         id: `entry-${idx}-${c.key}`,
         key: c.key,
@@ -134,6 +134,8 @@ export function AgentDetailContent({
   const [description, setDescription] = useState(detail.description);
   const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
   const [skills, setSkills] = useState<string[]>(initialSkills);
+  const [modelStr, setModelStr] = useState(detail.model ?? "");
+  const [effortStr, setEffortStr] = useState(detail.effort ?? "");
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -144,9 +146,11 @@ export function AgentDetailContent({
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
     setSkills((detail.skills || []).map((s) => s.slug));
+    setModelStr(detail.model ?? "");
+    setEffortStr(detail.effort ?? "");
     setOtherEntries(
       (detail.configuration || [])
-        .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools" && c.key !== "skills")
+        .filter((c) => !["name", "description", "model", "effort", "tools", "skills"].includes(c.key))
         .map((c, idx) => ({
           id: `entry-${idx}-${c.key}`,
           key: c.key,
@@ -180,6 +184,20 @@ export function AgentDetailContent({
         onChange: setDescription,
       },
       {
+        key: "model",
+        label: "Model",
+        value: modelStr,
+        onChange: setModelStr,
+        placeholder: "e.g. sonnet, opus — empty clears the key",
+      },
+      {
+        key: "effort",
+        label: "Effort",
+        value: effortStr,
+        onChange: setEffortStr,
+        placeholder: "e.g. high, medium, low — empty clears the key",
+      },
+      {
         key: "tools",
         label: "Tools (comma-separated)",
         value: toolsStr,
@@ -205,7 +223,7 @@ export function AgentDetailContent({
         ),
       },
     ],
-    [name, description, toolsStr, skills, adoptedSkills],
+    [name, description, toolsStr, skills, adoptedSkills, modelStr, effortStr],
   );
 
   const isDirty = useMemo(() => {
@@ -213,6 +231,9 @@ export function AgentDetailContent({
     if (description !== detail.description) return true;
     if (toolsStr !== detail.tools.join(", ")) return true;
     if (prompt !== detail.prompt) return true;
+
+    if (modelStr !== (detail.model ?? "")) return true;
+    if (effortStr !== (detail.effort ?? "")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -229,13 +250,15 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, effortStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
     setSkills(initialSkills);
+    setModelStr(detail.model ?? "");
+    setEffortStr(detail.effort ?? "");
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -249,10 +272,12 @@ export function AgentDetailContent({
     let finalDesc = description;
     let finalToolsStr = toolsStr;
     let finalSkills = skills;
+    let finalModel = modelStr;
+    let finalEffort = effortStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "tools", "skills"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "model", "effort", "tools", "skills"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;
@@ -261,11 +286,15 @@ export function AgentDetailContent({
       finalDesc = parsed.known.description ?? description;
       finalToolsStr = parsed.known.tools ?? toolsStr;
       finalSkills = parseSkillSlugs(parsed.known.skills ?? "");
+      finalModel = parsed.known.model ?? "";
+      finalEffort = parsed.known.effort ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
       setToolsStr(finalToolsStr);
       setSkills(finalSkills);
+      setModelStr(finalModel);
+      setEffortStr(finalEffort);
       setOtherEntries(finalOther);
     }
 
@@ -292,6 +321,8 @@ export function AgentDetailContent({
           prompt: prompt,
           tools: toolsList,
           skills: finalSkills,
+          model: finalModel.trim(),
+          effort: finalEffort.trim(),
           metadata: metadataPayload,
         },
       });

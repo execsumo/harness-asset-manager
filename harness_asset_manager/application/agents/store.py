@@ -88,6 +88,8 @@ class AgentStore:
         prompt: str,
         tools: tuple[str, ...] = (),
         skills: tuple[str, ...] = (),
+        model: str | None = None,
+        effort: str | None = None,
     ) -> AgentDefinition:
         slug = slugify(name)
         path = self.path_for(slug)
@@ -102,6 +104,8 @@ class AgentStore:
                 prompt=prompt,
                 tools=tools,
                 skills=skills,
+                model=model,
+                effort=effort,
             ),
         )
         self._notify_write(slug)
@@ -116,6 +120,8 @@ class AgentStore:
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
         skills: tuple[str, ...] | None = None,
+        model: str | None = None,
+        effort: str | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
     ) -> AgentDefinition:
         current = self.get(slug)
@@ -129,6 +135,10 @@ class AgentStore:
                 prompt=prompt if prompt is not None else current.prompt,
                 tools=tools if tools is not None else current.tools,
                 skills=skills if skills is not None else current.skills,
+                # An omitted edit carries the current value forward; an explicit empty
+                # string clears the key (render drops it instead of writing null).
+                model=model if model is not None else current.model,
+                effort=effort if effort is not None else current.effort,
                 base_metadata=current.metadata if metadata is None else None,
                 extra_metadata=metadata,
             ),

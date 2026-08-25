@@ -64,6 +64,8 @@ export interface AgentCreateRequest {
   prompt: string;
   tools?: string[];
   skills?: string[];
+  model?: string;
+  effort?: string;
 }
 
 export interface AgentUpdateRequest {
@@ -72,6 +74,9 @@ export interface AgentUpdateRequest {
   prompt?: string;
   tools?: string[];
   skills?: string[];
+  /** Omitted carries the current value forward; an explicit empty string clears the key. */
+  model?: string;
+  effort?: string;
   metadata?: Array<{ key: string; value: string }>;
 }
 
@@ -111,6 +116,8 @@ export interface AgentDetailDto {
   canEdit: boolean;
   tags?: string[];
   skills?: AgentSkillDto[];
+  model?: string | null;
+  effort?: string | null;
   ok?: boolean;
   autoEnabled?: AutoEnabledSkillDto[];
   failed?: AutoEnableFailureDto[];

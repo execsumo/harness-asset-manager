@@ -1405,10 +1405,14 @@ export interface components {
             description: string;
             /** Document */
             document: string;
+            /** Effort */
+            effort?: string | null;
             /** Failed */
             failed?: components["schemas"]["AutoEnableFailureResponse"][];
             /** Harnesses */
             harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
+            /** Model */
+            model?: string | null;
             /** Name */
             name: string;
             /**
@@ -1671,6 +1675,10 @@ export interface components {
              * @default
              */
             description: string;
+            /** Effort */
+            effort?: string | null;
+            /** Model */
+            model?: string | null;
             /** Name */
             name: string;
             /**
@@ -3231,8 +3239,12 @@ export interface components {
         UpdateAgentRequest: {
             /** Description */
             description?: string | null;
+            /** Effort */
+            effort?: string | null;
             /** Metadata */
             metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
+            /** Model */
+            model?: string | null;
             /** Name */
             name?: string | null;
             /** Prompt */

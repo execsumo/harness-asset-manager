@@ -21,10 +21,12 @@ class AgentSkill:
 class AgentDefinition:
     """A subagent: a markdown file with `name`, `description`, and a prompt body.
 
-    ``metadata`` is the frontmatter mapping **verbatim**, including keys Harness Asset Manager
-    does not interpret (``model``, ``permissionMode``, ``maxTurns``, Cursor's
-    ``readonly``, …). Those are surfaced read-only and, critically, written back
-    untouched — an edit here must never silently drop a harness's own configuration.
+    ``metadata`` is the frontmatter mapping **verbatim**, including custom keys Harness
+    Asset Manager does not interpret (``permissionMode``, ``maxTurns``, Cursor's
+    ``readonly``, …). Standard contract fields (including ``model``, ``effort``,
+    ``tools``, and ``skills``) are parsed separately and never treated as custom metadata.
+    Custom keys are surfaced and written back untouched — an edit here must never silently
+    drop a harness's own configuration.
     """
 
     slug: str
@@ -39,6 +41,10 @@ class AgentDefinition:
     # Markdown file symlinked into Claude, Agy, or Cursor.
     codex_extras: Mapping[str, object] = field(default_factory=dict)
     skills: tuple[str, ...] = ()
+    # Contract fields: parsed and rendered as their own frontmatter keys, never
+    # treated as custom metadata.
+    model: str | None = None
+    effort: str | None = None
 
     @property
     def ref(self) -> str:
@@ -50,7 +56,7 @@ class AgentDefinition:
         return tuple(
             (key, value)
             for key, value in self.metadata.items()
-            if key not in {"name", "description"}
+            if key not in {"name", "description", "model", "effort", "tools", "skills"}
         )
 
 
@@ -141,6 +147,8 @@ class AgentDetail:
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
     skills: tuple[AgentSkill, ...] = ()
+    model: str | None = None
+    effort: str | None = None
 
 
 @dataclass(frozen=True)

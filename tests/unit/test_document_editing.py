@@ -86,8 +86,9 @@ class AgentDocumentCustomMetadataTests(unittest.TestCase):
             description="test description",
             prompt="Agent prompt here.",
             tools=("Read", "Grep"),
+            model="claude-3-opus",
+            effort="high",
             extra_metadata=[
-                ("model", "claude-3-opus"),
                 ("permissionMode", "acceptEdits"),
                 ("customFlag", "true"),
             ],
@@ -98,7 +99,11 @@ class AgentDocumentCustomMetadataTests(unittest.TestCase):
         self.assertEqual(parsed.description, "test description")
         self.assertEqual(parsed.tools, ("Read", "Grep"))
         self.assertEqual(parsed.prompt, "Agent prompt here.")
-        self.assertEqual(parsed.metadata["model"], "claude-3-opus")
+        # Contract fields ride their own kwargs and land in canonical position.
+        self.assertEqual(parsed.model, "claude-3-opus")
+        self.assertEqual(parsed.effort, "high")
+        self.assertEqual(rendered.splitlines()[3], "model: claude-3-opus")
+        self.assertEqual(rendered.splitlines()[4], "effort: high")
         self.assertEqual(parsed.metadata["permissionMode"], "acceptEdits")
         self.assertTrue(parsed.metadata["customFlag"])
 

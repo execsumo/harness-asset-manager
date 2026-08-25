@@ -18,12 +18,10 @@ function agentDetailFixture(): AgentDetailDto {
     document: "# Test Doc",
     storePath: "/store/agent-1.md",
     configuration: [
-      { key: "model", value: "sonnet" },
       { key: "tools", value: "tool1, tool2" },
       { key: "permissionMode", value: "acceptEdits" },
       { key: "maxTurns", value: "50" },
       { key: "hooks", value: "(1 entry)" },
-      { key: "effort", value: "" },
     ],
     harnesses: [
       {
@@ -49,6 +47,8 @@ function agentDetailFixture(): AgentDetailDto {
     ],
     canDelete: true,
     canEdit: true,
+    model: "sonnet",
+    effort: "high",
   };
 }
 
@@ -185,11 +185,12 @@ describe("AgentsInUsePage", () => {
       expect(screen.getByLabelText("Agent Name")).toHaveValue("Test Agent Real Name");
       expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
       expect(screen.getByLabelText("Tools (comma-separated)")).toHaveValue("tool1, tool2");
+      expect(screen.getByLabelText("Model")).toHaveValue("sonnet");
+      expect(screen.getByLabelText("Effort")).toHaveValue("high");
       expect(screen.getByLabelText("System Prompt")).toHaveValue("Test prompt");
-      expect(screen.getByDisplayValue("model")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("sonnet")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("permissionMode")).toBeInTheDocument();
-      expect(screen.getByDisplayValue("acceptEdits")).toBeInTheDocument();
+      // Contract fields no longer appear as custom configuration rows.
+      expect(screen.queryByDisplayValue("permissionMode")).toBeInTheDocument();
+      expect(screen.queryByDisplayValue("acceptEdits")).toBeInTheDocument();
     });
 
     it("renders unsupported harness row with disabled control showing detail", async () => {

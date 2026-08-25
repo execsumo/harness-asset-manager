@@ -133,6 +133,8 @@ class CreateAgentRequest(BaseModel):
     prompt: str = ""
     tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
+    model: str | None = None
+    effort: str | None = None
 
 
 class AgentConfigEntryResponse(BaseModel):
@@ -148,6 +150,8 @@ class UpdateAgentRequest(BaseModel):
     prompt: str | None = None
     tools: list[str] | None = None
     skills: list[str] | None = None
+    model: str | None = None
+    effort: str | None = None
     metadata: list[AgentConfigEntryResponse] | None = None
 
 
@@ -184,6 +188,8 @@ class AgentDetailResponse(BaseModel):
     canEdit: bool = True
     tags: list[str] = Field(default_factory=list)
     skills: list[AgentSkillResponse] = Field(default_factory=list)
+    model: str | None = None
+    effort: str | None = None
     ok: bool = True
     autoEnabled: list[AutoEnabledSkillResponse] = Field(default_factory=list)
     failed: list[AutoEnableFailureResponse] = Field(default_factory=list)

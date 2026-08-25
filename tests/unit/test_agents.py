@@ -147,7 +147,7 @@ class AgentParserTests(unittest.TestCase):
         self.assertEqual(reparsed.prompt, "Index the vault.")
         self.assertEqual(
             [key for key, _ in reparsed.extra_metadata],
-            ["model", "tools", "permissionMode", "maxTurns", "disallowedTools", "hooks"],
+            ["permissionMode", "maxTurns", "disallowedTools", "hooks"],
         )
         self.assertEqual(reparsed.metadata["model"], "sonnet")
         self.assertEqual(reparsed.metadata["maxTurns"], 50)
@@ -177,7 +177,62 @@ class AgentParserTests(unittest.TestCase):
         keys = [key for key, _ in agent.extra_metadata]
         self.assertNotIn("name", keys)
         self.assertNotIn("description", keys)
-        self.assertIn("tools", keys)
+        self.assertNotIn("tools", keys)
+        self.assertNotIn("model", keys)
+        self.assertNotIn("skills", keys)
+        self.assertNotIn("effort", keys)
+
+    def test_model_and_effort_are_contract_fields(self) -> None:
+        """`model` and `effort` parse into their own fields and render canonically."""
+        document = (
+            "---\n"
+            "name: A\n"
+            "description: d\n"
+            "customKey: v\n"
+            "---\n\nbody\n"
+        )
+        rendered = render_agent_document(
+            name="A",
+            description="d",
+            prompt="body",
+            tools=("Read",),
+            skills=("code-review",),
+            model="sonnet",
+            effort="high",
+            base_metadata=parse_agent_document(document, slug="a", path=Path("a.md")).metadata,
+        )
+        self.assertIn("name: A\ndescription: d\nmodel: sonnet\neffort: high\ntools: Read\nskills:\n  - code-review", rendered)
+        reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
+        self.assertEqual(reparsed.model, "sonnet")
+        self.assertEqual(reparsed.effort, "high")
+
+    def test_render_without_model_or_effort_arguments_leaves_them_untouched(self) -> None:
+        """A direct render that omits the kwargs must never drop existing keys."""
+        document = '---\nname: A\ndescription: d\nmodel: sonnet\neffort: ""\n---\n\nbody\n'
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rendered = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            base_metadata=agent.metadata,
+        )
+        self.assertIn("model: sonnet", rendered)
+        self.assertIn('effort: ""', rendered)
+
+    def test_explicit_empty_model_clears_the_key(self) -> None:
+        """An explicit empty-string edit removes the key instead of writing null."""
+        document = "---\nname: A\ndescription: d\nmodel: sonnet\n---\n\nbody\n"
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rendered = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            model="",
+            base_metadata=agent.metadata,
+        )
+        self.assertNotIn("model", rendered)
 
     def test_render_drops_legacy_keys(self) -> None:
         """Our own retired compile keys are the one thing still dropped on write."""
@@ -626,8 +681,8 @@ class AgentUnmanagedEditTests(AgentsFixture):
             description="updated desc",
             prompt="new prompt body",
             tools=("Read", "Bash"),
+            model="claude-3-7-sonnet",
             metadata=[
-                ("model", "claude-3-7-sonnet"),
                 ("permissionMode", "acceptEdits"),
                 ("customKey", "newVal"),
                 ("extraKey", "extraVal"),

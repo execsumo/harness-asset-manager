@@ -2,6 +2,41 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-25 — Agent Skills frontmatter + standard agent contract fields
+
+### Running state
+
+- Feature branch `feat/agent-skills-frontmatter` is pushed and ready to merge into `main`.
+  The primary checkout remains on `main`; no merge has been performed yet.
+- Tree is clean after the documentation and implementation commits.
+
+### Shipped this entry
+
+1. **Agent Skills attachment** — agent detail editing now has a Skills chip/typeahead field
+   whose suggestions are limited to adopted HAM Skills. Skills are stored as an ordered YAML
+   list in agent frontmatter; unknown and unmanaged slugs are rejected with the standard 400
+   envelope.
+2. **Automatic Skill enablement** — saving an agent enables newly attached Skills on every
+   installed harness where that agent is enabled. Existing Skill bindings are not duplicated,
+   failures are returned per skill/harness pair, and removing a Skill from an agent never
+   disables it.
+3. **Standard agent frontmatter contract** — `name`, `description`, `model`, `effort`,
+   `tools`, and `skills` are parsed/rendered as dedicated non-custom fields. Custom metadata
+   cannot shadow them; omitted edits preserve existing values and explicit empty model/effort
+   values clear their keys. API/OpenAPI and structured/raw editors support the full contract.
+
+### Validation
+
+- Isolated Agent Skills pressure test: passed all scenarios (two harnesses, auto-enable,
+  non-destructive removal, unknown/unmanaged rejection, YAML persistence).
+- Backend: 608 unit + 220 integration tests pass at 81% coverage.
+- Frontend: 371 tests across 73 files; typecheck and production build pass.
+
+### Next step
+
+- Review and merge `feat/agent-skills-frontmatter` into `main`, then rebuild/restart the
+  running instance from `main`.
+
 ## 2026-08-24 — Slash-command root detection + CI fixes; handoff caught up
 
 ### Running state
