@@ -2,26 +2,30 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
-## 2026-08-25 (queue worked) — items 1-6 done on `feat/handoff-queue-2026-08-25`
+## 2026-08-25 (queue worked) — items 1-6 shipped and live on `main`
 
 ### Running state
 
-- Branch `feat/handoff-queue-2026-08-25`, 7 commits off `main`, **not merged and not
-  pushed** — both need owner review, per the queue's own git discipline.
-- The `:8000` instance is **untouched**: it still runs `main`, and `frontend/dist` was
-  rebuilt from `main` at the end of this session so the running instance stays coherent.
-  Pressure-testing ran on a **second instance on `:8123`** against the same real store
-  (`homeDir: /home/dev`), which is now stopped. To see this work in the app:
-  `git checkout feat/handoff-queue-2026-08-25 && npm run build`, then restart `:8000`.
-- Two throwaway probe agents were created and deleted on the real store during pressure
-  testing. Verified gone, with no `bindings.json` residue.
+- **`main` = `origin/main` = `e492df1`**, checkout on `main`, tree clean.
+  `feat/handoff-queue-2026-08-25` was fast-forward merged (10 commits) and deleted both
+  locally and on the remote.
+- **`:8000` restarted from merged `main`** with `serve --host 0.0.0.0 --port 8000
+  --no-open-browser --allow-remote`, `frontend/dist` rebuilt from the same tree.
+  Verified after restart: `homeDir: /home/dev` (the real store, 82 skill rows / 74
+  managed), the served bundle hash matches `frontend/dist/assets`, `packageFiles`
+  returns 57 entries for `academic-research`, an unknown `effort` is rejected 400, and
+  the tailnet front door answers 200 at `:7443`.
+- Pressure-testing ran on a **second instance on `:8123`** against the same real store
+  so `:8000` was never restarted onto unreviewed code; that instance is stopped. The
+  throwaway probe agents it created are deleted — store clean, no `bindings.json`
+  residue.
 
 ### Waiting on the owner
 
-1. **Review and merge the branch** (then rebuild `dist` and restart `:8000` from `main`).
-2. **Approve `docs/spec-triage-agent-skills.md`** (item 6). Nothing from it is implemented.
-   It contains one finding worth reading first — see item 6 below.
-3. **One decision recorded, flag it if wrong** — item 4's out-of-set effort handling, below.
+1. **Approve `docs/spec-triage-agent-skills.md`** (item 6). Nothing from it is
+   implemented. It contains one finding worth reading first — see item 6 below.
+2. **One decision recorded, flag it if wrong** — item 4's out-of-set effort handling,
+   below. No agent on this box is affected today.
 
 Still open from before, unchanged: dog-food tagging across the six family pages; the
 `marketplace_clis.py` narrowing recommendation; the later/possible tags work.
@@ -106,6 +110,15 @@ Still open from before, unchanged: dog-food tagging across the six family pages;
 
    The rest of the table collapses to one optional feature (report, do not enforce, the
    `name`/`description` rules) and a lot of authoring guidance that is out of scope.
+
+### Docs caught up in the same pass (`e492df1`)
+
+README: the Skills tour and deep dive say adoption takes the whole folder and that
+**Package contents** shows it; the Agents deep dive documents `effort` as a fixed
+vocabulary including the out-of-contract case; the agent Skills flow no longer describes
+a list that only appears as you type. ARCHITECTURE §2 pins two Skills invariants (the
+file list rides on the inventory; a read must not reconcile) and §5 pins where
+`EFFORT_VALUES` is declared and enforced.
 
 ### Validation
 
