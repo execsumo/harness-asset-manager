@@ -79,6 +79,131 @@ Use this skill to review code.
             ])
 
 
+class SkillDocumentNestedFrontmatterTests(unittest.TestCase):
+    """Nested frontmatter must survive a read-edit-write round trip byte for byte.
+
+    HAM's document editor is the only thing that rewrites a `SKILL.md`, and it used
+    to flatten every nested structure: a key whose value is a map or a list parsed
+    as an empty scalar and its indented lines were dropped on the floor. The four
+    shapes below are the ones that actually occur in a real skills store.
+    """
+
+    def _round_trip(self, document: str) -> str:
+        body, metadata = parse_skill_document(document)
+        assert body is not None
+        return render_skill_document(body=body, metadata=metadata)
+
+    def test_nested_map_survives(self) -> None:
+        document = (
+            "---\n"
+            "name: academic-research\n"
+            "metadata:\n"
+            "  hermes: true\n"
+            "  version: \"1.0\"\n"
+            "---\n"
+            "\n"
+            "body\n"
+        )
+        self.assertEqual(self._round_trip(document), document)
+
+    def test_list_survives(self) -> None:
+        document = (
+            "---\n"
+            "name: local-backend-service-setup\n"
+            "tags:\n"
+            "  - monorepo\n"
+            "  - backend\n"
+            "---\n"
+            "\n"
+            "body\n"
+        )
+        self.assertEqual(self._round_trip(document), document)
+
+    def test_list_of_maps_survives(self) -> None:
+        document = (
+            "---\n"
+            "name: google-workspace\n"
+            "required_credential_files:\n"
+            "  - path: google_token.json\n"
+            "    description: OAuth2 token\n"
+            "---\n"
+            "\n"
+            "body\n"
+        )
+        self.assertEqual(self._round_trip(document), document)
+
+    def test_literal_block_scalar_survives(self) -> None:
+        """`|` keeps newlines, so re-rendering it inline produced invalid YAML."""
+        document = (
+            "---\n"
+            "name: comfyui\n"
+            "setup: |\n"
+            "  first line\n"
+            "  second line\n"
+            "---\n"
+            "\n"
+            "body\n"
+        )
+        self.assertEqual(self._round_trip(document), document)
+
+    def test_a_nested_block_is_not_mistaken_for_the_body(self) -> None:
+        document = (
+            "---\n"
+            "metadata:\n"
+            "  author: someone\n"
+            "name: after-the-block\n"
+            "---\n"
+            "\n"
+            "real body\n"
+        )
+        body, metadata = parse_skill_document(document)
+        self.assertEqual(body, "real body")
+        self.assertEqual([entry["key"] for entry in metadata], ["metadata", "name"])
+        self.assertEqual(metadata[1]["value"], "after-the-block")
+
+    def test_a_scalar_that_cannot_be_written_plain_is_re_quoted(self) -> None:
+        """The other half of the same defect: unwrapping quotes broke the file.
+
+        A description holding ``toolkit: paper discovery`` was written back plain, and
+        the second colon turned the line into a nested mapping — the file stopped
+        parsing. 18 skills in a real store carry a description like this.
+        """
+        document = (
+            '---\n'
+            'description: "Research toolkit: paper discovery and review"\n'
+            '---\n'
+            '\n'
+            'body\n'
+        )
+        body, metadata = parse_skill_document(document)
+        assert body is not None
+        self.assertEqual(metadata[0]["value"], "Research toolkit: paper discovery and review")
+        self.assertEqual(render_skill_document(body=body, metadata=metadata), document)
+
+    def test_a_flow_collection_is_not_quoted_into_a_string(self) -> None:
+        """Quoting must stay narrow: `[linux, macos]` is a list, not a string."""
+        body, metadata = parse_skill_document(
+            "---\nplatforms: [linux, macos]\n---\n\nbody\n"
+        )
+        assert body is not None
+        rendered = render_skill_document(body=body, metadata=metadata)
+        self.assertIn("platforms: [linux, macos]", rendered)
+
+    def test_embedded_quotes_survive_the_round_trip(self) -> None:
+        document = '---\ntitle: "The \\"Pricing Man\\": a study"\n---\n\nbody\n'
+        body, metadata = parse_skill_document(document)
+        assert body is not None
+        self.assertEqual(metadata[0]["value"], 'The "Pricing Man": a study')
+        self.assertEqual(render_skill_document(body=body, metadata=metadata), document)
+
+    def test_folded_block_scalars_still_fold_to_one_line(self) -> None:
+        """Unchanged behaviour: `>-` is a display nicety, and folding loses nothing."""
+        body, metadata = parse_skill_document(
+            "---\ndescription: >-\n  Line one\n  line two\n---\n\nbody\n"
+        )
+        self.assertEqual(metadata, [{"key": "description", "value": "Line one line two"}])
+
+
 class AgentDocumentCustomMetadataTests(unittest.TestCase):
     def test_render_agent_document_with_extra_metadata(self) -> None:
         rendered = render_agent_document(

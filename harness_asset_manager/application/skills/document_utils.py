@@ -24,6 +24,18 @@ def read_skill_document_and_metadata(package_root: Path | None) -> tuple[str | N
 
 
 def parse_skill_document(document: str) -> tuple[str | None, list[dict[str, str]]]:
+    """Split a `SKILL.md` into its body and its ordered frontmatter entries.
+
+    Entries are ``{key, value}`` pairs. A value containing a newline is a **verbatim
+    block** — everything that followed the colon, indentation and all — and
+    ``render_skill_document`` writes it back unchanged. That is what lets nested maps,
+    lists, lists of maps, and literal (``|``) scalars survive an edit; before, they
+    parsed as an empty scalar and their indented lines were dropped.
+
+    Folded scalars (``>``, ``>-``) are the deliberate exception: they fold to a single
+    line, because re-emitting one as a plain scalar is equivalent YAML and it keeps
+    long descriptions editable as a single field.
+    """
     lines = document.splitlines()
     if lines[:1] != ["---"]:
         return (document.strip() or None), []
@@ -40,23 +52,20 @@ def parse_skill_document(document: str) -> tuple[str | None, list[dict[str, str]
             i += 1
             continue
         key, raw_value = raw_line.split(":", 1)
-        value = raw_value.strip()
-        if value in (">-", ">", "|", "|-"):
-            join_char = " " if value.startswith(">") else "\n"
-            continuation: list[str] = []
-            i += 1
-            while i < len(lines):
-                cont_line = lines[i]
-                if cont_line.strip() == "---":
-                    break
-                if cont_line and not cont_line[0].isspace():
-                    break
-                continuation.append(cont_line.strip())
-                i += 1
-            value = join_char.join(part for part in continuation if part)
+        inline = raw_value.strip()
+        i += 1
+        continuation, i = _read_indented_block(lines, i)
+
+        if inline in (">", ">-"):
+            # Folded: one logical line, indentation is not content.
+            value = " ".join(part.strip() for part in continuation if part.strip())
+        elif continuation:
+            # Everything else that carries indented lines is structure — a map, a
+            # list, or a literal scalar. Indentation is semantic, so keep it, and
+            # keep the inline marker (`|`, `|-`) that says what the block is.
+            value = "\n".join([raw_value.rstrip(), *continuation])
         else:
-            value = _normalize_metadata_scalar(value)
-            i += 1
+            value = _normalize_metadata_scalar(inline)
         metadata.append({"key": key.strip(), "value": value})
 
     if body_start_index is not None:
@@ -101,19 +110,76 @@ def render_skill_document(
 
     lines = ["---"]
     for key, value in metadata_entries:
-        if value == "":
+        if "\n" in value:
+            # A verbatim block: `value` is everything that followed the colon,
+            # already carrying its own indentation. Re-emitted untouched.
+            lines.append(f"{key}:{value}")
+        elif value == "":
             lines.append(f'{key}: ""')
         else:
-            lines.append(f"{key}: {value}")
+            lines.append(f"{key}: {_quote_if_needed(value)}")
     lines.append("---")
     return "\n".join(lines) + "\n\n" + body.strip() + "\n"
 
 
+def _read_indented_block(lines: list[str], start: int) -> tuple[list[str], int]:
+    """Consume the indented lines belonging to the key that ends at ``start``.
+
+    Returns them **unstripped** — for a map or a list the indentation is the
+    structure, so stripping it is exactly the data loss this exists to prevent.
+    """
+    block: list[str] = []
+    index = start
+    while index < len(lines):
+        line = lines[index]
+        if line.strip() == "---":
+            break
+        if line and not line[0].isspace():
+            break
+        block.append(line)
+        index += 1
+    # Trailing blank lines belong to nothing; leaving them in would grow the block
+    # by one line on every round trip.
+    while block and not block[-1].strip():
+        block.pop()
+        index -= 1
+    return block, index
+
+
 def _normalize_metadata_scalar(value: str) -> str:
+    """Unwrap a quoted scalar so the editor shows the value, not its quoting."""
     normalized = value.strip()
     if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {"'", '"'}:
-        return normalized[1:-1].strip()
+        inner = normalized[1:-1].strip()
+        if normalized[0] == '"':
+            return inner.replace('\\"', '"').replace("\\\\", "\\")
+        return inner.replace("''", "'")
     return normalized
+
+
+def _quote_if_needed(value: str) -> str:
+    """Re-quote a scalar that cannot be written plain.
+
+    The parser unwraps quotes so the editor shows the value; writing it back plain
+    is only safe when YAML would read it the same way. A description holding
+    ``toolkit: paper discovery`` is the case that bites — unquoted, the second colon
+    makes the line a nested mapping and the file stops parsing.
+
+    Deliberately narrow: a value that merely *looks* like a flow collection
+    (``[linux, macos]``) is left alone, because quoting it would turn a list into a
+    string. Only outright-invalid plain scalars are quoted.
+    """
+    unsafe = (
+        value != value.strip()
+        or ": " in value
+        or value.endswith(":")
+        or " #" in value
+        or value.startswith("#")
+    )
+    if not unsafe:
+        return value
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
 
 
 __all__ = [
