@@ -29,7 +29,9 @@
 > 2026-08-12 (machine-readable API error envelopes and frontend `ApiError` handling).
 > 2026-08-12 (backend and frontend coverage ratchets).
 > 2026-08-22 `60b1a02` (Activity page/view and `/api/activity` removed; `audit.log`
-> mutation journal retained backend-only).
+> mutation journal retained backend-only);
+> 2026-08-25 (§1.1 completed at the *file* layer — shared `config_document` module,
+> lossless TOML/JSONC round-trips, string-aware JSONC comment handling).
 > Partially-shipped items below keep their number and describe only the remaining scope.
 > See `handoff.md` for the full chronological record.
 
@@ -37,6 +39,10 @@
 
 - Atomic writes + `flock` for file mutations (`harness_asset_manager/atomic_files.py`), with a dedicated
   store-concurrency test.
+- One shared config-document layer (`harness_asset_manager/config_document.py`) behind every
+  harness-config read-modify-write, with comment/format preservation pinned per format in
+  `tests/unit/test_config_document_round_trip.py`. The three families previously carried
+  three copies of a string-unaware JSONC stripper; keep it one implementation.
 - OpenAPI contract discipline: generated TS client committed, `codegen:check` drift gate in CI.
 - One canonical harness catalog (`harness_asset_manager/harness/catalog.py`) that drives every family.
 - Subprocess calls are all list-form (no `shell=True`); marketplace fetchers use a pinned CA

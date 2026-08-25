@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-import json
-import re
 import shutil
-import tomllib
 from collections.abc import MutableMapping
 from dataclasses import dataclass
-from io import StringIO
 from pathlib import Path
 from typing import Mapping
 
-import tomli_w
-from ruamel.yaml import YAML
-from ruamel.yaml.error import YAMLError
-
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.config_document import (
+    ConfigDocumentError,
+    dump_config_document,
+    empty_config_document,
+    load_config_document,
+    new_subtree,
+)
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import (
     ConfigSubtreeBindingProfile,
@@ -268,46 +267,25 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         return None
 
     def _load_document(self, config_path: Path) -> dict[str, object]:
+        """The whole config file, as a document that remembers how to re-emit itself.
+
+        Comment and formatting preservation lives in ``config_document``; every family
+        that writes a harness config shares it, because they share the files.
+        """
         if not config_path.is_file():
-            return {}
-        text = config_path.read_text(encoding="utf-8")
-        if not text.strip():
-            return {}
-        if self._file_format in {"json", "jsonc"}:
-            try:
-                payload = json.loads(_strip_jsonc(text) if self._file_format == "jsonc" else text)
-            except json.JSONDecodeError as error:
-                raise MutationError(
-                    f"{self.harness} config file is not valid {self._file_format.upper()}: {error}",
-                    status=409,
-                ) from error
-            return payload if isinstance(payload, MutableMapping) else {}
-        if self._file_format == "yaml":
-            try:
-                payload = _yaml().load(text) if text.strip() else {}
-            except YAMLError as error:
-                raise MutationError(
-                    f"{self.harness} config file is not valid YAML: {error}",
-                    status=409,
-                ) from error
-            return payload if isinstance(payload, MutableMapping) else {}
+            return empty_config_document(self._file_format)
         try:
-            payload = tomllib.loads(text)
-        except tomllib.TOMLDecodeError as error:
+            return load_config_document(
+                config_path.read_text(encoding="utf-8"), file_format=self._file_format
+            )
+        except ConfigDocumentError as error:
             raise MutationError(
-                f"{self.harness} config file is not valid TOML: {error}",
+                f"{self.harness} config file is {error}",
                 status=409,
             ) from error
-        return payload
 
-    def _dump_document(self, document: dict[str, object]) -> str:
-        if self._file_format in {"json", "jsonc"}:
-            return json.dumps(document, ensure_ascii=False, indent=2) + "\n"
-        if self._file_format == "yaml":
-            stream = StringIO()
-            _yaml().dump(document, stream)
-            return stream.getvalue()
-        return tomli_w.dumps(document)
+    def _dump_document(self, document: Mapping[str, object]) -> str:
+        return dump_config_document(document, file_format=self._file_format)
 
     def _read_subtree(
         self,
@@ -329,11 +307,10 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         subtree_path: SubtreePath,
     ) -> MutableMapping[str, object]:
         cursor: MutableMapping[str, object] = document
-        yaml = _yaml() if self._file_format == "yaml" else None
         for segment in subtree_path:
             existing = cursor.get(segment)
             if not isinstance(existing, MutableMapping):
-                existing = yaml.map() if yaml is not None else {}
+                existing = new_subtree(self._file_format)
                 cursor[segment] = existing
             cursor = existing
         return cursor
@@ -374,14 +351,6 @@ def build_mcp_adapters(
     )
 
 
-def _yaml() -> YAML:
-    yaml = YAML(typ="rt")
-    yaml.default_flow_style = False
-    yaml.preserve_quotes = True
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    return yaml
-
-
 def _normalize_payload(value: object) -> object:
     if isinstance(value, dict):
         normalized = {
@@ -403,12 +372,6 @@ def _is_semantic_default(key: str, value: object) -> bool:
     if key in {"headers", "env", "environment", "http_headers"} and value == {}:
         return True
     return False
-
-
-def _strip_jsonc(text: str) -> str:
-    without_block = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    without_line = re.sub(r"(^|[^:])//.*$", r"\1", without_block, flags=re.MULTILINE)
-    return re.sub(r",(\s*[}\]])", r"\1", without_line)
 
 
 def _drift_detail(expected: object, actual: object) -> str:
