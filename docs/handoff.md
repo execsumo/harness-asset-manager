@@ -13,6 +13,22 @@ Running status for in-flight work. Read this before resuming. Newest session on 
   of this file, against the newest-on-top convention. It was left in place deliberately;
   do not read the bottom of the file as the oldest entry.
 
+### What still needs the owner — short list
+
+Everything below is settled unless it appears here.
+
+- **Nothing is blocking.** All six items in the next list can be started as written.
+- **One thing to bring back before implementing:** the spec triage table (item 6). Its whole
+  point is that the owner decides what is HAM's problem; do not implement off it unreviewed.
+- **One recommendation awaiting a yes/no, low stakes:** drop the `marketplace_clis.py`
+  narrowing (see below). It is unprovable without the full catalog and the win is small.
+- **One thing only the owner can supply:** dog-fooding feedback on tags across the six family
+  pages. It has driven the queue before and cannot be substituted.
+
+Resolved this session and **not** open any more: effort's value set (fixed `high`/`medium`/
+`low`, see item 4), the marketplace identifier shape (sampled, see below), and the stash
+hygiene item (the stash is empty; annotated at both entries that carried it).
+
 ### Approved — do these
 
 1. **Read-only skill-name lookup, so `GET /api/agents` cannot write.** Owner-approved this
@@ -37,9 +53,11 @@ Running status for in-flight work. Read this before resuming. Newest session on 
    a skill detail starts `# Academic Research Toolkit`, an agent's `document` starts `---`).
    The two marketplace views render remote README markdown. **One call site to fix.**
 
-   *Care needed.* Do not simply switch to `detail.prompt` — `document` is likely preferred so
-   unmanaged/raw agents render their real file. Strip the frontmatter block before rendering,
-   or render it as a metadata table rather than as document text.
+   *Fix: strip the frontmatter block before rendering.* Do **not** simply switch to
+   `detail.prompt` — `document` is likely preferred so unmanaged/raw agents render their real
+   file. Stripping is the minimal fix for the reported defect and needs no decision. Rendering
+   the frontmatter as a metadata table instead is a *new feature*, not part of this fix; leave
+   it out unless it is asked for separately.
 
 3. **Agents > Edit > Skills: the initial suggestion list is silently truncated.** Reported by
    the owner: an alphabetical list appears, looks complete, but is not — more skills surface
@@ -52,9 +70,11 @@ Running status for in-flight work. Read this before resuming. Newest session on 
    fallback) apply the identical `shared:` / `Managed` filter, so they cannot disagree.
    Truncation is the only cause.
 
-   *Fix direction (UI, owner's framing).* The list must not imply completeness it does not
-   have. A scrollable full list, or a "showing 8 of N — keep typing to narrow" footer, or both.
-   Pick one; do not just raise the cap to a bigger number, which reproduces the same lie.
+   *Acceptance criterion, in the owner's framing: the list must not imply a completeness it
+   does not have.* A scrollable full list or a "showing 8 of N — keep typing to narrow" footer
+   both satisfy it; either is a routine implementer's call, not an owner decision. What is
+   **not** acceptable is raising the cap to a bigger number — that reproduces the same lie
+   further down the list.
 
 4. **Agents > Edit > Effort should be a structured choice, not free text.** `effort` is a
    contract field (`agents/model.py::CONTRACT_KEYS`) but the editor declares it as a plain
@@ -62,12 +82,70 @@ Running status for in-flight work. Read this before resuming. Newest session on 
    (`AgentDetailContent.tsx:194-200`, `placeholder: "e.g. high, medium, low — empty clears the
    key"`). A typo writes a bad value straight into agent frontmatter.
 
-   *Open before implementing:* the allowed values are not currently declared anywhere in the
-   backend — `AgentDefinition.effort` is `str | None` with no enum. Decide whether the set is
-   fixed or harness-dependent, declare it **backend-side** next to `CONTRACT_KEYS` so the API
-   and the picker cannot drift, then bind the control to it. Keep "empty clears the key" as a
-   reachable state. `model` has the same free-text shape; it is *not* in scope here, since its
-   value set is genuinely open-ended.
+   *Decided by the owner 2026-08-25 — no open question left.* The value set is **fixed and
+   global: `high`, `medium`, `low`**, declared **backend-side** next to `CONTRACT_KEYS` in
+   `agents/model.py` (e.g. `EFFORT_VALUES`) so the API and the picker cannot drift — the same
+   single-source-of-truth shape the contract-keys refactor established. Not per-harness. The
+   picker is `(none) | low | medium | high`, and **empty must stay reachable** because it
+   clears the key. Reject unknown values at the API with the standard 400 envelope, so a
+   hand-edited file or a raw-YAML edit cannot smuggle one in behind the picker.
+
+   Nothing declares effort values today — not the backend, not the frontend, not the harness
+   catalog, and no agent file on disk uses the key — so this is a greenfield declaration with
+   nothing to migrate. `model` has the same free-text shape and is deliberately **out of
+   scope**: its value set is genuinely open-ended.
+
+5. **Skill adoption already takes the whole folder — the detail view just never says so.**
+   The owner's concern was that adoption might copy only `SKILL.md` and drop the supporting
+   material the skills standard allows (`scripts/`, `references/`, `assets/`, and any other
+   files). **It does not. Verified this session, do not re-investigate:** `SkillStore.ingest`
+   and `SkillStore.update` use `shutil.copytree` on the package directory
+   (`application/skills/store.py:104` and `:140`), harnesses are linked with a **directory**
+   symlink rather than a file one, and the live store bears it out —
+   `~/.harnessam/skills/academic-research/` holds `SKILL.md`, `references/`, `scripts/`, and
+   `templates/`. Folder-shaped skills round-trip intact today.
+
+   *The real gap is visibility.* The Skills detail payload has no file inventory:
+   `application/skills/presenters.py` returns `documentMarkdown`, `metadata`, `locations`,
+   `sourceLinks`, and `harnessCells`, and nothing enumerates what else is in the package. So a
+   user cannot tell from the UI whether a skill ships scripts they are about to run. **Build
+   that:** surface the package contents in Skills detail — at minimum the top-level entries,
+   ideally the tree — and make executable material (`scripts/`) legible as such rather than as
+   an anonymous filename.
+
+   *One unverified risk, worth a look while in there — not confirmed broken.* The adopt path
+   at `application/skills/mutations.py:353` passes `source_path=harness_sightings[0].path`
+   into `ingest`, and `copytree` raises on a plain file. A bare single-file skill
+   (`foo.md` sitting loose in a harness skills dir, no folder) would therefore be the failing
+   shape. **This box has no loose single-file skills**, so the case is untested rather than
+   known-bad. Confirm before assuming either way.
+
+6. **Evaluate the agent-skills specification and adopt what HAM can structurally support.**
+   Source: <https://agentskills.io/specification>. The reference layout the owner cited:
+
+   ```
+   my-skill/
+   ├── SKILL.md          # Required: metadata + instructions
+   ├── scripts/          # Optional: executable code
+   ├── references/       # Optional: documentation
+   ├── assets/           # Optional: templates, resources
+   └── ...               # Any additional files or directories
+   ```
+
+   *Scope, per the owner — this is the part to get right.* **The task is not to implement the
+   whole specification.** Much of it is authoring guidance (how to write a good skill), which
+   is out of scope: HAM manages skills, it does not write them. Only the **structural** parts
+   — layout, required and optional files, metadata fields, naming, validity rules — are
+   candidates, and only where HAM can actually support them.
+
+   *First deliverable is a triage table, not code.* One row per spec item: what it is,
+   structural or authoring, can HAM support it, in or out, and why. Bring that back for
+   approval before implementing anything. That keeps the judgement call — "is this ours?" —
+   with the owner instead of buried in a commit, and it avoids writing spec claims into this
+   file that nobody has checked against the specification itself. **Nothing in this entry has
+   been verified against the spec document; the URL is the source of truth, not this summary.**
+
+   Item 5 is the first concrete instance of this and can land ahead of the triage.
 
 ### Resolved — no owner input needed after all
 
