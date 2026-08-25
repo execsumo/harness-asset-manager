@@ -1061,6 +1061,10 @@ class AgentRoutesTests(unittest.TestCase):
             )
             self.assertIn("harness went away mid-save", resp["failed"][0]["error"])
 
+            # Nothing was half-linked on the harness side: the save reports exactly
+            # the state on disk rather than a binding it did not manage to create.
+            self.assertFalse((harness.spec.claude_root / "shared-audit").exists())
+
             # The agent edit itself survived, and is on disk -- not rolled back.
             self.assertEqual(resp["description"], "Reviews code carefully")
             self.assertEqual([s["slug"] for s in resp["skills"]], ["shared-audit"])
