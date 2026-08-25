@@ -2,6 +2,104 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-25 (session close) — queue set: approved follow-up + three agent UI defects
+
+### Running state
+
+- Owner restarted the `:8000` instance and pushed `5456b16..83e9b9c`. The stale-backend
+  condition flagged earlier in this session is cleared.
+- No code changed in this entry. It records decisions and files the next queue.
+- **Note on file order:** the "hardening pass" entry for this same day sits at the *bottom*
+  of this file, against the newest-on-top convention. It was left in place deliberately;
+  do not read the bottom of the file as the oldest entry.
+
+### Approved — do these
+
+1. **Read-only skill-name lookup, so `GET /api/agents` cannot write.** Owner-approved this
+   session. `SkillsQueryService.inventory()` runs the skills reconcile, which can auto-adopt;
+   the agents inventory calls it only to resolve skill display names. Add a lookup that does
+   not reconcile and point `_resolve_agent_skills` at it. The full statement of the problem is
+   in the "Known follow-up" section at the bottom of this file.
+
+2. **Agents > Preview leaks YAML frontmatter into the rendered document.** Reported by the
+   owner: the preview opens with a bolded heading reading
+   `name: scrutiny-feature-reviewer description: >- … model: inherit`.
+
+   *Cause, confirmed on the live instance.* `GET /api/agents/<ref>` returns two fields —
+   `document` is the **whole file including frontmatter**
+   (`application/agents/inventory.py:182`, `path.read_text()`), while `prompt` is the body
+   alone. `AgentDetailContent.tsx:455` renders `detail.document || detail.prompt`, so the
+   frontmatter reaches `ReactMarkdown`. The bolding is a Markdown setext heading: a text block
+   followed by a `---` line *is* an H2, and the frontmatter's closing `---` is that line.
+
+   *Scope — agents only.* Checked every `MarkdownDocument` caller: Skills passes
+   `documentMarkdown` and slash commands pass `command.prompt`, both body-only (verified live:
+   a skill detail starts `# Academic Research Toolkit`, an agent's `document` starts `---`).
+   The two marketplace views render remote README markdown. **One call site to fix.**
+
+   *Care needed.* Do not simply switch to `detail.prompt` — `document` is likely preferred so
+   unmanaged/raw agents render their real file. Strip the frontmatter block before rendering,
+   or render it as a metadata table rather than as document text.
+
+3. **Agents > Edit > Skills: the initial suggestion list is silently truncated.** Reported by
+   the owner: an alphabetical list appears, looks complete, but is not — more skills surface
+   only once you start typing.
+
+   *Cause.* `AgentSkillsFieldEditor.tsx:49` ends the suggestion pipeline with `.slice(0, 8)`.
+   With an empty input every adopted skill passes the filter, so the user sees the first eight
+   alphabetically with **no affordance saying more exist**. Ruled out as a second cause: the
+   two `knownSkills` derivations (`AgentsInUsePage.tsx:105` and the `AgentDetailContent.tsx:70`
+   fallback) apply the identical `shared:` / `Managed` filter, so they cannot disagree.
+   Truncation is the only cause.
+
+   *Fix direction (UI, owner's framing).* The list must not imply completeness it does not
+   have. A scrollable full list, or a "showing 8 of N — keep typing to narrow" footer, or both.
+   Pick one; do not just raise the cap to a bigger number, which reproduces the same lie.
+
+4. **Agents > Edit > Effort should be a structured choice, not free text.** `effort` is a
+   contract field (`agents/model.py::CONTRACT_KEYS`) but the editor declares it as a plain
+   text input with only a placeholder for guidance
+   (`AgentDetailContent.tsx:194-200`, `placeholder: "e.g. high, medium, low — empty clears the
+   key"`). A typo writes a bad value straight into agent frontmatter.
+
+   *Open before implementing:* the allowed values are not currently declared anywhere in the
+   backend — `AgentDefinition.effort` is `str | None` with no enum. Decide whether the set is
+   fixed or harness-dependent, declare it **backend-side** next to `CONTRACT_KEYS` so the API
+   and the picker cannot drift, then bind the control to it. Keep "empty clears the key" as a
+   reachable state. `model` has the same free-text shape; it is *not* in scope here, since its
+   value set is genuinely open-ended.
+
+### Resolved — no owner input needed after all
+
+**Marketplace router identifier shape.** The previous entry deferred narrowing
+`{item_id:path}` / `{slug:path}` because the marketplace returned no items on this box.
+It returns items now, so this was settled by sampling rather than by asking:
+
+- **`marketplace_skills.py` — `:path` is load-bearing. Do not narrow.** Every one of 60
+  sampled item ids contains slashes, e.g. `skillssh:vercel-labs/skills:find-skills`. The
+  frontend percent-encodes them (`marketplace/api/client.ts:28`), and uvicorn decodes `%2F`
+  back to `/` before routing, so a non-`:path` param would not match.
+- **`marketplace_clis.py` — probably narrowable, not proven.** No slashes in 100 slugs
+  (`ollama`, `yt-dlp`, `shadcn`, …), but that is the `popular` page, not the whole catalog.
+  Confirm against the full catalog before touching it; the win is small either way.
+
+The `agents.py` narrowing (8 `{agent_ref:path}` routes, up from the 7 recorded earlier)
+stays open and stays safe — an agent ref is a filename stem. **Nothing in the routing
+entry's 405-vs-404 analysis was re-verified this session**; a probe with a valid agent ref
+never landed, so treat that text as unchanged, not as re-confirmed.
+
+### Carried forward, unchanged
+
+- Dog-food tagging across the six family pages; watch for UX consistency issues.
+- Later/possible: unmanaged-asset tagging with qualified refs, tag rename/merge tooling,
+  marketplace-item tags.
+
+### Validation
+
+Documentation only — no suite run. The last recorded green gate set was the hardening pass
+through `2853ef5`; `83e9b9c` (test-only) landed after it and has not been independently
+re-verified here.
+
 ## 2026-08-25 — Agent Skills frontmatter + standard agent contract fields
 
 ### Running state
@@ -773,6 +871,9 @@ runs on `unittest` via `scripts/test_backend.sh`. Use
    reproduced recently, but the cause was never identified.
 7. **Repository hygiene.** Decide whether the five root pointers in `stash@{0}` stay
    deleted, and commit that decision on its own.
+   **Resolved 2026-08-25 — moot.** `git stash list` is empty; there is no `stash@{0}`
+   and no pending decision. The pointers stay deleted by default. Do not carry this
+   item forward again.
 
 ## 2026-08-18 — Skills inventory performance shipped; tailnet app live
 
@@ -849,6 +950,8 @@ frontend code was unchanged, and the isolated skills selector test passed 4/4.
 5. **Repository hygiene.** Decide separately whether the five historical root
    pointers should stay deleted, then commit that decision without mixing it into
    runtime or performance work. Nothing from this session has been pushed.
+   **Resolved 2026-08-25 — moot.** The stash that held them is empty; see the same
+   note under the 2026-08-21 entry. Closed, not deferred.
 
 ## 2026-08-14 — Cursor permissions approval mode set to unrestricted
 
@@ -2837,3 +2940,7 @@ names, so `GET /api/agents` can still trigger writes in the skills store — now
 once per request instead of once per agent, but the coupling itself remains.
 The clean fix is a read-only name lookup that does not reconcile. Not attempted
 here; it changes skills-side behaviour and deserves its own pass.
+
+**Approved 2026-08-25 by the owner. This is a to-do, not an open question** — the
+behaviour change is sanctioned; only the scheduling is open. See the 2026-08-25
+session entry at the top of this file for the queue position.
