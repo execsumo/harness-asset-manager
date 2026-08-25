@@ -245,7 +245,12 @@ describe("SkillDetailContent", () => {
     expect(await screen.findByText("Package contents")).toBeInTheDocument();
     expect(screen.getByText("scripts/")).toBeInTheDocument();
     expect(screen.getByText("Executable")).toBeInTheDocument();
-    expect(screen.getByText("collect.py")).toBeInTheDocument();
     expect(screen.getByText("references/")).toBeInTheDocument();
+    // The count is on the always-visible summary, so a collapsed folder still
+    // states how much is in it — nothing is hidden behind a truncated list.
+    expect(screen.getByText("2 files")).toBeInTheDocument();
+    expect(screen.getByText("1 file")).toBeInTheDocument();
+    expect(screen.getByText("collect.py")).toBeInTheDocument();
+    expect(screen.getByText("render.py")).toBeInTheDocument();
   });
 });

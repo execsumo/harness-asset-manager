@@ -240,6 +240,24 @@
   color: var(--color-text);
 }
 
+.skill-package-contents summary.skill-package-contents__header {
+  cursor: pointer;
+  list-style: none;
+}
+
+.skill-package-contents summary.skill-package-contents__header::-webkit-details-marker {
+  display: none;
+}
+
+.skill-package-contents__chevron {
+  flex: none;
+  transition: transform 120ms ease;
+}
+
+.skill-package-contents details[open] .skill-package-contents__chevron {
+  transform: rotate(90deg);
+}
+
 .skill-package-contents__name {
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -265,8 +283,8 @@
 .skill-package-contents__files {
   display: grid;
   gap: 2px;
-  margin: 0;
-  padding-left: 19px;
+  margin: 4px 0 0;
+  padding-left: 32px;
   list-style: none;
   font-family: var(--font-mono);
   font-size: 0.72rem;

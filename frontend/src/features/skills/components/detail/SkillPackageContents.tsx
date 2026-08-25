@@ -1,4 +1,4 @@
-import { FileText, Folder, Terminal } from "lucide-react";
+import { ChevronRight, FileText, Folder, Terminal } from "lucide-react";
 
 import { groupPackageFiles } from "../../model/package-contents";
 
@@ -10,7 +10,10 @@ interface SkillPackageContentsProps {
  * What is in the skill folder besides `SKILL.md`.
  *
  * Adoption copies the whole package, so a user has to be able to see whether a
- * skill ships scripts before enabling it on a harness that will run them.
+ * skill ships scripts before enabling it on a harness that will run them. Real
+ * packages can hold dozens of files in one folder, so directories are collapsed:
+ * the header always states the count, and expanding shows every file. Nothing is
+ * truncated — a count you can act on is the point.
  */
 export function SkillPackageContents({ files }: SkillPackageContentsProps) {
   const groups = groupPackageFiles(files);
@@ -18,16 +21,17 @@ export function SkillPackageContents({ files }: SkillPackageContentsProps) {
 
   return (
     <ul className="skill-package-contents">
-      {groups.map((group) => (
-        <li key={group.name} className="skill-package-contents__group">
-          <div className="skill-package-contents__header">
-            {group.executable ? (
-              <Terminal size={13} aria-hidden="true" />
-            ) : group.isDirectory ? (
-              <Folder size={13} aria-hidden="true" />
-            ) : (
-              <FileText size={13} aria-hidden="true" />
-            )}
+      {groups.map((group) => {
+        const icon = group.executable ? (
+          <Terminal size={13} aria-hidden="true" />
+        ) : group.isDirectory ? (
+          <Folder size={13} aria-hidden="true" />
+        ) : (
+          <FileText size={13} aria-hidden="true" />
+        );
+        const label = (
+          <>
+            {icon}
             <span className="skill-package-contents__name">
               {group.isDirectory ? `${group.name}/` : group.name}
             </span>
@@ -39,16 +43,33 @@ export function SkillPackageContents({ files }: SkillPackageContentsProps) {
                 {group.files.length} {group.files.length === 1 ? "file" : "files"}
               </span>
             ) : null}
-          </div>
-          {group.files.length > 0 ? (
-            <ul className="skill-package-contents__files">
-              {group.files.map((file) => (
-                <li key={file}>{file}</li>
-              ))}
-            </ul>
-          ) : null}
-        </li>
-      ))}
+          </>
+        );
+
+        return (
+          <li key={group.name} className="skill-package-contents__group">
+            {group.isDirectory ? (
+              <details>
+                <summary className="skill-package-contents__header">
+                  <ChevronRight
+                    size={13}
+                    aria-hidden="true"
+                    className="skill-package-contents__chevron"
+                  />
+                  {label}
+                </summary>
+                <ul className="skill-package-contents__files">
+                  {group.files.map((file) => (
+                    <li key={file}>{file}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <div className="skill-package-contents__header">{label}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
