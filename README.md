@@ -225,8 +225,9 @@ Typical flow:
 
 1. Review a Skill found in a harness or install one from the marketplace.
 2. Adopt it into the Harness Asset Manager inventory.
-3. Enable it only where it should be available.
-4. Update, remove, or delete it from one place.
+3. Check what the package holds — `scripts/`, `references/`, `assets/` — before enabling it.
+4. Enable it only where it should be available.
+5. Update, remove, or delete it from one place.
 
 ![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
 
@@ -264,7 +265,7 @@ Typical flow:
 
 1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
 2. Turn it on for the harnesses that should have it.
-3. In the detail editor, attach adopted Skills to the agent; suggestions appear as you type.
+3. In the detail editor, attach adopted Skills to the agent; the full list of adopted Skills is offered, and typing narrows it.
 4. Review agents discovered in harness directories and adopt the ones worth keeping.
 
 If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
@@ -308,6 +309,13 @@ Before adoption, each harness points at its own local skill folder. After adopti
 Harness Asset Manager treats managed Skills as portable by default: once a Skill is adopted into the shared store, it can be enabled for any supported harness. `originHarness` is retained only as provenance.
 
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
+
+Adoption takes the **whole folder**, not just `SKILL.md` — `scripts/`, `references/`, `assets/`,
+and anything else the package ships travel with it, and harnesses bind to it with a directory
+symlink. The detail view's **Package contents** section says what is in there: each top-level
+entry with its file count, folders collapsed so a large package stays readable, and `scripts/`
+badged as executable material so you can see whether a Skill ships code before enabling it
+somewhere that will run it.
 
 Skills can be starred or assigned free-form tags from the matrix or detail view. Tag chips and
 filters use the shared sidecar store, while the star is surfaced as the pinned `starred` system
@@ -373,7 +381,9 @@ chips, and URL-backed tag filters.
 
 Agents are Markdown files with YAML frontmatter and the system prompt as the body. They live in Harness Asset Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
 
-Harness Asset Manager's standard agent frontmatter contract is `name`, `description`, `model`, `effort`, `tools`, and `skills`. The detail editor exposes those fields directly; `skills` accepts only adopted HAM Skills and offers typeahead suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
+Harness Asset Manager's standard agent frontmatter contract is `name`, `description`, `model`, `effort`, `tools`, and `skills`. The detail editor exposes those fields directly; `skills` accepts only adopted HAM Skills and offers them as suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
+
+`effort` is a **fixed vocabulary** — `low`, `medium`, `high`, or empty to clear the key — so the editor offers a picker rather than a text box, and the API rejects anything else with a 400. That keeps a typo, a raw-YAML edit, or a hand-edited file from writing a value no harness understands. An agent authored elsewhere that already carries an out-of-contract value keeps it: the picker offers it as a labelled option rather than silently rewriting it, so you decide what it becomes. `model` is deliberately free text — its value set is open-ended.
 
 Other frontmatter keys — Claude's `permissionMode`, `maxTurns`, and `hooks`; Cursor's `readonly` and `is_background`; Codex's `sandbox_mode` — remain custom configuration and are preserved on edit. The detail view lists those keys verbatim under **Configuration**, so a new harness field shows up without code changes here. The only keys dropped on write are `capabilities:` and `harnesses:` from the retired compile model, which nothing reads.
 
