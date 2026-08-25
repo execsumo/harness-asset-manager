@@ -2808,3 +2808,32 @@ This checkout has **only `origin` (execsumo)** — no `mode-io` remote is config
 consistent with CLAUDE.md's "the fork is a complete product on its own". So the
 narrowing has no upstream consumer today. If it is ever extracted, the same proof
 applies: ref construction is shared code.
+
+## 2026-08-25 — hardening pass (CI gates, agent contract, skills N+1)
+
+Four commits, `5456b16..2853ef5`. Full CI gate set green afterwards (ruff,
+pyright, backend suite at 81%, eslint, tsc, codegen drift, vitest coverage
+ratchet, build).
+
+- **`main` was failing two CI gates.** The agent-skills commits left ruff red
+  (three unsorted import blocks; a dead `BindingState` import) and eslint red
+  (three `no-useless-escape` in `parseSkillSlugs`). Only the `\[` escapes were
+  removable — `\]` inside a character class is load-bearing.
+- **The agent contract is now one declaration per language.** The six contract
+  keys were literals in nine places; `agents/model.py::CONTRACT_KEYS` (ordered —
+  it drives render order) is the source of truth, mirrored by
+  `AGENT_CONTRACT_KEYS` in `features/agents/api/types.ts` and pinned against
+  drift by `ContractKeyParityTests`. Missing a copy would have surfaced a
+  contract field as an editable custom row and written it twice.
+- **Agents-list N+1 removed.** `_resolve_agent_skills` called
+  `SkillsQueryService.inventory()` per agent; that call rescans the skills store
+  and every harness dir. `build()` now shares one lazily-resolved resolver.
+
+### Known follow-up — a read of the agents matrix can write
+
+`SkillsQueryService.inventory()` runs the skills **reconcile** pass, which can
+auto-adopt (i.e. write). The agents inventory calls it to resolve skill display
+names, so `GET /api/agents` can still trigger writes in the skills store — now
+once per request instead of once per agent, but the coupling itself remains.
+The clean fix is a read-only name lookup that does not reconcile. Not attempted
+here; it changes skills-side behaviour and deserves its own pass.
