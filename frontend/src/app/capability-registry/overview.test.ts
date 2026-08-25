@@ -18,7 +18,8 @@ describe("capability overview model", () => {
             displayStatus: "Managed",
             tags: [],
             actions: { canDelete: true, canManage: true, canStopManaging: true },
-            cells: [
+            conformance: [],
+    cells: [
               { harness: "codex", label: "Codex", state: "enabled", interactive: true },
               { harness: "claude", label: "Claude", state: "found", interactive: false },
             ],

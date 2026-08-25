@@ -28,6 +28,7 @@ import { SkillDetailRemoveAction } from "./SkillDetailRemoveAction";
 import { SkillDetailTags } from "./SkillDetailTags";
 import { SkillDetailUpdateControl } from "./SkillDetailUpdateControl";
 import { SkillDetailShell } from "./SkillDetailShell";
+import { SkillConformanceNotes } from "./SkillConformanceNotes";
 import { SkillPackageContents } from "./SkillPackageContents";
 
 interface SkillDetailContentProps {
@@ -365,6 +366,12 @@ export function SkillDetailContent({
                   pendingStructuralAction={pendingStructuralAction}
                   onToggleCell={onToggleHarness}
                 />
+              </DetailSection>
+            ) : null}
+
+            {detail.conformance.length > 0 ? (
+              <DetailSection heading={copy.detail.conformance}>
+                <SkillConformanceNotes issues={detail.conformance} />
               </DetailSection>
             ) : null}
 

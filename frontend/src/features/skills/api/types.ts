@@ -23,6 +23,7 @@ export type SkillSourceStatusDto = components["schemas"]["SkillSourceStatusRespo
 export type SkillLocation = components["schemas"]["SkillLocationResponse"];
 export type SkillSourceLinks = components["schemas"]["SkillSourceLinksResponse"];
 export type SkillMetadataEntry = components["schemas"]["SkillMetadataEntryResponse"];
+export type SkillConformanceIssue = components["schemas"]["SkillConformanceIssueResponse"];
 export type SkillDetailDto = components["schemas"]["SkillDetailResponse"];
 export type UpdateSkillDocumentRequest = components["schemas"]["UpdateSkillDocumentRequest"];
 export type SetSkillTagsRequest = components["schemas"]["SetSkillTagsRequest"];

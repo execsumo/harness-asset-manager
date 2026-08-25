@@ -5,6 +5,7 @@ import type {
   HarnessColumn as HarnessColumnDto,
   SkillRowActionsDto,
   SkillLocation as SkillLocationDto,
+  SkillConformanceIssue as SkillConformanceIssueDto,
   SkillMetadataEntry as SkillMetadataEntryDto,
   SkillSourceLinks as SkillSourceLinksDto,
   SkillStatus as SkillStatusDto,
@@ -26,6 +27,7 @@ export type SkillRowActions = SkillRowActionsDto;
 export type SkillLocation = SkillLocationDto;
 export type SkillSourceLinks = SkillSourceLinksDto;
 export type SkillMetadataEntry = SkillMetadataEntryDto;
+export type SkillConformanceIssue = SkillConformanceIssueDto;
 export type BulkManageResult = BulkManageResultDto;
 
 export interface SkillListRow {
@@ -36,6 +38,8 @@ export interface SkillListRow {
   tags: string[];
   actions: SkillRowActions;
   cells: HarnessCell[];
+  /** Where this skill departs from the Agent Skills spec. Advisory, never blocking. */
+  conformance: SkillConformanceIssue[];
 }
 
 export interface SkillsWorkspaceData {
@@ -62,4 +66,5 @@ export interface SkillDetail {
   documentMarkdown: string | null;
   metadata: SkillMetadataEntry[];
   packageFiles: string[];
+  conformance: SkillConformanceIssue[];
 }

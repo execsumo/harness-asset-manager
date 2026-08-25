@@ -17,6 +17,7 @@ const rows: SkillListRow[] = [
     displayStatus: "Managed",
     tags: ["starred"],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
+    conformance: [],
     cells: [
       { harness: "codex", label: "Codex", logoKey: "codex", state: "enabled", interactive: true },
       { harness: "cursor", label: "Cursor", logoKey: "cursor", state: "disabled", interactive: true },
@@ -29,6 +30,7 @@ const rows: SkillListRow[] = [
     displayStatus: "Managed",
     tags: ["core"],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
+    conformance: [],
     cells: [
       { harness: "codex", label: "Codex", logoKey: "codex", state: "disabled", interactive: true },
       { harness: "cursor", label: "Cursor", logoKey: "cursor", state: "disabled", interactive: true },
@@ -165,7 +167,8 @@ describe("Skills MatrixView", () => {
       <MatrixView
         rows={[{
           ...rows[0],
-          cells: [{
+          conformance: [],
+    cells: [{
             harness: "opencode",
             label: "OpenCode",
             logoKey: "opencode",

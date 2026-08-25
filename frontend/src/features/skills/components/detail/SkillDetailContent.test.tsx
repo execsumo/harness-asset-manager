@@ -55,6 +55,7 @@ const unmanagedDetail: SkillDetail = {
     { key: "custom-key", value: "custom-value" },
   ],
   packageFiles: ["SKILL.md", "references/traces.md", "scripts/collect.py", "scripts/render.py"],
+  conformance: [],
 };
 
 describe("SkillDetailContent", () => {
@@ -252,5 +253,52 @@ describe("SkillDetailContent", () => {
     expect(screen.getByText("1 file")).toBeInTheDocument();
     expect(screen.getByText("collect.py")).toBeInTheDocument();
     expect(screen.getByText("render.py")).toBeInTheDocument();
+  });
+
+  it("shows standards-check notes with the correction, and hides the section when clean", () => {
+    const { unmount } = render(
+      <SkillDetailContent
+        detail={{
+          ...unmanagedDetail,
+          conformance: [
+            { code: "name_directory_mismatch", message: "`name` is `ideation` but the package directory is `creative-ideation`. The specification requires them to match." },
+          ],
+        }}
+        actionErrorMessage=""
+        queryErrorMessage=""
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+        onManage={vi.fn()}
+        onToggleHarness={vi.fn()}
+        onUpdate={vi.fn()}
+        onRequestRemove={vi.fn()}
+        onRequestDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Standards check")).toBeInTheDocument();
+    expect(screen.getByText(/requires them to match/)).toBeInTheDocument();
+    unmount();
+
+    render(
+      <SkillDetailContent
+        detail={unmanagedDetail}
+        actionErrorMessage=""
+        queryErrorMessage=""
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+        onManage={vi.fn()}
+        onToggleHarness={vi.fn()}
+        onUpdate={vi.fn()}
+        onRequestRemove={vi.fn()}
+        onRequestDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Standards check")).not.toBeInTheDocument();
   });
 });

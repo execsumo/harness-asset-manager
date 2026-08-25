@@ -27,6 +27,7 @@ export function mapSkillDetail(dto: SkillDetailDto): SkillDetail {
     documentMarkdown: dto.documentMarkdown,
     metadata: dto.metadata ?? [],
     packageFiles: dto.packageFiles ?? [],
+    conformance: dto.conformance ?? [],
   };
 }
 
@@ -39,5 +40,6 @@ function mapSkillRow(dto: SkillTableRowDto): SkillListRow {
     tags: dto.tags ?? [],
     actions: dto.actions,
     cells: dto.cells,
+    conformance: dto.conformance ?? [],
   };
 }
