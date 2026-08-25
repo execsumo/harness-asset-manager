@@ -20,6 +20,7 @@ import { DetailBindingIdentity, type DetailBindingTone } from "../../../../compo
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import { useSkillsListQuery } from "../../../skills/public";
+import { AGENT_CONTRACT_KEYS } from "../../api/types";
 import type { AgentDetailDto } from "../../api/types";
 import {
   AgentSkillsFieldEditor,
@@ -118,7 +119,7 @@ export function AgentDetailContent({
   // Frontmatter & Document editing state
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
     return (detail.configuration || [])
-      .filter((c) => !["name", "description", "model", "effort", "tools", "skills"].includes(c.key))
+      .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
       .map((c, idx) => ({
         id: `entry-${idx}-${c.key}`,
         key: c.key,
@@ -150,7 +151,7 @@ export function AgentDetailContent({
     setEffortStr(detail.effort ?? "");
     setOtherEntries(
       (detail.configuration || [])
-        .filter((c) => !["name", "description", "model", "effort", "tools", "skills"].includes(c.key))
+        .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
         .map((c, idx) => ({
           id: `entry-${idx}-${c.key}`,
           key: c.key,
@@ -277,7 +278,7 @@ export function AgentDetailContent({
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "model", "effort", "tools", "skills"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;

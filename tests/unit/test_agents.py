@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -16,6 +17,7 @@ from harness_asset_manager.application.agents import (
     parse_agent_document,
     render_agent_document,
 )
+from harness_asset_manager.application.agents.model import CONTRACT_KEYS
 from harness_asset_manager.errors import MutationError
 
 AGENT_DOC = """---
@@ -819,3 +821,39 @@ class AgentStoreTests(AgentsFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ContractKeyParityTests(unittest.TestCase):
+    """The agent contract is declared twice — once per language — so it must be pinned.
+
+    ``CONTRACT_KEYS`` (Python) decides what the parser lifts out of frontmatter and the
+    order the renderer writes it in; ``AGENT_CONTRACT_KEYS`` (TypeScript) decides which
+    rows the detail view hides from the custom-configuration editor. If they drift, a
+    contract field silently shows up as an editable custom row and gets written twice.
+    """
+
+    TYPES_TS = (
+        Path(__file__).resolve().parents[2] / "frontend/src/features/agents/api/types.ts"
+    )
+
+    def test_typescript_contract_keys_match_python(self) -> None:
+        source = self.TYPES_TS.read_text(encoding="utf-8")
+        match = re.search(
+            r"export const AGENT_CONTRACT_KEYS = \[(.*?)\] as const;", source, re.S
+        )
+        self.assertIsNotNone(match, "AGENT_CONTRACT_KEYS not found in types.ts")
+        assert match is not None
+        ts_keys = tuple(re.findall(r'"([^"]+)"', match.group(1)))
+        self.assertEqual(
+            ts_keys,
+            CONTRACT_KEYS,
+            "frontend AGENT_CONTRACT_KEYS drifted from backend CONTRACT_KEYS",
+        )
+
+    def test_contract_keys_are_the_fields_the_parser_lifts_out(self) -> None:
+        """Every contract key must leave metadata as a real parsed field, not a custom row."""
+        document = "\n".join(
+            ["---", *(f"{key}: v-{key}" for key in CONTRACT_KEYS), "---", "", "body"]
+        )
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        self.assertEqual(agent.extra_metadata, ())

@@ -1,3 +1,11 @@
+/**
+ * The agent contract, in canonical render order — the frontmatter keys the backend
+ * parses into their own fields and renders first. Mirrors CONTRACT_KEYS in
+ * application/agents/model.py; anything not in this list is custom configuration
+ * and is round-tripped verbatim.
+ */
+export const AGENT_CONTRACT_KEYS = ["name", "description", "model", "effort", "tools", "skills"] as const;
+
 export interface AgentSkillDto {
   slug: string;
   name: string;

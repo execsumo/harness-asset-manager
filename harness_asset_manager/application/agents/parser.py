@@ -7,15 +7,11 @@ from typing import Mapping
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from .model import AgentDefinition, AgentParseError
+from .model import CONTRACT_KEY_SET, CONTRACT_KEYS, AgentDefinition, AgentParseError
 
 _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
 _rt_yaml.default_flow_style = False
-
-# Frontmatter keys that are part of the agent contract: parsed into their own fields
-# and rendered in canonical order. Never surfaced as custom configuration rows.
-_CONTRACT_KEYS = frozenset({"name", "description", "model", "effort", "tools", "skills"})
 
 # Written by the retired compile model and read by nothing. Unknown *harness* keys are
 # preserved on write; these two are ours, dead, and dropped so they stop showing up as
@@ -34,12 +30,6 @@ def parse_agent_file(path: Path) -> AgentDefinition:
 def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefinition:
     """Parse an agent definition.
 
-    ``name``, ``description``, and ``tools`` drive behavior. Every other frontmatter
-    key is kept verbatim in ``metadata`` — harness agents carry `model`,
-    `permissionMode`, `maxTurns`, Cursor's `readonly`, and so on, and Harness Asset Manager
-    must display those without interpreting or destroying them. The only keys dropped
-    on write are ``RETIRED_KEYS``, which the retired compile model wrote and nothing
-    reads.
     ``name``, ``description``, ``tools``, ``skills``, ``model``, and ``effort`` drive
     behavior as contract fields. Every other frontmatter key is kept verbatim in
     ``metadata`` — harness agents carry `permissionMode`, `maxTurns`, Cursor's
@@ -106,11 +96,11 @@ def render_agent_document(
                 v = item[1]
             else:
                 continue
-            if k and k not in _CONTRACT_KEYS and k not in RETIRED_KEYS:
+            if k and k not in CONTRACT_KEY_SET and k not in RETIRED_KEYS:
                 metadata[k] = v
                 custom_keys.append(k)
 
-        ordered = [k for k in ("name", "description", "model", "effort", "tools", "skills") if k in metadata]
+        ordered = [k for k in CONTRACT_KEYS if k in metadata]
         ordered.extend(custom_keys)
     else:
         metadata = {
@@ -140,7 +130,7 @@ def render_agent_document(
                 del metadata[contract_key]
 
         # Contract fields lead in canonical order, then everything else in its original order.
-        lead = [k for k in ("name", "description", "model", "effort", "tools", "skills") if k in metadata]
+        lead = [k for k in CONTRACT_KEYS if k in metadata]
         ordered = lead + [k for k in metadata if k not in lead]
 
     lines = ["---"]

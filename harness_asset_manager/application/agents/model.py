@@ -11,6 +11,15 @@ class AgentParseError(ValueError):
     """Raised when an agent definition file cannot be parsed safely."""
 
 
+# The agent contract, in canonical render order: these frontmatter keys are parsed
+# into their own ``AgentDefinition`` fields, rendered first and in this order, and
+# never surfaced or accepted as custom configuration. Single source of truth --
+# the parser, the renderer, and ``extra_metadata`` all derive from it, so adding a
+# contract field is a one-line change here.
+CONTRACT_KEYS: tuple[str, ...] = ("name", "description", "model", "effort", "tools", "skills")
+CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
+
+
 @dataclass(frozen=True)
 class AgentSkill:
     slug: str
@@ -56,7 +65,7 @@ class AgentDefinition:
         return tuple(
             (key, value)
             for key, value in self.metadata.items()
-            if key not in {"name", "description", "model", "effort", "tools", "skills"}
+            if key not in CONTRACT_KEY_SET
         )
 
 
@@ -175,6 +184,8 @@ class AgentAdoptConflict(MutationError):
 
 
 __all__ = [
+    "CONTRACT_KEYS",
+    "CONTRACT_KEY_SET",
     "AgentAdoptConflict",
     "AgentBinding",
     "AgentDefinition",
