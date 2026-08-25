@@ -116,4 +116,45 @@ author: Jane Doe
       { id: expect.any(String), key: "author", value: "Jane Doe" },
     ]);
   });
+
+  it("parses YAML multi-line list items into comma-separated known values", () => {
+    const yaml = `
+name: test-name
+skills:
+  - code-review
+  - test-debugging
+`;
+    const result = parseFrontmatterFromYaml(yaml, ["name", "skills"]);
+    expect(result.error).toBeNull();
+    expect(result.known).toEqual({
+      name: "test-name",
+      skills: "code-review, test-debugging",
+    });
+  });
+
+  it("renders custom renderInput for known field if provided", () => {
+    const knownFields: KnownFieldConfig[] = [
+      {
+        key: "skills",
+        label: "Skills",
+        value: "code-review",
+        onChange: vi.fn(),
+        renderInput: () => <div data-testid="custom-skills-editor">Custom Skills Editor</div>,
+      },
+    ];
+
+    render(
+      <FrontmatterEditor
+        knownFields={knownFields}
+        otherEntries={[]}
+        onChangeOtherEntries={vi.fn()}
+        rawYaml=""
+        onChangeRawYaml={vi.fn()}
+        mode="structured"
+        onModeChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("custom-skills-editor")).toBeInTheDocument();
+  });
 });

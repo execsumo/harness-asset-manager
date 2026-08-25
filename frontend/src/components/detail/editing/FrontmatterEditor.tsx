@@ -9,6 +9,8 @@ export interface KnownFieldConfig {
   disabled?: boolean;
   placeholder?: string;
   helpText?: string;
+  serialize?: (value: string) => string | null;
+  renderInput?: (props: { disabled?: boolean }) => ReactNode;
 }
 
 export interface OtherFrontmatterEntry {
@@ -36,7 +38,12 @@ export function serializeFrontmatterToYaml(
 ): string {
   const lines: string[] = [];
   for (const field of known) {
-    if (field.value !== undefined && field.value !== "") {
+    if (field.serialize) {
+      const custom = field.serialize(field.value);
+      if (custom !== null && custom !== undefined && custom !== "") {
+        lines.push(custom);
+      }
+    } else if (field.value !== undefined && field.value !== "") {
       lines.push(`${field.key}: ${field.value}`);
     }
   }
@@ -63,6 +70,8 @@ export function parseFrontmatterFromYaml(
   const lines = yamlText.split("\n");
   const known: Record<string, string> = {};
   const other: OtherFrontmatterEntry[] = [];
+  let currentKey: string | null = null;
+  let isCurrentKnown = false;
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -73,6 +82,23 @@ export function parseFrontmatterFromYaml(
     if (trimmed === "---") {
       continue;
     }
+
+    if (trimmed.startsWith("- ") || trimmed === "-") {
+      const itemVal = trimmed.replace(/^-\s*/, "").trim().replace(/^['"]|['"]$/g, "");
+      if (currentKey) {
+        if (isCurrentKnown) {
+          const prev = known[currentKey] || "";
+          known[currentKey] = prev ? `${prev}, ${itemVal}` : itemVal;
+        } else {
+          const lastOther = other[other.length - 1];
+          if (lastOther) {
+            lastOther.value = lastOther.value ? `${lastOther.value}, ${itemVal}` : itemVal;
+          }
+        }
+      }
+      continue;
+    }
+
     if (!rawLine.includes(":")) {
       return {
         known: {},
@@ -91,7 +117,10 @@ export function parseFrontmatterFromYaml(
       value = value.slice(1, -1);
     }
 
-    if (knownKeys.includes(key)) {
+    currentKey = key;
+    isCurrentKnown = knownKeys.includes(key);
+
+    if (isCurrentKnown) {
       known[key] = value;
     } else {
       other.push({
@@ -210,15 +239,19 @@ export function FrontmatterEditor({
             {knownFields.map((field) => (
               <label key={field.key} className="frontmatter-editor__field">
                 <span className="frontmatter-editor__label">{field.label}</span>
-                <input
-                  type="text"
-                  className="frontmatter-editor__input"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  disabled={disabled || field.disabled}
-                  placeholder={field.placeholder}
-                  aria-label={field.label}
-                />
+                {field.renderInput ? (
+                  field.renderInput({ disabled: disabled || field.disabled })
+                ) : (
+                  <input
+                    type="text"
+                    className="frontmatter-editor__input"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    disabled={disabled || field.disabled}
+                    placeholder={field.placeholder}
+                    aria-label={field.label}
+                  />
+                )}
               </label>
             ))}
           </div>

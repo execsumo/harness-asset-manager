@@ -30,8 +30,8 @@ export async function updateAgent({
 }: {
   ref: string;
   request: AgentUpdateRequest;
-}): Promise<AgentSummaryResponse> {
-  return putJson<AgentSummaryResponse>(`/agents/${ref}`, request);
+}): Promise<AgentDetailDto> {
+  return putJson<AgentDetailDto>(`/agents/${ref}`, request);
 }
 
 export async function adoptAgent(

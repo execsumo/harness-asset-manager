@@ -386,6 +386,13 @@
       },
       "AgentDetailResponse": {
         "properties": {
+          "autoEnabled": {
+            "items": {
+              "$ref": "#/components/schemas/AutoEnabledSkillResponse"
+            },
+            "title": "Autoenabled",
+            "type": "array"
+          },
           "canDelete": {
             "title": "Candelete",
             "type": "boolean"
@@ -410,6 +417,13 @@
             "title": "Document",
             "type": "string"
           },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/AutoEnableFailureResponse"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
           "harnesses": {
             "items": {
               "$ref": "#/components/schemas/AgentHarnessDetailResponse"
@@ -421,6 +435,11 @@
             "title": "Name",
             "type": "string"
           },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
           "prompt": {
             "title": "Prompt",
             "type": "string"
@@ -428,6 +447,13 @@
           "ref": {
             "title": "Ref",
             "type": "string"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/AgentSkillResponse"
+            },
+            "title": "Skills",
+            "type": "array"
           },
           "storePath": {
             "anyOf": [
@@ -510,6 +536,13 @@
           "ref": {
             "title": "Ref",
             "type": "string"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/AgentSkillResponse"
+            },
+            "title": "Skills",
+            "type": "array"
           },
           "tags": {
             "items": {
@@ -727,6 +760,24 @@
         "title": "AgentRepairResponse",
         "type": "object"
       },
+      "AgentSkillResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "title": "AgentSkillResponse",
+        "type": "object"
+      },
       "AgentTagsResponse": {
         "properties": {
           "tags": {
@@ -738,6 +789,47 @@
           }
         },
         "title": "AgentTagsResponse",
+        "type": "object"
+      },
+      "AutoEnableFailureResponse": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "skillRef": {
+            "title": "Skillref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skillRef",
+          "harness",
+          "error"
+        ],
+        "title": "AutoEnableFailureResponse",
+        "type": "object"
+      },
+      "AutoEnabledSkillResponse": {
+        "properties": {
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "skillRef": {
+            "title": "Skillref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skillRef",
+          "harness"
+        ],
+        "title": "AutoEnabledSkillResponse",
         "type": "object"
       },
       "BulkManageFailureResponse": {
@@ -1145,6 +1237,13 @@
             "default": "",
             "title": "Prompt",
             "type": "string"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
           },
           "tools": {
             "items": {
@@ -5869,6 +5968,20 @@
               }
             ],
             "title": "Prompt"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
           },
           "tools": {
             "anyOf": [

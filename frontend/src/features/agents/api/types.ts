@@ -1,3 +1,19 @@
+export interface AgentSkillDto {
+  slug: string;
+  name: string;
+}
+
+export interface AutoEnabledSkillDto {
+  skillRef: string;
+  harness: string;
+}
+
+export interface AutoEnableFailureDto {
+  skillRef: string;
+  harness: string;
+  error: string;
+}
+
 export interface AgentRepairDto {
   at: number;
   ref: string;
@@ -26,6 +42,7 @@ export interface AgentInventoryEntryDto {
   }>;
   actions: { canAdopt: boolean; canDelete: boolean };
   tags?: string[];
+  skills?: AgentSkillDto[];
 }
 
 export interface AgentAdoptConflict {
@@ -46,6 +63,7 @@ export interface AgentCreateRequest {
   description: string;
   prompt: string;
   tools?: string[];
+  skills?: string[];
 }
 
 export interface AgentUpdateRequest {
@@ -53,6 +71,7 @@ export interface AgentUpdateRequest {
   description?: string;
   prompt?: string;
   tools?: string[];
+  skills?: string[];
   metadata?: Array<{ key: string; value: string }>;
 }
 
@@ -63,6 +82,7 @@ export interface AgentSummaryResponse {
   slug: string;
   prompt?: string;
   tools?: string[];
+  skills?: AgentSkillDto[];
 }
 
 export interface AgentDetailDto {
@@ -90,4 +110,8 @@ export interface AgentDetailDto {
   /** False for unmanaged agents: read-only until adopted. */
   canEdit: boolean;
   tags?: string[];
+  skills?: AgentSkillDto[];
+  ok?: boolean;
+  autoEnabled?: AutoEnabledSkillDto[];
+  failed?: AutoEnableFailureDto[];
 }

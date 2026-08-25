@@ -4,10 +4,12 @@ import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { useAgentDetailQuery } from "../../api/queries";
 import { AgentDetailContent } from "./AgentDetailContent";
 import { AgentDetailSkeleton } from "./AgentDetailSkeleton";
+import type { AdoptedSkillOption } from "./AgentSkillsFieldEditor";
 
 interface AgentDetailViewProps {
   agentRef: string;
   knownTags?: string[];
+  knownSkills?: AdoptedSkillOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
@@ -16,6 +18,7 @@ interface AgentDetailViewProps {
 export function AgentDetailView({
   agentRef,
   knownTags,
+  knownSkills,
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
@@ -65,6 +68,7 @@ export function AgentDetailView({
     <AgentDetailContent
       detail={detail}
       knownTags={knownTags}
+      knownSkills={knownSkills}
       pendingPerHarnessKeys={pendingPerHarnessKeys}
       onToggleHarness={onToggleHarness}
       actionErrorMessage={actionErrorMessage}

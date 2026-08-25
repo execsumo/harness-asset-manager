@@ -1390,6 +1390,8 @@ export interface components {
         };
         /** AgentDetailResponse */
         AgentDetailResponse: {
+            /** Autoenabled */
+            autoEnabled?: components["schemas"]["AutoEnabledSkillResponse"][];
             /** Candelete */
             canDelete: boolean;
             /**
@@ -1403,14 +1405,23 @@ export interface components {
             description: string;
             /** Document */
             document: string;
+            /** Failed */
+            failed?: components["schemas"]["AutoEnableFailureResponse"][];
             /** Harnesses */
             harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
             /** Name */
             name: string;
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
             /** Prompt */
             prompt: string;
             /** Ref */
             ref: string;
+            /** Skills */
+            skills?: components["schemas"]["AgentSkillResponse"][];
             /** Storepath */
             storePath?: string | null;
             /** Tags */
@@ -1436,6 +1447,8 @@ export interface components {
             name: string;
             /** Ref */
             ref: string;
+            /** Skills */
+            skills?: components["schemas"]["AgentSkillResponse"][];
             /** Tags */
             tags?: string[];
         };
@@ -1516,10 +1529,33 @@ export interface components {
             /** Ref */
             ref: string;
         };
+        /** AgentSkillResponse */
+        AgentSkillResponse: {
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
         /** AgentTagsResponse */
         AgentTagsResponse: {
             /** Tags */
             tags?: string[];
+        };
+        /** AutoEnableFailureResponse */
+        AutoEnableFailureResponse: {
+            /** Error */
+            error: string;
+            /** Harness */
+            harness: string;
+            /** Skillref */
+            skillRef: string;
+        };
+        /** AutoEnabledSkillResponse */
+        AutoEnabledSkillResponse: {
+            /** Harness */
+            harness: string;
+            /** Skillref */
+            skillRef: string;
         };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {
@@ -1642,6 +1678,8 @@ export interface components {
              * @default
              */
             prompt: string;
+            /** Skills */
+            skills?: string[];
             /** Tools */
             tools?: string[];
         };
@@ -3199,6 +3237,8 @@ export interface components {
             name?: string | null;
             /** Prompt */
             prompt?: string | null;
+            /** Skills */
+            skills?: string[] | null;
             /** Tools */
             tools?: string[] | null;
         };

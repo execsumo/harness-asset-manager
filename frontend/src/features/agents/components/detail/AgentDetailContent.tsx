@@ -19,13 +19,19 @@ import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
+import { useSkillsListQuery } from "../../../skills/public";
 import type { AgentDetailDto } from "../../api/types";
+import {
+  AgentSkillsFieldEditor,
+  type AdoptedSkillOption,
+} from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
 
 interface AgentDetailContentProps {
   detail: AgentDetailDto;
   knownTags?: string[];
+  knownSkills?: AdoptedSkillOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   actionErrorMessage: string | null;
@@ -36,6 +42,7 @@ interface AgentDetailContentProps {
 export function AgentDetailContent({
   detail,
   knownTags,
+  knownSkills,
   pendingPerHarnessKeys,
   onToggleHarness,
   actionErrorMessage,
@@ -51,7 +58,21 @@ export function AgentDetailContent({
   const deleteMutation = useDeleteAgentMutation();
   const updateMutation = useUpdateAgentMutation();
   const setTagsMutation = useSetAgentTagsMutation();
-  
+  const skillsListQuery = useSkillsListQuery();
+
+  const adoptedSkills = useMemo<AdoptedSkillOption[]>(() => {
+    if (knownSkills && knownSkills.length > 0) {
+      return knownSkills;
+    }
+    if (!skillsListQuery.data?.rows) return [];
+    return skillsListQuery.data.rows
+      .filter((row) => row.skillRef.startsWith("shared:") || row.displayStatus === "Managed")
+      .map((row) => ({
+        slug: row.skillRef.replace(/^shared:/, ""),
+        name: row.name,
+      }));
+  }, [knownSkills, skillsListQuery.data?.rows]);
+
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;
   const dismissError = () => {
@@ -97,7 +118,7 @@ export function AgentDetailContent({
   // Frontmatter & Document editing state
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
     return (detail.configuration || [])
-      .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools")
+      .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools" && c.key !== "skills")
       .map((c, idx) => ({
         id: `entry-${idx}-${c.key}`,
         key: c.key,
@@ -105,11 +126,14 @@ export function AgentDetailContent({
       }));
   }, [detail.configuration]);
 
+  const initialSkills = useMemo(() => (detail.skills || []).map((s) => s.slug), [detail.skills]);
+
   const [documentMode, setDocumentMode] = useState<"preview" | "edit">("preview");
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
   const [description, setDescription] = useState(detail.description);
   const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
+  const [skills, setSkills] = useState<string[]>(initialSkills);
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -119,9 +143,10 @@ export function AgentDetailContent({
     setName(detail.name);
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
+    setSkills((detail.skills || []).map((s) => s.slug));
     setOtherEntries(
       (detail.configuration || [])
-        .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools")
+        .filter((c) => c.key !== "name" && c.key !== "description" && c.key !== "tools" && c.key !== "skills")
         .map((c, idx) => ({
           id: `entry-${idx}-${c.key}`,
           key: c.key,
@@ -131,6 +156,14 @@ export function AgentDetailContent({
     setPrompt(detail.prompt);
     setSaveError(null);
   }, [detail.ref]);
+
+  const parseSkillSlugs = (val: string): string[] => {
+    return val
+      .replace(/^[\[\]]/g, "")
+      .split(",")
+      .map((s) => s.replace(/^[\[\]\s'"]+|[\[\]\s'"]+$/g, "").trim())
+      .filter(Boolean);
+  };
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
@@ -153,8 +186,26 @@ export function AgentDetailContent({
         onChange: setToolsStr,
         placeholder: "e.g. bash, edit, grep",
       },
+      {
+        key: "skills",
+        label: "Skills",
+        value: skills.join(", "),
+        onChange: (val) => setSkills(parseSkillSlugs(val)),
+        serialize: () => {
+          if (skills.length === 0) return null;
+          return `skills:\n${skills.map((s) => `  - ${s}`).join("\n")}`;
+        },
+        renderInput: ({ disabled }) => (
+          <AgentSkillsFieldEditor
+            skills={skills}
+            knownSkills={adoptedSkills}
+            onChange={setSkills}
+            disabled={disabled}
+          />
+        ),
+      },
     ],
-    [name, description, toolsStr],
+    [name, description, toolsStr, skills, adoptedSkills],
   );
 
   const isDirty = useMemo(() => {
@@ -162,6 +213,11 @@ export function AgentDetailContent({
     if (description !== detail.description) return true;
     if (toolsStr !== detail.tools.join(", ")) return true;
     if (prompt !== detail.prompt) return true;
+
+    if (skills.length !== initialSkills.length) return true;
+    for (let i = 0; i < skills.length; i++) {
+      if (skills[i].toLowerCase() !== (initialSkills[i] || "").toLowerCase()) return true;
+    }
 
     if (otherEntries.length !== initialOtherEntries.length) return true;
     for (let i = 0; i < otherEntries.length; i++) {
@@ -173,12 +229,13 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, otherEntries, detail, initialOtherEntries]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
+    setSkills(initialSkills);
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -191,10 +248,11 @@ export function AgentDetailContent({
     let finalName = name;
     let finalDesc = description;
     let finalToolsStr = toolsStr;
+    let finalSkills = skills;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "tools"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, ["name", "description", "tools", "skills"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;
@@ -202,10 +260,12 @@ export function AgentDetailContent({
       finalName = parsed.known.name ?? name;
       finalDesc = parsed.known.description ?? description;
       finalToolsStr = parsed.known.tools ?? toolsStr;
+      finalSkills = parseSkillSlugs(parsed.known.skills ?? "");
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
       setToolsStr(finalToolsStr);
+      setSkills(finalSkills);
       setOtherEntries(finalOther);
     }
 
@@ -224,17 +284,38 @@ export function AgentDetailContent({
       .map((e) => ({ key: e.key.trim(), value: e.value }));
 
     try {
-      await updateMutation.mutateAsync({
+      const result = await updateMutation.mutateAsync({
         ref: detail.ref,
         request: {
           name: finalName.trim(),
           description: finalDesc.trim(),
           prompt: prompt,
           tools: toolsList,
+          skills: finalSkills,
           metadata: metadataPayload,
         },
       });
-      toast(`Successfully updated ${finalName.trim()}`);
+
+      const autoList = result?.autoEnabled || [];
+      const failList = result?.failed || [];
+
+      if (autoList.length > 0 && failList.length === 0) {
+        const items = autoList
+          .map((item) => `enabled ${item.skillRef.replace(/^shared:/, "")} on ${item.harness}`)
+          .join(", ");
+        toast(`Updated ${finalName.trim()}. Auto-enabled: ${items}`);
+      } else if (failList.length > 0) {
+        const autoItems = autoList.length > 0
+          ? ` Auto-enabled: ${autoList.map((item) => `${item.skillRef.replace(/^shared:/, "")} on ${item.harness}`).join(", ")}.`
+          : "";
+        const failItems = failList
+          .map((f) => `${f.skillRef.replace(/^shared:/, "")} on ${f.harness}: ${f.error}`)
+          .join(", ");
+        toast(`Updated ${finalName.trim()}.${autoItems} Failed on: ${failItems}`);
+      } else {
+        toast(`Successfully updated ${finalName.trim()}`);
+      }
+
       setFrontmatterMode("structured");
       setDocumentMode("preview");
     } catch (err) {
@@ -339,7 +420,7 @@ export function AgentDetailContent({
             editable={detail.canEdit}
             previewContent={(
               <Suspense fallback={<LoadingSpinner size="sm" label="Loading document" />}>
-                <MarkdownDocument markdown={detail.prompt} />
+                <MarkdownDocument markdown={detail.document || detail.prompt} />
               </Suspense>
             )}
             editFrontmatter={(

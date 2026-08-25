@@ -23,6 +23,7 @@ import {
 } from "../model/selectors";
 import { useAgentsController } from "../model/use-agents-controller";
 import { useSetAgentTagsMutation } from "../api/queries";
+import { useSkillsListQuery } from "../../skills/public";
 import type { AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
@@ -99,6 +100,17 @@ export default function AgentsInUsePage() {
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
   const knownTags = useMemo(() => extractAgentTagCounts(inventory?.entries), [inventory?.entries]);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
+
+  const skillsQuery = useSkillsListQuery();
+  const knownSkills = useMemo(() => {
+    if (!skillsQuery.data?.rows) return [];
+    return skillsQuery.data.rows
+      .filter((row) => row.skillRef.startsWith("shared:") || row.displayStatus === "Managed")
+      .map((row) => ({
+        slug: row.skillRef.replace(/^shared:/, ""),
+        name: row.name,
+      }));
+  }, [skillsQuery.data?.rows]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
@@ -430,6 +442,7 @@ export default function AgentsInUsePage() {
         open={Boolean(detailRef)}
         agentRef={detailRef}
         knownTags={knownTagNames}
+        knownSkills={knownSkills}
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
         onClose={() => setDetailRef(null)}
