@@ -11,7 +11,7 @@ export {
   type OverviewHarnessRow,
   type OverviewModel,
   type OverviewReviewItem,
-  type OverviewShortcut,
+  type OverviewConformanceNotice,
 } from "./overview";
 export {
   useSidebarModel,

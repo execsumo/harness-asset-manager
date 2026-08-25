@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildOverviewModel } from "./overview";
 
 describe("capability overview model", () => {
-  it("builds per-harness coverage across all capabilities plus shortcuts", () => {
+  it("builds per-harness coverage across all capabilities", () => {
     const model = buildOverviewModel(
       {
         summary: { managed: 2, unmanaged: 1 },
@@ -19,7 +19,7 @@ describe("capability overview model", () => {
             tags: [],
             actions: { canDelete: true, canManage: true, canStopManaging: true },
             conformance: [],
-    cells: [
+            cells: [
               { harness: "codex", label: "Codex", state: "enabled", interactive: true },
               { harness: "claude", label: "Claude", state: "found", interactive: false },
             ],
@@ -207,17 +207,87 @@ describe("capability overview model", () => {
       agents: { active: 0, review: 1 },
     });
 
-    expect(model.shortcuts.map((shortcut) => shortcut.key)).toEqual([
-      "manage-skills",
-      "manage-slash-commands",
-      "manage-mcp",
-      "manage-hooks",
-      "manage-permissions",
-      "manage-agents",
-      "discover-skills",
-      "discover-mcp",
-      "discover-clis",
-    ]);
     expect(model.reviewItems.length).toBeGreaterThan(0);
+  });
+
+  it("turns each skill conformance issue into its own linked notice", () => {
+    const model = buildOverviewModel(
+      {
+        summary: { managed: 1, unmanaged: 0 },
+        harnessColumns: [],
+        rows: [
+          {
+            skillRef: "shared:creative-ideation",
+            name: "ideation",
+            description: "",
+            displayStatus: "Managed",
+            tags: [],
+            actions: { canDelete: true, canManage: false, canStopManaging: true },
+            cells: [],
+            conformance: [
+              {
+                code: "name_directory_mismatch",
+                message: "`name` is `ideation` but the package directory is `creative-ideation`.",
+              },
+              { code: "description_missing", message: "No `description` field." },
+            ],
+          },
+        ],
+      },
+      null,
+      null,
+      null,
+      null,
+      null,
+    );
+
+    // One notice per issue, never a count: the panel has to say what to correct
+    // and link to the asset that needs correcting.
+    // The canonical route, not the legacy redirect: a redirect drops `?skill=`.
+    expect(model.conformanceNotices.every((n) => n.to.startsWith("/skills?"))).toBe(true);
+    expect(model.conformanceNotices).toEqual([
+      {
+        key: "shared:creative-ideation:name_directory_mismatch",
+        asset: "ideation",
+        message: "`name` is `ideation` but the package directory is `creative-ideation`.",
+        to: "/skills?skill=shared%3Acreative-ideation",
+      },
+      {
+        key: "shared:creative-ideation:description_missing",
+        asset: "ideation",
+        message: "No `description` field.",
+        to: "/skills?skill=shared%3Acreative-ideation",
+      },
+    ]);
+  });
+
+  it("has no notices when every skill conforms", () => {
+    const model = buildOverviewModel(
+      {
+        summary: { managed: 1, unmanaged: 0 },
+        harnessColumns: [],
+        rows: [
+          {
+            skillRef: "shared:tidy",
+            name: "tidy",
+            description: "d",
+            displayStatus: "Managed",
+            tags: [],
+            actions: { canDelete: true, canManage: false, canStopManaging: true },
+            cells: [],
+            conformance: [],
+          },
+        ],
+      },
+      null,
+      null,
+      null,
+      null,
+      null,
+    );
+
+    // The canonical route, not the legacy redirect: a redirect drops `?skill=`.
+    expect(model.conformanceNotices.every((n) => n.to.startsWith("/skills?"))).toBe(true);
+    expect(model.conformanceNotices).toEqual([]);
   });
 });

@@ -26,7 +26,6 @@ import {
   useSlashCommandsQuery,
   type SlashCommandListDto,
 } from "../../features/slash-commands/public";
-import { marketplaceRoutes } from "../../features/marketplace/public";
 import { overviewCopy, useOverviewCopy, type OverviewCopy } from "../../features/overview/i18n";
 import {
   invalidateHooksQueries,
@@ -41,11 +40,14 @@ import {
   type PermissionInventoryDto,
 } from "../../features/permissions/public";
 
-export interface OverviewShortcut {
+export interface OverviewConformanceNotice {
   key: string;
-  label: string;
+  /** The asset that needs correcting, by display name. */
+  asset: string;
+  /** Exactly what to correct, in one sentence. */
+  message: string;
+  /** Opens that asset's detail so the fix is one click away. */
   to: string;
-  group: "manage" | "discover";
 }
 
 export interface OverviewCoverageCell {
@@ -85,7 +87,7 @@ export interface OverviewHarnessRow {
 }
 
 export interface OverviewModel {
-  shortcuts: OverviewShortcut[];
+  conformanceNotices: OverviewConformanceNotice[];
   reviewItems: OverviewReviewItem[];
   /** Catalog-level totals per capability, agnostic of any single harness. */
   totalsRow: OverviewHarnessRow;
@@ -198,7 +200,7 @@ export function buildOverviewModel(
   });
 
   return {
-    shortcuts: buildShortcuts(copy),
+    conformanceNotices: buildConformanceNotices(skills),
     reviewItems,
     totalsRow: buildTotalsRow(skills, slashCommands, mcp, hooks, permissions, agents, copy),
     harnessRows: buildHarnessRows(skills, slashCommands, mcp, hooks, permissions, agents, copy),
@@ -293,18 +295,26 @@ export function coverageCellLinks(
   };
 }
 
-function buildShortcuts(copy: OverviewCopy): OverviewShortcut[] {
-  return [
-    { key: "manage-skills", label: copy.extensions.skills, to: skillsRoutes.inUse, group: "manage" },
-    { key: "manage-slash-commands", label: copy.extensions.slashCommands, to: slashCommandRoutes.inUse, group: "manage" },
-    { key: "manage-mcp", label: copy.extensions.mcpServers, to: mcpRoutes.inUse, group: "manage" },
-    { key: "manage-hooks", label: "Hooks", to: hooksRoutes.inUse, group: "manage" },
-    { key: "manage-permissions", label: "Permissions", to: permissionsRoutes.inUse, group: "manage" },
-    { key: "manage-agents", label: "Agents", to: agentsRoutes.inUse, group: "manage" },
-    { key: "discover-skills", label: copy.marketplace.skills, to: marketplaceRoutes.skills, group: "discover" },
-    { key: "discover-mcp", label: copy.marketplace.mcp, to: marketplaceRoutes.mcp, group: "discover" },
-    { key: "discover-clis", label: copy.marketplace.cli, to: marketplaceRoutes.clis, group: "discover" },
-  ];
+/**
+ * One notice per thing that needs correcting, not a count.
+ *
+ * A summary ("4 skills have issues") tells you a number and leaves you to go find
+ * them. These name the asset, say what to fix, and link straight to it. Built from
+ * the skills list the Overview already fetches, so it costs no extra request.
+ */
+function buildConformanceNotices(
+  skills: SkillsWorkspaceData | null | undefined,
+): OverviewConformanceNotice[] {
+  return (skills?.rows ?? []).flatMap((row) =>
+    (row.conformance ?? []).map((issue) => ({
+      key: `${row.skillRef}:${issue.code}`,
+      asset: row.name,
+      message: issue.message,
+      // `skillsRoutes.index`, not `.inUse`: the latter is the legacy `/skills/use`
+      // redirect, and a redirect drops the query string — the drawer would never open.
+      to: `${skillsRoutes.index}?skill=${encodeURIComponent(row.skillRef)}`,
+    })),
+  );
 }
 
 

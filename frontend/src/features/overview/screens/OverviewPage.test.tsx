@@ -342,27 +342,52 @@ describe("OverviewPage", () => {
     expect(firstSection).toContainElement(coverage);
   });
 
-  it("renders compact manage and discover shortcuts", async () => {
+  it("lists one conformance notice per issue, each linking to the asset", async () => {
+    stubOverviewApi({
+      skills: {
+        ...skillsPayload(),
+        rows: [
+          {
+            ...skillsPayload().rows[0],
+            skillRef: "shared:creative-ideation",
+            name: "ideation",
+            conformance: [
+              {
+                code: "name_directory_mismatch",
+                message: "`name` is `ideation` but the package directory is `creative-ideation`.",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    renderOverview();
+
+    // The message says what to correct — a count would leave the reader hunting.
+    const message = await screen.findByText(/the package directory is/);
+    const section = message.closest("section") as HTMLElement;
+
+    expect(section).toHaveClass("overview-conformance");
+    expect(
+      within(section).getByRole("link", { name: /ideation/ }),
+    ).toHaveAttribute("href", "/skills?skill=shared%3Acreative-ideation");
+  });
+
+  it("says so plainly when every asset conforms", async () => {
     stubOverviewApi();
     renderOverview();
 
-    const shortcuts = await screen.findByRole("heading", { name: "Shortcuts" });
-    expect(shortcuts).toBeInTheDocument();
+    expect(
+      await screen.findByText("Every managed asset meets the standard."),
+    ).toBeInTheDocument();
+  });
 
-    const shortcutsSection = shortcuts.closest("section") as HTMLElement;
-    for (const [label, href] of [
-      ["Skills", "/skills/use"],
-      ["Slash Commands", "/slash-commands/use"],
-      ["MCP Servers", "/mcp"],
-      ["Hooks", "/hooks"],
-      ["Permissions", "/permissions"],
-      ["Agents", "/agents"],
-      ["Skills Marketplace", "/marketplace/skills"],
-      ["MCP Marketplace", "/marketplace/mcp"],
-      ["CLI Marketplace", "/marketplace/clis"],
-    ] as const) {
-      expect(within(shortcutsSection).getByRole("link", { name: label })).toHaveAttribute("href", href);
-    }
+  it("no longer renders the Shortcuts panel", async () => {
+    stubOverviewApi();
+    renderOverview();
+
+    await screen.findByRole("heading", { name: "Needs correcting" });
+    expect(screen.queryByRole("heading", { name: "Shortcuts" })).not.toBeInTheDocument();
   });
 
   it("shows only non-zero review queue items", async () => {

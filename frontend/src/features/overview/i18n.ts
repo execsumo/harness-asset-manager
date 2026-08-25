@@ -10,7 +10,8 @@ const englishOverviewCopy = {
     unableToLoadAgents: (message: string) => `Unable to load agents: ${message}`,
   },
   sections: {
-    shortcuts: "Shortcuts",
+    conformance: "Needs correcting",
+    noConformanceIssues: "Every managed asset meets the standard.",
     review: "Review to Adopt",
     activeHarnesses: "Active harnesses",
     allHarnesses: "All harnesses",
@@ -24,8 +25,6 @@ const englishOverviewCopy = {
     permissions: "Perms",
     agents: "Agents",
     needsReview: "Review",
-    manageGroup: "Manage",
-    discoverGroup: "Discover",
     unavailableFallback: "writes are unavailable for an unknown reason",
     capabilityIssue: (capability: string, reason: string) => `${capability} writes unavailable — ${reason}`,
     capabilityOnHarness: (capability: string, harness: string) => `${capability} on ${harness}`,

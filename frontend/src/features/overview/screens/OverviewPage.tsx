@@ -9,7 +9,7 @@ import {
   useOverviewData,
 } from "../../../app/capability-registry";
 import { HarnessCoverageMap } from "../components/HarnessCoverageMap";
-import { QuickLinks } from "../components/QuickLinks";
+import { ConformanceNotices } from "../components/ConformanceNotices";
 import { ReviewQueue } from "../components/ReviewQueue";
 import { useOverviewCopy } from "../i18n";
 
@@ -80,10 +80,12 @@ export default function OverviewPage() {
             ]}
           />
 
+          {/* Active harnesses is the page. Everything below it is secondary and
+              is styled to read that way. */}
           <HarnessCoverageMap rows={model.harnessRows} totalsRow={model.totalsRow} loading={loading} />
           <div className="overview-dashboard-grid">
+            <ConformanceNotices notices={model.conformanceNotices} loading={loading} />
             <ReviewQueue items={model.reviewItems} loading={loading} />
-            <QuickLinks shortcuts={model.shortcuts} />
           </div>
         </div>
       )}
