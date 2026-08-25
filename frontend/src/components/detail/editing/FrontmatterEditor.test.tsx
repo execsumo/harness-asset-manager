@@ -157,4 +157,32 @@ skills:
 
     expect(screen.getByTestId("custom-skills-editor")).toBeInTheDocument();
   });
+
+  it("edits a nested block in a textarea, so its indentation survives", () => {
+    const onChangeOtherEntries = vi.fn();
+    const otherEntries: OtherFrontmatterEntry[] = [
+      { id: "1", key: "author", value: "Jane" },
+      { id: "2", key: "metadata", value: "\n  hermes: true\n  version: \"1.0\"" },
+    ];
+
+    render(
+      <FrontmatterEditor
+        knownFields={[]}
+        otherEntries={otherEntries}
+        onChangeOtherEntries={onChangeOtherEntries}
+        rawYaml=""
+        onChangeRawYaml={vi.fn()}
+        mode="structured"
+        onModeChange={vi.fn()}
+      />,
+    );
+
+    // A single-line input would strip the newlines out of a multi-line value on
+    // the next controlled render, moving the data loss from the parser into here.
+    const nested = screen.getByLabelText("Value for entry 2");
+    expect(nested.tagName).toBe("TEXTAREA");
+    expect(nested).toHaveValue("\n  hermes: true\n  version: \"1.0\"");
+
+    expect(screen.getByLabelText("Value for entry 1").tagName).toBe("INPUT");
+  });
 });

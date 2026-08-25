@@ -163,6 +163,17 @@
   font-size: var(--font-size-xs);
 }
 
+.frontmatter-editor__row-value--block {
+  height: auto;
+  min-height: 32px;
+  padding: var(--space-2);
+  line-height: 1.5;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
 .frontmatter-editor__row-value:focus-visible {
   outline: none;
   border-color: var(--color-accent);

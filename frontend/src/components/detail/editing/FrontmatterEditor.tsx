@@ -273,17 +273,35 @@ export function FrontmatterEditor({
                       disabled={disabled}
                       aria-label={`Key for entry ${index + 1}`}
                     />
-                    <input
-                      type="text"
-                      className="frontmatter-editor__row-value"
-                      placeholder="value"
-                      value={entry.value}
-                      onChange={(e) =>
-                        handleUpdateOtherEntry(index, "value", e.target.value)
-                      }
-                      disabled={disabled}
-                      aria-label={`Value for entry ${index + 1}`}
-                    />
+                    {entry.value.includes("\n") ? (
+                      // A nested map, list, or literal block. Its indentation is
+                      // the structure, and a single-line input would strip the
+                      // newlines back out on the next controlled render.
+                      <textarea
+                        className="frontmatter-editor__row-value frontmatter-editor__row-value--block ui-scrollbar"
+                        placeholder="value"
+                        value={entry.value}
+                        onChange={(e) =>
+                          handleUpdateOtherEntry(index, "value", e.target.value)
+                        }
+                        disabled={disabled}
+                        aria-label={`Value for entry ${index + 1}`}
+                        spellCheck={false}
+                        rows={Math.min(entry.value.split("\n").length, 8)}
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        className="frontmatter-editor__row-value"
+                        placeholder="value"
+                        value={entry.value}
+                        onChange={(e) =>
+                          handleUpdateOtherEntry(index, "value", e.target.value)
+                        }
+                        disabled={disabled}
+                        aria-label={`Value for entry ${index + 1}`}
+                      />
+                    )}
                     <button
                       type="button"
                       className="frontmatter-editor__remove-btn"
