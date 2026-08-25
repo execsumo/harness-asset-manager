@@ -869,6 +869,110 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertNotIn("droid", detail_harnesses)
             self.assertIn("codex", detail_harnesses)
 
+    def test_agent_skills_creation_validation_and_resolution(self) -> None:
+        with AppTestHarness(mixed=True) as harness:
+            # 1. Unknown skill fails with 400
+            err = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Invalid Agent",
+                    "description": "desc",
+                    "prompt": "prompt",
+                    "skills": ["nonexistent-skill"],
+                },
+                expected_status=400,
+            )
+            self.assertEqual(err.get("code"), "invalid_skill")
+
+            # 2. Unmanaged skill fails with 400
+            err_unmanaged = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Invalid Agent 2",
+                    "description": "desc",
+                    "prompt": "prompt",
+                    "skills": ["trace-lens"],
+                },
+                expected_status=400,
+            )
+            self.assertEqual(err_unmanaged.get("code"), "invalid_skill")
+
+            # 3. Managed skill succeeds and resolves display name
+            created = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Audit Agent",
+                    "description": "Performs audits",
+                    "prompt": "Audit thoroughly.",
+                    "skills": ["shared-audit"],
+                },
+            )
+            self.assertEqual(
+                created["skills"],
+                [{"slug": "shared-audit", "name": "Shared Audit"}],
+            )
+
+            # 4. Inventory entry exposes parsed skills
+            entry = self._entry(harness, "audit-agent")
+            self.assertEqual(
+                entry["skills"],
+                [{"slug": "shared-audit", "name": "Shared Audit"}],
+            )
+
+            # 5. Detail exposes parsed skills
+            detail = harness.get_json("/api/agents/audit-agent")
+            self.assertEqual(
+                detail["skills"],
+                [{"slug": "shared-audit", "name": "Shared Audit"}],
+            )
+
+    def test_agent_skills_auto_enable_on_save(self) -> None:
+        with AppTestHarness(mixed=True) as harness:
+            # 1. Create agent without skills
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Reviewer",
+                    "description": "Reviews code",
+                    "prompt": "Review code.",
+                },
+            )
+
+            # 2. Enable agent on claude
+            harness.post_json("/api/agents/reviewer/enable", {"harness": "claude"})
+            self.assertEqual(self._state(self._entry(harness, "reviewer"), "claude"), "enabled")
+
+            # Verify skill is not yet enabled on claude
+            claude_skill_link = harness.spec.claude_root / "shared-audit"
+            self.assertFalse(claude_skill_link.exists())
+
+            # 3. Update agent to attach shared-audit
+            resp = harness.put_json(
+                "/api/agents/reviewer",
+                {
+                    "skills": ["shared-audit"],
+                },
+            )
+            self.assertTrue(resp.get("ok"))
+            self.assertEqual(
+                resp.get("autoEnabled"),
+                [{"skillRef": "shared:shared-audit", "harness": "claude"}],
+            )
+            self.assertEqual(resp.get("failed"), [])
+
+            # Skill is now auto-enabled on claude!
+            self.assertTrue(claude_skill_link.is_symlink())
+
+            # 4. Non-destructive removal: dropping skill does NOT disable it on claude
+            resp_drop = harness.put_json(
+                "/api/agents/reviewer",
+                {
+                    "skills": [],
+                },
+            )
+            self.assertEqual(resp_drop["skills"], [])
+            self.assertTrue(claude_skill_link.is_symlink())
+
 
 if __name__ == "__main__":
     unittest.main()

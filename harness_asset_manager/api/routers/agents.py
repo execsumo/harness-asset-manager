@@ -22,7 +22,10 @@ from harness_asset_manager.api.schemas.agents import (
     AgentIssueResponse,
     AgentMutationFailureResponse,
     AgentRepairResponse,
+    AgentSkillResponse,
     AgentTagsResponse,
+    AutoEnableFailureResponse,
+    AutoEnabledSkillResponse,
     CreateAgentRequest,
     SetAgentHarnessesRequest,
     SetAgentHarnessesResultResponse,
@@ -67,6 +70,9 @@ def list_agents(container: BackendContainer = Depends(get_container)) -> AgentIn
                     canAdopt=entry.can_adopt, canDelete=entry.can_delete
                 ),
                 tags=list(entry.tags),
+                skills=[
+                    AgentSkillResponse(slug=s.slug, name=s.name) for s in entry.skills
+                ],
             )
             for entry in inventory.entries
         ],
@@ -91,11 +97,13 @@ def create_agent(
     body: CreateAgentRequest,
     container: BackendContainer = Depends(get_container),
 ) -> AgentDetailResponse:
+    validated_skills = container.agents_mutations.validate_skills(body.skills)
     agent = container.agents_store.create(
         name=body.name,
         description=body.description,
         prompt=body.prompt,
         tools=tuple(body.tools),
+        skills=validated_skills,
     )
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug)
@@ -145,30 +153,66 @@ def update_agent(
     extra_metadata = None
     if body.metadata is not None:
         extra_metadata = [(entry.key, entry.value) for entry in body.metadata]
+
+    validated_skills = (
+        container.agents_mutations.validate_skills(body.skills)
+        if body.skills is not None
+        else None
+    )
+
     if "/" in agent_ref:
         # Unmanaged ref (<harness>/<slug>): edit the harness file in place.
         if body.name is None or body.description is None:
             raise MutationError("name and description are required to edit an unmanaged agent")
+        unmanaged_detail = container.agents_inventory.detail(agent_ref)
+        if unmanaged_detail is None:
+            raise MutationError(f"agent not found: {agent_ref}", status=404)
+        prev_skills = tuple(s.slug for s in unmanaged_detail.skills)
         container.agents_mutations.update_unmanaged(
             agent_ref,
             name=body.name,
             description=body.description,
             prompt=body.prompt,
             tools=tuple(body.tools) if body.tools is not None else None,
+            skills=validated_skills,
             metadata=extra_metadata,
         )
-        container.invalidation.invalidate_all()
-        return _require_detail(container, agent_ref)
-    agent = container.agents_store.update(
-        agent_ref,
-        name=body.name,
-        description=body.description,
-        prompt=body.prompt,
-        tools=tuple(body.tools) if body.tools is not None else None,
-        metadata=extra_metadata,
-    )
+    else:
+        current = container.agents_store.get(agent_ref)
+        if current is None:
+            raise MutationError(f"agent not found: {agent_ref}", status=404)
+        prev_skills = current.skills
+        container.agents_store.update(
+            agent_ref,
+            name=body.name,
+            description=body.description,
+            prompt=body.prompt,
+            tools=tuple(body.tools) if body.tools is not None else None,
+            skills=validated_skills,
+            metadata=extra_metadata,
+        )
+
+    skills_changed = validated_skills is not None and validated_skills != prev_skills
+    auto_enabled_pairs: list[tuple[str, str]] = []
+    failed_pairs: list[tuple[str, str, str]] = []
+    if skills_changed and validated_skills:
+        auto_enabled_pairs, failed_pairs = (
+            container.agents_mutations.auto_enable_skills_for_agent(agent_ref, validated_skills)
+        )
+
     container.invalidation.invalidate_all()
-    return _require_detail(container, agent.slug)
+    return _require_detail(
+        container,
+        agent_ref,
+        auto_enabled=[
+            AutoEnabledSkillResponse(skillRef=ref, harness=h)
+            for ref, h in auto_enabled_pairs
+        ],
+        failed=[
+            AutoEnableFailureResponse(skillRef=ref, harness=h, error=err)
+            for ref, h, err in failed_pairs
+        ],
+    )
 
 
 @router.delete("/{agent_ref:path}", response_model=OkResponse)
@@ -248,7 +292,13 @@ def adopt_agent(
     return AdoptAgentResponse(ok=True, ref=slug)
 
 
-def _detail(detail: AgentDetail) -> AgentDetailResponse:
+def _detail(
+    detail: AgentDetail,
+    *,
+    auto_enabled: list[AutoEnabledSkillResponse] | None = None,
+    failed: list[AutoEnableFailureResponse] | None = None,
+) -> AgentDetailResponse:
+    failed_list = failed or []
     return AgentDetailResponse(
         ref=detail.ref,
         name=detail.name,
@@ -276,11 +326,23 @@ def _detail(detail: AgentDetail) -> AgentDetailResponse:
         canDelete=detail.can_delete,
         canEdit=detail.can_edit,
         tags=list(detail.tags),
+        skills=[
+            AgentSkillResponse(slug=s.slug, name=s.name) for s in detail.skills
+        ],
+        ok=len(failed_list) == 0,
+        autoEnabled=auto_enabled or [],
+        failed=failed_list,
     )
 
 
-def _require_detail(container: BackendContainer, ref: str) -> AgentDetailResponse:
+def _require_detail(
+    container: BackendContainer,
+    ref: str,
+    *,
+    auto_enabled: list[AutoEnabledSkillResponse] | None = None,
+    failed: list[AutoEnableFailureResponse] | None = None,
+) -> AgentDetailResponse:
     detail = container.agents_inventory.detail(ref)
     if detail is None:
         raise MutationError(f"agent not found: {ref}", status=404)
-    return _detail(detail)
+    return _detail(detail, auto_enabled=auto_enabled, failed=failed)

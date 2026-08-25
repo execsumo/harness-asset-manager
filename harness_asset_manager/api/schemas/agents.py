@@ -23,6 +23,22 @@ class AgentActionsResponse(BaseModel):
     canDelete: bool
 
 
+class AgentSkillResponse(BaseModel):
+    slug: str
+    name: str
+
+
+class AutoEnabledSkillResponse(BaseModel):
+    skillRef: str
+    harness: str
+
+
+class AutoEnableFailureResponse(BaseModel):
+    skillRef: str
+    harness: str
+    error: str
+
+
 class AgentEntryResponse(BaseModel):
     ref: str
     name: str
@@ -32,6 +48,7 @@ class AgentEntryResponse(BaseModel):
     bindings: list[AgentBindingResponse]
     actions: AgentActionsResponse
     tags: list[str] = Field(default_factory=list)
+    skills: list[AgentSkillResponse] = Field(default_factory=list)
 
 
 class AgentIssueResponse(BaseModel):
@@ -115,6 +132,7 @@ class CreateAgentRequest(BaseModel):
     description: str = ""
     prompt: str = ""
     tools: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
 
 
 class AgentConfigEntryResponse(BaseModel):
@@ -129,6 +147,7 @@ class UpdateAgentRequest(BaseModel):
     description: str | None = None
     prompt: str | None = None
     tools: list[str] | None = None
+    skills: list[str] | None = None
     metadata: list[AgentConfigEntryResponse] | None = None
 
 
@@ -164,6 +183,10 @@ class AgentDetailResponse(BaseModel):
     canDelete: bool
     canEdit: bool = True
     tags: list[str] = Field(default_factory=list)
+    skills: list[AgentSkillResponse] = Field(default_factory=list)
+    ok: bool = True
+    autoEnabled: list[AutoEnabledSkillResponse] = Field(default_factory=list)
+    failed: list[AutoEnableFailureResponse] = Field(default_factory=list)
 
 
 __all__ = [
@@ -181,10 +204,13 @@ __all__ = [
     "AgentHarnessDetailResponse",
     "AgentHarnessRequest",
     "AgentInventoryResponse",
-    "AgentRepairResponse",
     "AgentIssueResponse",
     "AgentMutationFailureResponse",
+    "AgentRepairResponse",
+    "AgentSkillResponse",
     "AgentTagsResponse",
+    "AutoEnableFailureResponse",
+    "AutoEnabledSkillResponse",
     "CreateAgentRequest",
     "SetAgentHarnessesRequest",
     "SetAgentHarnessesResultResponse",

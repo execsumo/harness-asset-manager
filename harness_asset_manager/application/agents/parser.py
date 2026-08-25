@@ -46,6 +46,7 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         tools=_str_tuple(metadata.get("tools"), "tools"),
         path=path,
         metadata=dict(metadata),
+        skills=_str_tuple(metadata.get("skills"), "skills", dedupe=True),
     )
 
 
@@ -55,6 +56,7 @@ def render_agent_document(
     description: str,
     prompt: str,
     tools: tuple[str, ...] = (),
+    skills: tuple[str, ...] = (),
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -72,6 +74,8 @@ def render_agent_document(
         }
         if tools:
             metadata["tools"] = ", ".join(tools)
+        if skills:
+            metadata["skills"] = list(skills)
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -83,13 +87,15 @@ def render_agent_document(
                 v = item[1]
             else:
                 continue
-            if k and k not in {"name", "description", "tools"} and k not in RETIRED_KEYS:
+            if k and k not in {"name", "description", "tools", "skills"} and k not in RETIRED_KEYS:
                 metadata[k] = v
                 custom_keys.append(k)
 
         ordered = ["name", "description"]
         if "tools" in metadata:
             ordered.append("tools")
+        if "skills" in metadata:
+            ordered.append("skills")
         ordered.extend(custom_keys)
     else:
         metadata = {
@@ -103,6 +109,11 @@ def render_agent_document(
             # An explicit empty edit clears it; leave the key out rather than writing null.
             del metadata["tools"]
 
+        if skills:
+            metadata["skills"] = list(skills)
+        elif "skills" in metadata:
+            del metadata["skills"]
+
         # `name` and `description` lead, then everything else in its original order.
         ordered = ["name", "description"] + [k for k in metadata if k not in {"name", "description"}]
 
@@ -114,6 +125,14 @@ def render_agent_document(
 
 
 def _render_entry(key: str, value: object) -> list[str]:
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return [f"{key}: []"]
+        return [f"{key}:"] + [f"  - {item}" for item in value]
+    if isinstance(value, dict):
+        stream = io.StringIO()
+        _rt_yaml.dump({key: value}, stream)
+        return stream.getvalue().rstrip("\n").splitlines()
     if value is None:
         return [f"{key}:"]
     if isinstance(value, str):
@@ -123,14 +142,6 @@ def _render_entry(key: str, value: object) -> list[str]:
         return [f"{key}: {'true' if value else 'false'}"]
     if isinstance(value, (int, float)):
         return [f"{key}: {value}"]
-    if isinstance(value, list):
-        if not value:
-            return [f"{key}: []"]
-        return [f"{key}:"] + [f"  - {item}" for item in value]
-    if isinstance(value, dict):
-        stream = io.StringIO()
-        _rt_yaml.dump({key: value}, stream)
-        return stream.getvalue().rstrip("\n").splitlines()
     return [f"{key}: {value}"]
 
 
@@ -157,15 +168,25 @@ def _required_str(metadata: dict, key: str, fallback: str) -> str:
     return value or fallback
 
 
-def _str_tuple(value: object, label: str) -> tuple[str, ...]:
+def _str_tuple(value: object, label: str, *, dedupe: bool = False) -> tuple[str, ...]:
     """Accept both the list form and Claude Code's comma-separated string form."""
     if value is None:
         return ()
     if isinstance(value, str):
-        return tuple(item.strip() for item in value.split(",") if item.strip())
-    if not isinstance(value, list):
+        items = [item.strip() for item in value.split(",") if item.strip()]
+    elif isinstance(value, list):
+        items = [str(item).strip() for item in value if str(item).strip()]
+    else:
         raise AgentParseError(f"{label} must be a list or comma-separated string")
-    return tuple(str(item).strip() for item in value if str(item).strip())
+    if dedupe:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for it in items:
+            if it not in seen:
+                seen.add(it)
+                deduped.append(it)
+        return tuple(deduped)
+    return tuple(items)
 
 
 __all__ = [

@@ -81,7 +81,13 @@ class AgentStore:
         return self.path_for(slug).is_file()
 
     def create(
-        self, *, name: str, description: str, prompt: str, tools: tuple[str, ...] = ()
+        self,
+        *,
+        name: str,
+        description: str,
+        prompt: str,
+        tools: tuple[str, ...] = (),
+        skills: tuple[str, ...] = (),
     ) -> AgentDefinition:
         slug = slugify(name)
         path = self.path_for(slug)
@@ -91,7 +97,11 @@ class AgentStore:
         atomic_write_text(
             path,
             render_agent_document(
-                name=name, description=description, prompt=prompt, tools=tools
+                name=name,
+                description=description,
+                prompt=prompt,
+                tools=tools,
+                skills=skills,
             ),
         )
         self._notify_write(slug)
@@ -105,6 +115,7 @@ class AgentStore:
         description: str | None = None,
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
+        skills: tuple[str, ...] | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
     ) -> AgentDefinition:
         current = self.get(slug)
@@ -117,6 +128,7 @@ class AgentStore:
                 description=description if description is not None else current.description,
                 prompt=prompt if prompt is not None else current.prompt,
                 tools=tools if tools is not None else current.tools,
+                skills=skills if skills is not None else current.skills,
                 base_metadata=current.metadata if metadata is None else None,
                 extra_metadata=metadata,
             ),

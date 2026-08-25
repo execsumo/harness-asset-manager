@@ -17,6 +17,7 @@ from .store import AgentStore
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
+    from harness_asset_manager.application.skills import SkillsMutationService, SkillsQueryService
 
 ConflictResolution = Literal["keep_store", "replace_store"]
 
@@ -44,11 +45,15 @@ class AgentMutationService:
         resolve: TargetResolver,
         ledger: AgentBindingLedger,
         asset_tags: AssetTagService | None = None,
+        skills_queries: SkillsQueryService | None = None,
+        skills_mutations: SkillsMutationService | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
         self.ledger = ledger
         self.asset_tags = asset_tags
+        self.skills_queries = skills_queries
+        self.skills_mutations = skills_mutations
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -178,6 +183,88 @@ class AgentMutationService:
                     skipped.append((ref, str(error)))
         return BulkAdoptResult(tuple(adopted), tuple(skipped))
 
+    # -- skills validation & auto-enable -----------------------------------
+
+    def validate_skills(self, skills: Iterable[str] | None) -> tuple[str, ...]:
+        """Validate, normalize, and dedupe skill slugs while preserving caller order.
+
+        Every slug must resolve to a managed skill in the skills inventory.
+        Unknown or unmanaged slugs raise MutationError with status=400, code="invalid_skill".
+        """
+        if skills is None:
+            return ()
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for raw in skills:
+            bare = raw.removeprefix("shared:").strip()
+            if bare and bare not in seen:
+                seen.add(bare)
+                deduped.append(bare)
+
+        if self.skills_queries is not None:
+            inventory = self.skills_queries.inventory()
+            managed_slugs = {
+                entry.package_dir
+                for entry in inventory.entries
+                if entry.kind == "managed" and entry.package_dir is not None
+            }
+            for slug in deduped:
+                if slug not in managed_slugs:
+                    raise MutationError(
+                        f"skill '{slug}' is unknown or not managed in harnessAM",
+                        status=400,
+                        code="invalid_skill",
+                    )
+        return tuple(deduped)
+
+    def auto_enable_skills_for_agent(
+        self,
+        agent_ref: str,
+        attached_skills: tuple[str, ...] | list[str],
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
+        """For each harness where the agent is enabled and installed, auto-enable any attached skill not currently enabled there."""
+        if self.skills_mutations is None or not attached_skills:
+            return [], []
+
+        enabled_harnesses: list[str] = []
+        if "/" in agent_ref:
+            harness_id, separator, slug = agent_ref.partition("/")
+            for target in self.targets:
+                if target.id == harness_id and target.installed and target.supports_agents:
+                    enabled_harnesses.append(harness_id)
+        else:
+            agent = self.store.get(agent_ref)
+            if agent is not None:
+                for target in self.targets:
+                    if not target.installed or not target.supports_agents:
+                        continue
+                    adapter = self.adapters.get(target.id)
+                    if adapter is not None and adapter.is_enabled(agent.slug):
+                        enabled_harnesses.append(target.id)
+
+        auto_enabled: list[tuple[str, str]] = []
+        failed: list[tuple[str, str, str]] = []
+
+        for harness in enabled_harnesses:
+            try:
+                adapter = self.skills_mutations.read_models.require_enabled_adapter(harness)
+            except Exception as error:  # noqa: BLE001
+                for slug in attached_skills:
+                    failed.append((f"shared:{slug}", harness, str(error)))
+                continue
+
+            for slug in attached_skills:
+                skill_ref = f"shared:{slug}"
+                if adapter.has_binding(slug):
+                    continue
+                try:
+                    self.skills_mutations.enable_skill(skill_ref, harness)
+                    auto_enabled.append((skill_ref, harness))
+                except Exception as error:  # noqa: BLE001
+                    failed.append((skill_ref, harness, str(error)))
+
+        return auto_enabled, failed
+
     # -- store lifecycle ----------------------------------------------------
 
     def update_unmanaged(
@@ -188,6 +275,7 @@ class AgentMutationService:
         description: str | None = None,
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
+        skills: tuple[str, ...] | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -224,6 +312,7 @@ class AgentMutationService:
             description=description if description is not None else current.description,
             prompt=prompt if prompt is not None else current.prompt,
             tools=tools if tools is not None else current.tools,
+            skills=skills if skills is not None else current.skills,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )

@@ -13,7 +13,9 @@ from .model import (
     AgentInventory,
     AgentIssue,
     AgentParseError,
+    AgentSkill,
     AgentTarget,
+    BindingState,
 )
 from .parser import parse_agent_document, parse_agent_file
 from .reconcile import ReconcileOutcome
@@ -21,20 +23,14 @@ from .store import AgentStore
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
+    from harness_asset_manager.application.skills import SkillsQueryService
 
 
 class AgentInventoryService:
-    """Reads the agents inventory.
+    """Read-only view over the agents matrix.
 
-    Targets are resolved **per call**, not cached at construction: the user can
-    enable or disable a harness in Settings at any time, and the matrix has to follow
-    immediately, exactly as the skills read model does.
-
-    This is also where binding drift is *named*, and — via ``reconcile`` — where it
-    is repaired. Reconcile runs here rather than on a filesystem watcher because this
-    already runs on every list request, which is the natural reconcile point and needs
-    no background infrastructure (plan §2). The naming half stays strictly read-only;
-    only the injected reconcile callable ever writes.
+    `resolve` is called per build so newly configured or newly installed harnesses
+    surface immediately.
     """
 
     def __init__(
@@ -44,12 +40,14 @@ class AgentInventoryService:
         ledger: AgentBindingLedger,
         reconcile: Callable[[], ReconcileOutcome] | None = None,
         asset_tags: AssetTagService | None = None,
+        skills_queries: SkillsQueryService | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
         self.ledger = ledger
         self._reconcile = reconcile
         self.asset_tags = asset_tags
+        self.skills_queries = skills_queries
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -58,6 +56,23 @@ class AgentInventoryService:
     @property
     def adapters(self) -> dict[str, AgentHarnessAdapter]:
         return self._resolve()[1]
+
+    def _resolve_agent_skills(self, skill_slugs: tuple[str, ...]) -> tuple[AgentSkill, ...]:
+        if not skill_slugs:
+            return ()
+        skills_map: dict[str, str] = {}
+        if self.skills_queries is not None:
+            try:
+                inventory = self.skills_queries.inventory()
+                for entry in inventory.entries:
+                    if entry.kind == "managed" and entry.package_dir is not None:
+                        skills_map[entry.package_dir] = entry.name
+            except Exception:  # noqa: BLE001
+                pass
+        return tuple(
+            AgentSkill(slug=slug, name=skills_map.get(slug, slug))
+            for slug in skill_slugs
+        )
 
     def build(self) -> AgentInventory:
         # Repair first, then report: otherwise the matrix describes a state that is
@@ -91,6 +106,7 @@ class AgentInventoryService:
                 ledger_state.get(agent.slug, {}),
                 issue_list,
                 tags=tuple(tags_by_ref.get(agent.slug, ())),
+                skills=self._resolve_agent_skills(agent.skills),
             )
             for agent in managed
         ]
@@ -137,6 +153,7 @@ class AgentInventoryService:
             configuration=tuple(
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),
+            skills=self._resolve_agent_skills(agent.skills),
         )
 
     def _unmanaged_detail(self, ref: str) -> AgentDetail | None:
@@ -169,6 +186,7 @@ class AgentInventoryService:
             prompt = codex_agent.prompt
             tools: tuple[str, ...] = ()
             extra_metadata = tuple(codex_agent.extras.items())
+            skills: tuple[AgentSkill, ...] = ()
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -179,6 +197,7 @@ class AgentInventoryService:
             prompt = agent.prompt
             tools = agent.tools
             extra_metadata = agent.extra_metadata
+            skills = self._resolve_agent_skills(agent.skills)
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -203,6 +222,7 @@ class AgentInventoryService:
             configuration=tuple(
                 (key, _format_config_value(value)) for key, value in extra_metadata
             ),
+            skills=skills,
         )
 
     def _harness_rows(
@@ -258,6 +278,7 @@ class AgentInventoryService:
         records: dict[str, AgentBindingRecord],
         issues: list[AgentIssue],
         tags: tuple[str, ...] = (),
+        skills: tuple[AgentSkill, ...] = (),
     ) -> AgentEntry:
         bindings: list[AgentBinding] = []
         for target in targets:
@@ -292,6 +313,7 @@ class AgentInventoryService:
             can_adopt=False,
             can_delete=True,
             tags=tags,
+            skills=skills,
         )
 
     def _diagnose_occupied_binding(
@@ -440,6 +462,7 @@ class AgentInventoryService:
         tags: tuple[str, ...] = (),
     ) -> AgentEntry:
         slug = path.stem
+        skills: tuple[AgentSkill, ...] = ()
         try:
             if target.render_format == "codex_toml":
                 parsed = parse_codex_agent(path)
@@ -447,6 +470,7 @@ class AgentInventoryService:
             else:
                 parsed = parse_agent_file(path)
                 name, description = parsed.name, parsed.description
+                skills = self._resolve_agent_skills(parsed.skills)
         except AgentParseError as error:
             issues.append(AgentIssue(name=f"{target.id}/{slug}", reason=str(error)))
             name, description = slug, ""
@@ -466,6 +490,7 @@ class AgentInventoryService:
             can_adopt=True,
             can_delete=False,
             tags=tags,
+            skills=skills,
         )
 
 

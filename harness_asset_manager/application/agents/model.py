@@ -12,6 +12,12 @@ class AgentParseError(ValueError):
 
 
 @dataclass(frozen=True)
+class AgentSkill:
+    slug: str
+    name: str
+
+
+@dataclass(frozen=True)
 class AgentDefinition:
     """A subagent: a markdown file with `name`, `description`, and a prompt body.
 
@@ -32,6 +38,7 @@ class AgentDefinition:
     # outside frontmatter prevents Codex configuration from leaking into the
     # Markdown file symlinked into Claude, Agy, or Cursor.
     codex_extras: Mapping[str, object] = field(default_factory=dict)
+    skills: tuple[str, ...] = ()
 
     @property
     def ref(self) -> str:
@@ -94,6 +101,7 @@ class AgentEntry:
     can_adopt: bool
     can_delete: bool
     tags: tuple[str, ...] = ()
+    skills: tuple[AgentSkill, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -132,6 +140,7 @@ class AgentDetail:
     tags: tuple[str, ...] = ()
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
+    skills: tuple[AgentSkill, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -165,6 +174,7 @@ __all__ = [
     "AgentInventory",
     "AgentIssue",
     "AgentParseError",
+    "AgentSkill",
     "AgentTarget",
     "BindingState",
 ]

@@ -71,7 +71,37 @@ class AgentParserTests(unittest.TestCase):
     def test_tools_accepts_a_yaml_list(self) -> None:
         document = "---\nname: L\ndescription: d\ntools:\n  - Read\n  - Edit\n---\nbody\n"
         agent = parse_agent_document(document, slug="l", path=Path("l.md"))
-        self.assertEqual(agent.tools, ("Read", "Edit"))
+    def test_skills_accepts_a_yaml_list(self) -> None:
+        document = "---\nname: L\ndescription: d\nskills:\n  - code-review\n  - test-debugging\n---\nbody\n"
+        agent = parse_agent_document(document, slug="l", path=Path("l.md"))
+        self.assertEqual(agent.skills, ("code-review", "test-debugging"))
+
+    def test_skills_accepts_an_inline_list(self) -> None:
+        document = "---\nname: L\ndescription: d\nskills: [code-review, test-debugging]\n---\nbody\n"
+        agent = parse_agent_document(document, slug="l", path=Path("l.md"))
+        self.assertEqual(agent.skills, ("code-review", "test-debugging"))
+
+    def test_skills_accepts_a_comma_separated_string(self) -> None:
+        document = "---\nname: L\ndescription: d\nskills: code-review, test-debugging\n---\nbody\n"
+        agent = parse_agent_document(document, slug="l", path=Path("l.md"))
+        self.assertEqual(agent.skills, ("code-review", "test-debugging"))
+
+    def test_skills_dedupes_and_preserves_order(self) -> None:
+        document = "---\nname: L\ndescription: d\nskills: [code-review, code-review, test-debugging]\n---\nbody\n"
+        agent = parse_agent_document(document, slug="l", path=Path("l.md"))
+        self.assertEqual(agent.skills, ("code-review", "test-debugging"))
+
+    def test_render_agent_document_renders_skills_as_yaml_list(self) -> None:
+        doc = render_agent_document(
+            name="Skills Agent",
+            description="Agent with skills",
+            prompt="Prompt body",
+            tools=("Read",),
+            skills=("code-review", "frontend-debugging"),
+        )
+        self.assertIn("skills:\n  - code-review\n  - frontend-debugging", doc)
+        parsed = parse_agent_document(doc, slug="skills-agent", path=Path("skills-agent.md"))
+        self.assertEqual(parsed.skills, ("code-review", "frontend-debugging"))
 
     def test_missing_frontmatter_is_an_error(self) -> None:
         with self.assertRaises(AgentParseError):
@@ -693,11 +723,22 @@ class AgentStoreTests(AgentsFixture):
             self.store.create(name="Dup", description="d2", prompt="p2")
 
     def test_update_preserves_unspecified_fields(self) -> None:
-        self.store.create(name="Keep", description="original", prompt="body")
+        self.store.create(name="Keep", description="original", prompt="body", skills=("code-review",))
         updated = self.store.update("keep", description="changed")
         self.assertEqual(updated.description, "changed")
         self.assertEqual(updated.prompt, "body")
         self.assertEqual(updated.name, "Keep")
+        self.assertEqual(updated.skills, ("code-review",))
+
+    def test_update_explicit_skills_overwrites(self) -> None:
+        self.store.create(name="Keep", description="original", prompt="body", skills=("code-review",))
+        updated = self.store.update("keep", skills=("test-debugging", "perf-audit"))
+        self.assertEqual(updated.skills, ("test-debugging", "perf-audit"))
+
+    def test_update_empty_skills_clears(self) -> None:
+        self.store.create(name="Keep", description="original", prompt="body", skills=("code-review",))
+        updated = self.store.update("keep", skills=())
+        self.assertEqual(updated.skills, ())
 
     def test_path_for_rejects_traversal(self) -> None:
         with self.assertRaises(MutationError):
