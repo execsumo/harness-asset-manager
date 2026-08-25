@@ -2890,6 +2890,16 @@ export interface components {
             /** Statedir */
             stateDir: string;
         };
+        /**
+         * SkillConformanceIssueResponse
+         * @description One departure from the Agent Skills specification, phrased as a correction.
+         */
+        SkillConformanceIssueResponse: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
         /** SkillDetailActionsResponse */
         SkillDetailActionsResponse: {
             /** Candelete */
@@ -2908,6 +2918,8 @@ export interface components {
             actions: components["schemas"]["SkillDetailActionsResponse"];
             /** Attentionmessage */
             attentionMessage: string | null;
+            /** Conformance */
+            conformance?: components["schemas"]["SkillConformanceIssueResponse"][];
             /** Description */
             description: string;
             /**
@@ -2992,6 +3004,8 @@ export interface components {
             actions: components["schemas"]["SkillRowActionsResponse"];
             /** Cells */
             cells: components["schemas"]["HarnessCellResponse"][];
+            /** Conformance */
+            conformance?: components["schemas"]["SkillConformanceIssueResponse"][];
             /** Description */
             description: string;
             /**

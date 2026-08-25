@@ -48,6 +48,9 @@ class InventoryEntry:
     # A skill is a folder, not just SKILL.md, and the detail view has to be able to
     # say what else is in there — scripts especially.
     files: tuple[str, ...] = ()
+    # Whether `name:` was in the frontmatter at all. `name` falls back to the first
+    # heading, so conformance cannot tell "missing" from "unconventional" without it.
+    name_declared: bool = False
     sightings: list[InventorySighting] = field(default_factory=list)
 
     def add_sighting(self, sighting: InventorySighting) -> None:
@@ -136,6 +139,7 @@ class SkillInventory:
                 package_path=package.root_path,
                 origin_harness=store_package.origin_harness,
                 files=package.relative_files,
+                name_declared=package.name_declared,
             )
             entry.add_sighting(
                 InventorySighting(
@@ -199,6 +203,7 @@ class SkillInventory:
                         source=observation.package.source,
                         current_revision=observation.package.revision,
                         files=observation.package.relative_files,
+                        name_declared=observation.package.name_declared,
                     )
                     unmanaged_entries[key] = entry
                 entry.add_sighting(sighting)

@@ -220,5 +220,61 @@ class SkillPackageContentsTests(unittest.TestCase):
             self.assertEqual(detail["packageFiles"], ["SKILL.md"])
 
 
+class SkillConformanceRoutesTests(unittest.TestCase):
+    """Conformance rides both payloads: the Overview builds notices from the list."""
+
+    def test_a_conformant_skill_reports_nothing(self) -> None:
+        with AppTestHarness() as harness:
+            seed_skill_package(
+                harness.spec.skills_store_root, "tidy-skill", "tidy-skill",
+                description="Does a tidy thing. Use when tidying.",
+            )
+            self.assertEqual(harness.get_json("/api/skills/shared:tidy-skill")["conformance"], [])
+
+    def test_a_name_that_does_not_match_its_directory_is_reported_on_row_and_detail(self) -> None:
+        with AppTestHarness() as harness:
+            seed_skill_package(
+                harness.spec.skills_store_root, "creative-ideation", "ideation",
+                description="Generates ideas. Use when brainstorming.",
+            )
+
+            row = next(
+                r for r in harness.get_json("/api/skills")["rows"]
+                if r["skillRef"] == "shared:creative-ideation"
+            )
+            detail = harness.get_json("/api/skills/shared:creative-ideation")
+
+            self.assertEqual([i["code"] for i in row["conformance"]], ["name_directory_mismatch"])
+            self.assertEqual([i["code"] for i in detail["conformance"]], ["name_directory_mismatch"])
+            self.assertIn("creative-ideation", row["conformance"][0]["message"])
+
+    def test_a_skill_with_no_name_field_reports_missing_not_invalid(self) -> None:
+        with AppTestHarness() as harness:
+            package = harness.spec.skills_store_root / "headings-only"
+            package.mkdir(parents=True)
+            (package / "SKILL.md").write_text(
+                "---\ndescription: Recovered from a heading.\n---\n\n# Headings Only\n",
+                encoding="utf-8",
+            )
+
+            detail = harness.get_json("/api/skills/shared:headings-only")
+
+            self.assertEqual([i["code"] for i in detail["conformance"]], ["name_missing"])
+
+    def test_conformance_never_blocks_managing_the_skill(self) -> None:
+        """Report, do not enforce: a non-conformant skill stays fully usable."""
+        with AppTestHarness() as harness:
+            seed_skill_package(
+                harness.spec.skills_store_root, "creative-ideation", "ideation",
+                description="Generates ideas.",
+            )
+            detail = harness.get_json("/api/skills/shared:creative-ideation")
+
+            self.assertNotEqual(detail["conformance"], [])
+            self.assertEqual(detail["displayStatus"], "Managed")
+            self.assertTrue(detail["actions"]["canDelete"])
+
+
+
 if __name__ == "__main__":
     unittest.main()

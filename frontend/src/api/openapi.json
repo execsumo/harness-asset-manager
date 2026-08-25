@@ -4851,6 +4851,25 @@
         "title": "SettingsStorageResponse",
         "type": "object"
       },
+      "SkillConformanceIssueResponse": {
+        "description": "One departure from the Agent Skills specification, phrased as a correction.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "SkillConformanceIssueResponse",
+        "type": "object"
+      },
       "SkillDetailActionsResponse": {
         "properties": {
           "canDelete": {
@@ -4916,6 +4935,13 @@
               }
             ],
             "title": "Attentionmessage"
+          },
+          "conformance": {
+            "items": {
+              "$ref": "#/components/schemas/SkillConformanceIssueResponse"
+            },
+            "title": "Conformance",
+            "type": "array"
           },
           "description": {
             "title": "Description",
@@ -5208,6 +5234,13 @@
               "$ref": "#/components/schemas/HarnessCellResponse"
             },
             "title": "Cells",
+            "type": "array"
+          },
+          "conformance": {
+            "items": {
+              "$ref": "#/components/schemas/SkillConformanceIssueResponse"
+            },
+            "title": "Conformance",
             "type": "array"
           },
           "description": {

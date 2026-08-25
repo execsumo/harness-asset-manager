@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .conformance import check_skill_conformance
 from .inventory import (
     InventoryColumn,
     InventoryEntry,
@@ -66,6 +67,7 @@ def skill_detail_payload(
         # The whole package, not just SKILL.md: adoption copies the folder, so a
         # user has to be able to see what else came with it before running it.
         "packageFiles": list(entry.files),
+        "conformance": conformance_payload(entry),
     }
 
 
@@ -99,7 +101,25 @@ def row_payload(
             "canDelete": can_delete(entry),
         },
         "cells": [cell_payload(entry, column) for column in columns],
+        "conformance": conformance_payload(entry),
     }
+
+
+def conformance_payload(entry: InventoryEntry) -> list[dict[str, str]]:
+    """Where this skill departs from the Agent Skills spec. Never blocks anything.
+
+    Rides both the row and the detail payload: the Overview builds its notices from
+    the list, and asking it to fetch a detail per skill to find out would be absurd.
+    """
+    return [
+        {"code": issue.code, "message": issue.message}
+        for issue in check_skill_conformance(
+            name=entry.name,
+            name_declared=entry.name_declared,
+            description=entry.description,
+            package_dir=entry.package_dir,
+        )
+    ]
 
 
 def cell_payload(entry: InventoryEntry, column: InventoryColumn) -> dict[str, object]:

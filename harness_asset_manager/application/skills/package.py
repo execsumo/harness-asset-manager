@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Condition
 
+from .document_utils import parse_skill_document
 from .identity import SkillRef, SourceDescriptor
 
 
@@ -21,12 +22,17 @@ class SkillManifest:
     description: str
     source_kind: str | None
     source_locator: str | None
+    # Whether `name:` was actually in the frontmatter. `declared_name` falls back to
+    # the first H1, so without this the two are indistinguishable — and a conformance
+    # check would report "invalid characters" on a heading rather than "no name field".
+    name_declared: bool = False
 
 
 @dataclass(frozen=True)
 class SkillPackage:
     declared_name: str
     description: str
+    name_declared: bool
     root_path: Path
     resolved_path: Path
     relative_files: tuple[str, ...]
@@ -402,6 +408,7 @@ def parse_skill_package(root: Path, *, default_source: SourceDescriptor) -> Skil
     return SkillPackage(
         declared_name=manifest.declared_name,
         description=manifest.description,
+        name_declared=manifest.name_declared,
         root_path=root,
         resolved_path=root.resolve(),
         relative_files=relative_files,
@@ -427,6 +434,7 @@ def _materialize_package(
     return SkillPackage(
         declared_name=contents.manifest.declared_name,
         description=contents.manifest.description,
+        name_declared=contents.manifest.name_declared,
         root_path=root,
         resolved_path=resolved_path,
         relative_files=contents.relative_files,
@@ -439,14 +447,22 @@ def parse_skill_manifest_text(document: str) -> SkillManifest:
     metadata = parse_skill_frontmatter_metadata(document)
     return SkillManifest(
         declared_name=_extract_declared_name(document, metadata),
-        description=_normalize_metadata_scalar(metadata.get("description", "")),
+        description=metadata.get("description", ""),
         source_kind=_optional_metadata_value(metadata, "source_kind"),
         source_locator=_optional_metadata_value(metadata, "source_locator"),
+        name_declared=bool(metadata.get("name", "").strip()),
     )
 
 
 def parse_skill_frontmatter_metadata(document: str) -> dict[str, str]:
-    return _parse_frontmatter(document)
+    """Top-level frontmatter keys, flattened to strings.
+
+    Delegates to the document parser so there is one frontmatter reader, not two.
+    The divergence mattered: the old copy hoisted a nested block's keys to the top
+    level, so a `metadata:` map containing its own `name:` overwrote the real one.
+    """
+    _body, entries = parse_skill_document(document)
+    return {entry["key"]: entry["value"] for entry in entries}
 
 
 def _resolve_source(metadata: dict[str, str], *, default_source: SourceDescriptor) -> SourceDescriptor:
@@ -459,7 +475,7 @@ def _resolve_source(metadata: dict[str, str], *, default_source: SourceDescripto
 
 def _extract_declared_name(document: str, metadata: dict[str, str]) -> str:
     if metadata.get("name", "").strip():
-        return _normalize_metadata_scalar(metadata["name"])
+        return metadata["name"].strip()
     for raw_line in document.splitlines():
         stripped = raw_line.strip()
         if stripped.startswith("# "):
@@ -467,49 +483,5 @@ def _extract_declared_name(document: str, metadata: dict[str, str]) -> str:
     raise SkillParseError("unable to determine declared skill name")
 
 
-def _parse_frontmatter(document: str) -> dict[str, str]:
-    lines = document.splitlines()
-    metadata: dict[str, str] = {}
-    if lines[:1] != ["---"]:
-        return metadata
-    i = 1
-    while i < len(lines):
-        raw_line = lines[i]
-        if raw_line.strip() == "---":
-            break
-        if ":" not in raw_line:
-            i += 1
-            continue
-        key, value = raw_line.split(":", 1)
-        value = value.strip()
-        # Handle YAML block scalars (>-, >, |, |-)
-        if value in (">-", ">", "|", "|-"):
-            join_char = " " if value.startswith(">") else "\n"
-            continuation: list[str] = []
-            i += 1
-            while i < len(lines):
-                cont_line = lines[i]
-                if cont_line.strip() == "---":
-                    break
-                if cont_line and not cont_line[0].isspace():
-                    break
-                continuation.append(cont_line.strip())
-                i += 1
-            value = join_char.join(part for part in continuation if part)
-        else:
-            value = _normalize_metadata_scalar(value)
-            i += 1
-        metadata[key.strip()] = value
-    return metadata
-
-
 def _optional_metadata_value(metadata: dict[str, str], key: str) -> str | None:
-    value = _normalize_metadata_scalar(metadata.get(key, ""))
-    return value or None
-
-
-def _normalize_metadata_scalar(value: str) -> str:
-    normalized = value.strip()
-    if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {"'", '"'}:
-        return normalized[1:-1].strip()
-    return normalized
+    return metadata.get(key, "").strip() or None

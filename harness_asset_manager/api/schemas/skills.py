@@ -97,6 +97,7 @@ class SkillTableRowResponse(BaseModel):
     tags: list[str] = Field(default_factory=list)
     actions: SkillRowActionsResponse
     cells: list[HarnessCellResponse]
+    conformance: list[SkillConformanceIssueResponse] = Field(default_factory=list)
 
 
 class SkillsPageResponse(BaseModel):
@@ -131,6 +132,13 @@ class SkillSourceLinksResponse(BaseModel):
     folderUrl: str | None
 
 
+class SkillConformanceIssueResponse(BaseModel):
+    """One departure from the Agent Skills specification, phrased as a correction."""
+
+    code: str
+    message: str
+
+
 class SkillMetadataEntryResponse(BaseModel):
     key: str
     value: str
@@ -163,6 +171,7 @@ class SkillDetailResponse(BaseModel):
     documentMarkdown: str | None
     metadata: list[SkillMetadataEntryResponse] = Field(default_factory=list)
     packageFiles: list[str] = Field(default_factory=list)
+    conformance: list[SkillConformanceIssueResponse] = Field(default_factory=list)
 
 
 class SkillSourceStatusResponse(BaseModel):
@@ -182,6 +191,7 @@ __all__ = [
     "SetSkillHarnessesRequest",
     "SetSkillHarnessesResultResponse",
     "SetSkillTagsRequest",
+    "SkillConformanceIssueResponse",
     "SkillDetailActionsResponse",
     "SkillDetailResponse",
     "SkillLocationResponse",
