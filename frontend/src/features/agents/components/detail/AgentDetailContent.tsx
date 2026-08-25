@@ -21,6 +21,7 @@ import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import { useSkillsListQuery } from "../../../skills/public";
 import { AGENT_CONTRACT_KEYS } from "../../api/types";
+import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
 import {
   AgentSkillsFieldEditor,
@@ -452,7 +453,7 @@ export function AgentDetailContent({
             editable={detail.canEdit}
             previewContent={(
               <Suspense fallback={<LoadingSpinner size="sm" label="Loading document" />}>
-                <MarkdownDocument markdown={detail.document || detail.prompt} />
+                <MarkdownDocument markdown={stripFrontmatter(detail.document) || detail.prompt} />
               </Suspense>
             )}
             editFrontmatter={(

@@ -138,4 +138,31 @@ describe("AgentDetailContent", () => {
       );
     });
   });
+
+  it("previews the document body without its YAML frontmatter", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({
+          document: [
+            "---",
+            "name: scrutiny-feature-reviewer",
+            "model: inherit",
+            "---",
+            "",
+            "# Review Checklist",
+          ].join("\n"),
+        })}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Review Checklist" })).toBeInTheDocument();
+    expect(screen.queryByText(/model: inherit/)).not.toBeInTheDocument();
+  });
 });
