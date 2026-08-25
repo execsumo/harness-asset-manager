@@ -163,9 +163,9 @@ export function AgentDetailContent({
 
   const parseSkillSlugs = (val: string): string[] => {
     return val
-      .replace(/^[\[\]]/g, "")
+      .replace(/^[[\]]/g, "")
       .split(",")
-      .map((s) => s.replace(/^[\[\]\s'"]+|[\[\]\s'"]+$/g, "").trim())
+      .map((s) => s.replace(/^[[\]\s'"]+|[[\]\s'"]+$/g, "").trim())
       .filter(Boolean);
   };
 

@@ -17,7 +17,10 @@ from .store import AgentStore
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
-    from harness_asset_manager.application.skills import SkillsMutationService, SkillsQueryService
+    from harness_asset_manager.application.skills import (
+        SkillsMutationService,
+        SkillsQueryService,
+    )
 
 ConflictResolution = Literal["keep_store", "replace_store"]
 

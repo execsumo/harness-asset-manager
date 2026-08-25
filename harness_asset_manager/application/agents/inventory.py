@@ -15,7 +15,6 @@ from .model import (
     AgentParseError,
     AgentSkill,
     AgentTarget,
-    BindingState,
 )
 from .parser import parse_agent_document, parse_agent_file
 from .reconcile import ReconcileOutcome
