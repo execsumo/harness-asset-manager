@@ -17,7 +17,11 @@ from harness_asset_manager.application.agents import (
     parse_agent_document,
     render_agent_document,
 )
-from harness_asset_manager.application.agents.model import CONTRACT_KEYS
+from harness_asset_manager.application.agents.model import (
+    CONTRACT_KEYS,
+    EFFORT_VALUES,
+    validate_effort,
+)
 from harness_asset_manager.errors import MutationError
 
 AGENT_DOC = """---
@@ -830,6 +834,10 @@ class ContractKeyParityTests(unittest.TestCase):
     order the renderer writes it in; ``AGENT_CONTRACT_KEYS`` (TypeScript) decides which
     rows the detail view hides from the custom-configuration editor. If they drift, a
     contract field silently shows up as an editable custom row and gets written twice.
+
+    ``EFFORT_VALUES`` is mirrored the same way: Python rejects anything outside it,
+    TypeScript builds the picker from it, so drift means a picker offering a value
+    the API refuses.
     """
 
     TYPES_TS = (
@@ -850,6 +858,18 @@ class ContractKeyParityTests(unittest.TestCase):
             "frontend AGENT_CONTRACT_KEYS drifted from backend CONTRACT_KEYS",
         )
 
+    def test_typescript_effort_values_match_python(self) -> None:
+        source = self.TYPES_TS.read_text(encoding="utf-8")
+        match = re.search(r"export const EFFORT_VALUES = \[(.*?)\] as const;", source, re.S)
+        self.assertIsNotNone(match, "EFFORT_VALUES not found in types.ts")
+        assert match is not None
+        ts_values = tuple(re.findall(r'"([^"]+)"', match.group(1)))
+        self.assertEqual(
+            ts_values,
+            EFFORT_VALUES,
+            "frontend EFFORT_VALUES drifted from backend EFFORT_VALUES",
+        )
+
     def test_contract_keys_are_the_fields_the_parser_lifts_out(self) -> None:
         """Every contract key must leave metadata as a real parsed field, not a custom row."""
         document = "\n".join(
@@ -857,6 +877,31 @@ class ContractKeyParityTests(unittest.TestCase):
         )
         agent = parse_agent_document(document, slug="a", path=Path("a.md"))
         self.assertEqual(agent.extra_metadata, ())
+
+
+class EffortValidationTests(unittest.TestCase):
+    """`effort` is a fixed vocabulary, enforced where values enter an agent file."""
+
+    def test_every_declared_value_is_accepted(self) -> None:
+        for value in EFFORT_VALUES:
+            self.assertEqual(validate_effort(value), value)
+
+    def test_omitted_stays_omitted_and_empty_clears(self) -> None:
+        self.assertIsNone(validate_effort(None))
+        self.assertEqual(validate_effort(""), "")
+        self.assertEqual(validate_effort("   "), "")
+
+    def test_unknown_value_is_rejected_with_the_standard_envelope(self) -> None:
+        with self.assertRaises(MutationError) as caught:
+            validate_effort("maximum")
+        self.assertEqual(caught.exception.status, 400)
+        self.assertEqual(caught.exception.code, "invalid_effort")
+
+    def test_matching_is_exact_so_no_case_variant_is_invented(self) -> None:
+        """Accepting HIGH would silently rewrite the file into a value the picker
+        cannot produce, inventing a case-insensitive contract nothing declares."""
+        with self.assertRaises(MutationError):
+            validate_effort("HIGH")
 
 
 class _CountingSkillsQueries:

@@ -26,6 +26,87 @@ def _seed_unmanaged_codex_agent(spec: FakeHomeSpec, slug: str = "auditor") -> No
     )
 
 
+class AgentEffortContractTests(unittest.TestCase):
+    """`effort` is a fixed vocabulary; every path that writes it must enforce it.
+
+    The picker only offers the declared values, so this covers what gets past it:
+    a raw-YAML edit, a hand-rolled request, or the key smuggled in as custom
+    frontmatter.
+    """
+
+    def test_create_accepts_a_declared_value(self) -> None:
+        with AppTestHarness() as agent_harness:
+            detail = agent_harness.post_json(
+                "/api/agents",
+                {"name": "Planner", "description": "plans", "prompt": "b", "effort": "high"},
+            )
+            self.assertEqual(detail["effort"], "high")
+
+    def test_create_rejects_an_unknown_value(self) -> None:
+        with AppTestHarness() as agent_harness:
+            result = agent_harness.post_json(
+                "/api/agents",
+                {"name": "Planner", "description": "plans", "prompt": "b", "effort": "maximum"},
+                expected_status=400,
+            )
+            self.assertEqual(result["code"], "invalid_effort")
+            self.assertIn("maximum", result["error"])
+
+    def test_update_rejects_an_unknown_value_and_writes_nothing(self) -> None:
+        with AppTestHarness() as agent_harness:
+            created = agent_harness.post_json(
+                "/api/agents",
+                {"name": "Planner", "description": "plans", "prompt": "b", "effort": "low"},
+            )
+            ref = created["ref"]
+
+            result = agent_harness.put_json(
+                f"/api/agents/{ref}",
+                {"name": "Planner", "description": "plans", "effort": "aggressive"},
+                expected_status=400,
+            )
+
+            self.assertEqual(result["code"], "invalid_effort")
+            self.assertEqual(agent_harness.get_json(f"/api/agents/{ref}")["effort"], "low")
+
+    def test_update_clears_the_key_on_an_empty_value(self) -> None:
+        with AppTestHarness() as agent_harness:
+            created = agent_harness.post_json(
+                "/api/agents",
+                {"name": "Planner", "description": "plans", "prompt": "b", "effort": "medium"},
+            )
+            ref = created["ref"]
+
+            agent_harness.put_json(
+                f"/api/agents/{ref}",
+                {"name": "Planner", "description": "plans", "effort": ""},
+            )
+
+            self.assertIsNone(agent_harness.get_json(f"/api/agents/{ref}")["effort"])
+            document = agent_harness.get_json(f"/api/agents/{ref}")["document"]
+            self.assertNotIn("effort:", document)
+
+    def test_effort_cannot_be_smuggled_in_as_custom_frontmatter(self) -> None:
+        with AppTestHarness() as agent_harness:
+            created = agent_harness.post_json(
+                "/api/agents",
+                {"name": "Planner", "description": "plans", "prompt": "b"},
+            )
+            ref = created["ref"]
+
+            detail = agent_harness.put_json(
+                f"/api/agents/{ref}",
+                {
+                    "name": "Planner",
+                    "description": "plans",
+                    "metadata": [{"key": "effort", "value": "maximum"}],
+                },
+            )
+
+            self.assertIsNone(detail["effort"])
+            self.assertNotIn("maximum", detail["document"])
+
+
 class AgentsListIsReadOnlyTests(unittest.TestCase):
     """Listing agents resolves skill display names, and that must not write.
 

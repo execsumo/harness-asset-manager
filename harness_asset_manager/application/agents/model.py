@@ -19,6 +19,35 @@ class AgentParseError(ValueError):
 CONTRACT_KEYS: tuple[str, ...] = ("name", "description", "model", "effort", "tools", "skills")
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
+# ``effort`` is a fixed, global vocabulary — not per-harness, unlike ``model``, whose
+# value set is genuinely open-ended and therefore stays free text. The picker offers
+# exactly these plus an empty choice that clears the key, and the write paths reject
+# anything else, so a hand-edited file or a raw-YAML edit cannot smuggle in a value
+# the picker could not have produced. Mirrored by ``EFFORT_VALUES`` in
+# frontend/src/features/agents/api/types.ts and pinned by ``EffortValueParityTests``.
+EFFORT_VALUES: tuple[str, ...] = ("low", "medium", "high")
+
+
+def validate_effort(effort: str | None) -> str | None:
+    """Normalize an effort value on its way into an agent file.
+
+    ``None`` means the caller omitted the field, so whatever the file holds stands;
+    an empty string is an explicit clear. Matching is exact: accepting ``HIGH`` and
+    silently rewriting it would invent a case-insensitive contract the picker cannot
+    produce and the file does not describe.
+    """
+    if effort is None:
+        return None
+    value = effort.strip()
+    if value and value not in EFFORT_VALUES:
+        raise MutationError(
+            f"unknown effort: {effort!r}; expected one of "
+            f"{', '.join(EFFORT_VALUES)}, or empty to clear the key",
+            status=400,
+            code="invalid_effort",
+        )
+    return value
+
 
 @dataclass(frozen=True)
 class AgentSkill:
@@ -186,6 +215,7 @@ class AgentAdoptConflict(MutationError):
 __all__ = [
     "CONTRACT_KEYS",
     "CONTRACT_KEY_SET",
+    "EFFORT_VALUES",
     "AgentAdoptConflict",
     "AgentBinding",
     "AgentDefinition",
@@ -196,4 +226,5 @@ __all__ = [
     "AgentSkill",
     "AgentTarget",
     "BindingState",
+    "validate_effort",
 ]

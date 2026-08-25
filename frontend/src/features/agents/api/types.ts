@@ -6,6 +6,14 @@
  */
 export const AGENT_CONTRACT_KEYS = ["name", "description", "model", "effort", "tools", "skills"] as const;
 
+/**
+ * The values `effort` accepts, plus the empty choice that clears the key. Fixed and
+ * global — not per-harness. Mirrors EFFORT_VALUES in application/agents/model.py,
+ * which rejects anything else with a 400; keep the two in step or the picker offers
+ * a value the API refuses. `model` is deliberately absent: its value set is open.
+ */
+export const EFFORT_VALUES = ["low", "medium", "high"] as const;
+
 export interface AgentSkillDto {
   slug: string;
   name: string;

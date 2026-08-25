@@ -20,7 +20,7 @@ import { DetailBindingIdentity, type DetailBindingTone } from "../../../../compo
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import { useSkillsListQuery } from "../../../skills/public";
-import { AGENT_CONTRACT_KEYS } from "../../api/types";
+import { AGENT_CONTRACT_KEYS, EFFORT_VALUES } from "../../api/types";
 import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
 import {
@@ -197,7 +197,28 @@ export function AgentDetailContent({
         label: "Effort",
         value: effortStr,
         onChange: setEffortStr,
-        placeholder: "e.g. high, medium, low — empty clears the key",
+        renderInput: ({ disabled }) => (
+          <select
+            className="frontmatter-editor__input"
+            value={effortStr}
+            onChange={(event) => setEffortStr(event.target.value)}
+            disabled={disabled}
+            aria-label="Effort"
+          >
+            <option value="">(none)</option>
+            {EFFORT_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            {/* An agent authored elsewhere can carry a value the contract does not
+                allow. Offering it keeps a save from silently rewriting it, and
+                shows the user exactly what the API will reject. */}
+            {effortStr && !(EFFORT_VALUES as readonly string[]).includes(effortStr) ? (
+              <option value={effortStr}>{effortStr} — not a valid effort</option>
+            ) : null}
+          </select>
+        ),
       },
       {
         key: "tools",

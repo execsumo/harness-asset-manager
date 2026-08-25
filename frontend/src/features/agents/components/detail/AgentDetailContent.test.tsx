@@ -165,4 +165,48 @@ describe("AgentDetailContent", () => {
     expect(await screen.findByRole("heading", { name: "Review Checklist" })).toBeInTheDocument();
     expect(screen.queryByText(/model: inherit/)).not.toBeInTheDocument();
   });
+
+  it("offers effort as a fixed choice, with an empty option that clears the key", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({ effort: "medium" })}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const effort = screen.getByRole("combobox", { name: "Effort" });
+    expect(effort).toHaveValue("medium");
+    expect(
+      Array.from((effort as HTMLSelectElement).options).map((option) => option.value),
+    ).toEqual(["", "low", "medium", "high"]);
+  });
+
+  it("keeps an out-of-contract effort visible instead of silently rewriting it", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({ effort: "maximum" })}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const effort = screen.getByRole("combobox", { name: "Effort" });
+    expect(effort).toHaveValue("maximum");
+    expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
+  });
 });

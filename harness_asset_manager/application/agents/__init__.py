@@ -27,6 +27,7 @@ from .model import (
     AgentIssue,
     AgentParseError,
     AgentTarget,
+    validate_effort,
 )
 from .mutations import AgentMutationService, BulkAdoptResult, ConflictResolution
 from .parser import parse_agent_document, parse_agent_file, render_agent_document
@@ -58,6 +59,7 @@ __all__ = [
     "AuditAction",
     "AuditEntry",
     "BulkAdoptResult",
+    "validate_effort",
     "ConflictResolution",
     "DriftKind",
     "LEDGER_VERSION",

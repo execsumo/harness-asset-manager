@@ -34,7 +34,11 @@ from harness_asset_manager.api.schemas.agents import (
 )
 from harness_asset_manager.api.schemas.common import OkResponse
 from harness_asset_manager.application import BackendContainer
-from harness_asset_manager.application.agents import AgentAdoptConflict, AgentDetail
+from harness_asset_manager.application.agents import (
+    AgentAdoptConflict,
+    AgentDetail,
+    validate_effort,
+)
 from harness_asset_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
@@ -105,7 +109,7 @@ def create_agent(
         tools=tuple(body.tools),
         skills=validated_skills,
         model=body.model,
-        effort=body.effort,
+        effort=validate_effort(body.effort),
     )
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug)
@@ -161,6 +165,7 @@ def update_agent(
         if body.skills is not None
         else None
     )
+    validated_effort = validate_effort(body.effort)
 
     if "/" in agent_ref:
         # Unmanaged ref (<harness>/<slug>): edit the harness file in place.
@@ -178,7 +183,7 @@ def update_agent(
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
             model=body.model,
-            effort=body.effort,
+            effort=validated_effort,
             metadata=extra_metadata,
         )
     else:
@@ -194,7 +199,7 @@ def update_agent(
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
             model=body.model,
-            effort=body.effort,
+            effort=validated_effort,
             metadata=extra_metadata,
         )
 
