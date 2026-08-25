@@ -4,7 +4,6 @@ import re
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
 
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
@@ -861,24 +860,26 @@ class ContractKeyParityTests(unittest.TestCase):
 
 
 class _CountingSkillsQueries:
-    """Stands in for SkillsQueryService, counting how often the inventory is scanned.
+    """Stands in for SkillsQueryService, counting how often skill names are resolved.
 
-    The real ``inventory()`` rescans the skills store and every installed harness
-    directory, and may run a reconcile pass that writes. Its cost is why the number
-    of calls per request matters.
+    Resolving rescans the skills store and every installed harness directory, which
+    is why the number of calls per request matters. ``inventory()`` raises on
+    purpose: it runs the skills reconcile, which can auto-adopt, so a read of the
+    agents matrix must never reach for it.
     """
 
     def __init__(self, names: dict[str, str]) -> None:
         self._names = names
         self.calls = 0
 
-    def inventory(self):
+    def managed_skill_names(self) -> dict[str, str]:
         self.calls += 1
-        entries = [
-            SimpleNamespace(kind="managed", package_dir=slug, name=name)
-            for slug, name in self._names.items()
-        ]
-        return SimpleNamespace(entries=entries)
+        return dict(self._names)
+
+    def inventory(self):
+        raise AssertionError(
+            "a read of the agents matrix must not run the skills reconcile"
+        )
 
 
 class AgentSkillResolutionTests(unittest.TestCase):
@@ -967,7 +968,7 @@ class AgentSkillResolutionTests(unittest.TestCase):
         class Broken:
             calls = 0
 
-            def inventory(self):
+            def managed_skill_names(self):
                 Broken.calls += 1
                 raise RuntimeError("skills store unavailable")
 

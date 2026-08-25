@@ -59,6 +59,10 @@ class AgentInventoryService:
     def _load_skill_names(self) -> dict[str, str]:
         """Package dir → display name for every managed skill.
 
+        Deliberately the read-only lookup, not ``SkillsQueryService.inventory()``:
+        that one runs the skills reconcile, which can auto-adopt, so resolving a
+        display name made ``GET /api/agents`` able to write into the skills store.
+
         Best-effort: an agent's skill list is a display nicety, so a skills store
         that cannot be read degrades to showing raw slugs rather than failing the
         whole matrix.
@@ -66,24 +70,19 @@ class AgentInventoryService:
         if self.skills_queries is None:
             return {}
         try:
-            inventory = self.skills_queries.inventory()
+            return self.skills_queries.managed_skill_names()
         except Exception:  # noqa: BLE001
             return {}
-        return {
-            entry.package_dir: entry.name
-            for entry in inventory.entries
-            if entry.kind == "managed" and entry.package_dir is not None
-        }
 
     def _skill_resolver(self) -> Callable[[tuple[str, ...]], tuple[AgentSkill, ...]]:
         """A skill-name resolver that scans at most once, however often it is called.
 
-        ``SkillsQueryService.inventory()`` rescans the skills store and every
-        installed harness directory, and may run a reconcile pass that writes — the
-        same reason the ledger above is loaded once per build. Resolving per agent
-        turned a single list request into one full skills scan per agent. The scan is
-        deferred to first use, so an inventory that references no skills still pays
-        nothing, and a failing scan is not retried once per row.
+        Resolving a name rescans the skills store and every installed harness
+        directory — the same reason the ledger above is loaded once per build.
+        Resolving per agent turned a single list request into one full skills scan
+        per agent. The scan is deferred to first use, so an inventory that
+        references no skills still pays nothing, and a failing scan is not retried
+        once per row.
         """
         names: dict[str, str] | None = None
 

@@ -5,7 +5,7 @@ import tomllib
 import unittest
 
 from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import FakeHomeSpec
+from tests.support.fake_home import FakeHomeSpec, seed_skill_package
 
 
 def _seed_unmanaged_claude_agent(spec: FakeHomeSpec, slug: str = "stray") -> None:
@@ -24,6 +24,43 @@ def _seed_unmanaged_codex_agent(spec: FakeHomeSpec, slug: str = "auditor") -> No
         f'name = "{slug}"\ndescription = "found in codex"\ndeveloper_instructions = "codex instructions"\n',
         encoding="utf-8",
     )
+
+
+class AgentsListIsReadOnlyTests(unittest.TestCase):
+    """Listing agents resolves skill display names, and that must not write.
+
+    ``SkillsQueryService.inventory()`` runs the skills reconcile, which auto-adopts
+    when the setting is on. Resolving a name through it made a plain
+    ``GET /api/agents`` adopt skills as a side effect of being read.
+    """
+
+    def test_listing_agents_does_not_auto_adopt_skills(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            # The agent must reference a skill: name resolution is deferred to
+            # first use, so an agent with no skills never touches the skills side.
+            (agents_dir / "stray.md").write_text(
+                "---\nname: Stray\ndescription: found in claude\n"
+                "skills:\n  - auto-local\n---\n\nharness body\n",
+                encoding="utf-8",
+            )
+            seed_skill_package(spec.claude_root, "auto-local", "Auto Local")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            harness.put_json("/api/settings/auto-adopt/skills", {"enabled": True})
+
+            harness.get_json("/api/agents")
+
+            self.assertFalse(
+                (harness.spec.skills_store_root / "auto-local").exists(),
+                "reading the agents matrix adopted a skill into the store",
+            )
+            statuses = {
+                row["name"]: row["displayStatus"]
+                for row in harness.get_json("/api/skills")["rows"]
+            }
+            self.assertEqual(statuses.get("Auto Local"), "Managed")
 
 
 class AgentRoutesTests(unittest.TestCase):

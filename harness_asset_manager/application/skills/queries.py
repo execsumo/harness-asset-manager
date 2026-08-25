@@ -82,12 +82,21 @@ class SkillsQueryService:
         return source_status_payload(self.resolve_update_status(entry))
 
     def inventory(self) -> SkillInventory:
+        """Repair first, then report -- the reconcile pass here can auto-adopt, i.e. write.
+
+        Callers that only need to read must use ``_inventory_snapshot`` (or
+        ``managed_skill_names``) instead, so a read cannot mutate the store.
+        """
         if self._reconcile is not None and not getattr(self._reconcile_state, "active", False):
             self._reconcile_state.active = True
             try:
                 self._reconcile()
             finally:
                 self._reconcile_state.active = False
+        return self._inventory_snapshot()
+
+    def _inventory_snapshot(self) -> SkillInventory:
+        """The matrix as it stands, with no repair pass. Never writes."""
         snapshot = self.read_models.snapshot()
         active_scans = tuple(
             scan for scan in self.read_models.visible_scans(snapshot)
@@ -97,6 +106,21 @@ class SkillsQueryService:
             store_scan=snapshot.store_scan,
             harness_scans=active_scans,
         )
+
+    def managed_skill_names(self) -> dict[str, str]:
+        """Package dir -> display name for every managed skill, without reconciling.
+
+        The agents matrix resolves its skill chips through this. Going via
+        ``inventory()`` made a plain ``GET /api/agents`` able to auto-adopt skills;
+        going via the store scan directly would resolve names for packages the
+        inventory deliberately hides (Hermes-owned ones), so the read-only
+        snapshot -- one declaration of what "managed" means -- is the seam.
+        """
+        return {
+            entry.package_dir: entry.name
+            for entry in self._inventory_snapshot().entries
+            if entry.kind == "managed" and entry.package_dir is not None
+        }
 
     def require_entry(self, skill_ref: str) -> InventoryEntry:
         entry = self.inventory().find(skill_ref)
