@@ -13,6 +13,66 @@ Running status for in-flight work. Read this before resuming. Newest session on 
   of this file, against the newest-on-top convention. It was left in place deliberately;
   do not read the bottom of the file as the oldest entry.
 
+### Picking this up — paste this into a new session
+
+> **Goal: finish every item in the top entry of `docs/handoff.md` (`## 2026-08-25 (session
+> close)`), items 1 through 6.**
+>
+> Read that entry first. It carries the causes already traced, the decisions already made,
+> and the options deliberately ruled out. Do not re-derive them and do not re-open them.
+> Where it says something was verified, treat it as verified; where it says something is
+> unconfirmed, confirm it before acting.
+>
+> **Scope boundaries.**
+> - Item 6 stops at the triage table. Bring it to me for approval; implement nothing from it.
+> - Item 5 is the file inventory in Skills detail. Folder adoption already works — do not
+>   re-investigate it. The loose single-file `copytree` risk is unconfirmed: prove it before
+>   changing that path, and leave it alone if it does not reproduce.
+> - `model` stays free text. Not in scope.
+>
+> **Standard of work — this matters as much as the features.** Keep the code remarkably clean
+> and favour the simple, elegant solution over the clever or the complete one:
+> - Fix the *cause*, not the symptom, and make the smallest change that removes it.
+> - Prefer reshaping or deleting over appending. A change that only adds is a change that
+>   probably has not found the right seam.
+> - One declaration per concept. `agents/model.py::CONTRACT_KEYS` with its
+>   `ContractKeyParityTests` mirror is the precedent to follow when a value set must exist in
+>   both languages — copy that shape, do not invent a second one.
+> - No new abstraction for a single caller, and no new dependency without asking.
+> - Match the surrounding idiom — naming, comment density, error envelopes, test style.
+> - If an item cannot be done cleanly, stop and tell me. Do not bolt it on. A well-argued
+>   "this one needs a different approach" is a better outcome than a working mess.
+>
+> **Quality gate — every item must clear all of it before you call that item done.**
+> Run the real commands; do not report a gate you did not run.
+>
+> ```bash
+> ./.venv/bin/ruff check harness_asset_manager tests scripts
+> ./.venv/bin/pyright
+> bash scripts/test_backend.sh
+> npm run lint:frontend
+> npm run typecheck
+> npm run codegen:check      # OpenAPI/generated.ts drift — must be clean, not regenerated-and-committed silently
+> npm run test:coverage      # coverage ratchet must not drop
+> npm run build
+> ```
+>
+> On top of the suite:
+> - **Every behaviour change ships with a test that fails without the fix.** Verify it goes
+>   red — an assertion that cannot fail for the reason it names is worse than none. See the
+>   `2853ef5` commit message for why this rule exists here.
+> - **Pressure-test each item against the real app**, not only the suite: restart the backend
+>   after backend changes and rebuild `dist`, then exercise the actual screen.
+> - Report failures with their output. If you skipped something, say so.
+>
+> **Git discipline.** Short-lived branch off `main`, logical commits, merge back into `main`
+> and delete the branch when done — per `CLAUDE.md`. **No merge to `main` without my review,
+> and do not push without asking.** Rebuild and restart the running instance from `main`
+> afterwards.
+>
+> Update this handoff with a new top entry when you finish, and close out each item where it
+> is filed rather than leaving two versions of the truth.
+
 ### What still needs the owner — short list
 
 Everything below is settled unless it appears here.
