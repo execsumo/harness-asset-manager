@@ -959,7 +959,10 @@ class AgentSkillResolutionTests(unittest.TestCase):
         self.assertEqual([(s.slug, s.name) for s in entry.skills], [("ghost", "ghost")])
 
     def test_a_failing_skills_service_does_not_break_the_matrix(self) -> None:
-        self._write_agent("agent", ["alpha"])
+        # Several agents: a single one cannot distinguish "scanned once" from
+        # "rescanned per row", which is half of what this pins.
+        for index in range(3):
+            self._write_agent(f"agent-{index}", ["alpha"])
 
         class Broken:
             calls = 0
@@ -969,7 +972,10 @@ class AgentSkillResolutionTests(unittest.TestCase):
                 raise RuntimeError("skills store unavailable")
 
         broken = Broken()
-        entry = next(e for e in self._service(broken).build().entries if e.ref == "agent")
+        entries = self._service(broken).build().entries
 
-        self.assertEqual([(s.slug, s.name) for s in entry.skills], [("alpha", "alpha")])
+        self.assertEqual(
+            [[(s.slug, s.name) for s in e.skills] for e in entries],
+            [[("alpha", "alpha")]] * 3,
+        )
         self.assertEqual(broken.calls, 1, "a failing scan must not be retried per agent")

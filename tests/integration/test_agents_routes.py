@@ -1022,6 +1022,52 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(resp_drop["skills"], [])
             self.assertTrue(claude_skill_link.is_symlink())
 
+    def test_a_failing_auto_enable_still_saves_the_agent_and_reports_the_failure(self) -> None:
+        """A save that half-applies must say so rather than reporting success.
+
+        Auto-enabling a skill touches other harnesses and can fail on any of them.
+        The agent edit is the user's actual intent, so it is written first and kept;
+        the auto-enable is best effort. What must never happen is the edit landing
+        while the response claims every skill was enabled.
+        """
+        with AppTestHarness(mixed=True) as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Reviewer", "description": "Reviews code", "prompt": "Review code."},
+            )
+            harness.post_json("/api/agents/reviewer/enable", {"harness": "claude"})
+
+            container = harness.container
+            original = container.skills_mutations.enable_skill
+
+            def failing_enable(skill_ref: str, harness_id: str):
+                raise RuntimeError("harness went away mid-save")
+
+            container.skills_mutations.enable_skill = failing_enable
+            try:
+                resp = harness.put_json(
+                    "/api/agents/reviewer",
+                    {"description": "Reviews code carefully", "skills": ["shared-audit"]},
+                )
+            finally:
+                container.skills_mutations.enable_skill = original
+
+            # The failure is reported, not swallowed into a success.
+            self.assertFalse(resp.get("ok"))
+            self.assertEqual(resp.get("autoEnabled"), [])
+            self.assertEqual(
+                [(f["skillRef"], f["harness"]) for f in resp.get("failed", [])],
+                [("shared:shared-audit", "claude")],
+            )
+            self.assertIn("harness went away mid-save", resp["failed"][0]["error"])
+
+            # The agent edit itself survived, and is on disk -- not rolled back.
+            self.assertEqual(resp["description"], "Reviews code carefully")
+            self.assertEqual([s["slug"] for s in resp["skills"]], ["shared-audit"])
+            stored = (harness.spec.agents_root / "reviewer.md").read_text(encoding="utf-8")
+            self.assertIn("shared-audit", stored)
+            self.assertIn("Reviews code carefully", stored)
+
 
 if __name__ == "__main__":
     unittest.main()
