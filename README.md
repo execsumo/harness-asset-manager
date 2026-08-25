@@ -212,8 +212,14 @@ Start with the Active harnesses table: per-harness coverage across skills, slash
 MCP servers, hooks, permissions, and agents, with a review column that totals everything
 waiting for a decision. Every cell deep-links into the filtered capability view (and its
 needs-review surface), so a glance turns directly into action, and an All-harnesses totals
-row jumps to each capability's full catalog. A review queue highlights adoption and config
-work in one place, and a compact shortcuts strip covers the remaining surfaces.
+row jumps to each capability's full catalog.
+
+Below it sit two secondary panels. **Needs correcting** lists one notice per asset that
+departs from the Agent Skills standard — naming the asset, saying what to fix, and linking
+straight to its detail drawer, rather than reporting a count you then have to go hunt
+through. **Review to Adopt** is a standing backlog of adoption and config work, styled
+recessed on purpose: it is a queue, not an alert, and it should not compete with the
+harness table for your attention.
 
 ![skill-market-overview](./assets/harness-asset-manager-overview.png)
 
@@ -310,12 +316,25 @@ Harness Asset Manager treats managed Skills as portable by default: once a Skill
 
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
 
+Every managed Skill is checked against the [Agent Skills specification](https://agentskills.io/specification)
+— `name` charset and length, `name` matching its package directory, `description` presence and
+length. The results are **advisory and never block anything**: HAM keys Skills on their package
+directory and treats `name` as a display name, so enforcing the spec would retroactively
+invalidate Skills that work perfectly well. Departures appear as **Standards check** notes on
+the Skill's detail view and as notices on the Overview, each phrased as the correction to make.
+This is HAM's own check — there is no external validator and no extra dependency.
+
 Adoption takes the **whole folder**, not just `SKILL.md` — `scripts/`, `references/`, `assets/`,
 and anything else the package ships travel with it, and harnesses bind to it with a directory
 symlink. The detail view's **Package contents** section says what is in there: each top-level
 entry with its file count, folders collapsed so a large package stays readable, and `scripts/`
 badged as executable material so you can see whether a Skill ships code before enabling it
 somewhere that will run it.
+
+Editing a Skill's document in place preserves its frontmatter exactly, including nested
+structures — `metadata:` maps, `tags:` lists, lists of maps, and literal `|` blocks — and
+re-quotes any scalar that would not be valid YAML unquoted. A frontmatter value spanning
+several lines is edited in a text area so its indentation stays intact.
 
 Skills can be starred or assigned free-form tags from the matrix or detail view. Tag chips and
 filters use the shared sidecar store, while the star is surfaced as the pinned `starred` system

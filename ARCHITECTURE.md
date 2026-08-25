@@ -56,6 +56,8 @@ Harness Asset Manager manages six core extension families:
 - **Hermes Support**: Categorized under `~/.hermes/skills/harnessam/`. Hub provenance is retained when available; bundled/official skills remain excluded, while other valid local or self-learned skills are discoverable and adoptable. The legacy `harness-asset-manager` category remains readable for migration.
 - **Package contents**: The parser enumerates every file in a package to fingerprint it, so the relative-path list rides on the inventory entry and reaches the detail payload as `packageFiles` — no second walk. Adoption is `copytree` over the package directory and harness bindings are *directory* symlinks, so supporting material (`scripts/`, `references/`, `assets/`) round-trips intact.
 - **Reads must not write**: `SkillsQueryService.inventory()` runs the reconcile pass, which can auto-adopt. Callers that only need to read go through `_inventory_snapshot()` — or `managed_skill_names()`, which the agents matrix uses to resolve skill display names. Resolving a name through `inventory()` made `GET /api/agents` able to mutate the skills store as a side effect of being read.
+- **Frontmatter round-trip**: One parser, `document_utils.parse_skill_document`, reads every `SKILL.md` — `package.py` delegates to it rather than keeping a second flat copy, which used to hoist a nested block's keys to the top level. A parsed value containing a newline is a **verbatim block**: everything after the colon including its indentation, re-emitted unchanged, which is what lets nested maps, lists, lists of maps, and literal `|` scalars survive an edit. Scalars are re-quoted on write when plain emission would be invalid YAML; a value that merely looks like a flow collection is left alone, since quoting it would turn a list into a string. Folded scalars (`>`, `>-`) deliberately fold to one line — equivalent YAML, and it keeps long descriptions editable as a single field.
+- **Spec conformance is advisory**: `skills/conformance.py` checks a Skill against the Agent Skills specification (`name` charset/length, `name` vs package directory, `description` presence/length) and returns issues phrased as corrections. It never gates a mutation: HAM keys Skills on the package directory and uses `name` for display, so enforcement would invalidate working Skills. `name_declared` is carried out of the parser so "no `name` field" is distinguishable from an unconventional one — `declared_name` falls back to the document's first heading, and reporting that as a charset error would name the wrong fix. Issues ride the list payload as well as the detail one, so the Overview builds its notices without a request per Skill.
 - **Inventory Read Model**: Store and harness observations share a bounded, thread-safe package cache keyed by resolved package identity. Each snapshot uses one validation cycle, scans the store and adapters concurrently, and single-flights concurrent cache misses. Unchanged regular files are validated from topology and stat metadata without content reads; content-read file symlinks remain volatile across cycles, directory symlinks are never traversed, and invalidation during a build forces a fresh snapshot before publication.
 
 ### 2. MCP Servers
@@ -247,6 +249,16 @@ The SPA (`frontend/src`) is feature-sliced: every family lives under `features/<
 cross-family primitives in `components/matrix/`. State is TanStack React Query over the
 generated API client; the client is regenerated from OpenAPI and kept drift-free by a
 `codegen:check` gate.
+
+### Overview hierarchy
+
+The Active-harnesses table is the object of the Overview page and keeps the solid panel
+treatment. Everything below it is explicitly secondary: **Needs correcting** renders one
+notice per conformance issue — asset, correction, and a link to that asset's detail
+drawer, because a count leaves the reader to go find the thing themselves — and **Review
+to Adopt** is recessed (transparent ground, muted heading, small count chips, brightening
+on hover) because a standing backlog is not an alert. Deep links from these panels use
+canonical routes, never the legacy `/<family>/use` redirects, which drop the query string.
 
 ### One unified page per family
 
