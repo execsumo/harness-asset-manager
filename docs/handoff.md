@@ -2,7 +2,134 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+## 2026-08-25 (queue worked) — items 1-6 done on `feat/handoff-queue-2026-08-25`
+
+### Running state
+
+- Branch `feat/handoff-queue-2026-08-25`, 7 commits off `main`, **not merged and not
+  pushed** — both need owner review, per the queue's own git discipline.
+- The `:8000` instance is **untouched**: it still runs `main`, and `frontend/dist` was
+  rebuilt from `main` at the end of this session so the running instance stays coherent.
+  Pressure-testing ran on a **second instance on `:8123`** against the same real store
+  (`homeDir: /home/dev`), which is now stopped. To see this work in the app:
+  `git checkout feat/handoff-queue-2026-08-25 && npm run build`, then restart `:8000`.
+- Two throwaway probe agents were created and deleted on the real store during pressure
+  testing. Verified gone, with no `bindings.json` residue.
+
+### Waiting on the owner
+
+1. **Review and merge the branch** (then rebuild `dist` and restart `:8000` from `main`).
+2. **Approve `docs/spec-triage-agent-skills.md`** (item 6). Nothing from it is implemented.
+   It contains one finding worth reading first — see item 6 below.
+3. **One decision recorded, flag it if wrong** — item 4's out-of-set effort handling, below.
+
+Still open from before, unchanged: dog-food tagging across the six family pages; the
+`marketplace_clis.py` narrowing recommendation; the later/possible tags work.
+
+### Shipped this entry — the queue, item by item
+
+1. **`GET /api/agents` can no longer write** (`bc8b437`). `SkillsQueryService.inventory()`
+   is now the reconcile guard wrapped around a new `_inventory_snapshot()`, and
+   `managed_skill_names()` resolves display names off the snapshot. `_load_skill_names`
+   points at it. **Walking `store_scan` directly would have been wrong** — the inventory
+   hides Hermes-owned packages using the harness scans, so the snapshot stays the one
+   declaration of what "managed" means. `validate_skills` deliberately still calls
+   `inventory()`: it is a mutation path, reconcile is legitimate there, and switching it
+   would change which slugs validate. Pinned end-to-end: with skills auto-adopt on, a
+   `GET /api/agents` that resolves a skill name leaves the store untouched, while the
+   following `GET /api/skills` still adopts — so the fixture is armed, not inert.
+   The "Known follow-up" section at the bottom of this file is closed; see the note there.
+
+2. **Agents > Preview no longer leaks frontmatter** (`4dacfe7`). `stripFrontmatter` in
+   `features/agents/model/document.ts`, applied at the one call site. Anchored to line 1,
+   which is what keeps an author's horizontal rule from being eaten. Did **not** switch to
+   `detail.prompt` — `document` exists so raw/unmanaged agents preview as their real file.
+   Confirmed live on the exact agent reported: `droid/scrutiny-feature-reviewer` now opens
+   at `# Scrutiny Feature Reviewer` instead of the bolded `name: … model: inherit` block.
+
+3. **Agents > Edit > Skills is no longer truncated** (`fad61ca`). The `.slice(0, 8)` is
+   gone; the dropdown already had `max-height` + `overflow-y: auto`, so the full list
+   scrolls. The cost paid: the active option is now scrolled into view, or arrowing down
+   would walk it below the fold. jsdom ships no `scrollIntoView`, shimmed in the shared
+   test setup beside the existing ResizeObserver shim. **Scale of the defect, measured on
+   the live store: 74 adopted skills, so the cap was hiding 66.**
+
+4. **Effort is a structured choice** (`a9e24f1`). `EFFORT_VALUES` declared next to
+   `CONTRACT_KEYS` in `agents/model.py`, mirrored in `types.ts`, pinned by the existing
+   `ContractKeyParityTests` class. `validate_effort` guards all three write paths —
+   `create_agent`, the managed update, and `update_unmanaged` — not just the two obvious
+   ones. Matching is **exact**: accepting `HIGH` and rewriting it would invent a
+   case-insensitive contract nothing declares. Empty stays reachable and clears the key.
+   The renderer's contract-key filter already blocked `effort` arriving as custom
+   metadata; that is now pinned by a test rather than assumed.
+
+   **Decision to flag.** An agent authored elsewhere can carry a value outside the set
+   (`effort: maximum`). With API-side rejection, that agent cannot be saved until the
+   value changes — including for an edit that never touched effort. Rather than let the
+   picker silently rewrite it, the picker **offers the offending value as an extra,
+   labelled option** (`maximum — not a valid effort`), so the value survives until the
+   user decides and the 400 is legible. Say so if you would rather it were lenient.
+
+5. **Skills detail shows the package contents** (`e9f96b5`, `14ad578`). The parser already
+   enumerates every file to fingerprint a package, so the list rides on `InventoryEntry`
+   rather than being re-walked — free, and identical across sightings because the revision
+   hashes that same list. `packageFiles` on the detail payload; the view groups by
+   top-level entry so `scripts/` reads as executable material. **OpenAPI regenerated —
+   `packageFiles` on `SkillDetailResponse` was the only drift, checked before committing.**
+
+   Live pressure test changed the design: `academic-research` holds 47 files under
+   `templates/`, which dumped 47 lines into the sheet. Directory groups are now `<details>`
+   disclosures — the header always states the count and the Executable badge, expanding
+   shows every file. Nothing truncated.
+
+   **The loose single-file `copytree` risk does not reproduce. Closed, do not re-open.**
+   `find_skill_roots` requires a directory containing `SKILL.md`, and every sighting — so
+   every adoption source — comes from it. A bare `foo.md` is never observed, so
+   `_manage_entry` cannot hand `ingest` a plain file. `ingest` is unchanged; the reason is
+   pinned by tests in `test_skill_package.py`.
+
+6. **Spec triage table written, nothing implemented** (`15f12a5`):
+   [`docs/spec-triage-agent-skills.md`](spec-triage-agent-skills.md). Fetched from
+   <https://agentskills.io/specification> rather than summarised from this file, and every
+   "HAM today" cell verified against the checkout.
+
+   **Read the second row first — it is a live defect, not a gap.** HAM's flat frontmatter
+   parser destroys a spec-conformant nested `metadata:` map on save: `metadata:\n  author: x`
+   is rewritten as `metadata: ""` plus hoisted top-level keys. Verified by round-tripping it
+   through `parse_skill_document` / `render_skill_document`.
+
+   The rest of the table collapses to one optional feature (report, do not enforce, the
+   `name`/`description` rules) and a lot of authoring guidance that is out of scope.
+
+### Validation
+
+Full gate on the final tree, all green:
+
+```
+ruff            clean
+pyright         0 errors, 216 warnings
+backend         621 unit + 229 integration OK, 81% branch coverage
+lint:frontend   0 errors, 11 warnings (all pre-existing exhaustive-deps)
+typecheck       clean
+codegen:check   clean
+test:coverage   384 tests / 75 files
+build           clean
+```
+
+**Coverage ratchet rose on every metric** (measured against `main` in the same session:
+statements 63.57 -> 63.74, branches 58.28 -> 58.54, functions 61.77 -> 61.90,
+lines 64.33 -> 64.51).
+
+Every behaviour change ships with a test **verified red against the unfixed tree** before
+the fix went in — including re-seeding item 1's fixture when the first version passed
+either way, because the agent it seeded referenced no skills and so never reached the
+skills side at all.
+
 ## 2026-08-25 (session close) — queue set: approved follow-up + three agent UI defects
+
+> **All six items are DONE.** See the entry above for what shipped, the branch, and what
+> still needs the owner. This entry is kept for the causes it traced and the decisions it
+> recorded; do not work it again.
 
 ### Running state
 
@@ -3079,6 +3206,8 @@ once per request instead of once per agent, but the coupling itself remains.
 The clean fix is a read-only name lookup that does not reconcile. Not attempted
 here; it changes skills-side behaviour and deserves its own pass.
 
-**Approved 2026-08-25 by the owner. This is a to-do, not an open question** — the
-behaviour change is sanctioned; only the scheduling is open. See the 2026-08-25
-session entry at the top of this file for the queue position.
+**DONE 2026-08-25** in `bc8b437` on `feat/handoff-queue-2026-08-25`.
+`SkillsQueryService.managed_skill_names()` resolves display names off a read-only
+snapshot, and `_load_skill_names` points at it, so a read of the agents matrix can no
+longer reconcile. Pinned end-to-end in `tests/integration/test_agents_routes.py`
+(`AgentsListIsReadOnlyTests`). Nothing left open here.
