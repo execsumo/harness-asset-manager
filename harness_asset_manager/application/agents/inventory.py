@@ -56,22 +56,52 @@ class AgentInventoryService:
     def adapters(self) -> dict[str, AgentHarnessAdapter]:
         return self._resolve()[1]
 
+    def _load_skill_names(self) -> dict[str, str]:
+        """Package dir → display name for every managed skill.
+
+        Best-effort: an agent's skill list is a display nicety, so a skills store
+        that cannot be read degrades to showing raw slugs rather than failing the
+        whole matrix.
+        """
+        if self.skills_queries is None:
+            return {}
+        try:
+            inventory = self.skills_queries.inventory()
+        except Exception:  # noqa: BLE001
+            return {}
+        return {
+            entry.package_dir: entry.name
+            for entry in inventory.entries
+            if entry.kind == "managed" and entry.package_dir is not None
+        }
+
+    def _skill_resolver(self) -> Callable[[tuple[str, ...]], tuple[AgentSkill, ...]]:
+        """A skill-name resolver that scans at most once, however often it is called.
+
+        ``SkillsQueryService.inventory()`` rescans the skills store and every
+        installed harness directory, and may run a reconcile pass that writes — the
+        same reason the ledger above is loaded once per build. Resolving per agent
+        turned a single list request into one full skills scan per agent. The scan is
+        deferred to first use, so an inventory that references no skills still pays
+        nothing, and a failing scan is not retried once per row.
+        """
+        names: dict[str, str] | None = None
+
+        def resolve(skill_slugs: tuple[str, ...]) -> tuple[AgentSkill, ...]:
+            nonlocal names
+            if not skill_slugs:
+                return ()
+            if names is None:
+                names = self._load_skill_names()
+            return tuple(
+                AgentSkill(slug=slug, name=names.get(slug, slug)) for slug in skill_slugs
+            )
+
+        return resolve
+
     def _resolve_agent_skills(self, skill_slugs: tuple[str, ...]) -> tuple[AgentSkill, ...]:
-        if not skill_slugs:
-            return ()
-        skills_map: dict[str, str] = {}
-        if self.skills_queries is not None:
-            try:
-                inventory = self.skills_queries.inventory()
-                for entry in inventory.entries:
-                    if entry.kind == "managed" and entry.package_dir is not None:
-                        skills_map[entry.package_dir] = entry.name
-            except Exception:  # noqa: BLE001
-                pass
-        return tuple(
-            AgentSkill(slug=slug, name=skills_map.get(slug, slug))
-            for slug in skill_slugs
-        )
+        """Single-shot resolution, for the detail paths that look at one agent."""
+        return self._skill_resolver()(skill_slugs)
 
     def build(self) -> AgentInventory:
         # Repair first, then report: otherwise the matrix describes a state that is
@@ -89,6 +119,7 @@ class AgentInventoryService:
         # Read once per build, not per binding: the ledger is a single small file and
         # this runs on every list request.
         ledger_state = self.ledger.load()
+        resolve_skills = self._skill_resolver()
         tags_by_ref = (
             self.asset_tags.get_tags_for_family("agents")
             if self.asset_tags is not None
@@ -105,11 +136,15 @@ class AgentInventoryService:
                 ledger_state.get(agent.slug, {}),
                 issue_list,
                 tags=tuple(tags_by_ref.get(agent.slug, ())),
-                skills=self._resolve_agent_skills(agent.skills),
+                skills=resolve_skills(agent.skills),
             )
             for agent in managed
         ]
-        entries.extend(self._unmanaged_entries(targets, adapters, issue_list, tags_by_ref=tags_by_ref))
+        entries.extend(
+            self._unmanaged_entries(
+                targets, adapters, issue_list, tags_by_ref=tags_by_ref, resolve_skills=resolve_skills
+            )
+        )
         return AgentInventory(
             columns=targets,
             entries=tuple(entries),
@@ -432,9 +467,11 @@ class AgentInventoryService:
         adapters: dict[str, AgentHarnessAdapter],
         issues: list[AgentIssue],
         tags_by_ref: dict[str, list[str]] | None = None,
+        resolve_skills: Callable[[tuple[str, ...]], tuple[AgentSkill, ...]] | None = None,
     ) -> list[AgentEntry]:
         entries: list[AgentEntry] = []
         tags_map = tags_by_ref or {}
+        resolve = resolve_skills or self._skill_resolver()
         for target in targets:
             adapter = adapters[target.id]
             for path in adapter.unmanaged_paths():
@@ -446,6 +483,7 @@ class AgentInventoryService:
                         path,
                         issues,
                         tags=tuple(tags_map.get(ref, ())),
+                        resolve_skills=resolve,
                     )
                 )
             for path in adapter.orphaned_links():
@@ -467,8 +505,10 @@ class AgentInventoryService:
         path: Path,
         issues: list[AgentIssue],
         tags: tuple[str, ...] = (),
+        resolve_skills: Callable[[tuple[str, ...]], tuple[AgentSkill, ...]] | None = None,
     ) -> AgentEntry:
         slug = path.stem
+        resolve = resolve_skills or self._skill_resolver()
         skills: tuple[AgentSkill, ...] = ()
         try:
             if target.render_format == "codex_toml":
@@ -477,7 +517,7 @@ class AgentInventoryService:
             else:
                 parsed = parse_agent_file(path)
                 name, description = parsed.name, parsed.description
-                skills = self._resolve_agent_skills(parsed.skills)
+                skills = resolve(parsed.skills)
         except AgentParseError as error:
             issues.append(AgentIssue(name=f"{target.id}/{slug}", reason=str(error)))
             name, description = slug, ""

@@ -4,6 +4,7 @@ import re
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
@@ -857,3 +858,118 @@ class ContractKeyParityTests(unittest.TestCase):
         )
         agent = parse_agent_document(document, slug="a", path=Path("a.md"))
         self.assertEqual(agent.extra_metadata, ())
+
+
+class _CountingSkillsQueries:
+    """Stands in for SkillsQueryService, counting how often the inventory is scanned.
+
+    The real ``inventory()`` rescans the skills store and every installed harness
+    directory, and may run a reconcile pass that writes. Its cost is why the number
+    of calls per request matters.
+    """
+
+    def __init__(self, names: dict[str, str]) -> None:
+        self._names = names
+        self.calls = 0
+
+    def inventory(self):
+        self.calls += 1
+        entries = [
+            SimpleNamespace(kind="managed", package_dir=slug, name=name)
+            for slug, name in self._names.items()
+        ]
+        return SimpleNamespace(entries=entries)
+
+
+class AgentSkillResolutionTests(unittest.TestCase):
+    """Skill names are resolved once per build, not once per agent."""
+
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        root = Path(self._tmp.name)
+        self.store_root = root / "data" / "agents"
+        self.harness_dir = root / "home" / ".claude" / "agents"
+        self.store_root.mkdir(parents=True)
+        self.harness_dir.mkdir(parents=True)
+        self.target = AgentTarget(
+            id="claude",
+            label="Claude",
+            logo_key="claude",
+            root_path=self.harness_dir.parent,
+            output_dir=self.harness_dir,
+            file_glob="*.md",
+            render_format="markdown",
+            docs_url="",
+            installed=True,
+        )
+        self.store = AgentStore(self.store_root)
+        adapters = {"claude": AgentHarnessAdapter(self.target, self.store_root)}
+        self.snapshot = lambda: ((self.target,), adapters)
+        self.ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
+
+    def _write_agent(self, slug: str, skills: list[str]) -> None:
+        (self.store_root / f"{slug}.md").write_text(
+            render_agent_document(
+                name=slug,
+                description="d",
+                prompt="body",
+                skills=tuple(skills),
+                extra_metadata=(),
+            ),
+            encoding="utf-8",
+        )
+
+    def _service(self, queries) -> AgentInventoryService:
+        return AgentInventoryService(
+            self.store, self.snapshot, self.ledger, skills_queries=queries
+        )
+
+    def test_build_scans_the_skills_inventory_once_for_many_agents(self) -> None:
+        for index in range(5):
+            self._write_agent(f"agent-{index}", ["alpha"])
+        queries = _CountingSkillsQueries({"alpha": "Alpha Skill"})
+
+        inventory = self._service(queries).build()
+
+        self.assertEqual(
+            queries.calls,
+            1,
+            "the skills inventory must be scanned once per build, not once per agent",
+        )
+        names = {
+            skill.name for entry in inventory.entries for skill in entry.skills
+        }
+        self.assertEqual(names, {"Alpha Skill"})
+
+    def test_build_without_skill_references_never_scans(self) -> None:
+        self._write_agent("plain", [])
+        queries = _CountingSkillsQueries({"alpha": "Alpha Skill"})
+
+        self._service(queries).build()
+
+        self.assertEqual(queries.calls, 0, "an inventory with no skills must not scan")
+
+    def test_unresolvable_slug_falls_back_to_the_slug_itself(self) -> None:
+        self._write_agent("agent", ["ghost"])
+        queries = _CountingSkillsQueries({})
+
+        entry = next(e for e in self._service(queries).build().entries if e.ref == "agent")
+
+        self.assertEqual([(s.slug, s.name) for s in entry.skills], [("ghost", "ghost")])
+
+    def test_a_failing_skills_service_does_not_break_the_matrix(self) -> None:
+        self._write_agent("agent", ["alpha"])
+
+        class Broken:
+            calls = 0
+
+            def inventory(self):
+                Broken.calls += 1
+                raise RuntimeError("skills store unavailable")
+
+        broken = Broken()
+        entry = next(e for e in self._service(broken).build().entries if e.ref == "agent")
+
+        self.assertEqual([(s.slug, s.name) for s in entry.skills], [("alpha", "alpha")])
+        self.assertEqual(broken.calls, 1, "a failing scan must not be retried per agent")
