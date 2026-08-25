@@ -70,6 +70,12 @@ Still open from before, unchanged: dog-food tagging across the six family pages;
    labelled option** (`maximum — not a valid effort`), so the value survives until the
    user decides and the 400 is legible. Say so if you would rather it were lenient.
 
+   *Blast radius, checked rather than assumed: **no agent file on this box declares
+   `effort` at all** (swept `~/.harnessam/agents`, `.claude`, `.gemini/antigravity-cli`,
+   `.codex`, `.cursor`, `.hermes`, `.factory`, `.droid`, `opencode`). So nothing is
+   currently blocked, and this is a decision about future files rather than a live
+   obstruction.*
+
 5. **Skills detail shows the package contents** (`e9f96b5`, `14ad578`). The parser already
    enumerates every file to fingerprint a package, so the list rides on `InventoryEntry`
    rather than being re-walked — free, and identical across sightings because the revision
