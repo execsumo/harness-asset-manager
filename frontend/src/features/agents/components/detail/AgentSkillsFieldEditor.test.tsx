@@ -98,4 +98,17 @@ describe("AgentSkillsFieldEditor", () => {
 
     expect(onChange).toHaveBeenCalledWith(["code-review"]);
   });
+
+  it("offers every adopted skill on an empty input, not a silent first page", () => {
+    const many = Array.from({ length: 12 }, (_, index) => ({
+      slug: `skill-${index}`,
+      name: `Skill ${index}`,
+    }));
+    render(<AgentSkillsFieldEditor skills={[]} knownSkills={many} onChange={vi.fn()} />);
+
+    fireEvent.focus(screen.getByRole("combobox", { name: "Attach skill" }));
+
+    expect(screen.getAllByRole("option")).toHaveLength(many.length);
+    expect(screen.getByRole("option", { name: /Skill 11/ })).toBeInTheDocument();
+  });
 });

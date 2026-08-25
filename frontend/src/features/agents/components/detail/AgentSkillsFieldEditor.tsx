@@ -27,6 +27,7 @@ export function AgentSkillsFieldEditor({
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeOptionRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -38,15 +39,22 @@ export function AgentSkillsFieldEditor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // The list scrolls rather than truncating, so arrowing down can walk the active
+  // option below the fold unless we follow it.
+  useEffect(() => {
+    activeOptionRef.current?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, suggestOpen]);
+
   const normalizedExisting = new Set(skills.map((s) => s.toLowerCase()));
   const trimmed = inputVal.trim().toLowerCase();
 
+  // Every match, never a first page: a capped list looks complete and is not, and
+  // any cap tells the same lie further down. The dropdown scrolls instead.
   const suggestions = knownSkills
     .filter((s) => !normalizedExisting.has(s.slug.toLowerCase()))
     .filter((s) =>
       trimmed ? s.slug.toLowerCase().includes(trimmed) || s.name.toLowerCase().includes(trimmed) : true,
-    )
-    .slice(0, 8);
+    );
 
   const handleAdd = (slugOrName: string) => {
     const raw = slugOrName.trim();
@@ -161,6 +169,7 @@ export function AgentSkillsFieldEditor({
               {suggestions.map((s, idx) => (
                 <li
                   key={s.slug}
+                  ref={idx === activeIndex ? activeOptionRef : undefined}
                   className="agent-skills-editor__suggestion"
                   role="option"
                   aria-selected={idx === activeIndex}

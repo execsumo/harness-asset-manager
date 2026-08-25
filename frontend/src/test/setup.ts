@@ -25,3 +25,9 @@ if (typeof ResizeObserver === "undefined") {
 
   vi.stubGlobal("ResizeObserver", ResizeObserver);
 }
+
+// jsdom implements no layout, so it ships no `scrollIntoView`. Components that
+// keep a keyboard-selected option in view call it on every render.
+if (typeof Element.prototype.scrollIntoView !== "function") {
+  Element.prototype.scrollIntoView = () => {};
+}
