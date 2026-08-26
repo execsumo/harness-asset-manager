@@ -156,13 +156,8 @@ directory into this shape on startup).
 ```
 ~/.harnessam/ (macOS and Linux; explicit XDG overrides remain supported)
 ├── settings.json                       # Global settings, harness toggles, autoAdopt
-├── configs/                            # Canonical native harness config baselines & snapshots
-│   ├── claude/                         # .claude.json, settings.json
-│   ├── codex/                          # config.toml
-│   ├── agy/                            # mcp_config.json, settings.json, hooks.json
-│   ├── cursor/                         # mcp.json, hooks.json
-│   ├── opencode/                       # opencode.jsonc
-│   ├── hermes/                         # config.yaml
+├── configs/
+│   └── manifest.json                   # Portable harness preferences (synced)
 │   └── droid/                          # mcp.json
 ├── permissions/
 │   └── manifest.json                   # Denylist permissions manifest
@@ -186,11 +181,30 @@ directory into this shape on startup).
 Everything above is resolved from `data_dir` in `paths.py` — nothing hardcodes the
 directory name. Only `marketplace/` is safe to delete; it is a cache and rebuilds.
 
-### Native Config Snapshot Service
-HAM captures canonical baselines and timestamped snapshots of user-level native harness config files under `configs/<harness_id>/`.
-- **Triggers**: Pre-write (prior to HAM edits), External drift (detected via SHA-256 hash checks on startup), and Manual (`harnessam snapshot` CLI / Web UI).
-- **Safety**: SHA-256 deduplication avoids storage bloat; automatic secret redaction masks API keys and tokens prior to export.
-- **Atomic-Save Immunity**: Real files in native harness homes are preserved to prevent atomic `rename()` operations from severing file symlinks.
+### Configs family
+`ConfigsService` extracts portable *preferences* from each harness's user-level config into
+a single `configs/manifest.json`, which is synced rather than machine-local.
+
+- **Portability is a filter, not a list.** `configs/extraction.py` drops any key that is
+  owned by another family (declared per harness as `exclusion_keys` on its
+  `ConfigSubtreeBindingProfile` — one declaration, beside the binding it governs), looks
+  like a secret, or carries an absolute path. The secret and path checks **recurse into
+  nested values and mapping keys**, and a key failing on any branch is dropped whole: a
+  partially-copied structure restored over a working one is worse than not managing it.
+- **Restore merges; it never rewrites.** Only managed keys are written back, so unowned
+  content survives, and a restore of an unchanged capture is byte-identical. This is why
+  the manifest preserves the *insertion order* of preference values while sorting only its
+  own top-level structure — alphabetizing them would rewrite the user's file on every
+  restore.
+- **Formats that cannot round-trip refuse.** TOML and JSONC lose comments and layout
+  through a dump, so restore raises a 400 for them rather than reformatting a file HAM does
+  not own. Capture and diff still work.
+- **Automatic capture yields on divergence.** The manifest crosses machines and the family
+  keeps no local ledger, so `drift.classify_drift` has no baseline to arbitrate with. A
+  local file that differs from the manifest is left alone for explicit resolution instead
+  of being captured over another machine's edit.
+- Document loading and dumping is shared with the MCP adapters via
+  `application/config_documents.py` — one reader and one writer per format, not two.
 
 All file mutations use atomic writes (`atomic_write_text`) with flock file locks to ensure zero data corruption during concurrent operations.
 
@@ -216,7 +230,8 @@ synchronization tools. Three properties make that safe, all enforced in
    but are never adopted and never break scanning.
 
 On startup HAM seeds a default `.gitignore` into the store root (only if absent) suggesting
-the standard exclusions (`marketplace/`, journals, locks, runtime state, `configs/`). Intent
+the standard exclusions (`marketplace/`, journals, locks, runtime state, and `configs/*`
+except the portable `configs/manifest.json`). Intent
 travels with the synced store; placement (symlinks, rendered harness files) is recomputed
 locally per machine when assets are enabled. Secrets in MCP `env`/`headers` values and hook
 commands live in the manifests and therefore travel too — documented as a trust boundary,
