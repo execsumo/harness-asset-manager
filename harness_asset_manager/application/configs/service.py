@@ -72,21 +72,14 @@ class ConfigsService:
 
             record = manifest.configs.get(harness)
 
-            if not explicit:
-                # Automatic capture should only write if the manifest hasn't moved
-                # independently. But we do not have a local ledger to provide a baseline_sha256.
-                # I cannot use application.drift.classify_drift because it requires a
-                # baseline hash representing "what this machine last captured", which is not
-                # recorded anywhere locally for the Configs family.
-                # Without a local ledger, we cannot distinguish "the manifest was updated by
-                # another machine" from "this machine updated its local file".
-                # Therefore, automatic capture is skipped if we differ from the manifest,
-                # forcing the user to resolve manually (or use explicit=True).
-                if record and record.revision != local_hash:
-                    if record.preferences != local_prefs:
-                        # Conflict! Both sides moved or one side moved and we don't know which.
-                        # Leave manifest alone.
-                        continue
+            # The manifest is synced between machines, so an automatic capture that
+            # always wrote would make the last machine to start up the winner.
+            # ``drift.classify_drift`` cannot arbitrate here: it needs a baseline of
+            # what *this* machine last captured, and the family keeps no local ledger
+            # to hold one. So a divergence is left for the user to resolve explicitly
+            # rather than guessed at.
+            if not explicit and record and record.preferences != local_prefs:
+                continue
 
             new_record = ConfigRecord(
                 sourceFile=str(
@@ -100,15 +93,27 @@ class ConfigsService:
 
     def restore(self, harness: str) -> None:
         """Restore preferences from manifest to the local file."""
+        profile = self._get_binding_profile(harness)
+        if not profile:
+            raise MutationError(
+                f"{harness} is not a harness with a managed config.",
+                status=404,
+                code="unknown_harness",
+            )
+
+        # Reported rather than silently ignored: a caller asking to restore a
+        # harness that was never captured has nothing to restore, and answering
+        # "ok" would let a typo read as a successful write.
         manifest = self.store.load()
         record = manifest.configs.get(harness)
         if not record:
-            return
+            raise MutationError(
+                f"{harness} has no captured preferences to restore.",
+                status=404,
+                code="not_captured",
+            )
 
-        profile = self._get_binding_profile(harness)
-        if not profile:
-            return
-            
+
         if profile.file_format in {"toml", "jsonc"}:
             raise MutationError(
                 f"Cannot restore {profile.file_format} files without rewriting unowned content or stripping comments. Restore refused.",
@@ -146,10 +151,19 @@ class ConfigsService:
         return result
 
     def diff(self, harness: str) -> dict[str, Any]:
+        if self._get_binding_profile(harness) is None:
+            raise MutationError(
+                f"{harness} is not a harness with a managed config.",
+                status=404,
+                code="unknown_harness",
+            )
+
         manifest = self.store.load()
         record = manifest.configs.get(harness)
         local_prefs = self._extract_local(harness)
 
+        # A known harness that has never been captured is "unmanaged", which is a
+        # real state — distinct from the unknown name rejected above.
         if not record:
             return {"state": "unmanaged", "missing": [], "extra": [], "changed": []}
 
