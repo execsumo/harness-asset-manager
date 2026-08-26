@@ -68,10 +68,12 @@ describe("ConfigsPage", () => {
     
     // Check table headers and content
     expect(screen.getByText("Managed")).toBeTruthy();
-    expect(screen.getByText("Not managed")).toBeTruthy();
+    // cursor and opencode are both unmanaged here.
+    expect(screen.getAllByText("Not managed").length).toBe(2);
     
     expect(screen.getByText("2")).toBeTruthy();
-    expect(screen.getByText("0")).toBeTruthy();
+    // Two harnesses report zero keys, so assert on the count rather than identity.
+    expect(screen.getAllByText("0").length).toBe(2);
     
     expect(screen.getByText("drifted")).toBeTruthy();
     
@@ -118,7 +120,6 @@ describe("ConfigsPage", () => {
       expect(screen.getByRole("button", { name: /Enable/ })).toBeTruthy();
     });
   });
-});
 
   it("offers to stop managing a managed harness, and posts to disable", async () => {
     const calls: string[] = [];
