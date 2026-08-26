@@ -54,7 +54,6 @@ class ParserTests(unittest.TestCase):
             "permissions",
             "commands",
             "settings",
-            "snapshots",
             "refresh",
         ):
             self.assertEqual(normalize_argv([group, "list"])[0], group)
@@ -69,10 +68,6 @@ class ParserTests(unittest.TestCase):
         for command in ("serve", "start", "stop", "status"):
             args = build_parser().parse_args([command])
             self.assertIsNone(getattr(args, "handler", None), msg=command)
-
-    def test_snapshot_dispatches_through_the_asset_runner(self) -> None:
-        args = build_parser().parse_args(["snapshot"])
-        self.assertIsNotNone(getattr(args, "handler", None))
 
     def test_refresh_dispatches_through_the_asset_runner(self) -> None:
         args = build_parser().parse_args(["refresh"])
@@ -262,14 +257,6 @@ class SlashCommandTests(CliCommandTestCase):
         self.assertEqual(self.run_json("commands", "list")["commands"], [])
 
 
-class SnapshotCommandTests(CliCommandTestCase):
-    def test_capture_then_list(self) -> None:
-        code, out, err = self.run_cli("snapshot")
-        self.assertEqual(code, 0, msg=err)
-        self.assertIn("harness config snapshots", out)
-
-        payload = self.run_json("snapshots", "list")
-        self.assertIsInstance(payload["snapshots"], list)
 
 
 class SkillCommandTests(CliCommandTestCase):

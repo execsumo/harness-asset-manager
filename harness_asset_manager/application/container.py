@@ -24,7 +24,10 @@ from .agents import (
 from .asset_tags import AssetTagService, AssetTagStore
 from .cli_marketplace import CliMarketplaceCatalog
 from .config_auto_adopt import McpAutoAdoptService, ObservedConfigAutoAdoptService
-from .config_snapshots import ConfigSnapshotService
+from .configs.mutations import ConfigsMutationService
+from .configs.query import ConfigsQueryService
+from .configs.service import ConfigsService
+from .configs.store import ConfigStore
 from .hooks import (
     HooksMutationService,
     HooksQueryService,
@@ -124,7 +127,8 @@ class BackendContainer:
     agents_mutations: AgentMutationService
     agents_audit: AgentAuditLog
     agents_reconcile: AgentReconcileService
-    config_snapshots: ConfigSnapshotService
+    configs_queries: ConfigsQueryService
+    configs_mutations: ConfigsMutationService
     mutation_audit: MutationAuditJournal
     app_home: Path
 
@@ -184,7 +188,8 @@ runtime.json
 server.log
 audit.log
 *-audit.json*
-configs/
+configs/*
+!configs/manifest.json
 agents/conflicts/
 cache/
 tmp/
@@ -467,8 +472,6 @@ def build_backend_container(
         skills_mutations=skills_mutations,
     )
 
-    config_snapshots = ConfigSnapshotService(paths, context=harness_kernel.context)
-    config_snapshots.capture_all_external_changes()
 
     skills_auto_adopt = SkillsAutoAdoptService(
         read_models=skills_read_models,
@@ -525,7 +528,6 @@ def build_backend_container(
             *((target.output_dir, False) for target in resolve_agents_snapshot()[0]),
         )
     )
-    snapshots_tracker = MutationPathTracker(lambda: ((paths.configs_dir, True),))
     scaffold_tracker = MutationPathTracker(
         lambda: (
             (paths.skills_store_root, True),
@@ -607,13 +609,24 @@ def build_backend_container(
         asset_tags=asset_tags,
         skills_queries=skills_queries,
     )
-    audited_config_snapshots = AuditedMutationService(
-        config_snapshots,
-        family="config_snapshots",
-        methods={"capture_snapshot"},
+    configs_store = ConfigStore(paths.configs_dir / "manifest.json")
+    configs_service = ConfigsService(configs_store, harness_kernel)
+    configs_queries = ConfigsQueryService(configs_service)
+    configs_mutations_raw = ConfigsMutationService(configs_service)
+    configs_tracker = MutationPathTracker(
+        lambda: (
+            (paths.configs_dir, True),
+            *(
+                (binding.profile.resolve_config_path(harness_kernel.context), False)
+                for binding in harness_kernel.bindings_for_family("configs")
+            ),
+        )
+    )
+    audited_configs_mutations = AuditedMutationService(
+        configs_mutations_raw,
+        family="configs",
         journal=mutation_audit,
-        path_tracker=snapshots_tracker,
-        record_noop=False,
+        path_tracker=configs_tracker,
     )
     audited_scaffold = AuditedMutationService(
         scaffold_service,
@@ -666,7 +679,8 @@ def build_backend_container(
         agents_mutations=audited_agents_mutations,
         agents_audit=agents_audit,
         agents_reconcile=audited_agents_reconcile,
-        config_snapshots=audited_config_snapshots,
+        configs_queries=configs_queries,
+        configs_mutations=audited_configs_mutations,
         mutation_audit=mutation_audit,
         app_home=app_home,
     )

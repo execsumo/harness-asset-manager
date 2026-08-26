@@ -1,5 +1,5 @@
 import { fetchJson, postJson, putJson } from "../../../api/http";
-import type { ConfigSnapshotsResponse, SetHarnessSupportRequest, SettingsData } from "./types";
+import type { ConfigDiffResponse, ConfigsResponse, SetHarnessSupportRequest, SettingsData } from "./types";
 
 export async function fetchSettings(): Promise<SettingsData> {
   return fetchJson<SettingsData>("/settings");
@@ -34,11 +34,19 @@ export async function updateAutoAdoptHarnesses(
   );
 }
 
-export async function fetchConfigSnapshots(harness?: string): Promise<ConfigSnapshotsResponse> {
-  const url = harness ? `/config-snapshots?harness=${encodeURIComponent(harness)}` : "/config-snapshots";
-  return fetchJson<ConfigSnapshotsResponse>(url);
+export async function fetchConfigs(): Promise<ConfigsResponse> {
+  return fetchJson<ConfigsResponse>("/configs/");
 }
 
-export async function triggerConfigSnapshot(): Promise<{ ok: boolean; captured_count: number; captured: string[] }> {
-  return postJson<{ ok: boolean; captured_count: number; captured: string[] }>("/config-snapshots/trigger", {});
+export async function fetchConfigDiff(harness: string): Promise<ConfigDiffResponse> {
+  return fetchJson<ConfigDiffResponse>(`/configs/${encodeURIComponent(harness)}/diff`);
+}
+
+
+export async function captureConfigs(explicit: boolean = false): Promise<void> {
+  return postJson<void>(`/configs/capture?explicit=${explicit}`);
+}
+
+export async function restoreConfig(harness: string): Promise<void> {
+  return postJson<void>(`/configs/${encodeURIComponent(harness)}/restore`);
 }

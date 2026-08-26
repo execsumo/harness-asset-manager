@@ -4,16 +4,19 @@ export type SetHarnessSupportRequest = components["schemas"]["SetHarnessSupportR
 export type SettingsData = components["schemas"]["SettingsResponse"];
 export type SettingsHarness = components["schemas"]["SettingsHarnessResponse"];
 
-export interface ConfigSnapshotItem {
-  snapshot_id: string;
-  harness: string;
-  config_name: string;
-  timestamp: string;
-  trigger: "manual" | "external" | "pre_write";
-  sha256: string;
-  snapshot_path: string;
+/** One harness's captured preferences, as returned by `GET /api/configs/`. */
+export interface ConfigRecordResponse {
+  capturedAt: string;
+  revision: string;
+  preferences: Record<string, unknown>;
 }
 
-export interface ConfigSnapshotsResponse {
-  snapshots: ConfigSnapshotItem[];
+export type ConfigsResponse = Record<string, ConfigRecordResponse>;
+
+/** `GET /api/configs/{harness}/diff` — key-level comparison against the manifest. */
+export interface ConfigDiffResponse {
+  state: "managed" | "drifted" | "unmanaged";
+  missing: string[];
+  extra: string[];
+  changed: string[];
 }

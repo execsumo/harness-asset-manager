@@ -79,6 +79,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="claude",
         support_tier="core",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
+                file_format="json",
+                subtree_path=(),
+                exclusion_keys=frozenset(["permissions", "hooks", "mcpServers"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=CLAUDE_ROOT_ENV,
                 managed_default=lambda context: context.home / ".claude" / "skills",
@@ -130,6 +136,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="codex",
         support_tier="core",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".codex" / "config.toml",
+                file_format="toml",
+                subtree_path=(),
+                exclusion_keys=frozenset(["mcp_servers", "hooks", "permissions", "features"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=CODEX_ROOT_ENV,
                 managed_default=lambda context: context.home / ".agents" / "skills",
@@ -193,6 +205,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="agy",
         support_tier="core",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".gemini" / "antigravity-cli" / "settings.json",
+                file_format="json",
+                subtree_path=(),
+                exclusion_keys=frozenset(["permissions", "toolPermission"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=AGY_ROOT_ENV,
                 managed_default=lambda context: context.home / ".gemini" / "antigravity-cli" / "skills",
@@ -271,6 +289,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="cursor-agent",
         support_tier="core",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".cursor" / "cli-config.json",
+                file_format="json",
+                subtree_path=(),
+                exclusion_keys=frozenset(["permissions", "approvalMode"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=CURSOR_ROOT_ENV,
                 managed_default=lambda context: context.home / ".cursor" / "skills",
@@ -324,6 +348,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="opencode",
         support_tier="best_effort",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".opencode" / "opencode.jsonc",
+                file_format="jsonc",
+                subtree_path=(),
+                exclusion_keys=frozenset(["mcpServers", "hooks"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=OPENCODE_ROOT_ENV,
                 managed_default=lambda context: context.xdg_config_home / "opencode" / "skills",
@@ -422,6 +452,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="hermes",
         support_tier="best_effort",
         bindings={
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=_hermes_config_path,
+                file_format="yaml",
+                subtree_path=(),
+                exclusion_keys=frozenset(["mcp_servers"]),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=HERMES_ROOT_ENV,
                 managed_default=_hermes_skills_root,

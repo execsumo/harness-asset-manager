@@ -39,7 +39,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 | **Slash Commands** | Maintain a single reusable prompt library and sync rendered command files into supported harness formats. |
 | **Hooks** | Configure normalized event and tool category hook records, synced into native harness settings with drift detection and review for unmanaged entries. |
 | **Permissions** | Enforce strict denylists across supported harnesses (Claude Code, Codex, Antigravity, and Cursor) to restrict shell commands, file paths, web domains, and MCP tools in a unified view. |
-| **Snapshots & Audit** | Capture native config snapshots across all 7 supported harnesses with automatic drift detection, SHA-256 deduplication, and secret redaction, backed by an append-only JSON Lines audit journal. |
+| **Configs & Audit** | Carry harness preferences between machines in one portable manifest that excludes secrets, absolute paths, and other families' keys — backed by an append-only JSON Lines audit journal. |
 | **Marketplace** | Discover and preview Skills, MCP servers, and external CLI tools from marketplace hubs. |
 | **Headless / CLI** | Drive all features headlessly via CLI commands with `--json` output—ideal for VPS environments, containers, or Linux sandboxes with no browser required. |
 
@@ -191,8 +191,8 @@ harnessam permissions create --id no-force-push \
 # Marketplace Installation
 harnessam mcp install exa
 
-# Snapshots & Settings
-harnessam snapshots capture
+# Configs & Settings
+harnessam configs capture
 harnessam settings show
 ```
 
@@ -477,9 +477,30 @@ stable permission spec ID, so a rule can be starred, grouped with free-form tags
 
 Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Agent reads an entirely different `permissions.json` that is allowlist-only, with no deny/enforcement surface, so it stays permanently out of scope for this model.
 
-### Native Config Snapshots
+### Configs
 
-Capture and back up Native Config Snapshots across all 7 supported harnesses (`~/.harnessam/configs/`) with automatic drift detection, SHA-256 deduplication, secret redaction, Web UI controls, and `harnessam snapshot` CLI support. Droid snapshots cover the selected global MCP file; project-level `.factory/` files remain outside HAM's managed boundary.
+Carry your harness *preferences* — model, theme, effort, and the rest — between machines.
+Harness Asset Manager extracts them from each harness's user-level config into one portable
+manifest at `~/.harnessam/configs/manifest.json`, which syncs with the store. Managed from
+Settings > Configuration Preferences, or `harnessam configs list|capture|restore|diff`.
+
+A key is carried only when it is genuinely portable. Anything that is owned by another
+family (`permissions`, `hooks`, `mcpServers`, …), looks like a secret, or contains an
+absolute path is left behind — and those two checks recurse, so a credential nested deep
+inside a provider map is dropped along with the key holding it. The result is that the
+manifest is safe to commit next to the rest of your dotfiles.
+
+**Restore is a merge, never a rewrite.** Only the managed preference keys are written back;
+every other key in the file survives untouched — comments and formatting included, in every
+supported format — and restoring an unchanged capture leaves the file byte-for-byte
+identical.
+
+Automatic capture is deliberately conservative: because the manifest travels between
+machines, a local file that has diverged from the manifest is left for you to resolve
+explicitly rather than being captured over the top of another machine's edit.
+
+Droid/Factory has no entry — its only config file is MCP-owned, which the MCP family
+already manages.
 
 ### Mutation Audit Journal
 
@@ -620,8 +641,10 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
 | `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
 | `refresh [--sync-all]` | Run inventory pass; `--sync-all` enforces auto-adoption & drift reconciliation across all asset families |
-| `snapshots list [--harness <h>]` | Captured native config snapshots |
-| `snapshots capture` / `snapshot` | Capture a snapshot of every native config |
+| `configs list` | Captured portable preferences per harness |
+| `configs capture` | Extract preferences from every harness config into the manifest |
+| `configs diff <harness>` | Compare a harness's live config against the manifest |
+| `configs restore <harness>` | Merge managed preferences back into the live config |
 | `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
 
 ### Scripting Guidelines
@@ -715,7 +738,7 @@ HAM automatically creates a default `.gitignore` inside `~/.harnessam` on first 
   - `runtime.json` (Local server PID and port info)
   - `server.log` (Local daemon log)
   - `*-audit.json*`, `audit.log` (Machine-local activity journals)
-  - `configs/` (Native config snapshots of *this* machine)
+  - `configs/*` except `configs/manifest.json` (the portable preference manifest **is** synced; anything else under `configs/` is machine-local)
   - `agents/conflicts/` (Local reconciliation history)
   - `cache/`, `tmp/`, `marketplace/` (Ephemeral downloads and caches)
   - `.sync-conflict-*`, `*.sync-conflict-*`, `.syncthing.*` (Sync-tool conflict artifacts)

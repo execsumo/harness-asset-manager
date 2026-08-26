@@ -7191,24 +7191,101 @@
         ]
       }
     },
-    "/api/config-snapshots": {
+    "/api/configs/": {
       "get": {
-        "operationId": "list_snapshots_api_config_snapshots_get",
+        "operationId": "list_configs_api_configs__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Configs Api Configs  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "List Configs",
+        "tags": [
+          "configs"
+        ]
+      }
+    },
+    "/api/configs/capture": {
+      "post": {
+        "operationId": "capture_configs_api_configs_capture_post",
         "parameters": [
           {
             "in": "query",
-            "name": "harness",
+            "name": "explicit",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Harness"
+              "default": false,
+              "title": "Explicit",
+              "type": "boolean"
             }
           }
         ],
@@ -7218,7 +7295,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response List Snapshots Api Config Snapshots Get",
+                  "title": "Response Capture Configs Api Configs Capture Post",
                   "type": "object"
                 }
               }
@@ -7286,22 +7363,33 @@
             "description": "Service Unavailable"
           }
         },
-        "summary": "List Snapshots",
+        "summary": "Capture Configs",
         "tags": [
-          "config-snapshots"
+          "configs"
         ]
       }
     },
-    "/api/config-snapshots/trigger": {
-      "post": {
-        "operationId": "trigger_manual_snapshot_api_config_snapshots_trigger_post",
+    "/api/configs/{harness}/diff": {
+      "get": {
+        "operationId": "get_diff_api_configs__harness__diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "harness",
+            "required": true,
+            "schema": {
+              "title": "Harness",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Trigger Manual Snapshot Api Config Snapshots Trigger Post",
+                  "title": "Response Get Diff Api Configs  Harness  Diff Get",
                   "type": "object"
                 }
               }
@@ -7369,9 +7457,103 @@
             "description": "Service Unavailable"
           }
         },
-        "summary": "Trigger Manual Snapshot",
+        "summary": "Get Diff",
         "tags": [
-          "config-snapshots"
+          "configs"
+        ]
+      }
+    },
+    "/api/configs/{harness}/restore": {
+      "post": {
+        "operationId": "restore_config_api_configs__harness__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "harness",
+            "required": true,
+            "schema": {
+              "title": "Harness",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Restore Config Api Configs  Harness  Restore Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Restore Config",
+        "tags": [
+          "configs"
         ]
       }
     },

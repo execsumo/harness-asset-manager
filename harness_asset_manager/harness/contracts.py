@@ -72,6 +72,7 @@ class ConfigSubtreeBindingProfile:
     #: parse/serialize pair for each of these. Pinned by ``ConfigFileFormatParityTests``.
     file_format: Literal["json", "jsonc", "toml", "yaml"] = "json"
     subtree_path: SubtreePath = ()
+    exclusion_keys: frozenset[str] = frozenset()
     discovery_subtree_path_resolvers: tuple[SubtreePathResolver, ...] = ()
     codec: str = "default"
     capability_probe: str | None = None

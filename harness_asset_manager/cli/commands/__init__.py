@@ -12,6 +12,7 @@ import argparse
 
 from . import (
     agents,
+    configs,
     hooks,
     mcp,
     permissions,
@@ -19,7 +20,6 @@ from . import (
     settings,
     skills,
     slash_commands,
-    snapshots,
 )
 
 # ``normalize_argv`` prepends ``serve`` to anything it does not recognize as a command,
@@ -29,6 +29,7 @@ GROUP_NAMES = frozenset(
     {
         "agents",
         "commands",
+        "configs",
         "health",
         "hooks",
         "mcp",
@@ -36,11 +37,9 @@ GROUP_NAMES = frozenset(
         "refresh",
         "settings",
         "skills",
-        "snapshots",
     }
 )
 
-_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, snapshots, refresh)
 
 
 def register(subparsers, common: argparse.ArgumentParser) -> None:
@@ -49,3 +48,4 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
 
 
 __all__ = ["GROUP_NAMES", "register"]
+_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)
