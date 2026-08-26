@@ -1,34 +1,57 @@
 
+import json
 import unittest
 
 from tests.support.app_harness import AppTestHarness
+from tests.support.fake_home import FakeHomeSpec
 
+
+def seed_claude_config(spec: FakeHomeSpec) -> None:
+    claude_dir = spec.home / ".claude"
+    claude_dir.mkdir(parents=True, exist_ok=True)
+    cfg = claude_dir / "settings.json"
+    cfg.write_text(json.dumps({"theme": "dark", "model": "claude-3-5-sonnet-20241022", "mcpServers": {"test": {}}}))
 
 class ConfigsApiTests(unittest.TestCase):
     def test_configs_round_trip(self) -> None:
-        with AppTestHarness() as harness:
-            # It starts unmanaged
-            diff_res = harness.get_json("/api/configs/droid/diff")
+        with AppTestHarness(fixture_factory=seed_claude_config) as harness:
+            # Starts unmanaged
+            diff_res = harness.get_json("/api/configs/claude/diff")
             self.assertEqual(diff_res["state"], "unmanaged")
             
-            # Put something in the local harness file
-            # Factory harness config path
-            # Wait, how to find the path? It's not exposed easily, we just write to the file if we know it.
-            # But the configs family works with the real manifest. Let's just capture.
-            # We can mock it by setting up a dummy file? No, just capture.
+            # Capture
             harness.post_json("/api/configs/capture?explicit=true")
             
             # Now list
             data = harness.get_json("/api/configs/")
+            self.assertIn("claude", data)
             
-            # It should exist, at least for some harness.
-            # Wait, AppTestHarness sets up harnesses.
-            # 'droid' might be one.
             # Diff should now be managed
-            if "droid" in data:
-                diff_res = harness.get_json("/api/configs/droid/diff")
-                self.assertEqual(diff_res["state"], "managed")
-                
+            diff_res = harness.get_json("/api/configs/claude/diff")
+            self.assertEqual(diff_res["state"], "managed")
+            
+            # Mutate local file
+            cfg = harness.spec.home / ".claude" / "settings.json"
+            cfg.write_text(json.dumps({"theme": "light", "mcpServers": {"test": {}}}))
+            
+            # Diff should be drifted
+            diff_res = harness.get_json("/api/configs/claude/diff")
+            self.assertEqual(diff_res["state"], "drifted")
+            
             # Restore
-            if "droid" in data:
-                harness.post_json("/api/configs/droid/restore")
+            harness.post_json("/api/configs/claude/restore")
+            
+            # Check restored content
+            restored = json.loads(cfg.read_text())
+            self.assertEqual(restored["theme"], "dark")
+            
+            # Refusal test for toml
+            # Create codex config
+            codex_dir = harness.spec.home / ".codex"
+            codex_dir.mkdir(exist_ok=True)
+            codex_cfg = codex_dir / "config.toml"
+            codex_cfg.write_text('theme = "dark"')
+            
+            harness.post_json("/api/configs/capture?explicit=true")
+            res = harness.post_json("/api/configs/codex/restore", expected_status=400)
+            self.assertIn("Cannot restore", res["error"])

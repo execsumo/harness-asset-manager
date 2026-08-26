@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from harness_asset_manager.application.config_documents import (
@@ -27,23 +26,13 @@ class ConfigsService:
         self.kernel = kernel
 
     def _hash_prefs(self, prefs: dict[str, Any]) -> str:
-        return hashlib.sha256(json.dumps(prefs, sort_keys=True).encode("utf-8")).hexdigest()
+        return hashlib.sha256(
+            json.dumps(prefs, sort_keys=True).encode("utf-8")
+        ).hexdigest()
 
-    def _get_harness_config_path(self, harness_name: str) -> Path | None:
-        bindings = self.kernel.bindings_for_family("configs")
-        for binding in bindings:
-            if binding.definition.harness == harness_name:
-                if isinstance(binding.profile, ConfigSubtreeBindingProfile):
-                    return binding.profile.resolve_config_path(self.kernel.context)
-        # fallback to looking at all harnesses
-        for harness in self.kernel.harnesses():
-            if harness.name == harness_name:
-                # If there's no configs binding, maybe it has an mcp binding we can steal from?
-                # Actually, Configs family is independent.
-                pass
-        return None
-
-    def _get_binding_profile(self, harness_name: str) -> ConfigSubtreeBindingProfile | None:
+    def _get_binding_profile(
+        self, harness_name: str
+    ) -> ConfigSubtreeBindingProfile | None:
         bindings = self.kernel.bindings_for_family("configs")
         for binding in bindings:
             if binding.definition.harness == harness_name:
@@ -63,7 +52,13 @@ class ConfigsService:
         # We extract from the top-level document.
         home_dir = str(self.kernel.context.home)
         definition = self.kernel.definition(harness_name)
-        family_owned_keys = {b.subtree_path[0] for family, b in definition.bindings.items() if getattr(b, 'subtree_path', None) and family != 'configs'} if definition else set()
+        family_owned_keys = (
+            definition.bindings["configs"].exclusion_keys
+            if definition
+            and "configs" in definition.bindings
+            and hasattr(definition.bindings["configs"], "exclusion_keys")
+            else frozenset()
+        )
         return extract_preferences(doc, family_owned_keys, home_dir)
 
     def capture(self, explicit: bool = False) -> None:
@@ -73,30 +68,32 @@ class ConfigsService:
             harness = binding.definition.harness
             local_prefs = self._extract_local(harness)
             local_hash = self._hash_prefs(local_prefs)
-            
+
             record = manifest.configs.get(harness)
-            
+
             if not explicit:
                 # Automatic capture should only write if the manifest hasn't moved
                 # independently. But we do not have a local ledger to provide a baseline_sha256.
-                # I cannot use application.drift.classify_drift because it requires a 
-                # baseline hash representing "what this machine last captured", which is not 
-                # recorded anywhere locally for the Configs family. 
-                # Without a local ledger, we cannot distinguish "the manifest was updated by 
-                # another machine" from "this machine updated its local file". 
-                # Therefore, automatic capture is skipped if we differ from the manifest, 
+                # I cannot use application.drift.classify_drift because it requires a
+                # baseline hash representing "what this machine last captured", which is not
+                # recorded anywhere locally for the Configs family.
+                # Without a local ledger, we cannot distinguish "the manifest was updated by
+                # another machine" from "this machine updated its local file".
+                # Therefore, automatic capture is skipped if we differ from the manifest,
                 # forcing the user to resolve manually (or use explicit=True).
                 if record and record.revision != local_hash:
                     if record.preferences != local_prefs:
                         # Conflict! Both sides moved or one side moved and we don't know which.
                         # Leave manifest alone.
                         continue
-                    
+
             new_record = ConfigRecord(
-                sourceFile=str(binding.profile.resolve_config_path(self.kernel.context)),
+                sourceFile=str(
+                    binding.profile.resolve_config_path(self.kernel.context)
+                ),
                 preferences=local_prefs,
                 capturedAt=datetime.now(timezone.utc).isoformat(),
-                revision=local_hash
+                revision=local_hash,
             )
             self.store.write_config(harness, new_record)
 
@@ -106,24 +103,31 @@ class ConfigsService:
         record = manifest.configs.get(harness)
         if not record:
             return
-            
+
         profile = self._get_binding_profile(harness)
         if not profile:
             return
             
+        if profile.file_format in {"toml", "jsonc"}:
+            raise ValueError(f"Cannot restore {profile.file_format} files without rewriting unowned content or stripping comments. Restore refused.")
+
         path = profile.resolve_config_path(self.kernel.context)
-        doc = load_document(path, profile.file_format, harness) if path.is_file() else {}
-        
+        doc = (
+            load_document(path, profile.file_format, harness) if path.is_file() else {}
+        )
+
         # Merge record.preferences into doc
         # We only overwrite keys that are in the preferences.
         for k, v in record.preferences.items():
             doc[k] = v
-            
+
         # Write back
         path.parent.mkdir(parents=True, exist_ok=True)
         lock_path = path.with_suffix(path.suffix + ".lock")
         with file_lock(lock_path):
-            atomic_write_text(path, dump_document(doc, profile.file_format), follow_symlinks=True)
+            atomic_write_text(
+                path, dump_document(doc, profile.file_format), follow_symlinks=True
+            )
 
     def list(self) -> dict[str, Any]:
         manifest = self.store.load()
@@ -132,7 +136,7 @@ class ConfigsService:
             result[harness] = {
                 "capturedAt": record.capturedAt,
                 "revision": record.revision,
-                "preferences": record.preferences
+                "preferences": record.preferences,
             }
         return result
 
@@ -140,23 +144,24 @@ class ConfigsService:
         manifest = self.store.load()
         record = manifest.configs.get(harness)
         local_prefs = self._extract_local(harness)
-        
+
         if not record:
             return {"state": "unmanaged", "missing": [], "extra": [], "changed": []}
-            
+
         if local_prefs == record.preferences:
             return {"state": "managed", "missing": [], "extra": [], "changed": []}
-            
+
         missing = sorted(set(record.preferences) - set(local_prefs))
         extra = sorted(set(local_prefs) - set(record.preferences))
         changed = sorted(
-            k for k in set(record.preferences) & set(local_prefs)
+            k
+            for k in set(record.preferences) & set(local_prefs)
             if record.preferences[k] != local_prefs[k]
         )
-        
+
         return {
             "state": "drifted",
             "missing": missing,
             "extra": extra,
-            "changed": changed
+            "changed": changed,
         }

@@ -5,6 +5,7 @@ from typing import Any
 
 from .redaction import API_KEY_PREFIX_PATTERN
 
+
 def is_secret_key(key: str) -> bool:
     pattern = re.compile(r'(?i)([a-z0-9_-]*(?:api[_-]?key|secret|token|bearer|password|credentials|auth|private[_-]?key))')
     return bool(pattern.search(key))

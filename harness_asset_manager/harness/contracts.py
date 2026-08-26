@@ -70,6 +70,7 @@ class ConfigSubtreeBindingProfile:
     source_install_config_path_resolvers: tuple[PathResolver, ...] = ()
     file_format: Literal["json", "jsonc", "toml", "yaml"] = "json"
     subtree_path: SubtreePath = ()
+    exclusion_keys: frozenset[str] = frozenset()
     discovery_subtree_path_resolvers: tuple[SubtreePathResolver, ...] = ()
     codec: str = "default"
     capability_probe: str | None = None

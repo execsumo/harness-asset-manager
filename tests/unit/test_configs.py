@@ -1,12 +1,12 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
 from harness_asset_manager.application.configs.extraction import extract_preferences
-from harness_asset_manager.application.configs.store import ConfigStore
 from harness_asset_manager.application.configs.model import ConfigRecord
 from harness_asset_manager.application.configs.service import ConfigsService
-from harness_asset_manager.harness.contracts import HarnessDefinition, ConfigSubtreeBindingProfile
-from harness_asset_manager.harness.kernel import HarnessKernelService
+from harness_asset_manager.application.configs.store import ConfigStore
+
 
 class ConfigsTests(unittest.TestCase):
     def test_extraction_filters(self):
@@ -55,11 +55,9 @@ class ConfigsTests(unittest.TestCase):
 
 
     def test_restore_preserving_unowned_keys(self):
-        from harness_asset_manager.application.configs.service import ConfigsService
-        from harness_asset_manager.application.config_documents import load_document, dump_document
-        from unittest.mock import MagicMock
-        from pathlib import Path
         import json
+        from pathlib import Path
+        from unittest.mock import MagicMock
         with TemporaryDirectory() as tmp:
             p = Path(tmp) / "cfg.json"
             p.write_text('{"unowned": 1, "pref1": 2}')
@@ -87,7 +85,6 @@ class ConfigsTests(unittest.TestCase):
             self.assertEqual(res["newpref"], 4)
 
     def test_two_sided_change_case(self):
-        from harness_asset_manager.application.configs.service import ConfigsService
         from unittest.mock import MagicMock
         
         store = MagicMock()
