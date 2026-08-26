@@ -130,12 +130,12 @@ The merge took `origin/main`'s `mcp/adapters.py` wholesale.
 
 ### Validation
 
-Full gate, re-run independently on the final tree:
+Full gate, re-run independently on the **merged** tree (after `origin/main` came in):
 
 ```
 ruff            clean
-pyright         0 errors, 234 warnings
-backend         640 unit + 236 integration OK, 81% coverage
+pyright         0 errors, 233 warnings
+backend         682 unit + 236 integration OK, 82% coverage
 lint:frontend   0 errors, 11 warnings (all pre-existing exhaustive-deps)
 typecheck       clean
 codegen:check   clean
@@ -148,9 +148,19 @@ functions 61.90 → 61.97, lines 64.50 → 64.60).
 
 Live pressure test on a second instance (`:8123`, real store, `homeDir: /home/dev`);
 `:8000` was never restarted onto unreviewed code. All four real configs were checksummed
-before and after and are **byte-identical**. Confirmed end to end: capture → mutate
-`theme` → `diff` names exactly `changed: ["theme"]` → restore → `managed`, with the whole
-file byte-identical to its baseline. Capture+restore with no edits is a true no-op.
+before and after and are **byte-identical**; the 72 abandoned snapshot files were not
+touched.
+
+Run against both formats, end to end — capture → mutate → `diff` names exactly the changed
+key → restore → `managed`, with the whole file byte-identical to its baseline afterwards:
+
+- **JSON**, `~/.claude/settings.json`, `theme`.
+- **TOML**, `~/.codex/config.toml`, `model_reasoning_effort` — the case that was refused
+  before the merge. The 13 `[projects."/home/…"]` tables and the `[hooks.state]` trusted
+  hashes survive the write untouched.
+
+Capture+restore with no edits is a true no-op in both. Re-audited the post-merge manifest:
+0 `api_key`, 0 absolute paths, 0 family-owned keys.
 
 Every behaviour change here ships with a test **verified red first** — including the
 ordering test (`z_key` before `a_key`, which fails under any alphabetizing writer) and the
