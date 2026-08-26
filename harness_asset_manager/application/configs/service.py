@@ -3,13 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from harness_asset_manager.application.config_documents import (
-    dump_document,
-    load_document,
-)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.config_document import (
+    ConfigDocumentError,
+    dump_config_document,
+    load_config_document,
+)
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import (
     ConfigSubtreeBindingProfile,
@@ -48,7 +50,7 @@ class ConfigsService:
         path = profile.resolve_config_path(self.kernel.context)
         if not path.is_file():
             return {}
-        doc = load_document(path, profile.file_format, harness_name)
+        doc = _read(path, profile.file_format, harness_name)
         # The Configs family targets the whole file (unlike MCP which targets a subtree).
         # We extract from the top-level document.
         home_dir = str(self.kernel.context.home)
@@ -113,30 +115,21 @@ class ConfigsService:
                 code="not_captured",
             )
 
-
-        if profile.file_format in {"toml", "jsonc"}:
-            raise MutationError(
-                f"Cannot restore {profile.file_format} files without rewriting unowned content or stripping comments. Restore refused.",
-                status=400,
-                code="format_refused"
-            )
-
+        # Every format round-trips through ``config_document``, which re-emits the
+        # regions it was not asked to change byte-for-byte — comments included. So a
+        # restore only ever rewrites the managed preference keys, whatever the format.
         path = profile.resolve_config_path(self.kernel.context)
-        doc = (
-            load_document(path, profile.file_format, harness) if path.is_file() else {}
-        )
+        doc = _read(path, profile.file_format, harness)
+        for key, value in record.preferences.items():
+            doc[key] = value
 
-        # Merge record.preferences into doc
-        # We only overwrite keys that are in the preferences.
-        for k, v in record.preferences.items():
-            doc[k] = v
-
-        # Write back
         path.parent.mkdir(parents=True, exist_ok=True)
         lock_path = path.with_suffix(path.suffix + ".lock")
         with file_lock(lock_path):
             atomic_write_text(
-                path, dump_document(doc, profile.file_format), follow_symlinks=True
+                path,
+                dump_config_document(doc, file_format=profile.file_format),
+                follow_symlinks=True,
             )
 
     def list(self) -> dict[str, Any]:
@@ -184,3 +177,17 @@ class ConfigsService:
             "extra": extra,
             "changed": changed,
         }
+
+
+def _read(path: Path, file_format: str, harness: str) -> dict[str, Any]:
+    """The harness's config as a document that remembers how to re-emit itself.
+
+    A missing file is an empty document rather than an error: capture reports no
+    preferences, and restore writes the file the harness has not created yet.
+    """
+    if not path.is_file():
+        return {}
+    try:
+        return load_config_document(path.read_text(encoding="utf-8"), file_format=file_format)
+    except ConfigDocumentError as error:
+        raise MutationError(f"{harness} config file is {error}", status=409) from error

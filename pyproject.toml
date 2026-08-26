@@ -20,6 +20,7 @@ classifiers = [
 dependencies = [
   "fastapi>=0.135,<0.142",
   "tomli-w>=1.2,<2",
+  "tomlkit>=0.13,<1",
   "ruamel.yaml>=0.18,<0.20",
   "uvicorn>=0.44,<0.53",
   "certifi>=2024.8.30,<2027",

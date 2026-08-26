@@ -491,11 +491,9 @@ inside a provider map is dropped along with the key holding it. The result is th
 manifest is safe to commit next to the rest of your dotfiles.
 
 **Restore is a merge, never a rewrite.** Only the managed preference keys are written back;
-every other key in the file survives untouched, and restoring an unchanged capture leaves
-the file byte-for-byte identical. Where a format cannot be written without reformatting
-content Harness Asset Manager does not own — TOML and JSONC, whose comments and layout do
-not survive a dump — **restore refuses** rather than quietly rewriting the file. Capture and
-diff still work for those harnesses.
+every other key in the file survives untouched — comments and formatting included, in every
+supported format — and restoring an unchanged capture leaves the file byte-for-byte
+identical.
 
 Automatic capture is deliberately conservative: because the manifest travels between
 machines, a local file that has diverged from the manifest is left for you to resolve
@@ -646,7 +644,7 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `configs list` | Captured portable preferences per harness |
 | `configs capture` | Extract preferences from every harness config into the manifest |
 | `configs diff <harness>` | Compare a harness's live config against the manifest |
-| `configs restore <harness>` | Merge managed preferences back into the live config (refused for TOML/JSONC) |
+| `configs restore <harness>` | Merge managed preferences back into the live config |
 | `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
 
 ### Scripting Guidelines

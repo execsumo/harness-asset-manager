@@ -55,16 +55,23 @@ class ConfigsApiTests(unittest.TestCase):
             restored_content = cfg.read_text()
             self.assertEqual(restored_content, cfg_content, "Capture-restore should preserve original key ordering exactly")
             
-            # Refusal test for toml
-            # Create codex config
+            # TOML restores through the same document layer, so a comment on an
+            # unowned key has to survive a write aimed at a managed one.
             codex_dir = harness.spec.home / ".codex"
             codex_dir.mkdir(exist_ok=True)
             codex_cfg = codex_dir / "config.toml"
-            codex_cfg.write_text('theme = "dark"')
-            
+            codex_content = (
+                '# kept verbatim\n'
+                'model = "gpt-5"\n'
+                '\n'
+                '[projects."/machine/local/path"]\n'
+                'trust_level = "trusted"  # unowned, must not be reformatted\n'
+            )
+            codex_cfg.write_text(codex_content)
+
             harness.post_json("/api/configs/capture?explicit=true")
-            res = harness.post_json("/api/configs/codex/restore", expected_status=400)
-            self.assertIn("Cannot restore", res["error"])
+            harness.post_json("/api/configs/codex/restore")
+            self.assertEqual(codex_cfg.read_text(), codex_content)
 
     def test_unknown_harness_is_reported_not_answered_ok(self) -> None:
         """A typo must not read as a successful restore of nothing."""

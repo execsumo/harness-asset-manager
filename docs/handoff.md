@@ -2,6 +2,7 @@
 
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
+
 ## 2026-08-26 — Configs asset family shipped (replaces Native Config Snapshots)
 
 ### Running state
@@ -80,10 +81,11 @@ positives worth knowing about: a deny-*pattern* string mentioning `.aws/credenti
    `sort_keys=True`, so preference *values* came back alphabetized and restore wrote that
    ordering into the user's file. The manifest now sorts only its own top-level structure
    and preserves insertion order inside preferences.
-4. **TOML restore rewrote the whole file.** `~/.codex/config.toml` round-trips
+4. **TOML restore rewrote the whole file.** `~/.codex/config.toml` round-tripped
    1278 → 1274 bytes, not identical — it would have reformatted the 13 `[projects.…]`
-   tables and the `[hooks.state]` hashes to change one preference. TOML and JSONC now
-   **refuse** restore with a 400 rather than reformatting unowned content.
+   tables and the `[hooks.state]` hashes to change one preference. This was first fixed
+   by **refusing** TOML and JSONC restores; see "Superseded by `main`" below for what
+   replaced that.
 5. **An unknown harness answered `200 {"status":"ok"}`.** A typo read as a successful
    restore of nothing. Now 404 `unknown_harness`, kept distinct from `not_captured` —
    and from `diff`'s legitimate `unmanaged` state for a known-but-uncaptured harness.
@@ -93,10 +95,27 @@ positives worth knowing about: a deny-*pattern* string mentioning `.aws/credenti
    9 KB single line on this store — and read `args.json` when the shared parent parser
    names it `json_output`, so **every subcommand raised AttributeError on `--json`**.
 
-### Deliberately not done
+### Superseded by `main` during review — read this before judging the design
 
-- **No comment-preserving TOML/JSONC writer.** Refusing is the honest answer; building
-  one is a separate decision.
+Mid-review, `origin/main` landed `00d00bd` ("stop destroying comments in harness config
+files", #49), which adds `harness_asset_manager/config_document.py`: comment- and
+format-preserving round-trips for TOML (tomlkit) and JSONC (span tree), sharing one
+reader/writer across MCP, hooks and permissions.
+
+That is the same problem this family hit, solved better and one layer down, so **two
+pieces of work here were deleted rather than merged**:
+
+- `application/config_documents.py` — the extraction lifted out of `mcp/adapters.py` — is
+  gone. `ConfigsService` uses `config_document` like every other family.
+- **The TOML/JSONC restore refusal is gone.** It existed only because a dump reformatted
+  the file; the dump no longer does. Restore now works for every format, and the test
+  that pinned the 400 was rewritten to pin the stronger property: a TOML restore aimed at
+  a managed key leaves a comment on an unowned `[projects."…"]` table byte-for-byte
+  intact. `tomlkit` is a new runtime dependency, declared upstream in `requirements.txt`.
+
+The merge took `origin/main`'s `mcp/adapters.py` wholesale.
+
+### Deliberately not done
 - **`drift.classify_drift` is not used.** It needs a baseline of what *this machine* last
   captured, and the family keeps no local ledger. Rather than invent one, automatic
   capture **yields** whenever the local config has diverged from the manifest, leaving it
@@ -147,6 +166,108 @@ ordering test (`z_key` before `a_key`, which fails under any alphabetizing write
   Their paths come from the plan's table and are covered only by fixtures.
 
 ---
+
+## 2026-08-25 (config round-trips) — lossless harness-config writes
+
+### Running state
+
+- Branch `claude/repo-fragility-assessment-4b7wod` off `main`. Backend, lint, and type
+  gates re-run locally against the final tree.
+- No store or running-instance changes; this is a write-path change only.
+
+### Why
+
+A fragility review asked where this repo is most likely to hurt a user. Answer: the
+adapters' *file-level* config round-trip. `tests/unit/test_writer_round_trip.py` pins
+"never destroy user configuration merely because we do not model it" — but only at the
+mapper boundary (dict to dict). Comments and formatting live one layer down, in the
+load/dump pair, which nothing tested. Three confirmed defects, all reproduced before
+being fixed:
+
+1. **`~/.opencode/opencode.jsonc` lost every comment** on the first MCP, hook, or
+   permission mutation. Comments were stripped to parse and never re-emitted.
+2. **The JSONC stripper was string-unaware.** It was three regexes, copy-pasted into
+   three adapters. `{"note": "use // to comment"}` truncated into a hard `409 not valid
+   JSONC`; `{"re": "a/*b*/c"}` was silently rewritten to `{"re": "ac"}`; `{"s":
+   "trailing, }"}` silently lost its comma.
+3. **`~/.codex/config.toml` lost every comment and its array style** (`tomllib` ->
+   `tomli_w`). That file carries all three Codex families, so nearly any Codex operation
+   triggered it.
+
+YAML already used `ruamel` round-trip mode, so the project held the right standard and
+applied it to one of three comment-bearing formats.
+
+### Shipped this entry
+
+1. **`harness_asset_manager/config_document.py`** — one home for every harness-config
+   read and write. `load_config_document` / `dump_config_document` /
+   `empty_config_document` / `new_subtree`, covering `json`, `jsonc`, `toml`, `yaml`.
+   MCP, hooks, and permissions adapters all import it; each lost its private
+   `_load_document` / `_dump_document` bodies and its copy of `_strip_jsonc`.
+2. **`TomlDocument`** — `tomlkit` parse kept beside a plain-dict view, with only changed
+   keys replayed onto it at dump time. Comments, key order, and inline array style
+   survive.
+3. **`JsoncDocument`** — original text plus a span tree; untouched regions are re-emitted
+   byte-for-byte, so an unmodified file round-trips identically and comments outside the
+   edited subtree always survive.
+4. **String-aware comment blanking** — a scanning pass tracking string and escape state,
+   replacing comment bytes with spaces so *offsets are preserved* and the span tree can
+   index the original text.
+5. **`tests/unit/test_config_document_round_trip.py`** (42 tests) — verbatim identity,
+   idempotency, comment survival across add/remove, and value fidelity against the
+   stdlib, per format. All three defects above are pinned as regressions, plus a parity
+   test tying `ConfigSubtreeBindingProfile.file_format` to `CONFIG_FILE_FORMATS` so a
+   declarable format can never lack a round-trip implementation.
+6. Dependency: `tomlkit>=0.13,<1` added to `requirements.txt` and `pyproject.toml`.
+   `tomli-w` stays for files HAM itself generates (Codex agent TOML, store metadata).
+
+### Found by pressure-testing, not by the unit tests
+
+An end-to-end run through the real API — a hand-written `opencode.jsonc` and
+`config.toml` put through enable, then hooks and permissions, then full teardown —
+caught two comment-loss cases the unit tests had not covered. Both are fixed and pinned:
+
+1. **A trailing comment on the last key was dropped when a key was appended.** The
+   comment has to be re-emitted *after* the separating comma, or the comma is swallowed
+   by the comment. Members now carry an explicit same-line trailing slot.
+2. **A comment about a kept key was deleted with the following key.** `{"a": 1, //
+   about a` puts that comment in `b`'s prefix, because a prefix starts right after the
+   preceding comma — so removing `b` took the note about `a` with it. A removed member's
+   prefix head is now rescued when the *blanked* text proves it is comment-only, which
+   is also what keeps the rescue from dragging back a same-line sibling key.
+
+With both fixed, a full enable-then-disable cycle returns both files to their original
+form, comments included.
+
+### Adjacent finding, not fixed here
+
+Disabling the last Codex permission **pops `approval_policy` entirely**
+(`permissions/mappers.py:867`) rather than restoring the value the user had before HAM
+set it to `"never"`. A user who had `approval_policy = "on-request"` gets the key
+deleted, not restored. Pre-existing and value-level rather than formatting-level, so it
+is out of scope for this change — but it is the same category of defect and worth its
+own fix.
+
+### The one sharp edge worth remembering
+
+`tomlkit` **converts values on insertion**. Several mappers append a `dict` to a
+container and then mutate their own reference (`hooks/mappers.py` `enable_hook` does
+exactly this), which writes nothing against a live `tomlkit` container — it surfaced as
+`test_hooks_routes.test_enable_and_disable_across_harnesses` failing with `KeyError:
+'PreToolUse'` and an empty `[hooks]` table. That is why `TomlDocument` hands callers
+plain containers and reconciles at dump time instead of exposing `tomlkit` types.
+`tests/unit/test_config_document_round_trip.py::TomlRoundTripTests` pins both halves.
+
+### Verification
+
+- `ruff check harness_asset_manager tests scripts` — clean.
+- `pyright` — 0 errors, 215 warnings (baseline before this change: 219).
+- `bash scripts/test_backend.sh` — 682 unit + 233 integration passing, coverage 82%
+  (ratchet 80%); `config_document.py` at 96%.
+- `npm run typecheck`, `npm run lint:frontend`, `npm run codegen:check` (no drift),
+  `npm test` (390 tests), `npm run build` — all clean.
+- Pressure test: real API, real files, enable -> hooks/permissions -> full teardown, on
+  both `opencode.jsonc` and `config.toml`. All checks pass.
 
 ## 2026-08-25 (later) — spec conformance, frontmatter round-trip, Overview rework
 

@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import re
 import shutil
 from collections.abc import MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from harness_asset_manager.application.config_documents import (
-    dump_document,
-    get_yaml,
-    load_document,
-)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.config_document import (
+    ConfigDocumentError,
+    dump_config_document,
+    empty_config_document,
+    load_config_document,
+    new_subtree,
+)
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import (
     ConfigSubtreeBindingProfile,
@@ -266,9 +267,26 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         return None
 
     def _load_document(self, config_path: Path) -> dict[str, object]:
-        return load_document(config_path, self._file_format, self.harness)
-    def _dump_document(self, document: dict[str, object]) -> str:
-        return dump_document(document, self._file_format)
+        """The whole config file, as a document that remembers how to re-emit itself.
+
+        Comment and formatting preservation lives in ``config_document``; every family
+        that writes a harness config shares it, because they share the files.
+        """
+        if not config_path.is_file():
+            return empty_config_document(self._file_format)
+        try:
+            return load_config_document(
+                config_path.read_text(encoding="utf-8"), file_format=self._file_format
+            )
+        except ConfigDocumentError as error:
+            raise MutationError(
+                f"{self.harness} config file is {error}",
+                status=409,
+            ) from error
+
+    def _dump_document(self, document: Mapping[str, object]) -> str:
+        return dump_config_document(document, file_format=self._file_format)
+
     def _read_subtree(
         self,
         document: Mapping[str, object],
@@ -289,11 +307,10 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         subtree_path: SubtreePath,
     ) -> MutableMapping[str, object]:
         cursor: MutableMapping[str, object] = document
-        yaml = get_yaml() if self._file_format == "yaml" else None
         for segment in subtree_path:
             existing = cursor.get(segment)
             if not isinstance(existing, MutableMapping):
-                existing = yaml.map() if yaml is not None else {}
+                existing = new_subtree(self._file_format)
                 cursor[segment] = existing
             cursor = existing
         return cursor
@@ -355,12 +372,6 @@ def _is_semantic_default(key: str, value: object) -> bool:
     if key in {"headers", "env", "environment", "http_headers"} and value == {}:
         return True
     return False
-
-
-def _strip_jsonc(text: str) -> str:
-    without_block = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    without_line = re.sub(r"(^|[^:])//.*$", r"\1", without_block, flags=re.MULTILINE)
-    return re.sub(r",(\s*[}\]])", r"\1", without_line)
 
 
 def _drift_detail(expected: object, actual: object) -> str:

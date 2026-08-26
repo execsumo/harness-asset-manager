@@ -68,6 +68,8 @@ class ConfigSubtreeBindingProfile:
     config_path_resolver: PathResolver | None = None
     discovery_config_path_resolvers: tuple[PathResolver, ...] = ()
     source_install_config_path_resolvers: tuple[PathResolver, ...] = ()
+    #: Must stay in step with ``config_document.CONFIG_FILE_FORMATS``, which owns the
+    #: parse/serialize pair for each of these. Pinned by ``ConfigFileFormatParityTests``.
     file_format: Literal["json", "jsonc", "toml", "yaml"] = "json"
     subtree_path: SubtreePath = ()
     exclusion_keys: frozenset[str] = frozenset()

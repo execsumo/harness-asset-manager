@@ -196,17 +196,52 @@ a single `configs/manifest.json`, which is synced rather than machine-local.
   the manifest preserves the *insertion order* of preference values while sorting only its
   own top-level structure — alphabetizing them would rewrite the user's file on every
   restore.
-- **Formats that cannot round-trip refuse.** TOML and JSONC lose comments and layout
-  through a dump, so restore raises a 400 for them rather than reformatting a file HAM does
-  not own. Capture and diff still work.
+- **Round-tripping is delegated, not reimplemented.** Reads and writes go through
+  `config_document`, which re-emits untouched regions byte-for-byte in every supported
+  format, so a restore rewrites only the managed keys.
 - **Automatic capture yields on divergence.** The manifest crosses machines and the family
   keeps no local ledger, so `drift.classify_drift` has no baseline to arbitrate with. A
   local file that differs from the manifest is left alone for explicit resolution instead
   of being captured over another machine's edit.
-- Document loading and dumping is shared with the MCP adapters via
-  `application/config_documents.py` — one reader and one writer per format, not two.
 
 All file mutations use atomic writes (`atomic_write_text`) with flock file locks to ensure zero data corruption during concurrent operations.
+
+### Harness Config Documents
+
+Every family that binds into a harness-owned config file (MCP, Hooks, Permissions) performs
+the same whole-document read-modify-write: load the file, mutate one subtree, write the file
+back. That makes the load/dump pair — not the per-family mapper — the place where a user's
+configuration is preserved or destroyed, so it lives in exactly one module,
+`harness_asset_manager/config_document.py`, which all three families import.
+
+The invariant is the one the mappers already hold for unmodeled *fields* (see
+`tests/unit/test_writer_round_trip.py`), extended to unmodeled *file content* — comments,
+key order, and formatting:
+
+| Format | Files | Round-trip mechanism |
+|---|---|---|
+| `toml` | `~/.codex/config.toml` | `TomlDocument` — a `tomlkit` parse kept beside a plain view; only changed keys are replayed onto it |
+| `jsonc` | `~/.opencode/opencode.jsonc` | `JsoncDocument` — original text plus a span tree; untouched regions are re-emitted byte-for-byte |
+| `yaml` | `~/.hermes/config.yaml` | `ruamel.yaml` round-trip mode |
+| `json` | `settings.json`, `hooks.json`, `.claude.json`, … | `json.dumps` (no comments to lose) |
+
+Two properties are load-bearing and pinned by
+`tests/unit/test_config_document_round_trip.py`:
+
+- **Comment stripping is string-aware.** JSONC comments are blanked by a scanning pass that
+  tracks string and escape state, replacing comment bytes with spaces so *offsets are
+  preserved* — the span tree can index the original text, comments included. The regex this
+  replaced was string-unaware: a value containing `//` truncated the document into a hard
+  parse failure, and a value containing `/*…*/` or `, }` was silently rewritten.
+- **Callers never see library wrapper types.** `tomlkit` converts values on insertion, so a
+  mapper that appends a `dict` and then mutates its own reference writes nothing. Documents
+  therefore hand out plain `dict`/`list` values — the semantics the mappers were written
+  against — and reconcile at dump time. Every returned document is a `dict` subclass, so
+  `isinstance(value, dict)` branches in mappers keep working.
+
+Comment preservation is verbatim *outside* any subtree HAM rewrites, and best-effort within
+one. `tomli-w` is still used for files HAM itself generates (Codex agent TOML, store
+metadata), where there is no user formatting to protect.
 
 ### Store Portability
 
