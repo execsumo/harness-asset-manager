@@ -1,7 +1,7 @@
 {
   "name": "harness-asset-manager",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "VITE_API_BASE=/api vite --host 127.0.0.1 --port 5173",
