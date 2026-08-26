@@ -19,8 +19,8 @@ class ConfigsApiTests(unittest.TestCase):
             diff_res = harness.get_json("/api/configs/claude/diff")
             self.assertEqual(diff_res["state"], "unmanaged")
             
-            # Capture
-            harness.post_json("/api/configs/capture?explicit=true")
+            # Enable (starts managing it)
+            harness.post_json("/api/configs/claude/enable")
             
             # Now list
             data = harness.get_json("/api/configs/")
@@ -69,7 +69,7 @@ class ConfigsApiTests(unittest.TestCase):
             )
             codex_cfg.write_text(codex_content)
 
-            harness.post_json("/api/configs/capture?explicit=true")
+            harness.post_json("/api/configs/codex/enable")
             harness.post_json("/api/configs/codex/restore")
             self.assertEqual(codex_cfg.read_text(), codex_content)
 

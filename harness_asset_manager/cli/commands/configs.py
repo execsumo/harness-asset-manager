@@ -36,6 +36,18 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     restore.add_argument("harness")
     restore.set_defaults(handler=restore_config)
 
+    enable = group.add_parser(
+        "enable", parents=[common], help="Enable managing a harness's config."
+    )
+    enable.add_argument("harness")
+    enable.set_defaults(handler=enable_config)
+
+    disable = group.add_parser(
+        "disable", parents=[common], help="Disable managing a harness's config."
+    )
+    disable.add_argument("harness")
+    disable.set_defaults(handler=disable_config)
+
     diff = group.add_parser(
         "diff", parents=[common], help="Compare a harness's live config against the manifest."
     )
@@ -49,12 +61,17 @@ def list_configs(container: BackendContainer, args: argparse.Namespace) -> int:
         print_json(payload)
         return 0
     print_table(
-        ("HARNESS", "KEYS", "CAPTURED"),
+        ("HARNESS", "STATUS", "KEYS", "DRIFT"),
         [
-            (harness, str(len(record["preferences"])), str(record["capturedAt"]))
+            (
+                harness,
+                "Managed" if record["managed"] else "Not managed",
+                str(record["keyCount"]),
+                str(record["driftState"])
+            )
             for harness, record in sorted(payload.items())
         ],
-        empty="(nothing captured — run `harnessam configs capture`)",
+        empty="(no harness bindings found)",
     )
     return 0
 
@@ -66,8 +83,16 @@ def capture_configs(container: BackendContainer, args: argparse.Namespace) -> in
         print_json(payload)
         return 0
     print_table(
-        ("HARNESS", "KEYS"),
-        [(harness, str(len(record["preferences"]))) for harness, record in sorted(payload.items())],
+        ("HARNESS", "STATUS", "KEYS", "DRIFT"),
+        [
+            (
+                harness,
+                "Managed" if record["managed"] else "Not managed",
+                str(record["keyCount"]),
+                str(record["driftState"])
+            )
+            for harness, record in sorted(payload.items())
+        ],
     )
     return 0
 
@@ -78,6 +103,24 @@ def restore_config(container: BackendContainer, args: argparse.Namespace) -> int
         print_json({"harness": args.harness, "restored": True})
         return 0
     print(f"restored {args.harness}")
+    return 0
+
+
+def enable_config(container: BackendContainer, args: argparse.Namespace) -> int:
+    container.configs_mutations.enable(args.harness)
+    if args.json_output:
+        print_json({"harness": args.harness, "enabled": True})
+        return 0
+    print(f"enabled {args.harness}")
+    return 0
+
+
+def disable_config(container: BackendContainer, args: argparse.Namespace) -> int:
+    container.configs_mutations.disable(args.harness)
+    if args.json_output:
+        print_json({"harness": args.harness, "disabled": True})
+        return 0
+    print(f"disabled {args.harness}")
     return 0
 
 

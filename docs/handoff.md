@@ -3,6 +3,16 @@
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
 
+## 2026-08-26 — Configs Page & Settings Cleanup
+
+### Running state
+- Configs page created at `/configs` matching matrix page conventions.
+- `ConfigsSection` removed from `SettingsPage` to avoid duplication.
+- Config queries and types swept from `features/settings`.
+- Tests moved from Settings to `frontend/src/features/configs/screens/ConfigsPage.test.tsx` and updated to pass.
+- `README.md` and `ARCHITECTURE.md` updated to reflect that the Configs family is now its own page.
+- **The toggle means managed vs. not managed.** Disabling a harness drops the record from the manifest, and **never writes to the harness config file** — it is left completely untouched.
+
 ## 2026-08-26 — Configs asset family shipped (replaces Native Config Snapshots)
 
 ### Running state

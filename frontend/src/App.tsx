@@ -22,6 +22,7 @@ const MarketplaceLayout = lazy(() => import("./features/marketplace/components/M
 const OverviewPage = lazy(() => import("./features/overview/screens/OverviewPage"));
 const SettingsPage = lazy(() => import("./features/settings/screens/SettingsPage"));
 const PermissionsPage = lazy(() => import("./features/permissions/screens/PermissionsPage"));
+const ConfigsPage = lazy(() => import("./features/configs/screens/ConfigsPage"));
 
 export function App() {
   const [queryClient] = useState(
@@ -85,6 +86,15 @@ function AppContent() {
           {getMcpRouteElements()}
 
           {getHooksRouteElements()}
+
+          <Route
+            path="configs"
+            element={
+              <Suspense fallback={<RouteLoadingPanel label="Loading configs..." />}>
+                <ConfigsPage />
+              </Suspense>
+            }
+          />
 
           <Route
             path="permissions"

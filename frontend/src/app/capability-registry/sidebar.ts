@@ -7,9 +7,10 @@ import { marketplaceRoutes } from "../../features/marketplace/public";
 import { hooksRoutes, useHooksInventoryQuery } from "../../features/hooks/public";
 import { permissionsRoutes, usePermissionsInventoryQuery } from "../../features/permissions/public";
 import { agentsRoutes, useAgentsInventoryQuery } from "../../features/agents/public";
+import { configsRoutes, useConfigsListQuery } from "../../features/configs/public";
 import { useCommonCopy } from "../../i18n";
 
-export type SidebarIconKey = "overview" | "skills" | "slash-commands" | "mcp" | "marketplace" | "hooks" | "permissions" | "agents";
+export type SidebarIconKey = "overview" | "skills" | "slash-commands" | "mcp" | "marketplace" | "hooks" | "permissions" | "agents" | "configs";
 
 export interface SidebarLinkModel {
   key: string;
@@ -39,6 +40,7 @@ export function useSidebarModel(): SidebarModel {
   const skillsQuery = useSkillsListQuery();
   const mcpQuery = useMcpInventoryQuery();
   const slashCommandsQuery = useSlashCommandsQuery();
+  const configsQuery = useConfigsListQuery();
   const common = useCommonCopy();
 
   const inUseSkills = skillsQuery.data?.summary.managed ?? null;
@@ -52,6 +54,8 @@ export function useSidebarModel(): SidebarModel {
   const permissionsCounts = permissionsSidebarCounts(permissionsQuery.data);
   const agentsQuery = useAgentsInventoryQuery();
   const agentsCounts = agentsSidebarCounts(agentsQuery.data);
+  
+  const configsCount = configsQuery.data ? Object.values(configsQuery.data).filter(r => r.managed).length : null;
 
   return useMemo(
     () => ({
@@ -61,6 +65,13 @@ export function useSidebarModel(): SidebarModel {
           to: "/overview",
           label: common.nav.overview,
           iconKey: "overview",
+        },
+        {
+          key: "configs",
+          to: configsRoutes.index,
+          label: "Configs",
+          iconKey: "configs",
+          count: configsCount,
         },
         {
           key: "permissions",
@@ -147,6 +158,7 @@ export function useSidebarModel(): SidebarModel {
       agentsCounts.inUse,
       agentsCounts.needsReview,
       agentsCounts.total,
+      configsCount,
       needsReviewSkills,
       slashCommandCount,
       slashCommandReviewCount,

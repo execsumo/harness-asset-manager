@@ -1,5 +1,5 @@
-import { fetchJson, postJson, putJson } from "../../../api/http";
-import type { ConfigDiffResponse, ConfigsResponse, SetHarnessSupportRequest, SettingsData } from "./types";
+import { fetchJson, putJson } from "../../../api/http";
+import type { SetHarnessSupportRequest, SettingsData } from "./types";
 
 export async function fetchSettings(): Promise<SettingsData> {
   return fetchJson<SettingsData>("/settings");
@@ -32,21 +32,4 @@ export async function updateAutoAdoptHarnesses(
     `/settings/auto-adopt/${encodeURIComponent(family)}/harnesses`,
     { harnesses },
   );
-}
-
-export async function fetchConfigs(): Promise<ConfigsResponse> {
-  return fetchJson<ConfigsResponse>("/configs/");
-}
-
-export async function fetchConfigDiff(harness: string): Promise<ConfigDiffResponse> {
-  return fetchJson<ConfigDiffResponse>(`/configs/${encodeURIComponent(harness)}/diff`);
-}
-
-
-export async function captureConfigs(explicit: boolean = false): Promise<void> {
-  return postJson<void>(`/configs/capture?explicit=${explicit}`);
-}
-
-export async function restoreConfig(harness: string): Promise<void> {
-  return postJson<void>(`/configs/${encodeURIComponent(harness)}/restore`);
 }

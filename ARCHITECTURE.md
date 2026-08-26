@@ -182,7 +182,8 @@ directory name. Only `marketplace/` is safe to delete; it is a cache and rebuild
 
 ### Configs family
 `ConfigsService` extracts portable *preferences* from each harness's user-level config into
-a single `configs/manifest.json`, which is synced rather than machine-local.
+a single `configs/manifest.json`, which is synced rather than machine-local. The family now has its own page like the others, rather than a section in Settings.
+A harness toggle represents **managed vs. not managed**. Disabling a harness drops it from the manifest without writing to the harness's own config file.
 
 - **Portability is a filter, not a list.** `configs/extraction.py` drops any key that is
   owned by another family (declared per harness as `exclusion_keys` on its
