@@ -38,6 +38,12 @@ Add one `HarnessDefinition` to
 - [ ] Use `ConfigSubtreeBindingProfile` for a HAM-owned subtree inside a native
       document. Define the canonical write path, discovery paths, file format,
       subtree path, codec, and capability probe.
+- [ ] `file_format` must be one of `CONFIG_FILE_FORMATS` in
+      `harness_asset_manager/config_document.py`. That module owns every
+      harness-config read and write; do **not** add a parser or serializer to an
+      adapter. A new format needs a round-trip implementation there plus a case
+      in `tests/unit/test_config_document_round_trip.py` — a format that loses
+      comments or reorders keys is a config-destroying bug, not a formatting nit.
 - [ ] Use `CommandFileBindingProfile` for rendered prompt/command files. Define
       the root, output directory, invocation prefix, render format, scope,
       glob, frontmatter support, and documentation URL.
@@ -53,8 +59,11 @@ For every binding added to the catalog:
 
 - [ ] Start with the native format fixture and mapper/codec tests. Verify exact
       field names, nesting, path semantics, and disablement behavior.
-- [ ] Preserve unknown native keys, sibling entries, comments where supported,
-      and user-authored allow/ask entries. HAM must mutate only its owned data.
+- [ ] Preserve unknown native keys, sibling entries, comments, and user-authored
+      allow/ask entries. HAM must mutate only its owned data. Comment and
+      formatting preservation comes free from `config_document` for every format
+      it supports; verify it end-to-end with a commented fixture rather than
+      assuming it.
 - [ ] Verify enablement, repair, disablement, and deletion are idempotent.
       Re-enabling must repair HAM-owned stale state without clobbering unrelated
       user settings.
