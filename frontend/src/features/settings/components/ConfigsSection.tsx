@@ -35,7 +35,7 @@ export function ConfigsSection() {
         <p className="muted-text">No preferences synced.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {Object.entries(data).map(([harness, record]: [string, Record<string, unknown>]) => (
+          {Object.entries(data).map(([harness, record]: [string, any]) => (
             <ConfigRow
               key={harness}
               harness={harness}
@@ -75,14 +75,14 @@ function ConfigRow({ harness, record, onRestore, isRestoring }: { harness: strin
           {diff.isPending ? (
             <StatusBadge label="checking..." tone="muted" />
           ) : (
-            <StatusBadge label={state} tone={tone} />
+            <StatusBadge label={state as string} tone={tone} />
           )}
         </div>
       </summary>
 
       <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-          <span className="muted-text">Last captured: {new Date(record.capturedAt).toLocaleString()}</span>
+          <span className="muted-text">Last captured: {new Date(record.capturedAt as string).toLocaleString()}</span>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button className="btn" onClick={onRestore} disabled={isRestoring}>
               <Download size={14} /> Restore
@@ -93,9 +93,9 @@ function ConfigRow({ harness, record, onRestore, isRestoring }: { harness: strin
         {diff.data?.state === "drifted" && (
           <div style={{ marginBottom: "1rem", padding: "0.5rem", backgroundColor: "var(--bg-warning-muted)", borderRadius: "4px" }}>
             <p><strong>Drift detected!</strong></p>
-            {diff.data.missing?.length > 0 && <p>Missing: {diff.data.missing.join(", ")}</p>}
-            {diff.data.extra?.length > 0 && <p>Extra: {diff.data.extra.join(", ")}</p>}
-            {diff.data.changed?.length > 0 && <p>Changed: {diff.data.changed.join(", ")}</p>}
+            {(diff.data.missing as string[])?.length > 0 && <p>Missing: {(diff.data.missing as string[]).join(", ")}</p>}
+            {(diff.data.extra as string[])?.length > 0 && <p>Extra: {(diff.data.extra as string[]).join(", ")}</p>}
+            {(diff.data.changed as string[])?.length > 0 && <p>Changed: {(diff.data.changed as string[]).join(", ")}</p>}
           </div>
         )}
 

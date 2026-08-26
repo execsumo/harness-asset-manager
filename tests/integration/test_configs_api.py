@@ -45,6 +45,16 @@ class ConfigsApiTests(unittest.TestCase):
             restored = json.loads(cfg.read_text())
             self.assertEqual(restored["theme"], "dark")
             
+            # Test byte-identical capture-restore
+            cfg_content = '{\n  "theme": "dark",\n  "nested": {\n    "z_key": 1,\n    "a_key": 2\n  }\n}\n'
+            cfg.write_text(cfg_content)
+            
+            harness.post_json("/api/configs/capture?explicit=true")
+            harness.post_json("/api/configs/claude/restore")
+            
+            restored_content = cfg.read_text()
+            self.assertEqual(restored_content, cfg_content, "Capture-restore should preserve original key ordering exactly")
+            
             # Refusal test for toml
             # Create codex config
             codex_dir = harness.spec.home / ".codex"

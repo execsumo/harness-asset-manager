@@ -84,4 +84,8 @@ class ConfigStore:
                 "revision": record.revision,
             }
 
-            atomic_write_text(self.path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            # Sort top-level and configs keys for determinism, but preserve insertion order inside preferences
+            payload["configs"] = {k: raw_configs[k] for k in sorted(raw_configs.keys())}
+            sorted_payload = {k: payload[k] for k in sorted(payload.keys())}
+
+            atomic_write_text(self.path, json.dumps(sorted_payload, indent=2) + "\n")

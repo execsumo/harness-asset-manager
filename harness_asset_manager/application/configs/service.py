@@ -10,6 +10,7 @@ from harness_asset_manager.application.config_documents import (
     load_document,
 )
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import (
     ConfigSubtreeBindingProfile,
     HarnessKernelService,
@@ -109,7 +110,11 @@ class ConfigsService:
             return
             
         if profile.file_format in {"toml", "jsonc"}:
-            raise ValueError(f"Cannot restore {profile.file_format} files without rewriting unowned content or stripping comments. Restore refused.")
+            raise MutationError(
+                f"Cannot restore {profile.file_format} files without rewriting unowned content or stripping comments. Restore refused.",
+                status=400,
+                code="format_refused"
+            )
 
         path = profile.resolve_config_path(self.kernel.context)
         doc = (
