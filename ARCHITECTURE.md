@@ -182,9 +182,20 @@ directory name. Only `marketplace/` is safe to delete; it is a cache and rebuild
 
 ### Configs family
 `ConfigsService` extracts portable *preferences* from each harness's user-level config into
-a single `configs/manifest.json`, which is synced rather than machine-local. The family now has its own page like the others, rather than a section in Settings.
-A harness toggle represents **managed vs. not managed**. Disabling a harness drops it from the manifest without writing to the harness's own config file.
+a single `configs/manifest.json`, which is synced rather than machine-local.
 
+- **The row is the harness, not the preference key.** Unlike the other families, a config
+  key is not an asset that exists independently and gets enabled in several places: of 81
+  distinct keys observed across six harnesses, exactly one (`model`) appears in more than
+  one. So the matrix is six harness rows and the keys live in the detail drawer.
+- **The toggle means managed vs. not managed.** Enabling captures a harness's preferences;
+  disabling drops the record from the manifest and **never writes to the harness's own
+  config file**.
+- **An absent config file is not proof of a stale record.** A harness managed on another
+  machine looks identical to a leftover on this one, so a record whose file is missing
+  reports `managed: false, hasRecord: true` and is surfaced for the user to remove
+  deliberately. Deleting it automatically would destroy the other machine's state on the
+  next sync.
 - **Portability is a filter, not a list.** `configs/extraction.py` drops any key that is
   owned by another family (declared per harness as `exclusion_keys` on its
   `ConfigSubtreeBindingProfile` — one declaration, beside the binding it governs), looks

@@ -3,15 +3,78 @@
 Running status for in-flight work. Read this before resuming. Newest session on top.
 
 
-## 2026-08-26 — Configs Page & Settings Cleanup
+## 2026-08-26 (later) — Configs gets a real family page
 
-### Running state
-- Configs page created at `/configs` matching matrix page conventions.
-- `ConfigsSection` removed from `SettingsPage` to avoid duplication.
-- Config queries and types swept from `features/settings`.
-- Tests moved from Settings to `frontend/src/features/configs/screens/ConfigsPage.test.tsx` and updated to pass.
-- `README.md` and `ARCHITECTURE.md` updated to reflect that the Configs family is now its own page.
-- **The toggle means managed vs. not managed.** Disabling a harness drops the record from the manifest, and **never writes to the harness config file** — it is left completely untouched.
+### Why this exists
+
+The family shipped as a **Settings section**. The owner expected what every other family
+has: a sidebar entry and its own page. That was a scoping call made in the original brief
+("configs is not a matrix family") and it was wrong — or at least not the owner's call to
+skip. This entry corrects it.
+
+### The shape, and the measurement behind it
+
+**The row is the harness, not the preference key.** The other matrices are *asset ×
+harness* because an asset exists independently and is enabled in several harnesses. Configs
+is not shaped that way: measured on the real manifest, **81 distinct preference keys, and
+exactly one (`model`) appears in more than one harness.** A key×harness matrix would be 81
+rows of near-empty cells. So: six harness rows, keys in the detail drawer.
+
+**The toggle means managed vs. not managed** (owner's decision). Enabling captures a
+harness's preferences into the portable manifest; disabling drops the record and **never
+writes to the harness's own config file**.
+
+That state did not exist before: `capture()` captured every bound harness unconditionally
+and `ConfigStore` had no removal path. Both changed, plus `enable`/`disable` on the API and
+CLI. Presence-of-record is the managed signal, so no second list can drift out of step with
+the records themselves.
+
+### The decision worth reading
+
+**An absent config file is not proof of a stale record.** `cursor` and `opencode` sat in the
+manifest with `preferences={}` — captured by the old unconditional `capture()`, on `main`,
+before this branch. The obvious fix is to delete records whose config file is missing.
+
+**That fix is wrong**, and the branch deliberately does not do it: a harness legitimately
+managed *on another machine* hits the identical branch on this one, so auto-deleting would
+destroy that machine's state on the next sync. Instead the payload carries `hasRecord`, the
+row reads not-managed, and the drawer names the ambiguity ("If this harness is managed on
+another machine, leave this alone") behind a manual **Remove Record** action. The two real
+stale records on this box were cleaned up through that path, not by code.
+
+### Also in this entry
+
+`ConfigsSection.tsx` is gone from Settings — one surface, not two — along with its queries,
+types, and client entries. Sidebar registers as a top-level link beside Permissions (no
+in-use/review split to group). Tags ride the existing sidecar as `configs:<harness>`.
+
+### Defects found in review, all fixed
+
+The sidebar icon key was declared but never mapped, so the link rendered iconless. The page
+search box was a live-looking dead stub (`onSearchChange={() => {}}`). Uninstalled harnesses
+read as "Managed / 0 keys". Four required backend tests were missing, and two gates were
+reported green while `ruff` and `lint:frontend` were failing.
+
+### Validation
+
+```
+ruff            clean
+pyright         0 errors, 239 warnings
+backend         688 unit + 236 integration OK, 82% coverage
+lint:frontend   0 errors, 12 warnings (all pre-existing exhaustive-deps)
+typecheck       clean
+codegen:check   clean
+build           clean
+```
+
+Pressure-tested on a second instance against the real store (`:8124`, `homeDir: /home/dev`);
+`:8000` was never restarted onto unreviewed code. Disable `claude` → 10 keys left the
+manifest → **`~/.claude/settings.json` byte-identical** → re-enable → 10 keys back → **still
+byte-identical**. All four real configs verify against baseline afterwards.
+
+Both the backend and frontend safety tests were **verified red first**: injecting a file
+write into `disable()` fails `test_disable_removes_record_leaves_file_byte_identical`, and
+short-circuiting the notice condition fails the absent-file test.
 
 ## 2026-08-26 — Configs asset family shipped (replaces Native Config Snapshots)
 

@@ -484,7 +484,13 @@ Harness Asset Manager extracts them from each harness's user-level config into o
 manifest at `~/.harnessam/configs/manifest.json`, which syncs with the store. Managed from
 the Configs page, or `harnessam configs list|enable|disable|capture|restore|diff`.
 
-The toggle means **managed vs. not managed**. Enabling a harness captures its preferences into the manifest. Disabling a harness drops the record from the manifest, and **never writes to the harness config file** — it is left completely untouched.
+The toggle means **managed vs. not managed**. Enabling a harness captures its preferences
+into the manifest; disabling drops that record and **never writes to the harness's config
+file** — it is left completely untouched.
+
+Because the manifest travels between machines, a harness whose record exists but whose
+config file is missing here is *not* assumed to be stale: it may be managed on another
+machine. It shows as not managed, flags the record, and leaves removing it to you.
 
 A key is carried only when it is genuinely portable. Anything that is owned by another
 family (`permissions`, `hooks`, `mcpServers`, …), looks like a secret, or contains an
