@@ -89,3 +89,26 @@ class ConfigStore:
             sorted_payload = {k: payload[k] for k in sorted(payload.keys())}
 
             atomic_write_text(self.path, json.dumps(sorted_payload, indent=2) + "\n")
+
+    def remove_config(self, harness: str) -> None:
+        """Removes a config record for a harness, used when disabling management."""
+        if not self.path.is_file():
+            return
+        
+        with file_lock(self.lock_path):
+            try:
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return
+                
+            if not isinstance(payload, dict):
+                return
+                
+            configs = payload.get("configs")
+            if not isinstance(configs, dict) or harness not in configs:
+                return
+                
+            del configs[harness]
+            
+            sorted_payload = {k: payload[k] for k in sorted(payload.keys())}
+            atomic_write_text(self.path, json.dumps(sorted_payload, indent=2) + "\n")

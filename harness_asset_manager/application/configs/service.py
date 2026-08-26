@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from harness_asset_manager.application.asset_tags import AssetTagService
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.config_document import (
     ConfigDocumentError,
@@ -24,9 +25,10 @@ from .store import ConfigStore
 
 
 class ConfigsService:
-    def __init__(self, store: ConfigStore, kernel: HarnessKernelService) -> None:
+    def __init__(self, store: ConfigStore, kernel: HarnessKernelService, asset_tag_service: AssetTagService) -> None:
         self.store = store
         self.kernel = kernel
+        self.asset_tag_service = asset_tag_service
 
     def _hash_prefs(self, prefs: dict[str, Any]) -> str:
         return hashlib.sha256(
@@ -51,8 +53,6 @@ class ConfigsService:
         if not path.is_file():
             return {}
         doc = _read(path, profile.file_format, harness_name)
-        # The Configs family targets the whole file (unlike MCP which targets a subtree).
-        # We extract from the top-level document.
         home_dir = str(self.kernel.context.home)
         definition = self.kernel.definition(harness_name)
         family_owned_keys = (
@@ -69,29 +69,63 @@ class ConfigsService:
         manifest = self.store.load()
         for binding in self.kernel.bindings_for_family("configs"):
             harness = binding.definition.harness
+            record = manifest.configs.get(harness)
+            
+            config_path = binding.profile.resolve_config_path(self.kernel.context)
+            if not record or not config_path.is_file():
+                continue
+                
             local_prefs = self._extract_local(harness)
             local_hash = self._hash_prefs(local_prefs)
 
-            record = manifest.configs.get(harness)
-
-            # The manifest is synced between machines, so an automatic capture that
-            # always wrote would make the last machine to start up the winner.
-            # ``drift.classify_drift`` cannot arbitrate here: it needs a baseline of
-            # what *this* machine last captured, and the family keeps no local ledger
-            # to hold one. So a divergence is left for the user to resolve explicitly
-            # rather than guessed at.
-            if not explicit and record and record.preferences != local_prefs:
+            if not explicit and record.preferences != local_prefs:
                 continue
 
             new_record = ConfigRecord(
-                sourceFile=str(
-                    binding.profile.resolve_config_path(self.kernel.context)
-                ),
+                sourceFile=str(config_path),
                 preferences=local_prefs,
                 capturedAt=datetime.now(timezone.utc).isoformat(),
                 revision=local_hash,
             )
             self.store.write_config(harness, new_record)
+
+    def enable(self, harness: str) -> None:
+        """Enable managing a harness's config by capturing it."""
+        binding = self._get_binding_profile(harness)
+        if not binding:
+            raise MutationError(
+                f"{harness} is not a harness with a config binding.",
+                status=404,
+                code="unknown_harness",
+            )
+            
+        config_path = binding.resolve_config_path(self.kernel.context)
+        if not config_path.is_file():
+            raise MutationError(
+                f"{harness} has no config file to manage.",
+                status=409,
+                code="missing_config_file",
+            )
+        
+        local_prefs = self._extract_local(harness)
+        local_hash = self._hash_prefs(local_prefs)
+        new_record = ConfigRecord(
+            sourceFile=str(config_path),
+            preferences=local_prefs,
+            capturedAt=datetime.now(timezone.utc).isoformat(),
+            revision=local_hash,
+        )
+        self.store.write_config(harness, new_record)
+
+    def disable(self, harness: str) -> None:
+        """Disable managing a harness's config by removing it from the manifest."""
+        if not self._get_binding_profile(harness):
+            raise MutationError(
+                f"{harness} is not a harness with a config binding.",
+                status=404,
+                code="unknown_harness",
+            )
+        self.store.remove_config(harness)
 
     def restore(self, harness: str) -> None:
         """Restore preferences from manifest to the local file."""
@@ -103,9 +137,6 @@ class ConfigsService:
                 code="unknown_harness",
             )
 
-        # Reported rather than silently ignored: a caller asking to restore a
-        # harness that was never captured has nothing to restore, and answering
-        # "ok" would let a typo read as a successful write.
         manifest = self.store.load()
         record = manifest.configs.get(harness)
         if not record:
@@ -115,9 +146,6 @@ class ConfigsService:
                 code="not_captured",
             )
 
-        # Every format round-trips through ``config_document``, which re-emits the
-        # regions it was not asked to change byte-for-byte — comments included. So a
-        # restore only ever rewrites the managed preference keys, whatever the format.
         path = profile.resolve_config_path(self.kernel.context)
         doc = _read(path, profile.file_format, harness)
         for key, value in record.preferences.items():
@@ -135,16 +163,45 @@ class ConfigsService:
     def list(self) -> dict[str, Any]:
         manifest = self.store.load()
         result = {}
-        for harness, record in manifest.configs.items():
-            result[harness] = {
-                "capturedAt": record.capturedAt,
-                "revision": record.revision,
-                "preferences": record.preferences,
-            }
+        for binding in self.kernel.bindings_for_family("configs"):
+            harness = binding.definition.harness
+            record = manifest.configs.get(harness)
+            local_prefs = self._extract_local(harness)
+            config_path = binding.profile.resolve_config_path(self.kernel.context)
+            
+            if not record or not config_path.is_file():
+                result[harness] = {
+                    "managed": False,
+                    "hasRecord": record is not None,
+                    "keyCount": 0,
+                    "driftState": "—",
+                    "sourceFile": str(config_path),
+                    "capturedAt": None,
+                    "preferences": {},
+                    "tags": self.asset_tag_service.get_tags("configs", harness)
+                }
+            else:
+                key_count = len(record.preferences)
+                if local_prefs == record.preferences:
+                    drift_state = "—"
+                else:
+                    drift_state = "drifted"
+                    
+                result[harness] = {
+                    "managed": True,
+                    "hasRecord": True,
+                    "keyCount": key_count,
+                    "driftState": drift_state,
+                    "sourceFile": record.sourceFile,
+                    "capturedAt": record.capturedAt,
+                    "preferences": record.preferences,
+                    "tags": self.asset_tag_service.get_tags("configs", harness)
+                }
         return result
 
     def diff(self, harness: str) -> dict[str, Any]:
-        if self._get_binding_profile(harness) is None:
+        profile = self._get_binding_profile(harness)
+        if profile is None:
             raise MutationError(
                 f"{harness} is not a harness with a managed config.",
                 status=404,
@@ -154,10 +211,9 @@ class ConfigsService:
         manifest = self.store.load()
         record = manifest.configs.get(harness)
         local_prefs = self._extract_local(harness)
+        config_path = profile.resolve_config_path(self.kernel.context)
 
-        # A known harness that has never been captured is "unmanaged", which is a
-        # real state — distinct from the unknown name rejected above.
-        if not record:
+        if not record or not config_path.is_file():
             return {"state": "unmanaged", "missing": [], "extra": [], "changed": []}
 
         if local_prefs == record.preferences:
@@ -178,13 +234,7 @@ class ConfigsService:
             "changed": changed,
         }
 
-
 def _read(path: Path, file_format: str, harness: str) -> dict[str, Any]:
-    """The harness's config as a document that remembers how to re-emit itself.
-
-    A missing file is an empty document rather than an error: capture reports no
-    preferences, and restore writes the file the harness has not created yet.
-    """
     if not path.is_file():
         return {}
     try:

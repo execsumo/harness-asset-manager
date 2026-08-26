@@ -17,6 +17,7 @@ import {
   Settings,
   Store,
   SunMedium,
+  SlidersHorizontal,
   Terminal,
   Webhook,
   Bot,
@@ -133,6 +134,7 @@ function sidebarIcon(iconKey: SidebarIconKey): ReactNode {
   if (iconKey === "marketplace") return <Store size={16} />;
   if (iconKey === "agents") return <Bot size={16} />;
   if (iconKey === "permissions") return <Shield size={16} />;
+  if (iconKey === "configs") return <SlidersHorizontal size={16} />;
   return <LayoutDashboard size={16} />;
 }
 

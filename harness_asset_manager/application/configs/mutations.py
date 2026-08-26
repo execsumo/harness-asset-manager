@@ -12,3 +12,9 @@ class ConfigsMutationService:
 
     def restore(self, harness: str) -> None:
         self.service.restore(harness)
+
+    def enable(self, harness: str) -> None:
+        self.service.enable(harness)
+
+    def disable(self, harness: str) -> None:
+        self.service.disable(harness)

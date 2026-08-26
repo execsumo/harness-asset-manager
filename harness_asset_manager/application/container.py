@@ -610,7 +610,7 @@ def build_backend_container(
         skills_queries=skills_queries,
     )
     configs_store = ConfigStore(paths.configs_dir / "manifest.json")
-    configs_service = ConfigsService(configs_store, harness_kernel)
+    configs_service = ConfigsService(configs_store, harness_kernel, asset_tags)
     configs_queries = ConfigsQueryService(configs_service)
     configs_mutations_raw = ConfigsMutationService(configs_service)
     configs_tracker = MutationPathTracker(

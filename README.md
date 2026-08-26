@@ -482,7 +482,15 @@ Only Cursor's separate CLI (`cursor-agent`) is targetable at all — its IDE Age
 Carry your harness *preferences* — model, theme, effort, and the rest — between machines.
 Harness Asset Manager extracts them from each harness's user-level config into one portable
 manifest at `~/.harnessam/configs/manifest.json`, which syncs with the store. Managed from
-Settings > Configuration Preferences, or `harnessam configs list|capture|restore|diff`.
+the Configs page, or `harnessam configs list|enable|disable|capture|restore|diff`.
+
+The toggle means **managed vs. not managed**. Enabling a harness captures its preferences
+into the manifest; disabling drops that record and **never writes to the harness's config
+file** — it is left completely untouched.
+
+Because the manifest travels between machines, a harness whose record exists but whose
+config file is missing here is *not* assumed to be stale: it may be managed on another
+machine. It shows as not managed, flags the record, and leaves removing it to you.
 
 A key is carried only when it is genuinely portable. Anything that is owned by another
 family (`permissions`, `hooks`, `mcpServers`, …), looks like a secret, or contains an
@@ -642,7 +650,9 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
 | `refresh [--sync-all]` | Run inventory pass; `--sync-all` enforces auto-adoption & drift reconciliation across all asset families |
 | `configs list` | Captured portable preferences per harness |
-| `configs capture` | Extract preferences from every harness config into the manifest |
+| `configs enable <harness>` | Enable managing a harness's preferences |
+| `configs disable <harness>` | Disable managing a harness's preferences (does not touch harness config) |
+| `configs capture` | Extract preferences from every managed harness config into the manifest |
 | `configs diff <harness>` | Compare a harness's live config against the manifest |
 | `configs restore <harness>` | Merge managed preferences back into the live config |
 | `health` | Health summary — app, harness count, home dir; useful as a readiness probe |
