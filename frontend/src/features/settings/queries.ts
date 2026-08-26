@@ -4,7 +4,7 @@ import { queryPolicy } from "../../lib/query";
 import { invalidateAgentsQueries } from "../agents/public";
 import { invalidateMcpQueries } from "../mcp/public";
 import { invalidateSkillsQueries } from "../skills/public";
-import { fetchConfigSnapshots, fetchSettings, triggerConfigSnapshot, updateAutoAdopt, updateAutoAdoptHarnesses, updateHarnessSupport } from "./api/client";
+import { fetchSettings, updateAutoAdopt, updateAutoAdoptHarnesses, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
 const SETTINGS_STALE_TIME_MS = 60_000;
@@ -13,7 +13,6 @@ const SETTINGS_GC_TIME_MS = 15 * 60_000;
 export const settingsKeys = {
   all: ["settings"] as const,
   detail: () => ["settings", "detail"] as const,
-  snapshots: (harness?: string) => ["settings", "snapshots", harness ?? "all"] as const,
 };
 
 export function useSettingsQuery() {
@@ -21,24 +20,6 @@ export function useSettingsQuery() {
     queryKey: settingsKeys.detail(),
     queryFn: fetchSettings,
     ...queryPolicy(SETTINGS_STALE_TIME_MS, SETTINGS_GC_TIME_MS),
-  });
-}
-
-export function useConfigSnapshotsQuery(harness?: string) {
-  return useQuery({
-    queryKey: settingsKeys.snapshots(harness),
-    queryFn: () => fetchConfigSnapshots(harness),
-    ...queryPolicy(10_000, 60_000),
-  });
-}
-
-export function useTriggerConfigSnapshotMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: triggerConfigSnapshot,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["settings", "snapshots"] });
-    },
   });
 }
 
@@ -149,5 +130,47 @@ export function useAutoAdoptHarnessesMutation() {
     onSuccess: async () => {
       await invalidateSettingsQueries(queryClient);
     },
+  });
+}
+
+import { fetchConfigs, fetchConfigDiff, captureConfigs, restoreConfig } from "./api/client";
+
+export const configsKeys = {
+  all: ["configs"] as const,
+  detail: () => ["configs", "detail"] as const,
+  diff: (harness: string) => ["configs", "diff", harness] as const,
+};
+
+export function useConfigsQuery() {
+  return useQuery({
+    queryKey: configsKeys.detail(),
+    queryFn: fetchConfigs,
+    ...queryPolicy(SETTINGS_STALE_TIME_MS, SETTINGS_GC_TIME_MS),
+  });
+}
+
+export function useCaptureConfigsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (explicit: boolean) => captureConfigs(explicit),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: configsKeys.all });
+    },
+  });
+}
+
+export function useRestoreConfigMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (harness: string) => restoreConfig(harness),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: configsKeys.all });
+    },
+  });
+}
+
+export function useDiffConfigMutation() {
+  return useMutation({
+    mutationFn: (harness: string) => fetchConfigDiff(harness),
   });
 }

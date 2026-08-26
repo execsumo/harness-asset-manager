@@ -13,7 +13,7 @@ from .errors import install_error_handlers
 from .guards import LoopbackOnlyMiddleware
 from .routers import (
     agents,
-    config_snapshots,
+    configs,
     health,
     hooks,
     marketplace,
@@ -81,6 +81,7 @@ def create_app(
     app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
     install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(configs.router)
     app.include_router(settings.router)
     app.include_router(skills.router)
     app.include_router(slash_commands.router)
@@ -90,7 +91,6 @@ def create_app(
     app.include_router(permissions.router)
     app.include_router(scaffold.router)
     app.include_router(agents.router)
-    app.include_router(config_snapshots.router)
 
     @app.api_route(
         "/{full_path:path}",

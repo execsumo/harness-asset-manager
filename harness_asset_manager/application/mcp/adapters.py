@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-import json
 import re
 import shutil
-import tomllib
 from collections.abc import MutableMapping
 from dataclasses import dataclass
-from io import StringIO
 from pathlib import Path
 from typing import Mapping
 
-import tomli_w
-from ruamel.yaml import YAML
-from ruamel.yaml.error import YAMLError
-
+from harness_asset_manager.application.config_documents import (
+    dump_document,
+    get_yaml,
+    load_document,
+)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import (
@@ -268,47 +266,9 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         return None
 
     def _load_document(self, config_path: Path) -> dict[str, object]:
-        if not config_path.is_file():
-            return {}
-        text = config_path.read_text(encoding="utf-8")
-        if not text.strip():
-            return {}
-        if self._file_format in {"json", "jsonc"}:
-            try:
-                payload = json.loads(_strip_jsonc(text) if self._file_format == "jsonc" else text)
-            except json.JSONDecodeError as error:
-                raise MutationError(
-                    f"{self.harness} config file is not valid {self._file_format.upper()}: {error}",
-                    status=409,
-                ) from error
-            return payload if isinstance(payload, MutableMapping) else {}
-        if self._file_format == "yaml":
-            try:
-                payload = _yaml().load(text) if text.strip() else {}
-            except YAMLError as error:
-                raise MutationError(
-                    f"{self.harness} config file is not valid YAML: {error}",
-                    status=409,
-                ) from error
-            return payload if isinstance(payload, MutableMapping) else {}
-        try:
-            payload = tomllib.loads(text)
-        except tomllib.TOMLDecodeError as error:
-            raise MutationError(
-                f"{self.harness} config file is not valid TOML: {error}",
-                status=409,
-            ) from error
-        return payload
-
+        return load_document(config_path, self._file_format, self.harness)
     def _dump_document(self, document: dict[str, object]) -> str:
-        if self._file_format in {"json", "jsonc"}:
-            return json.dumps(document, ensure_ascii=False, indent=2) + "\n"
-        if self._file_format == "yaml":
-            stream = StringIO()
-            _yaml().dump(document, stream)
-            return stream.getvalue()
-        return tomli_w.dumps(document)
-
+        return dump_document(document, self._file_format)
     def _read_subtree(
         self,
         document: Mapping[str, object],
@@ -329,7 +289,7 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
         subtree_path: SubtreePath,
     ) -> MutableMapping[str, object]:
         cursor: MutableMapping[str, object] = document
-        yaml = _yaml() if self._file_format == "yaml" else None
+        yaml = get_yaml() if self._file_format == "yaml" else None
         for segment in subtree_path:
             existing = cursor.get(segment)
             if not isinstance(existing, MutableMapping):
@@ -372,14 +332,6 @@ def build_mcp_adapters(
         for binding in kernel.bindings_for_family("mcp")
         if isinstance(binding.profile, ConfigSubtreeBindingProfile)
     )
-
-
-def _yaml() -> YAML:
-    yaml = YAML(typ="rt")
-    yaml.default_flow_style = False
-    yaml.preserve_quotes = True
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    return yaml
 
 
 def _normalize_payload(value: object) -> object:

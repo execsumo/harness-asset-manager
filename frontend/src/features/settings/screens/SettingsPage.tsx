@@ -4,8 +4,8 @@ import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
 import { useFormatPath } from "../../../lib/paths";
-import { ConfigSnapshotsSection } from "../components/ConfigSnapshotsSection";
 import { SettingsHarnessMaintenanceMatrix } from "../components/SettingsHarnessMaintenanceMatrix";
+import { ConfigsSection } from "../components/ConfigsSection";
 import { useSettingsCopy } from "../i18n";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
 
@@ -63,6 +63,8 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          <ConfigsSection />
+
           <section className="settings-section">
             <h2 className="settings-section__heading">{copy.harnesses.heading}</h2>
             <SettingsHarnessMaintenanceMatrix
@@ -79,7 +81,6 @@ export default function SettingsPage() {
             />
           </section>
 
-          <ConfigSnapshotsSection />
         </>
       )}
 

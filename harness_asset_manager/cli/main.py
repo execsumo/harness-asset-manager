@@ -28,7 +28,6 @@ from harness_asset_manager.runtime.state import (
 )
 
 from . import commands
-from .commands import snapshots
 from .support import CliError, asset_flags
 
 if TYPE_CHECKING:
@@ -38,7 +37,7 @@ AssetHandler = Callable[["BackendContainer", argparse.Namespace], int]
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-RUNTIME_COMMANDS = {"serve", "start", "stop", "status", "snapshot"}
+RUNTIME_COMMANDS = {"serve", "start", "stop", "status"}
 COMMANDS = RUNTIME_COMMANDS | commands.GROUP_NAMES
 
 
@@ -67,12 +66,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     common = asset_flags()
 
-    snapshot_parser = subparsers.add_parser(
-        "snapshot",
-        parents=[common],
-        help="Capture snapshots of all user-level native harness configs.",
-    )
-    snapshot_parser.set_defaults(handler=snapshots.capture_snapshots)
 
     commands.register(subparsers, common)
 
