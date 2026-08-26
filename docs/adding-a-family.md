@@ -26,7 +26,13 @@ parts are actually invariant.
 ## Canonical storage and domain model
 
 - [ ] Add the family key to `FamilyKey` in
-      `harness_asset_manager/harness/contracts.py`.
+      `harness_asset_manager/harness/contracts.py` — **only if harnesses actually
+      bind it.** `FamilyKey` keys `HarnessDefinition.bindings` and drives
+      `supports_family()`, so adding a key no harness implements declares a
+      capability that does not exist. A family derived from files another binding
+      already resolves stays out of it: `configs` reads the paths
+      `ConfigSubtreeBindingProfile` resolves and is deliberately absent. The audit
+      journal's `family=` is a plain `str` and needs no entry either way.
 - [ ] Add a dedicated store or manifest under the central data directory. Keep
       device-local paths, generated output, credentials, and runtime state out
       of portable canonical records unless the family explicitly requires them.

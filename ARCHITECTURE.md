@@ -158,7 +158,6 @@ directory into this shape on startup).
 ├── settings.json                       # Global settings, harness toggles, autoAdopt
 ├── configs/
 │   └── manifest.json                   # Portable harness preferences (synced)
-│   └── droid/                          # mcp.json
 ├── permissions/
 │   └── manifest.json                   # Denylist permissions manifest
 ├── mcp/
