@@ -3,6 +3,7 @@ import type { ConfigsPayload } from "../api/types";
 export interface ConfigRowData {
   harness: string;
   managed: boolean;
+  hasRecord: boolean;
   keyCount: number;
   driftState: string;
   sourceFile: string;

@@ -186,3 +186,48 @@ class ConfigsTests(unittest.TestCase):
             manifest2 = store.load()
             self.assertIn("claude", manifest2.configs)
             self.assertEqual(manifest2.configs["claude"].preferences, {"a": 1})
+
+    def test_capture_leaves_record_alone_if_config_absent(self):
+        from unittest.mock import MagicMock
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "absent.json"
+            
+            store = MagicMock()
+            man = MagicMock()
+            man.configs = {"dummy": ConfigRecord("a", {"pref1": 2}, "b", "c")} 
+            store.load.return_value = man
+            
+            kernel = MagicMock()
+            b = MagicMock()
+            b.definition.harness = "dummy"
+            b.profile.resolve_config_path.return_value = p
+            kernel.bindings_for_family.return_value = [b]
+            
+            s = ConfigsService(store, kernel, DummyAssetTagService())
+            s.capture(explicit=False)
+            
+            # The risk of silently deleting another machine's managed state means we leave it alone.
+            store.remove_config.assert_not_called()
+            store.write_config.assert_not_called()
+
+    def test_list_exposes_has_record_for_absent_configs(self):
+        from unittest.mock import MagicMock
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "absent.json"
+            
+            store = MagicMock()
+            man = MagicMock()
+            man.configs = {"dummy": ConfigRecord("a", {"pref1": 2}, "b", "c")} 
+            store.load.return_value = man
+            
+            kernel = MagicMock()
+            b = MagicMock()
+            b.definition.harness = "dummy"
+            b.profile.resolve_config_path.return_value = p
+            kernel.bindings_for_family.return_value = [b]
+            
+            s = ConfigsService(store, kernel, DummyAssetTagService())
+            res = s.list()
+            
+            self.assertEqual(res["dummy"]["managed"], False)
+            self.assertEqual(res["dummy"]["hasRecord"], True)

@@ -172,6 +172,7 @@ class ConfigsService:
             if not record or not config_path.is_file():
                 result[harness] = {
                     "managed": False,
+                    "hasRecord": record is not None,
                     "keyCount": 0,
                     "driftState": "—",
                     "sourceFile": str(config_path),
@@ -188,6 +189,7 @@ class ConfigsService:
                     
                 result[harness] = {
                     "managed": True,
+                    "hasRecord": True,
                     "keyCount": key_count,
                     "driftState": drift_state,
                     "sourceFile": record.sourceFile,

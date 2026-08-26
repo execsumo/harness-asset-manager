@@ -1,6 +1,7 @@
 export interface ConfigsPayload {
   [harness: string]: {
     managed: boolean;
+  hasRecord: boolean;
     keyCount: number;
     driftState: string;
     sourceFile: string;

@@ -63,6 +63,18 @@ export function ConfigsDrawer({ row, onClose }: { row: ConfigRowData | null; onC
                       )}
                     </div>
                   </div>
+                  
+                  {!row.managed && row.hasRecord && (
+                    <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "var(--bg-warning-muted)", borderRadius: "6px" }}>
+                      <p style={{ margin: "0 0 0.5rem 0" }}><strong>Stale Record Detected</strong></p>
+                      <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.9em" }}>
+                        A record exists in your manifest, but the config file is absent on this machine. If this harness is managed on another machine, leave this alone. If this is a stale record, you can remove it.
+                      </p>
+                      <button className="action-pill action-pill--danger" onClick={handleDisable} disabled={disable.isPending}>
+                        <PowerOff size={14} className="action-pill__icon" /> Remove Record
+                      </button>
+                    </div>
+                  )}
                 </DetailSection>
 
                 <DetailSection heading="Source">
