@@ -294,29 +294,14 @@ export function useMcpManagementController() {
   );
 
   const handleMultiSelectStar = useCallback(async (): Promise<void> => {
-    if (multiSelectedNames.size === 0) return;
-    setMultiSelectPending("star");
-    try {
-      const names = Array.from(multiSelectedNames);
-      for (const name of names) {
-        const entry = inventory?.entries.find((e) => e.name === name);
-        if (!entry || entry.kind !== "managed") continue;
-        const currentTags = entry.tags || [];
-        const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
-        if (!isStarred) {
-          const nextTags = ["starred", ...currentTags];
-          try {
-            await setTagsMutation.mutateAsync({ name, tags: nextTags });
-          } catch {
-            // continue with remaining
-          }
-        }
-      }
-      setMultiSelectedNames(new Set());
-    } finally {
-      setMultiSelectPending(null);
-    }
-  }, [inventory, multiSelectedNames, setTagsMutation]);
+    await runBulkAction("star", async (name) => {
+      const entry = inventory?.entries.find((candidate) => candidate.name === name);
+      if (!entry || entry.kind !== "managed") return;
+      const currentTags = entry.tags || [];
+      if (currentTags.some((tag) => tag.toLowerCase() === "starred")) return;
+      await setTagsMutation.mutateAsync({ name, tags: ["starred", ...currentTags] });
+    });
+  }, [inventory, runBulkAction, setTagsMutation]);
 
   const dismissActionError = useCallback(() => setActionErrorMessage(""), []);
 

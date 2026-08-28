@@ -16,6 +16,7 @@ from harness_asset_manager.application.asset_tags import (
 )
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
 from harness_asset_manager.application.skills.package import fingerprint_package
+from tests.integration.test_mcp_routes import _seed_manual_remote
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import seed_skill_package, seed_store_manifest
 
@@ -48,6 +49,11 @@ def _create_hook(harness: AppTestHarness) -> str:
         },
     )
     return "pressure-hook"
+
+
+def _create_mcp(harness: AppTestHarness) -> str:
+    _seed_manual_remote(harness, "pressure-mcp")
+    return "pressure-mcp"
 
 
 def _create_permission(harness: AppTestHarness) -> str:
@@ -110,13 +116,14 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
 
     def test_tags_and_stars_across_all_families(self) -> None:
         """Full lifecycle: set, read-back, starred, filter payload,
-        isolation, clear, across Agents/Hooks/Permissions/SlashCommands/Skills."""
+        isolation, clear, across every asset family except Config."""
 
         with AppTestHarness() as harness:
             # -- Create one asset per family -----------------------------------
 
             agent_ref = _create_agent(harness)
             hook_id = _create_hook(harness)
+            mcp_name = _create_mcp(harness)
             perm_id = _create_permission(harness)
             slash_name = _create_slash_command(harness)
             skill_ref = _create_skill(harness)
@@ -127,6 +134,7 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
                 # family: (route_path, identifier_key)
                 "agents": (f"/api/agents/{agent_ref}/tags", "agents"),
                 "hooks": (f"/api/hooks/{hook_id}/tags", "hooks"),
+                "mcp": (f"/api/mcp/servers/{mcp_name}/tags", "mcp"),
                 "permissions": (f"/api/permissions/{perm_id}/tags", "permissions"),
                 "slash_commands": (f"/api/slash-commands/{slash_name}/tags", "slash_commands"),
                 "skills": (f"/api/skills/{skill_ref}/tags", "skills"),
@@ -172,6 +180,10 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
             self.assertIn("only-hooks", hook_detail["tags"])
             self.assertNotIn("only-agents", hook_detail["tags"])
 
+            mcp_detail = harness.get_json(f"/api/mcp/servers/{mcp_name}")
+            self.assertIn("only-mcp", mcp_detail["tags"])
+            self.assertNotIn("only-agents", mcp_detail["tags"])
+
             perm_detail = harness.get_json(f"/api/permissions/{perm_id}")
             self.assertIn("only-permissions", perm_detail["tags"])
             self.assertNotIn("only-agents", perm_detail["tags"])
@@ -194,6 +206,10 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
             hooks_list = harness.get_json("/api/hooks")
             hook_entry = next(e for e in hooks_list["entries"] if e["id"] == hook_id)
             self.assertIn(shared_tag, hook_entry["tags"])
+
+            mcp_list = harness.get_json("/api/mcp/servers")
+            mcp_entry = next(e for e in mcp_list["entries"] if e["name"] == mcp_name)
+            self.assertIn(shared_tag, mcp_entry["tags"])
 
             perms_list = harness.get_json("/api/permissions")
             perm_entry = next(e for e in perms_list["entries"] if e["id"] == perm_id)
@@ -236,6 +252,10 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
             self.assertIn(shared_tag, hook_still_tagged["tags"])
             self.assertIn("only-hooks", hook_still_tagged["tags"])
 
+            mcp_still_tagged = harness.get_json(f"/api/mcp/servers/{mcp_name}")
+            self.assertIn(shared_tag, mcp_still_tagged["tags"])
+            self.assertIn("only-mcp", mcp_still_tagged["tags"])
+
             perm_still_tagged = harness.get_json(f"/api/permissions/{perm_id}")
             self.assertIn(shared_tag, perm_still_tagged["tags"])
 
@@ -277,6 +297,7 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
 
             service.set_tags("agents", "reviewer", ["starred", "team-a"])
             service.set_tags("hooks", "pre-compact", ["starred", "security"])
+            service.set_tags("mcp", "filesystem", ["local"])
             service.set_tags("permissions", "deny-prod", ["production"])
             service.set_tags("slash_commands", "deploy", ["ops", "starred"])
             service.set_tags("skills", "academic-research", ["core"])
@@ -290,6 +311,10 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
             hook_tags = service.get_tags_for_family("hooks")
             self.assertIn("pre-compact", hook_tags)
             self.assertNotIn("reviewer", hook_tags)
+
+            mcp_tags = service.get_tags_for_family("mcp")
+            self.assertIn("filesystem", mcp_tags)
+            self.assertNotIn("reviewer", mcp_tags)
 
             perm_tags = service.get_tags_for_family("permissions")
             self.assertIn("deny-prod", perm_tags)
@@ -310,12 +335,14 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
 
         with AppTestHarness() as harness:
             hook_id = _create_hook(harness)
+            mcp_name = _create_mcp(harness)
             perm_id = _create_permission(harness)
             slash_name = _create_slash_command(harness)
             agent_ref = _create_agent(harness)
 
             routes = [
                 f"/api/hooks/{hook_id}/tags",
+                f"/api/mcp/servers/{mcp_name}/tags",
                 f"/api/permissions/{perm_id}/tags",
                 f"/api/slash-commands/{slash_name}/tags",
                 f"/api/agents/{agent_ref}/tags",

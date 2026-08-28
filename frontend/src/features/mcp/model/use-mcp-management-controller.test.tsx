@@ -195,4 +195,20 @@ describe("useMcpManagementController handleMultiSelectStar", () => {
     expect(hoisted.setTagsMutate).toHaveBeenCalledTimes(1);
     expect(result.current.multiSelectedNames.size).toBe(0);
   });
+
+  it("reports failures and preserves the selection for retry", async () => {
+    hoisted.setTagsMutate.mockRejectedValue(new Error("Permission denied"));
+    const { result } = renderHook(() => useMcpManagementController());
+
+    act(() => {
+      result.current.handleToggleMultiSelect("server-a");
+    });
+
+    await act(async () => {
+      await result.current.handleMultiSelectStar();
+    });
+
+    expect(result.current.actionErrorMessage).toContain("server-a: Permission denied");
+    expect(result.current.multiSelectedNames).toEqual(new Set(["server-a"]));
+  });
 });

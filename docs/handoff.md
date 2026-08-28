@@ -16,7 +16,7 @@ Tag and star capabilities have been extended from Skills across all capability f
    - Pinned starred quick-filter chip on tag filter bars.
    - Dedicated star column in matrix views with interactive star/unstar toggle.
    - Detail sheets and modals (Agents, Hooks, MCP, Permissions, Slash Commands) include tag viewing, addition, removal with autocomplete suggestions, and header star toggle.
-   - Bulk action bars support bulk starring, bulk tagging with autocomplete popover, enable/disable all, and delete operations.
+   - Where managed-row multi-select is available (Skills, MCP, and Permissions), bulk action bars support starring and tagging alongside existing management actions. Agents, Hooks, and Slash Commands retain their separate untracked-adoption selection model.
 
 3. **Validation & Testing**:
    - Unit tests covering `AssetTagStore` and `AssetTagService` (normalization, deduplication, length limits, concurrency).
