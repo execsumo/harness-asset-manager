@@ -308,6 +308,12 @@ export function SkillDetailContent({
               ) : null}
             </DetailSection>
 
+            {detail.packageFiles.length > 0 ? (
+              <DetailSection heading={copy.detail.packageContents}>
+                <SkillPackageContents files={detail.packageFiles} />
+              </DetailSection>
+            ) : null}
+
             <DetailSection heading="Tags">
               <SkillDetailTags
                 tags={detail.tags || []}
@@ -372,12 +378,6 @@ export function SkillDetailContent({
             {detail.conformance.length > 0 ? (
               <DetailSection heading={copy.detail.conformance}>
                 <SkillConformanceNotes issues={detail.conformance} />
-              </DetailSection>
-            ) : null}
-
-            {detail.packageFiles.length > 0 ? (
-              <DetailSection heading={copy.detail.packageContents}>
-                <SkillPackageContents files={detail.packageFiles} />
               </DetailSection>
             ) : null}
 
