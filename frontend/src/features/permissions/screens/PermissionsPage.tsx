@@ -276,6 +276,34 @@ export default function PermissionsPage() {
     [checkedIds, inventory, setTagsMutation],
   );
 
+  const handleBulkStar = useCallback(
+    async (): Promise<void> => {
+      if (checkedIds.size === 0) return;
+      setBulkPending("star");
+      try {
+        const ids = Array.from(checkedIds);
+        for (const id of ids) {
+          const entry = inventory?.entries.find((e) => e.id === id);
+          if (!entry || entry.kind !== "managed") continue;
+          const currentTags = entry.tags || [];
+          const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+          if (!isStarred) {
+            const nextTags = ["starred", ...currentTags];
+            try {
+              await setTagsMutation.mutateAsync({ id, tags: nextTags });
+            } catch {
+              // continue
+            }
+          }
+        }
+        setCheckedIds(new Set());
+      } finally {
+        setBulkPending(null);
+      }
+    },
+    [checkedIds, inventory, setTagsMutation],
+  );
+
   const selectedManagedCount = useMemo(
     () => entries.filter((entry) => entry.kind === "managed" && checkedIds.has(entry.id)).length,
     [checkedIds, entries],
@@ -532,6 +560,8 @@ export default function PermissionsPage() {
           onDisableAll={handleBulkDisableAll}
           onDelete={handleBulkDelete}
           onTagSelected={handleBulkTag}
+          onStarSelected={handleBulkStar}
+          starLabel="Star selected"
           knownTags={knownTagNames}
           destructive={{
             actionLabel: copy.inUse.uninstall.action,

@@ -77,6 +77,7 @@ export default function McpInUsePage() {
     handleMultiSelectDisableAll,
     handleMultiSelectUninstall,
     handleMultiSelectTag,
+    handleMultiSelectStar,
   } = useMcpManagementController();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -633,6 +634,8 @@ export default function McpInUsePage() {
         onDisableAll={handleMultiSelectDisableAll}
         onDelete={handleMultiSelectUninstall}
         onTagSelected={handleMultiSelectTag}
+        onStarSelected={handleMultiSelectStar}
+        starLabel="Star selected"
         knownTags={knownTagNames}
         destructive={{
           actionLabel: copy.inUse.uninstall.action,
