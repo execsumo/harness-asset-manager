@@ -139,7 +139,7 @@ export function SlashCommandMatrix({
       <tbody>
         {sortedEntries.map((entry) => (
           <SlashCommandMatrixRow
-            key={entry.id}
+            key={entry.kind === "managed" ? `managed:${entry.command.name}` : `review:${entry.review.reviewRef}`}
             entry={entry}
             targets={targets}
             pendingName={pendingName}

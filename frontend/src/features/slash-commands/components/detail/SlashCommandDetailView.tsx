@@ -228,21 +228,19 @@ export function SlashCommandDetailView({
     <>
       <div className="slash-command-detail-shell__chrome">
         <DetailHeader
-          title={
-            <h2 id={headingId} className="skill-detail__title">
-              {command.name}
-              <button
-                type="button"
-                className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                aria-label={isStarred ? `Unstar ${command.name}` : `Star ${command.name}`}
-                onClick={handleToggleStar}
-              >
-                <Star
-                  size={16}
-                  className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                />
-              </button>
-            </h2>
+          title={<h2 id={headingId} className="skill-detail__title">{command.name}</h2>}
+          titleAction={
+            <button
+              type="button"
+              className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+              aria-label={isStarred ? `Unstar ${command.name}` : `Star ${command.name}`}
+              onClick={handleToggleStar}
+            >
+              <Star
+                size={18}
+                className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+              />
+            </button>
           }
           closeLabel={copy.detail.close}
           onClose={handleRequestClose}

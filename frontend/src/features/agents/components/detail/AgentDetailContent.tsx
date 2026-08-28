@@ -415,23 +415,21 @@ export function AgentDetailContent({
       <div className="skill-detail-shell__chrome">
         <div className="skill-detail__chrome">
           <DetailHeader
-            title={
-              <h2 id={headingId} className="skill-detail__title">
-                {detail.name}
-                {isManaged ? (
-                  <button
-                    type="button"
-                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                    aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
-                    onClick={handleToggleStar}
-                  >
-                    <Star
-                      size={16}
-                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                    />
-                  </button>
-                ) : null}
-              </h2>
+            title={<h2 id={headingId} className="skill-detail__title">{detail.name}</h2>}
+            titleAction={
+              isManaged ? (
+                <button
+                  type="button"
+                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                  aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
+                  onClick={handleToggleStar}
+                >
+                  <Star
+                    size={18}
+                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                  />
+                </button>
+              ) : null
             }
             closeLabel="Close"
             onClose={handleRequestClose}

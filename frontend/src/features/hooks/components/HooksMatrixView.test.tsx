@@ -122,13 +122,34 @@ describe("HooksMatrixView", () => {
     expect(rowNames()).toEqual(["Alpha Hook", "Zeta Hook"]);
   });
 
-  it("toggles star on a hook row", () => {
+  it("renders star buttons for starred and unstarred hook rows and toggles star on click", () => {
     const onToggleStar = vi.fn();
-    const props = { ...buildProps(), onToggleStar };
+    const props = {
+      ...buildProps([
+        {
+          ...entries[0],
+          tags: ["starred"],
+        },
+        {
+          ...entries[1],
+          tags: [],
+        },
+      ]),
+      onToggleStar,
+    };
     render(<HooksMatrixView {...props} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Star alpha-hook" }));
+    const unstarBtn = screen.getByRole("button", { name: "Unstar alpha-hook" });
+    expect(unstarBtn).toBeInTheDocument();
+    expect(unstarBtn.className).toContain("skill-star-btn--active");
+    fireEvent.click(unstarBtn);
     expect(onToggleStar).toHaveBeenCalledWith("alpha-hook");
+
+    const starBtn = screen.getByRole("button", { name: "Star zeta-hook" });
+    expect(starBtn).toBeInTheDocument();
+    expect(starBtn.className).not.toContain("skill-star-btn--active");
+    fireEvent.click(starBtn);
+    expect(onToggleStar).toHaveBeenCalledWith("zeta-hook");
   });
 });
 

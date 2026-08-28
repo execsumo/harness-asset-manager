@@ -209,4 +209,95 @@ describe("AgentDetailContent", () => {
     expect(effort).toHaveValue("maximum");
     expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
   });
+
+  it("allows starring and unstarring a managed agent via title action", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method || "GET";
+      if (url.includes("/api/agents/chief/tags") && method === "PUT") {
+        return Promise.resolve(okJson({ tags: ["starred", "backend"] }));
+      }
+      return Promise.resolve(okJson({ rows: [] }));
+    });
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({ tags: ["backend"] })}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    const starBtn = screen.getByRole("button", { name: "Star Chief of Staff" });
+    expect(starBtn).toBeInTheDocument();
+    fireEvent.click(starBtn);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/agents/chief/tags") &&
+            JSON.parse(call[1].body).tags.includes("starred"),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("allows adding and removing tags in detail view", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method || "GET";
+      if (url.includes("/api/agents/chief/tags") && method === "PUT") {
+        return Promise.resolve(okJson({ tags: ["backend", "ops"] }));
+      }
+      return Promise.resolve(okJson({ rows: [] }));
+    });
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({ tags: ["backend"] })}
+        knownTags={["backend", "ops", "frontend"]}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("backend")).toBeInTheDocument();
+
+    // Add tag
+    fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+    const input = screen.getByPlaceholderText("Tag name...");
+    fireEvent.change(input, { target: { value: "ops" } });
+    fireEvent.click(screen.getByRole("button", { name: /confirm tag/i }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/agents/chief/tags") &&
+            JSON.parse(call[1].body).tags.includes("ops"),
+        ),
+      ).toBe(true);
+    });
+
+    // Remove tag
+    const removeBtn = screen.getByRole("button", { name: /remove tag backend/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/agents/chief/tags") &&
+            !JSON.parse(call[1].body).tags.includes("backend"),
+        ),
+      ).toBe(true);
+    });
+  });
 });

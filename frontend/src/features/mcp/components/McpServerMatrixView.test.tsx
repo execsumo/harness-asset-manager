@@ -118,12 +118,31 @@ describe("McpServerMatrixView", () => {
     expect(screen.getByRole("button", { name: "Sort by Codex" })).toBeInTheDocument();
   });
 
-  it("toggles star on an MCP server row", () => {
+  it("renders star buttons for starred and unstarred MCP server rows and toggles star on click", () => {
     const onToggleStar = vi.fn();
-    renderMatrix({ onToggleStar });
+    const testEntries = [
+      {
+        ...entries()[0],
+        tags: ["starred"],
+      },
+      {
+        ...entries()[1],
+        tags: [],
+      },
+    ];
+    renderMatrix({ entries: testEntries, onToggleStar });
 
-    fireEvent.click(screen.getByRole("button", { name: "Star exa" }));
+    const unstarBtn = screen.getByRole("button", { name: "Unstar exa" });
+    expect(unstarBtn).toBeInTheDocument();
+    expect(unstarBtn.className).toContain("skill-star-btn--active");
+    fireEvent.click(unstarBtn);
     expect(onToggleStar).toHaveBeenCalledWith("exa");
+
+    const starBtn = screen.getByRole("button", { name: "Star drift" });
+    expect(starBtn).toBeInTheDocument();
+    expect(starBtn.className).not.toContain("skill-star-btn--active");
+    fireEvent.click(starBtn);
+    expect(onToggleStar).toHaveBeenCalledWith("drift");
   });
 
   it("sorts rows by MCP Server name, active coverage, and harness state", () => {

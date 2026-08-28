@@ -149,6 +149,7 @@ export function DetailTags({
               onFocus={() => setSuggestOpen(true)}
               onKeyDown={handleKeyDown}
               placeholder="Tag name..."
+              aria-label="Tag name"
               disabled={disabled}
               maxLength={64}
             />

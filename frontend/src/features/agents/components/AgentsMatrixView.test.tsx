@@ -97,6 +97,10 @@ describe("AgentsMatrixView", () => {
             ...entries[0],
             tags: ["starred", "backend"],
           },
+          {
+            ...entries[1],
+            tags: ["ops"],
+          },
         ]}
         columns={columns}
         pendingAgentKeys={new Set()}
@@ -114,10 +118,19 @@ describe("AgentsMatrixView", () => {
     );
 
     expect(screen.getByText("backend")).toBeInTheDocument();
-    const starBtn = screen.getByRole("button", { name: "Unstar Alpha Agent" });
-    expect(starBtn).toBeInTheDocument();
-    fireEvent.click(starBtn);
+    expect(screen.getByText("ops")).toBeInTheDocument();
+
+    const unstarBtn = screen.getByRole("button", { name: "Unstar Alpha Agent" });
+    expect(unstarBtn).toBeInTheDocument();
+    expect(unstarBtn.className).toContain("skill-star-btn--active");
+    fireEvent.click(unstarBtn);
     expect(onToggleStar).toHaveBeenCalledWith("shared:alpha");
+
+    const starBtn = screen.getByRole("button", { name: "Star Zeta Agent" });
+    expect(starBtn).toBeInTheDocument();
+    expect(starBtn.className).not.toContain("skill-star-btn--active");
+    fireEvent.click(starBtn);
+    expect(onToggleStar).toHaveBeenCalledWith("shared:zeta");
 
     const headerStarBtn = screen.getByRole("button", { name: "Filter by starred" });
     fireEvent.click(headerStarBtn);

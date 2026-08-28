@@ -56,6 +56,15 @@
   text-align: center;
 }
 
+.matrix-table__cell--star .skill-star-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+}
+
 .matrix-table__th--identity,
 .matrix-table__cell--identity {
   padding-left: var(--space-4);
@@ -371,6 +380,4 @@
   .matrix-table__cell--harness {
     display: none;
   }
-}
-
 }

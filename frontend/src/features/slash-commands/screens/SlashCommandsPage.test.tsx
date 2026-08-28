@@ -393,6 +393,59 @@ describe("SlashCommandsPage", () => {
     expect(screen.getByLabelText("Enable Codex for code-review")).toBeInTheDocument();
     expect(screen.getByLabelText("Active on 1 of 2 targets")).toBeInTheDocument();
   });
+
+  it("renders star buttons for starred and unstarred slash commands in the matrix and toggles star", async () => {
+    const requests: Array<{ url: string; body: unknown }> = [];
+    fetchMock.mockImplementation(
+      createRouteFetchMock([
+        {
+          match: (url, _input, init) => url === "/api/slash-commands/summarize/tags" && init?.method === "PUT",
+          response: (url: string, _input: RequestInfo | URL, init?: RequestInit) => {
+            requests.push({ url, body: JSON.parse(String(init?.body)) });
+            return okJson({ tags: ["starred", "review"] });
+          },
+        },
+        {
+          match: "/api/slash-commands",
+          response: slashCommandsPayload({
+            commands: [
+              {
+                name: "summarize",
+                description: "Summarize text",
+                prompt: "$ARGUMENTS",
+                syncTargets: [],
+                tags: ["review"],
+              },
+              {
+                name: "explain",
+                description: "Explain code",
+                prompt: "$ARGUMENTS",
+                syncTargets: [],
+                tags: ["starred"],
+              },
+            ],
+          }),
+        },
+      ]),
+    );
+
+    renderWithAppProviders(<SlashCommandsPage />);
+
+    expect(await screen.findByRole("table", { name: "Slash commands target matrix" })).toBeInTheDocument();
+
+    const unstarBtn = screen.getByRole("button", { name: "Unstar explain" });
+    expect(unstarBtn).toBeInTheDocument();
+    expect(unstarBtn.className).toContain("skill-star-btn--active");
+
+    const starBtn = screen.getByRole("button", { name: "Star summarize" });
+    expect(starBtn).toBeInTheDocument();
+    expect(starBtn.className).not.toContain("skill-star-btn--active");
+
+    fireEvent.click(starBtn);
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toEqual({ tags: ["starred", "review"] });
+  });
 });
 
 function slashCommandsPayload({
@@ -403,6 +456,7 @@ function slashCommandsPayload({
     description: string;
     prompt: string;
     syncTargets: unknown[];
+    tags?: string[];
   }>;
 } = {}) {
   return {

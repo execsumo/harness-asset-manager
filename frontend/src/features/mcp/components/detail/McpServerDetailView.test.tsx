@@ -625,4 +625,84 @@ describe("McpServerDetailView", () => {
     fireEvent.click(confirmButtons[confirmButtons.length - 1]);
     expect(onUninstall).toHaveBeenCalled();
   });
+
+  it("allows starring and unstarring a managed MCP server via title action", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const method = init?.method || "GET";
+      if (url.includes("/api/mcp/servers/exa/tags") && method === "PUT") {
+        return okJson({ tags: ["starred"] });
+      }
+      if (url.includes("/api/mcp/servers/exa")) {
+        return okJson(detailFixture({ tags: [] }));
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderView();
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Exa Search" })).toBeInTheDocument());
+    const starBtn = screen.getByRole("button", { name: "Star Exa Search" });
+    expect(starBtn).toBeInTheDocument();
+    fireEvent.click(starBtn);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/mcp/servers/exa/tags") &&
+            JSON.parse(call[1]?.body as string).tags.includes("starred"),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  it("allows adding and removing tags for managed MCP server", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const method = init?.method || "GET";
+      if (url.includes("/api/mcp/servers/exa/tags") && method === "PUT") {
+        return okJson({ tags: ["search", "tools"] });
+      }
+      if (url.includes("/api/mcp/servers/exa")) {
+        return okJson(detailFixture({ tags: ["search"] }));
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderView({ knownTags: ["search", "tools", "ai"] });
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Exa Search" })).toBeInTheDocument());
+    expect(screen.getByText("search")).toBeInTheDocument();
+
+    // Add tag
+    fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+    const input = screen.getByPlaceholderText("Tag name...");
+    fireEvent.change(input, { target: { value: "tools" } });
+    fireEvent.click(screen.getByRole("button", { name: /confirm tag/i }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/mcp/servers/exa/tags") &&
+            JSON.parse(call[1]?.body as string).tags.includes("tools"),
+        ),
+      ).toBe(true);
+    });
+
+    // Remove tag
+    const removeBtn = screen.getByRole("button", { name: /remove tag search/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/mcp/servers/exa/tags") &&
+            !JSON.parse(call[1]?.body as string).tags.includes("search"),
+        ),
+      ).toBe(true);
+    });
+  });
 });

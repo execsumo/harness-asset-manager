@@ -88,10 +88,19 @@ describe("PermissionsMatrixView", () => {
     expect(rowNames()).toEqual(["Zeta Rule", "Alpha Rule"]);
   });
 
-  it("toggles star on a permission row", () => {
+  it("renders star buttons for starred and unstarred permission rows and toggles star on click", () => {
     const onToggleStar = vi.fn();
     const props = {
-      entries,
+      entries: [
+        {
+          ...entries[0],
+          tags: ["starred"],
+        },
+        {
+          ...entries[1],
+          tags: [],
+        },
+      ],
       columns,
       pendingPermissionKeys: new Set<string>(),
       pendingPerHarnessKeys: new Set<string>(),
@@ -105,8 +114,17 @@ describe("PermissionsMatrixView", () => {
     };
     render(<PermissionsMatrixView {...props} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Star Alpha Rule" }));
+    const unstarBtn = screen.getByRole("button", { name: "Unstar Alpha Rule" });
+    expect(unstarBtn).toBeInTheDocument();
+    expect(unstarBtn.className).toContain("skill-star-btn--active");
+    fireEvent.click(unstarBtn);
     expect(onToggleStar).toHaveBeenCalledWith("alpha-rule");
+
+    const starBtn = screen.getByRole("button", { name: "Star Zeta Rule" });
+    expect(starBtn).toBeInTheDocument();
+    expect(starBtn.className).not.toContain("skill-star-btn--active");
+    fireEvent.click(starBtn);
+    expect(onToggleStar).toHaveBeenCalledWith("zeta-rule");
   });
 
   it("sorts by harness column", () => {

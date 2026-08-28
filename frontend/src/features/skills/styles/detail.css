@@ -592,8 +592,9 @@
   transition: color 120ms ease;
 }
 
-.skill-detail-tag__remove:hover {
-  color: var(--color-text);
+.skill-detail-tag__remove:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-softer);
 }
 
 .skill-detail-tags__empty {
@@ -623,6 +624,11 @@
   border-color: var(--color-text-muted);
 }
 
+.skill-detail-tags__add-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-softer);
+}
+
 .skill-detail-tags__input-wrapper {
   position: relative;
   display: inline-flex;
@@ -633,6 +639,11 @@
   border: 1px solid var(--color-accent-soft);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
+}
+
+.skill-detail-tags__input-wrapper:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-softer);
 }
 
 .skill-detail-tags__input {
@@ -661,6 +672,11 @@
   cursor: pointer;
 }
 
+.skill-detail-tags__confirm-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-softer);
+}
+
 .skill-detail-tags__cancel-btn {
   display: inline-flex;
   align-items: center;
@@ -672,6 +688,11 @@
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
+}
+
+.skill-detail-tags__cancel-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent-softer);
 }
 
 .skill-detail-tags__suggestions {
@@ -707,6 +728,4 @@
 .skill-detail-tags__error {
   font-size: var(--font-size-xs);
   color: var(--color-danger, #ef4444);
-}
-
 }

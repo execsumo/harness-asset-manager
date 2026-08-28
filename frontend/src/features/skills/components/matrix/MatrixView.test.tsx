@@ -112,8 +112,25 @@ describe("Skills MatrixView", () => {
 
     const starBtn = cells[2].querySelector("button");
     expect(starBtn?.getAttribute("aria-label")).toBe("Unstar Alpha");
+    expect(starBtn?.className).toContain("skill-star-btn--active");
     // The identity cell does not embed a star button.
     expect(cells[1].querySelector(".skill-star-btn")).toBeNull();
+
+    // The second row (unstarred) visibly renders the empty outline star button
+    const secondRow = table.querySelector("tbody tr:nth-child(2)") as HTMLElement;
+    const secondRowStarBtn = secondRow.querySelectorAll("td")[2].querySelector("button");
+    expect(secondRowStarBtn).not.toBeNull();
+    expect(secondRowStarBtn?.getAttribute("aria-label")).toBe("Star Zeta");
+    expect(secondRowStarBtn?.className).not.toContain("skill-star-btn--active");
+  });
+
+  it("calls onToggleStar when clicking the row star button", () => {
+    const { onToggleStar } = renderMatrix();
+
+    const starZetaBtn = screen.getByRole("button", { name: "Star Zeta" });
+    fireEvent.click(starZetaBtn);
+
+    expect(onToggleStar).toHaveBeenCalledWith("shared:zeta");
   });
 
   it("renders the star header button with tooltip and toggles starred filter on click", () => {

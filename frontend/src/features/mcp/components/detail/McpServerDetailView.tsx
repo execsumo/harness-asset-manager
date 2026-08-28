@@ -179,23 +179,21 @@ export function McpServerDetailView({
       <McpDetailShell
         chrome={(
           <DetailHeader
-            title={
-              <h2 id={headingId} className="skill-detail__title">
-                {displayName}
-                {detail.kind === "managed" ? (
-                  <button
-                    type="button"
-                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                    aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
-                    onClick={handleToggleStar}
-                  >
-                    <Star
-                      size={16}
-                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                    />
-                  </button>
-                ) : null}
-              </h2>
+            title={<h2 id={headingId} className="skill-detail__title">{displayName}</h2>}
+            titleAction={
+              detail.kind === "managed" ? (
+                <button
+                  type="button"
+                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                  aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
+                  onClick={handleToggleStar}
+                >
+                  <Star
+                    size={18}
+                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                  />
+                </button>
+              ) : null
             }
             meta={
               <div className="mcp-detail__meta-stack">
