@@ -3236,6 +3236,8 @@ export interface components {
             prompt: string;
             /** Reviewref */
             reviewRef: string;
+            /** Tags */
+            tags?: string[];
             /**
              * Target
              * @enum {string}

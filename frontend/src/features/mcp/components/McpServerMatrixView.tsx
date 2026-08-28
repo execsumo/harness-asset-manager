@@ -277,7 +277,7 @@ function McpMatrixRow({
         </button>
       </td>
       <td className="matrix-table__cell matrix-table__cell--star">
-        {!isUntracked && onToggleStar ? (
+        {onToggleStar ? (
           <button
             type="button"
             className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}

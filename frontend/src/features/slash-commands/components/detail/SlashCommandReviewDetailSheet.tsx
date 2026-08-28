@@ -6,6 +6,7 @@ import { SlashCommandReviewDetailView } from "./SlashCommandReviewDetailView";
 interface SlashCommandReviewDetailSheetProps {
   row: SlashCommandReviewDto | null;
   canonicalCommand: SlashCommandDto | null;
+  knownTags?: string[];
   targets: SlashTargetDto[];
   pendingKey: string | null;
   actionError: string;
@@ -16,6 +17,7 @@ interface SlashCommandReviewDetailSheetProps {
 export function SlashCommandReviewDetailSheet({
   row,
   canonicalCommand,
+  knownTags,
   targets,
   pendingKey,
   actionError,
@@ -46,6 +48,7 @@ export function SlashCommandReviewDetailSheet({
           <SlashCommandReviewDetailView
             row={row}
             canonicalCommand={canonicalCommand}
+            knownTags={knownTags}
             targets={targets}
             pendingKey={pendingKey}
             actionError={actionError}

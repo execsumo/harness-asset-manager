@@ -82,7 +82,6 @@ export function AgentDetailContent({
     setLocalActionError(null);
   };
 
-  const isManaged = detail.storePath !== null;
   const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
 
   const handleToggleStar = async () => {
@@ -416,21 +415,19 @@ export function AgentDetailContent({
         <div className="skill-detail__chrome">
           <DetailHeader
             title={<h2 id={headingId} className="skill-detail__title">{detail.name}</h2>}
-            titleAction={
-              isManaged ? (
-                <button
-                  type="button"
-                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                  aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
-                  onClick={handleToggleStar}
-                >
-                  <Star
-                    size={18}
-                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                  />
-                </button>
-              ) : null
-            }
+            titleAction={(
+              <button
+                type="button"
+                className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
+                onClick={handleToggleStar}
+              >
+                <Star
+                  size={18}
+                  className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                />
+              </button>
+            )}
             closeLabel="Close"
             onClose={handleRequestClose}
           />
@@ -458,7 +455,7 @@ export function AgentDetailContent({
             <DetailTags
               tags={detail.tags || []}
               knownTags={knownTags}
-              canEdit={isManaged}
+              canEdit={true}
               onAddTag={handleAddTag}
               onRemoveTag={handleRemoveTag}
               disabled={setTagsMutation.isPending}

@@ -121,21 +121,19 @@ export function PermissionDetailSheet({
           
           <DetailHeader
             title={<h2 id={headingId} className="skill-detail__title">{displayName}</h2>}
-            titleAction={
-              detail?.kind === "managed" ? (
-                <button
-                  type="button"
-                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                  aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
-                  onClick={handleToggleStar}
-                >
-                  <Star
-                    size={18}
-                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                  />
-                </button>
-              ) : null
-            }
+            titleAction={(
+              <button
+                type="button"
+                className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
+                onClick={handleToggleStar}
+              >
+                <Star
+                  size={18}
+                  className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                />
+              </button>
+            )}
             closeLabel={copy.detail.close}
             onClose={onClose}
           />
@@ -176,18 +174,16 @@ export function PermissionDetailSheet({
                 </dl>
               </DetailSection>
 
-              {detail.kind === "managed" ? (
-                <DetailSection heading="Tags">
-                  <DetailTags
-                    tags={detail.tags || []}
-                    knownTags={knownTags}
-                    canEdit={true}
-                    onAddTag={handleAddTag}
-                    onRemoveTag={handleRemoveTag}
-                    disabled={setTagsMutation.isPending}
-                  />
-                </DetailSection>
-              ) : null}
+              <DetailSection heading="Tags">
+                <DetailTags
+                  tags={detail.tags || []}
+                  knownTags={knownTags}
+                  canEdit={true}
+                  onAddTag={handleAddTag}
+                  onRemoveTag={handleRemoveTag}
+                  disabled={setTagsMutation.isPending}
+                />
+              </DetailSection>
 
               <DetailSection heading={copy.detail.bindings}>
                 <div className="detail-sheet__bindings">

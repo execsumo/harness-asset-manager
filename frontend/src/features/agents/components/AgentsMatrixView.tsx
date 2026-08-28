@@ -223,7 +223,7 @@ function AgentsMatrixRow({
         </OverflowTooltipText>
       </td>
       <td className="matrix-table__cell matrix-table__cell--star">
-        {onToggleStar && !isUntracked ? (
+        {onToggleStar ? (
           <button
             type="button"
             className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}

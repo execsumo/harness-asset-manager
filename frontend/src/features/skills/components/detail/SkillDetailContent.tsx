@@ -263,21 +263,19 @@ export function SkillDetailContent({
           <div className="skill-detail__chrome">
             <DetailHeader
               title={<h2 id={headingId}>{detail.name}</h2>}
-              titleAction={
-                isManaged ? (
-                  <button
-                    type="button"
-                    className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                    aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
-                    onClick={handleToggleStar}
-                  >
-                    <Star
-                      size={18}
-                      className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                    />
-                  </button>
-                ) : null
-              }
+              titleAction={(
+                <button
+                  type="button"
+                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                  aria-label={isStarred ? `Unstar ${detail.name}` : `Star ${detail.name}`}
+                  onClick={handleToggleStar}
+                >
+                  <Star
+                    size={18}
+                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                  />
+                </button>
+              )}
               meta={detail.sourceLinks ? (
                 <div className="detail-sheet__meta">
                   <DetailSourceLinks

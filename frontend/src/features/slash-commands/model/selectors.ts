@@ -27,9 +27,12 @@ export interface SlashMatrixSortState {
 }
 
 export function extractSlashCommandTagCounts(
-  commands: SlashCommandDto[] | null | undefined,
+  data: { commands: SlashCommandDto[]; reviewCommands?: SlashCommandReviewDto[] } | SlashCommandDto[] | null | undefined,
 ): SlashCommandTagCount[] {
-  return extractAssetTagCounts(commands);
+  if (!data) return [];
+  if (Array.isArray(data)) return extractAssetTagCounts(data);
+  const allTagged = [...(data.commands || []), ...(data.reviewCommands || [])];
+  return extractAssetTagCounts(allTagged);
 }
 
 export function slashCommandInventoryEntries(
@@ -54,7 +57,8 @@ export function filterSlashCommandEntries(
     if (status === "untracked" && entry.kind !== "unmanaged") return false;
     if (status !== "untracked" && entry.kind === "unmanaged" && status !== "all") return false;
     if (tags && tags.length > 0) {
-      if (entry.kind !== "managed" || !matchesAssetTags(entry.command, tags)) {
+      const asset = entry.kind === "managed" ? entry.command : entry.review;
+      if (!matchesAssetTags(asset, tags)) {
         return false;
       }
     }

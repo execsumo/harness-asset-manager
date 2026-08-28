@@ -89,6 +89,7 @@ export interface SlashCommandReviewDto {
   canImport: boolean;
   actions: SlashReviewAction[];
   error?: string | null;
+  tags?: string[];
 }
 
 export interface SlashCommandImportRequest {

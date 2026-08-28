@@ -1,7 +1,7 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createRouteFetchMock, okJson } from "./fetch";
+import { okJson } from "./fetch";
 import { renderWithAppProviders } from "./render";
 
 // Components
@@ -737,8 +737,8 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
     });
   });
 
-  describe("3. Unmanaged / Read-only Semantics", () => {
-    it("Unmanaged items in detail views do not show editable tags or star buttons", async () => {
+  describe("3. Unmanaged / Parity Semantics Across Managed and Unmanaged Assets", () => {
+    it("Unmanaged items in detail views show editable tags and star buttons", async () => {
       fetchMock.mockImplementation((input) => {
         const url = String(input);
         if (url.includes("/api/mcp/servers/unmanaged-server")) {
@@ -755,9 +755,12 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
               installConfigStatus: { hasFields: false, missingRequired: [], configured: true },
               spec: null,
               sightings: [],
-              tags: [],
+              tags: ["unmanaged-tag"],
             }),
           );
+        }
+        if (url.includes("/api/mcp/servers/unmanaged-server/tags")) {
+          return Promise.resolve(okJson({ tags: ["unmanaged-tag", "starred"] }));
         }
         return Promise.resolve(okJson({}));
       });
@@ -781,10 +784,24 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
         expect(screen.getByRole("heading", { name: "Unmanaged Server" })).toBeInTheDocument();
       });
 
-      // No star button
-      expect(screen.queryByRole("button", { name: /star/i })).not.toBeInTheDocument();
-      // No tags section
-      expect(screen.queryByRole("heading", { name: "Tags" })).not.toBeInTheDocument();
+      // Star button is present
+      const starBtn = screen.getByRole("button", { name: "Star Unmanaged Server" });
+      expect(starBtn).toBeInTheDocument();
+      // Tags section is present
+      expect(screen.getByRole("heading", { name: "Tags" })).toBeInTheDocument();
+      expect(screen.getByText("unmanaged-tag")).toBeInTheDocument();
+
+      // Click star
+      fireEvent.click(starBtn);
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(
+            (call) =>
+              String(call[0]).includes("/api/mcp/servers/unmanaged-server/tags") &&
+              JSON.parse(call[1].body).tags.includes("starred"),
+          ),
+        ).toBe(true);
+      });
     });
 
     it("DetailTags in read-only mode (canEdit=false) displays tags without remove buttons or add input", () => {

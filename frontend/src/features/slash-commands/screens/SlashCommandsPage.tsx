@@ -106,8 +106,9 @@ export default function SlashCommandsPage() {
   const handleToggleStar = useCallback(
     async (name: string) => {
       const cmd = controller.data?.commands.find((c) => c.name === name);
-      if (!cmd) return;
-      const currentTags = cmd.tags || [];
+      const reviewCmd = !cmd ? controller.data?.reviewCommands.find((r) => r.reviewRef === name || r.name === name) : null;
+      if (!cmd && !reviewCmd) return;
+      const currentTags = cmd?.tags || reviewCmd?.tags || [];
       const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
       const nextTags = isStarred
         ? currentTags.filter((t) => t.toLowerCase() !== "starred")
@@ -291,6 +292,7 @@ export default function SlashCommandsPage() {
         <SlashCommandReviewDetailSheet
           row={controller.selectedReviewRow}
           canonicalCommand={controller.selectedCanonicalCommand}
+          knownTags={knownTagNames}
           targets={controller.data.targets}
           pendingKey={controller.pendingReviewKey}
           actionError={controller.actionError}

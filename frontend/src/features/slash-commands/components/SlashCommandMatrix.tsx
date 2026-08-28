@@ -269,6 +269,8 @@ function SlashCommandMatrixRow({
   }
 
   const { review } = entry;
+  const isStarred = (review.tags || []).some((t) => t.toLowerCase() === "starred");
+  const displayTags = (review.tags || []).filter((t) => t.toLowerCase() !== "starred");
   const primaryAction = primaryReviewAction(review);
   const isPending = primaryAction ? pendingReviewKey === reviewKey(review.target, review.name, primaryAction) : false;
   const actionLabel = copy.review.actionLabel(primaryAction);
@@ -285,11 +287,44 @@ function SlashCommandMatrixRow({
       </td>
       <td className="matrix-table__cell matrix-table__cell--identity">
         <button type="button" className="mcp-matrix__server-button" aria-label={`Open detail for ${review.name}`} onClick={() => onOpenReview(review)}>
-          <span className="matrix-table__name-row"><span className="matrix-table__name-text">{review.name}</span></span>
+          <div className="matrix-table__name-row slash-matrix-name-row">
+            <OverflowTooltipText as="span" className="matrix-table__name-text">{review.name}</OverflowTooltipText>
+            {displayTags.length > 0 ? (
+              <div className="matrix-table__tag-pills">
+                {displayTags.slice(0, 2).map((tag) => (
+                  <span key={tag} className="matrix-table__tag-pill">
+                    {tag}
+                  </span>
+                ))}
+                {displayTags.length > 2 ? (
+                  <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                    +{displayTags.length - 2}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
           <span className="matrix-table__description">{copy.review.metaText(review)}</span>
         </button>
       </td>
-      <td className="matrix-table__cell matrix-table__cell--star" />
+      <td className="matrix-table__cell matrix-table__cell--star">
+        {onToggleStar ? (
+          <button
+            type="button"
+            className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+            aria-label={isStarred ? `Unstar ${review.name}` : `Star ${review.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar(review.reviewRef);
+            }}
+          >
+            <Star
+              size={14}
+              className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+            />
+          </button>
+        ) : null}
+      </td>
       {targets.map((target) => {
         const isTarget = review.target === target.id;
         const title = isTarget ? copy.review.metaText(review) : `Not found in ${target.label}`;

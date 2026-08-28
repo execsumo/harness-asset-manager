@@ -5692,6 +5692,13 @@
             "title": "Reviewref",
             "type": "string"
           },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "target": {
             "enum": [
               "claude",

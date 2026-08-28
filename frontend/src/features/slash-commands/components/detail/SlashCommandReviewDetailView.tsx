@@ -1,5 +1,5 @@
-import { useId } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { useId, useState } from "react";
+import { AlertTriangle, Loader2, Star } from "lucide-react";
 
 import {
   DetailBindingIdentity,
@@ -7,8 +7,10 @@ import {
 } from "../../../../components/detail/DetailBindingIdentity";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
+import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { useFormatPath } from "../../../../lib/paths";
+import { useSetSlashCommandTagsMutation } from "../../api/queries";
 import type { SlashCommandDto, SlashCommandReviewDto, SlashReviewAction, SlashTargetDto } from "../../api/types";
 import { useSlashCommandsCopy, type SlashCommandsCopy } from "../../i18n";
 import {
@@ -23,6 +25,7 @@ import {
 interface SlashCommandReviewDetailViewProps {
   row: SlashCommandReviewDto;
   canonicalCommand: SlashCommandDto | null;
+  knownTags?: string[];
   targets: SlashTargetDto[];
   pendingKey: string | null;
   actionError: string;
@@ -33,6 +36,7 @@ interface SlashCommandReviewDetailViewProps {
 export function SlashCommandReviewDetailView({
   row,
   canonicalCommand,
+  knownTags,
   targets,
   pendingKey,
   actionError,
@@ -41,6 +45,9 @@ export function SlashCommandReviewDetailView({
 }: SlashCommandReviewDetailViewProps) {
   const headingId = useId();
   const copy = useSlashCommandsCopy();
+  const setTagsMutation = useSetSlashCommandTagsMutation();
+  const [tagError, setTagError] = useState<string | null>(null);
+
   const primaryAction = primaryReviewAction(row);
   const orderedActions = primaryAction
     ? [primaryAction, ...row.actions.filter((action) => action !== primaryAction)]
@@ -48,6 +55,50 @@ export function SlashCommandReviewDetailView({
   const pendingAction = orderedActions.find((action) => pendingKey === reviewKey(row.target, row.name, action));
   const hasCanonicalGap = row.commandExists && !canonicalCommand;
   const isConflict = row.kind === "unmanaged" && row.commandExists;
+
+  const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+
+  const handleToggleStar = async () => {
+    const nextTags = isStarred
+      ? (row.tags || []).filter((t) => t.toLowerCase() !== "starred")
+      : ["starred", ...(row.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+    try {
+      await setTagsMutation.mutateAsync({
+        name: row.reviewRef || row.name,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "Failed to toggle star.");
+    }
+  };
+
+  const handleAddTag = async (newTag: string) => {
+    setTagError(null);
+    const nextTags = [...(row.tags || []), newTag];
+    try {
+      await setTagsMutation.mutateAsync({
+        name: row.reviewRef || row.name,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "Failed to add tag.");
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    setTagError(null);
+    const nextTags = (row.tags || []).filter(
+      (t) => t.toLowerCase() !== tagToRemove.toLowerCase(),
+    );
+    try {
+      await setTagsMutation.mutateAsync({
+        name: row.reviewRef || row.name,
+        tags: nextTags,
+      });
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "Failed to remove tag.");
+    }
+  };
 
   async function runAction(action: SlashReviewAction): Promise<void> {
     const ok = await onAction(row, action);
@@ -59,9 +110,23 @@ export function SlashCommandReviewDetailView({
       <div className="slash-review-detail-shell__chrome">
         <DetailHeader
           title={<h2 id={headingId}>{row.name}</h2>}
+          titleAction={(
+            <button
+              type="button"
+              className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+              aria-label={isStarred ? `Unstar ${row.name}` : `Star ${row.name}`}
+              onClick={handleToggleStar}
+            >
+              <Star
+                size={18}
+                className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+              />
+            </button>
+          )}
           closeLabel={copy.detail.close}
           onClose={onClose}
         />
+        {tagError ? <ErrorBanner message={tagError} onDismiss={() => setTagError(null)} /> : null}
       </div>
 
       <div className="slash-review-detail-shell__body ui-scrollbar" aria-labelledby={headingId}>
@@ -88,6 +153,16 @@ export function SlashCommandReviewDetailView({
           ) : null}
 
           <ReviewContent row={row} canonicalCommand={canonicalCommand} isConflict={isConflict} copy={copy} />
+          <DetailSection heading="Tags">
+            <DetailTags
+              tags={row.tags || []}
+              knownTags={knownTags}
+              canEdit={true}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
+              disabled={setTagsMutation.isPending}
+            />
+          </DetailSection>
           <ReviewHarnessesSection row={row} targets={targets} copy={copy} />
           <ReviewLocationSection row={row} copy={copy} />
         </div>
