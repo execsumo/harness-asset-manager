@@ -42,12 +42,24 @@ class SlashCommandMutationService:
         self.review_resolver = SlashCommandReviewResolver(store, sync_state, queries, self.path_policy)
 
     def set_tags(self, name: str, tags: Iterable[str]) -> dict[str, object]:
-        command = self.store.get_command(name)
-        if command is None:
+        canonical_key: str | None = None
+        try:
+            command = self.store.get_command(name)
+            if command is not None:
+                canonical_key = command.name
+        except Exception:
+            pass
+        if canonical_key is None:
+            commands_payload = self.queries.list_commands()
+            for review in commands_payload.get("reviewCommands", []):
+                if isinstance(review, dict) and (review.get("reviewRef") == name or review.get("name") == name):
+                    canonical_key = review.get("reviewRef") or name
+                    break
+        if canonical_key is None:
             raise MutationError(f"unknown slash command: {name}", status=404, code="slash_command_not_found")
         if self.asset_tags is None:
             raise MutationError("asset tag service is not configured", status=500)
-        updated_tags = self.asset_tags.set_tags("slash_commands", command.name, tags)
+        updated_tags = self.asset_tags.set_tags("slash_commands", canonical_key, tags)
         return {"tags": updated_tags}
 
     def create_command(

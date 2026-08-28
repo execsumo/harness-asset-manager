@@ -63,6 +63,7 @@ def build_inventory(
 
     for id in sorted(id for id in bindings_by_id if id not in seen):
         observed_spec = observed_spec_by_id.get(id)
+        tags = tuple(tags_by_ref.get(id, ())) if tags_by_ref else ()
         entries.append(
             HookInventoryEntry(
                 id=id,
@@ -71,6 +72,7 @@ def build_inventory(
                 sightings=tuple(bindings_by_id[id]),
                 is_managed=False,
                 can_enable=True,
+                tags=tags,
             )
         )
 

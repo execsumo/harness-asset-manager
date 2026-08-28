@@ -50,6 +50,11 @@ class SlashCommandReviewResolver:
             render_format=target.render_format,
         )
         self.sync_state.add_target(name, record)
+        if self.queries.read_models.asset_tags is not None:
+            review_ref = f"unmanaged:{target.id}:{name}"
+            existing_tags = self.queries.read_models.asset_tags.get_tags("slash_commands", review_ref)
+            if existing_tags:
+                self.queries.read_models.asset_tags.set_tags("slash_commands", name, existing_tags)
         payload = self.queries.get_command(name)
         return {
             "ok": True,

@@ -86,3 +86,56 @@ class HooksTagsRoutesTests(unittest.TestCase):
                 expected_status=404,
             )
             self.assertEqual(err_unknown["code"], "hook_not_found")
+
+    def test_unmanaged_hook_tagging_and_promotion_retention(self) -> None:
+        with AppTestHarness() as harness:
+            import json
+            claude_path = harness.spec.home / ".claude" / "settings.json"
+            claude_path.parent.mkdir(parents=True, exist_ok=True)
+            claude_path.write_text(
+                json.dumps(
+                    {
+                        "hooks": {
+                            "PreToolUse": [
+                                {
+                                    "matcher": "Bash",
+                                    "hooks": [{"type": "command", "command": "echo review-me"}],
+                                }
+                            ]
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/hooks")
+            entry = next(
+                e for e in payload["entries"]
+                if e.get("spec") and e["spec"].get("command") == "echo review-me"
+            )
+            hook_id = entry["id"]
+            self.assertEqual(entry["tags"], [])
+
+            # Tag unmanaged hook
+            put_resp = harness.put_json(
+                f"/api/hooks/{hook_id}/tags",
+                {"tags": ["starred", "security-audit"]},
+            )
+            self.assertEqual(put_resp["tags"], ["starred", "security-audit"])
+
+            # Detail shows tags
+            detail = harness.get_json(f"/api/hooks/{hook_id}")
+            self.assertEqual(detail["tags"], ["starred", "security-audit"])
+
+            # List shows tags
+            updated_list = harness.get_json("/api/hooks")
+            updated_entry = next(e for e in updated_list["entries"] if e["id"] == hook_id)
+            self.assertEqual(updated_entry["tags"], ["starred", "security-audit"])
+
+            # Promote hook
+            promoted = harness.post_json(f"/api/hooks/{hook_id}/promote", {})
+            self.assertTrue(promoted["ok"])
+
+            # Promoted hook detail retains tags!
+            promoted_detail = harness.get_json(f"/api/hooks/{hook_id}")
+            self.assertEqual(promoted_detail["tags"], ["starred", "security-audit"])

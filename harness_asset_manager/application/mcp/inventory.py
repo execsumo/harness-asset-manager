@@ -59,6 +59,7 @@ def build_inventory(
         seen.add(server.name)
 
     for name in sorted(name for name in bindings_by_name if name not in seen):
+        tags = tuple(tags_by_ref.get(name, ())) if tags_by_ref else ()
         entries.append(
             McpInventoryEntry(
                 name=name,
@@ -67,6 +68,7 @@ def build_inventory(
                 sightings=tuple(bindings_by_name[name]),
                 is_managed=False,
                 can_enable=True,
+                tags=tags,
             )
         )
 

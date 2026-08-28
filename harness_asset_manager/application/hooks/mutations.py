@@ -36,13 +36,8 @@ class HooksMutationService:
                 for scan in snapshot.harness_scans
                 for entry in scan.entries
             )
-            if is_unmanaged:
-                raise MutationError(
-                    f"unmanaged hook '{id}' cannot be tagged; adopt it first",
-                    status=400,
-                    code="unmanaged_hook",
-                )
-            raise MutationError(f"unknown hook: {id}", status=404, code="hook_not_found")
+            if not is_unmanaged:
+                raise MutationError(f"unknown hook: {id}", status=404, code="hook_not_found")
         if self.asset_tags is None:
             raise MutationError("asset tag service is not configured", status=500)
         updated_tags = self.asset_tags.set_tags("hooks", id, tags)

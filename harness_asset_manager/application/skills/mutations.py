@@ -43,11 +43,6 @@ class SkillsMutationService:
 
     def set_skill_tags(self, skill_ref: str, tags: Iterable[str]) -> dict[str, object]:
         entry = self.queries.require_entry(skill_ref)
-        if entry.kind != "managed":
-            raise MutationError(
-                f"only managed skills can be tagged; this is {display_status(entry)}",
-                status=400,
-            )
         if self.asset_tags is None:
             raise MutationError("asset tag service is not configured", status=500)
         updated_tags = self.asset_tags.set_tags("skills", entry.skill_ref, tags)
@@ -370,6 +365,10 @@ class SkillsMutationService:
             adapter = self.read_models.require_enabled_adapter(sighting.harness)
             adapter.enable_shared_package(ingested)
             canonical_bound_harnesses.add(sighting.harness)
+        if self.asset_tags is not None:
+            existing_tags = self.asset_tags.get_tags("skills", entry.skill_ref)
+            if existing_tags:
+                self.asset_tags.set_tags("skills", f"shared:{ingested.name}", existing_tags)
         return ingested
 
     def _partition_bound_adapters(

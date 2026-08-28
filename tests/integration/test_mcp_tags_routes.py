@@ -72,3 +72,41 @@ class McpTagsRoutesTests(unittest.TestCase):
                 expected_status=404,
             )
             self.assertEqual(err_unknown["code"], "mcp_not_found")
+
+    def test_unmanaged_mcp_server_tagging(self) -> None:
+        with AppTestHarness() as harness:
+            import json
+            claude_cfg = harness.spec.home / ".claude.json"
+            claude_cfg.write_text(
+                json.dumps({
+                    "mcpServers": {
+                        "unmanaged-mcp": {
+                            "command": "npx",
+                            "args": ["-y", "unmanaged-server"],
+                        }
+                    }
+                }),
+                encoding="utf-8",
+            )
+
+            # Unmanaged server shows in list
+            list_page = harness.get_json("/api/mcp/servers")
+            entry = next(e for e in list_page["entries"] if e["name"] == "unmanaged-mcp")
+            self.assertEqual(entry["kind"], "unmanaged")
+            self.assertEqual(entry["tags"], [])
+
+            # Tag unmanaged MCP server
+            put_resp = harness.put_json(
+                "/api/mcp/servers/unmanaged-mcp/tags",
+                {"tags": ["starred", "external-tool"]},
+            )
+            self.assertEqual(put_resp["tags"], ["starred", "external-tool"])
+
+            # Detail shows tags
+            detail = harness.get_json("/api/mcp/servers/unmanaged-mcp")
+            self.assertEqual(detail["tags"], ["starred", "external-tool"])
+
+            # List shows tags
+            updated_list = harness.get_json("/api/mcp/servers")
+            updated_entry = next(e for e in updated_list["entries"] if e["name"] == "unmanaged-mcp")
+            self.assertEqual(updated_entry["tags"], ["starred", "external-tool"])

@@ -30,7 +30,14 @@ class PermissionsMutationService:
 
     def set_tags(self, id: str, tags: Iterable[str]) -> dict[str, object]:
         if self.store.get_managed(id) is None:
-            raise MutationError(f"unknown permission: {id}", status=404)
+            snapshot = self.read_models.snapshot()
+            is_unmanaged = any(
+                entry.id == id
+                for scan in snapshot.harness_scans
+                for entry in scan.entries
+            )
+            if not is_unmanaged:
+                raise MutationError(f"unknown permission: {id}", status=404)
         if self._asset_tags is None:
             raise MutationError("asset tags service not configured", status=500)
         cleaned = self._asset_tags.set_tags("permissions", id, tags)

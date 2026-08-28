@@ -89,3 +89,48 @@ class PermissionsTagsRoutesTests(unittest.TestCase):
                 expected_status=404,
             )
             self.assertEqual(err_unknown["code"], "not_found")
+
+    def test_unmanaged_permission_tagging_and_promotion_retention(self) -> None:
+        with AppTestHarness() as harness:
+            import json
+            claude_path = harness.spec.home / ".claude" / "settings.json"
+            claude_path.parent.mkdir(parents=True, exist_ok=True)
+            claude_path.write_text(
+                json.dumps({"permissions": {"deny": ["Bash(git status)"]}}),
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/permissions")
+            entry = next(
+                e for e in payload["entries"]
+                if e.get("spec") and e["spec"].get("pattern") == "git status"
+            )
+            perm_id = entry["id"]
+            self.assertEqual(entry["tags"], [])
+
+            # Tag unmanaged permission
+            put_resp = harness.put_json(
+                f"/api/permissions/{perm_id}/tags",
+                {"tags": ["starred", "deny-rule"]},
+            )
+            self.assertEqual(put_resp["tags"], ["starred", "deny-rule"])
+
+            # Detail shows tags
+            detail = harness.get_json(f"/api/permissions/{perm_id}")
+            self.assertEqual(detail["tags"], ["starred", "deny-rule"])
+
+            # List shows tags
+            updated_list = harness.get_json("/api/permissions")
+            updated_entry = next(e for e in updated_list["entries"] if e["id"] == perm_id)
+            self.assertEqual(updated_entry["tags"], ["starred", "deny-rule"])
+
+            # Promote permission
+            promoted = harness.post_json(
+                f"/api/permissions/{perm_id}/promote",
+                {},
+            )
+            self.assertTrue(promoted["ok"])
+
+            # Promoted permission detail retains tags!
+            promoted_detail = harness.get_json(f"/api/permissions/{perm_id}")
+            self.assertEqual(promoted_detail["tags"], ["starred", "deny-rule"])

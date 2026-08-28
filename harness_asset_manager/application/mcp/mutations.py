@@ -62,13 +62,8 @@ class McpMutationService:
                 for scan in snapshot.harness_scans
                 for entry in scan.entries
             )
-            if is_unmanaged:
-                raise MutationError(
-                    f"unmanaged MCP server '{name}' cannot be tagged; adopt it first",
-                    status=400,
-                    code="unmanaged_mcp",
-                )
-            raise MutationError(f"unknown MCP server: {name}", status=404, code="mcp_not_found")
+            if not is_unmanaged:
+                raise MutationError(f"unknown MCP server: {name}", status=404, code="mcp_not_found")
         if self.asset_tags is None:
             raise MutationError("asset tag service is not configured", status=500)
         updated_tags = self.asset_tags.set_tags("mcp", name, tags)

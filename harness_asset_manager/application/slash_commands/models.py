@@ -102,6 +102,7 @@ class SlashCommandReviewRow:
     command_exists: bool
     actions: tuple[SlashReviewAction, ...]
     error: str | None = None
+    tags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -117,6 +118,7 @@ class SlashCommandReviewRow:
             "canImport": "import" in self.actions and self.error is None,
             "actions": list(self.actions),
             "error": self.error,
+            "tags": list(self.tags),
         }
 
 

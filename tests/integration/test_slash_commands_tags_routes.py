@@ -85,3 +85,41 @@ class SlashCommandsTagsRoutesTests(unittest.TestCase):
                 expected_status=404,
             )
             self.assertEqual(err_unknown["code"], "slash_command_not_found")
+
+    def test_unmanaged_slash_command_tagging_and_import_migration(self) -> None:
+        with AppTestHarness() as harness:
+            claude_dir = harness.spec.home / ".claude" / "commands"
+            claude_dir.mkdir(parents=True, exist_ok=True)
+            (claude_dir / "unmanaged-cmd.md").write_text(
+                "---\ndescription: Unmanaged command\n---\nPrompt body.\n",
+                encoding="utf-8",
+            )
+
+            # Lists as reviewCommand
+            list_page = harness.get_json("/api/slash-commands")
+            review_cmd = next(r for r in list_page["reviewCommands"] if r["name"] == "unmanaged-cmd")
+            review_ref = review_cmd["reviewRef"]
+            self.assertEqual(review_cmd["tags"], [])
+
+            # Tag unmanaged review command via reviewRef
+            put_resp = harness.put_json(
+                f"/api/slash-commands/{review_ref}/tags",
+                {"tags": ["starred", "custom-tag"]},
+            )
+            self.assertEqual(put_resp["tags"], ["starred", "custom-tag"])
+
+            # Review command in list now has tags
+            updated_list = harness.get_json("/api/slash-commands")
+            updated_review = next(r for r in updated_list["reviewCommands"] if r["name"] == "unmanaged-cmd")
+            self.assertEqual(updated_review["tags"], ["starred", "custom-tag"])
+
+            # Import unmanaged command
+            import_resp = harness.post_json(
+                "/api/slash-commands/review/import",
+                {"target": "claude", "name": "unmanaged-cmd"},
+            )
+            self.assertTrue(import_resp["ok"])
+
+            # Managed command detail retains tags
+            managed_detail = harness.get_json("/api/slash-commands/unmanaged-cmd")
+            self.assertEqual(managed_detail["tags"], ["starred", "custom-tag"])

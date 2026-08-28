@@ -176,6 +176,7 @@ class SlashCommandReadModelService:
                             command_exists=command_name in command_names,
                             actions=("remove_binding",),
                             error=str(error),
+                            tags=tuple(self.asset_tags.get_tags("slash_commands", f"drifted:{target.id}:{command_name}")) if self.asset_tags is not None else (),
                         )
                     )
                     continue
@@ -191,6 +192,7 @@ class SlashCommandReadModelService:
                             command_exists=command_name in command_names,
                             actions=("restore_managed", "remove_binding"),
                             error="Managed slash command file is missing",
+                            tags=tuple(self.asset_tags.get_tags("slash_commands", f"missing:{target.id}:{command_name}")) if self.asset_tags is not None else (),
                         )
                     )
                     continue
@@ -253,6 +255,8 @@ class SlashCommandReadModelService:
         actions: tuple[str, ...],
         error: str | None,
     ) -> SlashCommandReviewRow:
+        review_ref = f"{kind}:{target.id}:{name}"
+        tags = tuple(self.asset_tags.get_tags("slash_commands", review_ref)) if self.asset_tags is not None else ()
         try:
             parsed = parse_slash_command_document(
                 name,
@@ -269,6 +273,7 @@ class SlashCommandReadModelService:
                 command_exists=command_exists,
                 actions=actions,  # type: ignore[arg-type]
                 error=error,
+                tags=tags,
             )
         except Exception as parse_error:  # noqa: BLE001
             return SlashCommandReviewRow(
@@ -281,6 +286,7 @@ class SlashCommandReadModelService:
                 command_exists=command_exists,
                 actions=(),
                 error=str(parse_error),
+                tags=tags,
             )
 
     def _target(self, target_id: str, targets: tuple[SlashTarget, ...]) -> SlashTarget | None:

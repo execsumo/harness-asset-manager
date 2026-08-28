@@ -96,12 +96,33 @@ class AgentsTagsRoutesTests(unittest.TestCase):
             )
             self.assertEqual(err_unknown["code"], "agent_not_found")
 
-            # Unmanaged agent -> 400
+    def test_unmanaged_agent_tagging_and_adoption_migration(self) -> None:
+        with AppTestHarness() as harness:
             _seed_unmanaged_claude_agent(harness.spec, "stray")
-            err_unmanaged = harness.put_json(
+
+            # Unmanaged agent is taggable via its canonical ref
+            put_resp = harness.put_json(
                 "/api/agents/claude/stray/tags",
-                {"tags": ["starred"]},
-                expected_status=400,
+                {"tags": ["starred", "imported-soon"]},
             )
-            self.assertEqual(err_unmanaged["code"], "request_failed")
-            self.assertIn("only managed agents can be tagged", err_unmanaged["error"])
+            self.assertEqual(put_resp["tags"], ["starred", "imported-soon"])
+
+            # Detail shows tags
+            detail = harness.get_json("/api/agents/claude/stray")
+            self.assertEqual(detail["tags"], ["starred", "imported-soon"])
+
+            # List shows tags for unmanaged row
+            list_page = harness.get_json("/api/agents")
+            row = next(r for r in list_page["entries"] if r["ref"] == "claude/stray")
+            self.assertEqual(row["tags"], ["starred", "imported-soon"])
+
+            # Adopt agent
+            adopt_resp = harness.post_json(
+                "/api/agents/claude/stray/adopt",
+                {},
+            )
+            self.assertEqual(adopt_resp["ref"], "stray")
+
+            # Managed agent detail retains tags!
+            managed_detail = harness.get_json("/api/agents/stray")
+            self.assertEqual(managed_detail["tags"], ["starred", "imported-soon"])

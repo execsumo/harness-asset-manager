@@ -114,3 +114,41 @@ class SkillsTagsRoutesTests(unittest.TestCase):
                 expected_status=404,
             )
             self.assertEqual(err_unknown["code"], "skill_not_found")
+
+    def test_unmanaged_skills_tagging_and_adoption_migration(self) -> None:
+        with AppTestHarness() as harness:
+            seed_skill_package(
+                harness.spec.codex_root,
+                "unmanaged-skill",
+                "Unmanaged Skill",
+                body="Body of unmanaged skill.",
+            )
+
+            list_page = harness.get_json("/api/skills")
+            row = next(r for r in list_page["rows"] if r["name"] == "Unmanaged Skill")
+            skill_ref = row["skillRef"]
+            self.assertTrue(skill_ref.startswith("unmanaged:"))
+            self.assertEqual(row["tags"], [])
+
+            # Tag unmanaged skill
+            put_resp = harness.put_json(
+                f"/api/skills/{skill_ref}/tags",
+                {"tags": ["starred", "experimental"]},
+            )
+            self.assertEqual(put_resp["tags"], ["starred", "experimental"])
+
+            # Detail shows tags
+            detail = harness.get_json(f"/api/skills/{skill_ref}")
+            self.assertEqual(detail["tags"], ["starred", "experimental"])
+
+            # Adopt unmanaged skill
+            manage_resp = harness.post_json(
+                f"/api/skills/{skill_ref}/manage",
+                {},
+            )
+            self.assertTrue(manage_resp["ok"])
+
+            # Managed skill ref is now shared:unmanaged-skill
+            managed_detail = harness.get_json("/api/skills/shared:unmanaged-skill")
+            # Tags survived adoption!
+            self.assertEqual(managed_detail["tags"], ["starred", "experimental"])

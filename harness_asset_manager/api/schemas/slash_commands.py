@@ -87,6 +87,7 @@ class SlashCommandReviewResponse(BaseModel):
     canImport: bool
     actions: list[SlashReviewAction]
     error: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class SlashCommandListResponse(BaseModel):

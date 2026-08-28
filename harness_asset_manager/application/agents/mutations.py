@@ -66,17 +66,27 @@ class AgentMutationService:
     def adapters(self) -> dict[str, AgentHarnessAdapter]:
         return self._resolve()[1]
 
-    # -- tags ---------------------------------------------------------------
-
     def set_tags(self, ref: str, tags: Iterable[str]) -> dict[str, object]:
-        if "/" in ref:
-            raise MutationError("only managed agents can be tagged", status=400)
-        agent = self.store.get(ref)
-        if agent is None:
+        canonical_key: str | None = None
+        if "/" not in ref:
+            agent = self.store.get(ref)
+            if agent is not None:
+                canonical_key = agent.slug
+        else:
+            try:
+                harness, slug = self._split_ref(ref)
+                adapter = self.adapters.get(harness)
+                if adapter is not None:
+                    harness_path = adapter.binding_path(slug)
+                    if harness_path.is_file() and not harness_path.is_symlink():
+                        canonical_key = f"{harness}/{slug}"
+            except Exception:
+                pass
+        if canonical_key is None:
             raise MutationError(f"unknown agent ref: {ref}", status=404, code="agent_not_found")
         if self.asset_tags is None:
             raise MutationError("asset tag service is not configured", status=500)
-        updated_tags = self.asset_tags.set_tags("agents", agent.slug, tags)
+        updated_tags = self.asset_tags.set_tags("agents", canonical_key, tags)
         return {"tags": updated_tags}
 
     set_agent_tags = set_tags
@@ -153,6 +163,10 @@ class AgentMutationService:
         # from the file we just wrote, so a later clobber is measured against the
         # content this harness actually received.
         self._enable(adapter, harness, self._require_agent(slug))
+        if self.asset_tags is not None:
+            existing_tags = self.asset_tags.get_tags("agents", ref)
+            if existing_tags:
+                self.asset_tags.set_tags("agents", slug, existing_tags)
         return slug
 
     def _write_store_from_harness(self, adapter: AgentHarnessAdapter, harness_path: Path, slug: str) -> None:

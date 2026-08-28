@@ -373,6 +373,48 @@ class CrossFamilyTagsPressureTest(unittest.TestCase):
                     f"Overlength tag should be rejected for {route}",
                 )
 
+    def test_unmanaged_same_name_different_harness_isolation(self) -> None:
+        """Same-name unmanaged assets in different harnesses use distinct canonical keys
+        and do not collide or overwrite each other's tags."""
+        with AppTestHarness() as harness:
+            # 1. Unmanaged agents in Claude vs Cursor
+            claude_agent_dir = harness.spec.home / ".claude" / "agents"
+            claude_agent_dir.mkdir(parents=True, exist_ok=True)
+            (claude_agent_dir / "worker.md").write_text("---\nname: Worker\n---\nPrompt.", encoding="utf-8")
+
+            cursor_agent_dir = harness.spec.home / ".cursor" / "agents"
+            cursor_agent_dir.mkdir(parents=True, exist_ok=True)
+            (cursor_agent_dir / "worker.md").write_text("---\nname: Worker\n---\nPrompt.", encoding="utf-8")
+
+            # Tag claude worker vs cursor worker differently
+            harness.put_json("/api/agents/claude/worker/tags", {"tags": ["claude-only", "starred"]})
+            harness.put_json("/api/agents/cursor/worker/tags", {"tags": ["cursor-only"]})
+
+            claude_detail = harness.get_json("/api/agents/claude/worker")
+            self.assertEqual(claude_detail["tags"], ["starred", "claude-only"])
+
+            cursor_detail = harness.get_json("/api/agents/cursor/worker")
+            self.assertEqual(cursor_detail["tags"], ["cursor-only"])
+
+            # 2. Unmanaged slash commands in Claude vs Cursor
+            claude_cmd_dir = harness.spec.home / ".claude" / "commands"
+            claude_cmd_dir.mkdir(parents=True, exist_ok=True)
+            (claude_cmd_dir / "build.md").write_text("---\ndescription: Claude build\n---\nPrompt.", encoding="utf-8")
+
+            cursor_cmd_dir = harness.spec.home / ".cursor" / "commands"
+            cursor_cmd_dir.mkdir(parents=True, exist_ok=True)
+            (cursor_cmd_dir / "build.md").write_text("---\ndescription: Cursor build\n---\nPrompt.", encoding="utf-8")
+
+            harness.put_json("/api/slash-commands/unmanaged:claude:build/tags", {"tags": ["claude-build", "starred"]})
+            harness.put_json("/api/slash-commands/unmanaged:cursor:build/tags", {"tags": ["cursor-build"]})
+
+            slash_list = harness.get_json("/api/slash-commands")
+            claude_rev = next(r for r in slash_list["reviewCommands"] if r["reviewRef"] == "unmanaged:claude:build")
+            cursor_rev = next(r for r in slash_list["reviewCommands"] if r["reviewRef"] == "unmanaged:cursor:build")
+
+            self.assertEqual(claude_rev["tags"], ["starred", "claude-build"])
+            self.assertEqual(cursor_rev["tags"], ["cursor-build"])
+
 
 if __name__ == "__main__":
     unittest.main()
