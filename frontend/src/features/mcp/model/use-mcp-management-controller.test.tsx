@@ -164,3 +164,35 @@ describe("useMcpManagementController handleMultiSelectTag", () => {
     expect(result.current.multiSelectedNames.size).toBe(0);
   });
 });
+
+describe("useMcpManagementController handleMultiSelectStar", () => {
+  beforeEach(() => {
+    hoisted.setTagsMutate.mockReset();
+    hoisted.setTagsMutate.mockResolvedValue({});
+  });
+
+  it("adds starred tag to unstarred servers and skips already starred ones", async () => {
+    const { result } = renderHook(() => useMcpManagementController());
+
+    act(() => {
+      result.current.handleToggleMultiSelect("server-a");
+      result.current.handleToggleMultiSelect("server-b");
+    });
+
+    expect(result.current.multiSelectedNames.size).toBe(2);
+
+    await act(async () => {
+      await result.current.handleMultiSelectStar();
+    });
+
+    // server-a has tags: ["core"], so gets ["starred", "core"]
+    expect(hoisted.setTagsMutate).toHaveBeenCalledWith({
+      name: "server-a",
+      tags: ["starred", "core"],
+    });
+
+    // server-b already had "starred", so should not have a second mutate call for it
+    expect(hoisted.setTagsMutate).toHaveBeenCalledTimes(1);
+    expect(result.current.multiSelectedNames.size).toBe(0);
+  });
+});
