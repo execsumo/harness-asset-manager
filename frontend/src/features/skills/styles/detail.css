@@ -592,8 +592,13 @@
   transition: color 120ms ease;
 }
 
+.skill-detail-tag__remove:hover {
+  color: var(--color-text);
+}
+
 .skill-detail-tag__remove:focus-visible {
   outline: none;
+  color: var(--color-text);
   box-shadow: 0 0 0 2px var(--color-accent-softer);
 }
 
