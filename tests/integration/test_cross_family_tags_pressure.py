@@ -20,7 +20,6 @@ from tests.integration.test_mcp_routes import _seed_manual_remote
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import seed_skill_package, seed_store_manifest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
