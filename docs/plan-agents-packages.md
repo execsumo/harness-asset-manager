@@ -5,7 +5,11 @@
 > Deferred follow-ups are tracked in `handoff.md`. This file remains the design of
 > record for the decisions below.
 
-> **Note: Decisions 2, 4, and 6 and Stages 2-4 are superseded by `plan-agents-simplify.md` (2026-07-24)**.
+> **Note: Decisions 2, 4, and 6 and Stages 2-4 were superseded on 2026-07-24 by the
+> rebuild of Agents as a normal resource family, which has since shipped.** Skill-alias
+> pinning, compiled-artifact provenance, and the capability-degradation report were all
+> retired with the compile model; Agents is now a flat inventory like every other family.
+> Package-store decisions 1 and 3 below remain in force.
 
 Revised execution plan for the "Agents & Packages" RFC, incorporating the architectural
 review of 2026-07-13. Goal: finish and test all stages today, credits permitting.

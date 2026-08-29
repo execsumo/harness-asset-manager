@@ -121,8 +121,8 @@ parts are actually invariant.
       convention; see `McpInUsePage.tsx` or `AgentsInUsePage.tsx`.
 - [ ] Make unsupported harnesses and unsupported scopes visible in the matrix.
       Do not hide a column or silently omit a record.
-- [ ] Wire the family into the shared asset-tags system (see
-      `docs/plan-asset-tags.md` §5 and the Skills implementation as the reference):
+- [ ] Wire the family into the shared asset-tags system (use the Skills
+      implementation as the reference):
       include each entry's sorted `tags` array (`starred` first) in list/detail
       payloads via `AssetTagService` (`application/asset_tags/`, keyed
       `<family>:<ref>`); add a `PUT /api/<family>/{ref}/tags` replace-set endpoint;
