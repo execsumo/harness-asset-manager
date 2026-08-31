@@ -13,9 +13,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   const apiOrigin = env.VITE_API_ORIGIN ?? "http://127.0.0.1:8000";
   const apiBase = normalizeBase(env.VITE_API_BASE, "/api");
+  const devToken = env.VITE_API_TOKEN || env.HARNESSAM_API_TOKEN || "";
 
   return {
     root: "frontend",
+    define: {
+      "import.meta.env.VITE_API_TOKEN": JSON.stringify(devToken),
+    },
     plugins: [react()],
     server: {
       host: "127.0.0.1",

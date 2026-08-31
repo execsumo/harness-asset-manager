@@ -1,4 +1,4 @@
-import { ApiError, deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
+import { ApiError, authHeaders, deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
 import { apiPath } from "../../../api/paths";
 import type {
   AgentInventoryDto,
@@ -41,7 +41,7 @@ export async function adoptAgent(
   const body = onConflict ? { onConflict } : undefined;
   const response = await fetch(apiPath(`/agents/${ref}/adopt`), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: body ? JSON.stringify(body) : undefined,
   });
   if (response.status === 409) {
