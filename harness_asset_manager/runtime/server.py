@@ -22,6 +22,7 @@ class ServerHandle:
     thread: Thread
     base_url: str
     socket_handle: socket.socket
+    api_token: str
 
     def stop(self) -> None:
         self.server.should_exit = True
@@ -76,10 +77,11 @@ def serve_foreground(
     open_browser: bool = True,
     allow_remote: bool = False,
     prebound_socket: socket.socket | None = None,
+    api_token: str | None = None,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote)
+    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote, api_token=api_token)
     if prebound_socket is None:
         sock, actual_host, actual_port = bind_socket(host, port)
     else:
@@ -107,10 +109,12 @@ def serve_in_thread(
     port: int = 0,
     frontend_dist: str | Path | None = None,
     allow_remote: bool = False,
+    api_token: str | None = None,
 ) -> ServerHandle:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote)
+    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote, api_token=api_token)
+    resolved_token = getattr(app.state, "api_token", "")
     sock, actual_host, actual_port = bind_socket(host, port)
     uvicorn = _uvicorn()
     config = uvicorn.Config(
@@ -130,4 +134,10 @@ def serve_in_thread(
         thread.join(timeout=5)
         sock.close()
         raise RuntimeError("uvicorn server failed to start")
-    return ServerHandle(server=server, thread=thread, base_url=f"http://{actual_host}:{actual_port}", socket_handle=sock)
+    return ServerHandle(
+        server=server,
+        thread=thread,
+        base_url=f"http://{actual_host}:{actual_port}",
+        socket_handle=sock,
+        api_token=resolved_token,
+    )

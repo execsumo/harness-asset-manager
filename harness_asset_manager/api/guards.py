@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import secrets
 from urllib.parse import urlsplit
 
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -73,6 +74,56 @@ class LoopbackOnlyMiddleware:
         await self.app(scope, receive, send)
 
 
+class ApiTokenMiddleware:
+    """ASGI middleware enforcing bearer token authentication on /api/* endpoints."""
+
+    def __init__(self, app: ASGIApp, *, api_token: str) -> None:
+        self.app = app
+        self.api_token = api_token
+        self._expected_bytes = api_token.encode("utf-8")
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        # Only guard /api/* endpoints, exempting /api/health
+        if not path.startswith("/api/") or path.rstrip("/") == "/api/health":
+            await self.app(scope, receive, send)
+            return
+
+        auth_header: str | None = None
+        for key, value in scope.get("headers", []):
+            if key.lower() == b"authorization":
+                try:
+                    auth_header = value.decode("latin-1")
+                except Exception:
+                    auth_header = None
+                break
+
+        if auth_header is None or not auth_header.startswith("Bearer "):
+            await _reject_unauthorized(send, "unauthorized: missing or invalid bearer token")
+            return
+
+        token_candidate = auth_header[7:].strip()
+        if not token_candidate:
+            await _reject_unauthorized(send, "unauthorized: missing or invalid bearer token")
+            return
+
+        try:
+            candidate_bytes = token_candidate.encode("utf-8")
+            valid = secrets.compare_digest(candidate_bytes, self._expected_bytes)
+        except Exception:
+            valid = False
+
+        if not valid:
+            await _reject_unauthorized(send, "unauthorized: invalid bearer token")
+            return
+
+        await self.app(scope, receive, send)
+
+
 async def _reject(send: Send, message: str) -> None:
     body = json.dumps({"error": message}).encode("utf-8")
     await send(
@@ -80,6 +131,22 @@ async def _reject(send: Send, message: str) -> None:
             "type": "http.response.start",
             "status": 403,
             "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode("ascii"))],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+async def _reject_unauthorized(send: Send, message: str) -> None:
+    body = json.dumps({"error": message}).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode("ascii")),
+                (b"www-authenticate", b"Bearer"),
+            ],
         }
     )
     await send({"type": "http.response.body", "body": body})
