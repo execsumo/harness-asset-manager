@@ -18,7 +18,6 @@ class RuntimeState:
     version: str
     executable: str
     started_at: float
-    token: str | None = None
 
 
 def runtime_state_path(env: dict[str, str] | None = None) -> Path:
@@ -37,7 +36,6 @@ def load_runtime_state(env: dict[str, str] | None = None) -> RuntimeState | None
         payload = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict):
             return None
-        token_val = payload.get("token")
         return RuntimeState(
             pid=int(payload["pid"]),
             host=str(payload["host"]),
@@ -46,7 +44,6 @@ def load_runtime_state(env: dict[str, str] | None = None) -> RuntimeState | None
             version=str(payload["version"]),
             executable=str(payload["executable"]),
             started_at=float(payload.get("started_at", time.time())),
-            token=str(token_val) if token_val is not None else None,
         )
     except (OSError, ValueError, KeyError, TypeError):
         return None

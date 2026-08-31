@@ -83,7 +83,30 @@ class CliRuntimeTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(token_proc.returncode, 0, token_proc.stderr)
-            self.assertEqual(token_proc.stdout.strip(), runtime_state["token"])
+            token = token_proc.stdout.strip()
+            self.assertTrue(len(token) > 20)
+
+            # Rotating token works via CLI
+            rotate_proc = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "harness_asset_manager",
+                    "token",
+                    "--rotate",
+                    "--state-dir",
+                    str(state_dir),
+                ],
+                cwd=Path(__file__).resolve().parents[2],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            self.assertEqual(rotate_proc.returncode, 0, rotate_proc.stderr)
+            new_token = rotate_proc.stdout.strip()
+            self.assertNotEqual(token, new_token)
 
             restart = subprocess.run(
                 [
@@ -128,6 +151,7 @@ class CliRuntimeTests(unittest.TestCase):
             self.assertEqual(stop.returncode, 0, stop.stderr)
             self.assertFalse((state_dir / "runtime.json").exists())
 
+            # Token is persistent in the store and readable even when stopped
             token_after_stop = subprocess.run(
                 [
                     sys.executable,
@@ -144,8 +168,8 @@ class CliRuntimeTests(unittest.TestCase):
                 timeout=10,
                 check=False,
             )
-            self.assertEqual(token_after_stop.returncode, 1)
-            self.assertIn("not running", token_after_stop.stderr)
+            self.assertEqual(token_after_stop.returncode, 0)
+            self.assertEqual(token_after_stop.stdout.strip(), new_token)
 
     def test_serve_refuses_non_loopback_host_without_allow_remote(self) -> None:
         with TemporaryDirectory(prefix="harnessam-cli-") as temp_dir:

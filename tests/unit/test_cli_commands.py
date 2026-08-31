@@ -78,31 +78,31 @@ class ParserTests(unittest.TestCase):
 
 
 class TokenCommandTests(CliCommandTestCase):
-    def test_token_when_not_running_exits_one(self) -> None:
+    def test_token_reads_and_generates_token(self) -> None:
         code, out, err = self.run_cli("token")
-        self.assertEqual(code, 1)
-        self.assertEqual(out, "")
-        self.assertIn("not running", err)
+        self.assertEqual(code, 0, msg=err)
+        token = out.strip()
+        self.assertTrue(len(token) > 20)
 
-    def test_token_prints_active_instance_token(self) -> None:
-        from harness_asset_manager.runtime.state import RuntimeState, write_runtime_state
-        state = RuntimeState(
-            pid=os.getpid(),
-            host="127.0.0.1",
-            port=8000,
-            base_url="http://127.0.0.1:8000",
-            version="0.1.0",
-            executable=sys.executable,
-            started_at=time.time(),
-            token="secret-token-xyz-789",
-        )
-        write_runtime_state(state, self.spec.env())
+        # Running again prints the same token
+        code2, out2, err2 = self.run_cli("token")
+        self.assertEqual(code2, 0, msg=err2)
+        self.assertEqual(out2.strip(), token)
 
-        with mock.patch("harness_asset_manager.cli.main.is_owned_runtime_process", return_value=True):
-            code, out, err = self.run_cli("token")
-            self.assertEqual(code, 0, msg=err)
-            self.assertEqual(out.strip(), "secret-token-xyz-789")
-            self.assertEqual(err, "")
+    def test_token_rotate_generates_new_token(self) -> None:
+        code, out, err = self.run_cli("token")
+        self.assertEqual(code, 0, msg=err)
+        token1 = out.strip()
+
+        code_rot, out_rot, err_rot = self.run_cli("token", "--rotate")
+        self.assertEqual(code_rot, 0, msg=err_rot)
+        token2 = out_rot.strip()
+        self.assertNotEqual(token1, token2)
+
+        # Subsequent token call prints rotated token
+        code3, out3, err3 = self.run_cli("token")
+        self.assertEqual(code3, 0, msg=err3)
+        self.assertEqual(out3.strip(), token2)
 
 
 class RefreshCommandTests(CliCommandTestCase):
