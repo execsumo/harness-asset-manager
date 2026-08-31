@@ -375,11 +375,12 @@ Harness Asset Manager enforces a multi-layered security model tailored for local
 
 ### Trust Boundary
 
-1. **Same-User Local Access (Loopback Peer)**:
-   - Requests whose client address originates from loopback (`127.0.0.1`, `::1`) are trusted automatically without requiring tokens or credentials.
-   - *Rationale*: A local process running under the same user UID already possesses read/write access to the user's filesystem, environment variables, and process memory. Defending against same-user local access would introduce friction without genuine security boundaries.
+1. **Same-User Local Access (Loopback Peer *and* Loopback `Host`)**:
+   - A request is trusted without credentials only when its client address is loopback (`127.0.0.1`, `::1`) **and** its `Host` header names loopback.
+   - *Rationale*: A local process running under the same user UID already possesses read/write access to the user's filesystem, environment variables, and process memory. Defending against same-user local access would introduce friction without a genuine boundary.
+   - *The `Host` half is load-bearing, not redundant*: `tailscale serve` proxies to `127.0.0.1`, so tailnet traffic arrives with a loopback peer exactly like a local client. Trusting the peer alone would admit every device on the tailnet unauthenticated and make the rules below unreachable. `test_6_serve_proxied_traffic_is_not_trusted_as_a_loopback_client` pins this.
 2. **Remote Access Boundary**:
-   - Non-loopback requests to `/api/*` (exempting unauthenticated `/api/health`) must satisfy **at least one** of:
+   - Every other request to `/api/*` (exempting unauthenticated `/api/health`) — including anything arriving through a reverse proxy — must satisfy **at least one** of:
      - **Tailscale Identity Header**: A non-empty `Tailscale-User-Login` header injected by Tailscale Serve (which strips client-provided headers to prevent spoofing).
      - **API Bearer Token**: An `Authorization: Bearer <token>` header matching the persistent secret stored at `~/.harnessam/api-token` (written with strict `0600` permissions) or overridden by `HARNESSAM_API_TOKEN`.
    - Any remote request failing all rules is rejected with `401 Unauthorized` and `WWW-Authenticate: Bearer`.

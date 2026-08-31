@@ -687,7 +687,7 @@ A missing `frontend/dist` is fine — the API serves normally and only the HTML 
 ### Security & Remote Access
 
 Harness Asset Manager enforces a clear security boundary:
-- **Same-user local access**: Local requests from loopback (`127.0.0.1`, `::1`) are trusted automatically with zero configuration. Same-user local processes already share file and environment access.
+- **Same-user local access**: A request from a loopback peer *carrying a loopback `Host`* is trusted automatically with zero configuration — same-user local processes already share file and environment access, so defending against them buys nothing. Both halves matter: `tailscale serve` proxies from `127.0.0.1`, so the `Host` header is what separates a local client from forwarded tailnet traffic.
 - **Remote tailnet access (Tailscale Serve)**: Tailscale Serve injects verified `Tailscale-User-Login` headers. Start the app with `--trusted-host <tailnet-hostname>` (e.g. via `scripts/serve-tailnet.sh`) for paste-free remote access with active Host/Origin protection.
 - **API Bearer Token**: Remote scripts or clients can authenticate with `Authorization: Bearer <token>`. The persistent token is stored in `~/.harnessam/api-token` (mode `0600`) and managed via `harnessam token [--rotate]`. `HARNESSAM_API_TOKEN` in the environment overrides it.
 - **Reverse Proxy Support**: Use `--trusted-host <hostname>` to allow a proxy's `Host` and `Origin` headers while keeping DNS rebinding and CSRF guards fully active. `--allow-remote` is only needed when directly binding non-loopback interfaces without guards.

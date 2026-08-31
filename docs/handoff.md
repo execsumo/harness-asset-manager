@@ -1,6 +1,6 @@
 # Handoff — native macOS app cancelled; API bearer token added
 
-**As of 2026-08-30.** Newest session on top.
+**As of 2026-08-31.** Newest session on top.
 
 ## Decision: the native macOS app is cancelled
 
@@ -64,49 +64,53 @@ every `/api/*` request except `/api/health`.
 - `harnessam token` prints the token for curl/script use. It only covers `start`-launched
   instances — a bare `serve` writes no runtime state. There is deliberately no `--no-auth`.
 
-## Known limitation — read this before claiming the API is protected
+## Auth model — what is and is not defended
 
-**The token is not a boundary against a same-user local process.** `GET /` is unauthenticated
-and returns the token in the injected meta tag, so any local process does:
+A request to `/api/*` (except `/api/health`) is authenticated by **any one** of:
 
-```
-curl -s http://127.0.0.1:8000/ | grep ham-api-token
-```
+1. **A genuine local client** — loopback peer *and* a loopback `Host`.
+2. **`Tailscale-User-Login`** present, injected by `tailscale serve`.
+3. **`Authorization: Bearer <token>`** matching the stored token.
 
-and has full API access. `test_frontend_index_html_injects_token_meta_tag` documents exactly
-this, unauthenticated, as passing behaviour.
+**The `Host` half of rule 1 is load-bearing.** `tailscale serve` proxies to 127.0.0.1, so
+tailnet traffic arrives with a loopback peer exactly like a local client. Trusting the peer
+alone lets every device on the tailnet through unauthenticated and makes rules 2 and 3
+unreachable. That bug shipped in `db5240f` and is fixed in `f0e2d0d`;
+`test_6_serve_proxied_traffic_is_not_trusted_as_a_loopback_client` pins it and fails with
+`200 != 401` against the broken version. Note the other remote tests use a synthetic
+non-loopback peer, which the real deployment never produces — that is why the suite was green
+while the front door was open.
 
-This is not fixable by hardening the delivery. A same-user process can read the runtime state
-file (0600 is same-UID), the child's environment, and the served HTML. **Any secret the browser
-can obtain, a same-user process can obtain.** The original motivation — stopping a misbehaving
-or prompt-injected coding agent from deleting the deny rules that constrain it — needs OS-level
-separation (a different UID, or a real sandbox), not a token.
+Remote auth is paste-free because Serve **strips** `Tailscale-User-Login` from incoming
+requests before injecting its own, so a tailnet client cannot forge it
+(<https://tailscale.com/docs/features/tailscale-serve>, "Identity headers"). Funnel traffic
+gets no identity headers; we never use Funnel.
 
-What the token does buy:
+**Same-user local processes are deliberately trusted and not defended.** They can read the
+token file, the child's environment, and anything the browser can read — any secret the browser
+can obtain, a same-user process can obtain. Constraining a local coding agent needs OS-level
+separation, not a token. The boundary this enforces is the remote one, which was previously
+wide open.
 
-1. Incidental and naive access now fails. An agent that blindly `curl`s `/api/permissions`
-   gets a 401 instead of succeeding.
-2. It is the prerequisite for any real boundary later.
-3. It closes cross-origin browser access that the Origin guard alone did not cover on
-   `--allow-remote`.
+## Tailnet deployment
 
-What it does **not** buy: protection on the tailnet. Any device that can reach the port can
-`GET /` and read the token out of the HTML, exactly as a local process can. **If the tailnet
-deployment is still in use, treat it as unauthenticated.** Closing that needs the HTML itself
-gated — e.g. a one-time token paste from `harnessam token` held in sessionStorage, or leaning
-on Tailscale's own device identity headers. Neither is built.
+Run the app on loopback with `--trusted-host <tailnet-dns-name>`; **do not use
+`--allow-remote`**, which disables the Host and Origin guards wholesale to work around a
+hostname mismatch. `--trusted-host` names the one extra hostname while both guards stay active.
+`scripts/serve-tailnet.sh` derives the name from `tailscale status --json` (`.Self.DNSName`).
+
+The token is now persistent in `~/.harnessam` (0600) rather than per-launch, so `harnessam
+token` works for `serve` as well as `start`, and `harnessam token --rotate` cycles it.
 
 ## Next steps
 
-- Decide whether the tailnet front door stays. If it does, gate `index.html`.
-- Consider replacing the all-or-nothing `--allow-remote` with a `--trusted-host <hostname>`
-  that adds one name to the Host/Origin allowlist while keeping both guards on. That is a
-  better fit for `tailscale serve` than disabling the guards wholesale.
-- A launchd plist would fix the other real gripe: a hand-launched server does not survive a
-  reboot, and there is no Dock or Spotlight entry.
+- A launchd plist: a hand-launched server does not survive a reboot, and there is no Dock or
+  Spotlight entry.
+- `tailscale serve status` reported no config as of this session — the front door needs
+  re-applying via `scripts/serve-tailnet.sh` once the app runs with `--trusted-host`.
 
 ## Repo state
 
 - `main` carries the cancelled plan, the spike, and its report.
-- `feat/api-bearer-token` carries the token work. Not merged to `main`.
+- `feat/api-bearer-token` carries the token and auth work. Not merged to `main`.
 - `spike/swift-config-document` is merged and can be deleted locally and on `origin`.
