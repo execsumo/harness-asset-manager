@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import socket
 import unittest
@@ -43,12 +44,39 @@ class RuntimeTests(unittest.TestCase):
                 started_at=1.23,
             )
 
-            write_runtime_state(state, env)
+            path = write_runtime_state(state, env)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             restored = load_runtime_state(env)
 
             self.assertEqual(restored, state)
             clear_runtime_state(env)
             self.assertIsNone(load_runtime_state(env))
+
+    def test_resolve_and_rotate_api_token(self) -> None:
+        from harness_asset_manager.paths import resolve_app_paths
+        from harness_asset_manager.runtime.token import resolve_api_token, rotate_api_token
+
+        with TemporaryDirectory() as temp_dir:
+            env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
+            paths = resolve_app_paths(env)
+
+            # First resolve generates and writes token with 0600 mode
+            token1 = resolve_api_token(paths, env)
+            self.assertTrue(paths.api_token_path.is_file())
+            self.assertEqual(paths.api_token_path.stat().st_mode & 0o777, 0o600)
+
+            # Subsequent resolve returns the exact same token
+            token2 = resolve_api_token(paths, env)
+            self.assertEqual(token1, token2)
+
+            # Rotation changes the token and persists with 0600 mode
+            rotated = rotate_api_token(paths)
+            self.assertNotEqual(token1, rotated)
+            self.assertEqual(resolve_api_token(paths, env), rotated)
+
+            # HARNESSAM_API_TOKEN environment variable overrides
+            env_with_override = {**env, "HARNESSAM_API_TOKEN": "custom-override-token"}
+            self.assertEqual(resolve_api_token(paths, env_with_override), "custom-override-token")
 
     def test_runtime_state_truncated_corrupt_json_returns_none(self) -> None:
         with TemporaryDirectory() as temp_dir:

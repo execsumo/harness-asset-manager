@@ -12,6 +12,23 @@ export class ApiError extends Error {
   }
 }
 
+export function getApiToken(): string | null {
+  const devToken = import.meta.env?.VITE_API_TOKEN;
+  if (typeof devToken === "string" && devToken.trim() !== "") {
+    return devToken.trim();
+  }
+  return null;
+}
+
+export function authHeaders(existing?: Record<string, string>): Record<string, string> {
+  const token = getApiToken();
+  const headers: Record<string, string> = { ...existing };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 async function expectJson<T>(responsePromise: Promise<Response>): Promise<T> {
   const response = await responsePromise;
   const payload = await response.json().catch(() => null);
@@ -47,6 +64,12 @@ function extractApiError(
       }
     }
   }
+  if (response.status === 401) {
+    return {
+      code: "unauthorized",
+      message: "Authentication failed or token expired. If the server restarted, please refresh the page.",
+    };
+  }
   return {
     code: fallbackErrorCode(response.status),
     message: `${response.status} ${response.statusText}`,
@@ -54,6 +77,7 @@ function extractApiError(
 }
 
 function fallbackErrorCode(status: number): string {
+  if (status === 401) return "unauthorized";
   if (status === 404) return "not_found";
   if (status === 409) return "conflict";
   if (status === 422) return "validation_error";
@@ -66,14 +90,17 @@ export function errorMessage(error: unknown, fallback: string): string {
 }
 
 export async function fetchJson<T>(path: string): Promise<T> {
-  return expectJson<T>(fetch(apiPath(path)));
+  const headers = authHeaders();
+  return expectJson<T>(
+    Object.keys(headers).length > 0 ? fetch(apiPath(path), { headers }) : fetch(apiPath(path)),
+  );
 }
 
 export async function postJson<T>(path: string, body?: object): Promise<T> {
   return expectJson<T>(
     fetch(apiPath(path), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: body ? JSON.stringify(body) : undefined,
     }),
   );
@@ -83,12 +110,18 @@ export async function putJson<T>(path: string, body?: object): Promise<T> {
   return expectJson<T>(
     fetch(apiPath(path), {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders({ "Content-Type": "application/json" }),
       body: body ? JSON.stringify(body) : undefined,
     }),
   );
 }
 
 export async function deleteJson<T>(path: string): Promise<T> {
-  return expectJson<T>(fetch(apiPath(path), { method: "DELETE" }));
+  const headers = authHeaders();
+  return expectJson<T>(
+    fetch(apiPath(path), {
+      method: "DELETE",
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    }),
+  );
 }

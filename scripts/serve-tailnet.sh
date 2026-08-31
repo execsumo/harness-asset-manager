@@ -12,9 +12,44 @@ set -euo pipefail
 PORT="${HAM_TAILNET_PORT:-7443}"
 BACKEND="${HAM_BACKEND_PORT:-8000}"
 
-if ! curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${BACKEND}/"; then
-  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first." >&2
+if ! command -v tailscale >/dev/null 2>&1; then
+  echo "error: tailscale CLI not found in PATH." >&2
   exit 1
+fi
+
+TS_STATUS="$(tailscale status --json 2>/dev/null || true)"
+if [ -z "${TS_STATUS}" ]; then
+  echo "error: failed to read tailscale status — is Tailscale running?" >&2
+  exit 1
+fi
+
+DNS_NAME="$(python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+dns = data.get("Self", {}).get("DNSName", "").rstrip(".")
+print(dns)
+' "${TS_STATUS}")"
+
+if [ -z "${DNS_NAME}" ]; then
+  echo "error: could not determine Tailscale DNS name from tailscale status." >&2
+  exit 1
+fi
+
+echo "Tailnet DNS name: ${DNS_NAME}"
+
+if ! curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${BACKEND}/api/health"; then
+  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first (\`harnessam start\`)." >&2
+  exit 1
+fi
+
+# The app auto-trusts this device's own Tailscale hostname with no flag needed
+# (harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name); this just
+# confirms that actually happened — e.g. it did not start before tailscaled was up,
+# or --trusted-host/HARNESS_ASSET_MANAGER_TRUSTED_HOSTS names something else.
+if ! curl -fsS --max-time 5 -o /dev/null -H "Host: ${DNS_NAME}" "http://127.0.0.1:${BACKEND}/api/health"; then
+  echo "warning: app at 127.0.0.1:${BACKEND} rejected Host: ${DNS_NAME} (HTTP 403)." >&2
+  echo "Restart it after tailscaled is up, or set --trusted-host ${DNS_NAME} explicitly." >&2
+  echo "Make sure it is NOT running with --allow-remote, which disables this check entirely." >&2
 fi
 
 tailscale serve --bg --https="${PORT}" "http://127.0.0.1:${BACKEND}"

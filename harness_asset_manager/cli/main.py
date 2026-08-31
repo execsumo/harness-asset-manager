@@ -37,7 +37,7 @@ AssetHandler = Callable[["BackendContainer", argparse.Namespace], int]
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-RUNTIME_COMMANDS = {"serve", "start", "stop", "status"}
+RUNTIME_COMMANDS = {"serve", "start", "stop", "status", "token"}
 COMMANDS = RUNTIME_COMMANDS | commands.GROUP_NAMES
 
 
@@ -64,6 +64,10 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status", help="Show status for the managed background instance.")
     status_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
 
+    token_parser = subparsers.add_parser("token", help="Print or rotate the API bearer token.")
+    token_parser.add_argument("--rotate", action="store_true", help="Rotate the API bearer token and print the new token.")
+    token_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
+
     common = asset_flags()
 
 
@@ -87,11 +91,23 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         help="Open the browser automatically after startup.",
     )
     parser.add_argument(
+        "--trusted-host",
+        action="append",
+        default=[],
+        dest="trusted_hosts",
+        help=(
+            "Trust an additional Host/Origin header value (e.g. a Tailscale or reverse proxy "
+            "hostname). Can be passed multiple times. Set once instead of passing it on every "
+            "launch via the HARNESS_ASSET_MANAGER_TRUSTED_HOSTS environment variable "
+            "(comma-separated)."
+        ),
+    )
+    parser.add_argument(
         "--allow-remote",
         action="store_true",
         help=(
-            "Permit binding a non-loopback --host. WARNING: the API has no authentication; "
-            "anyone who can reach the port can mutate local harness config."
+            "Permit binding a non-loopback --host. WARNING: disables Host and Origin request guards completely. "
+            "For reverse proxies or Tailscale Serve, use --trusted-host instead."
         ),
     )
     parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
@@ -119,6 +135,8 @@ def main(argv: list[str] | None = None) -> int:
         return stop_command(args)
     if args.command == "status":
         return status_command(args)
+    if args.command == "token":
+        return token_command(args)
     return serve_command(args)
 
 
@@ -166,14 +184,14 @@ def guard_remote_host(args: argparse.Namespace) -> int | None:
     if not args.allow_remote:
         print(
             f"error: refusing to bind non-loopback host {args.host!r}.\n"
-            "The harness-asset-manager API has no authentication and can mutate local files. "
-            "Pass --allow-remote only on a network you fully trust.",
+            "The harness-asset-manager API can mutate local files. "
+            "Pass --allow-remote only on a network you trust, or use --trusted-host behind a reverse proxy or Tailscale Serve.",
             file=sys.stderr,
         )
         return 2
     print(
-        f"WARNING: serving the unauthenticated harness-asset-manager API on {args.host!r}; "
-        "anyone who can reach this port can mutate local harness configuration.",
+        f"WARNING: serving the harness-asset-manager API on {args.host!r} with request guards disabled; "
+        "remote access requires the bearer token or Tailscale identity.",
         file=sys.stderr,
     )
     return None
@@ -182,12 +200,14 @@ def guard_remote_host(args: argparse.Namespace) -> int | None:
 def serve_command(args: argparse.Namespace) -> int:
     from harness_asset_manager.application import build_backend_container
     from harness_asset_manager.runtime.server import serve_foreground
+    from harness_asset_manager.runtime.token import resolve_api_token
 
     refusal = guard_remote_host(args)
     if refusal is not None:
         return refusal
     env = runtime_env(args.state_dir)
     container = build_backend_container(env)
+    token = resolve_api_token(container.paths, env)
     prebound_socket = socket.socket(fileno=args.socket_fd) if args.socket_fd is not None else None
     return serve_foreground(
         container,
@@ -196,7 +216,9 @@ def serve_command(args: argparse.Namespace) -> int:
         frontend_dist=args.frontend_dist,
         open_browser=args.open_browser,
         allow_remote=args.allow_remote,
+        trusted_hosts=resolved_trusted_hosts(args, env),
         prebound_socket=prebound_socket,
+        api_token=token,
     )
 
 
@@ -229,6 +251,7 @@ def start_command(args: argparse.Namespace) -> int:
         str(socket_handle.fileno()),
         "--no-open-browser",
         *(["--allow-remote"] if args.allow_remote else []),
+        *trusted_host_args(getattr(args, "trusted_hosts", None)),
         *frontend_dist_args(args.frontend_dist),
         *state_dir_args(args.state_dir),
     )
@@ -302,6 +325,20 @@ def status_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def token_command(args: argparse.Namespace) -> int:
+    from harness_asset_manager.paths import resolve_app_paths
+    from harness_asset_manager.runtime.token import resolve_api_token, rotate_api_token
+
+    env = runtime_env(args.state_dir)
+    paths = resolve_app_paths(env)
+    if getattr(args, "rotate", False):
+        token = rotate_api_token(paths)
+    else:
+        token = resolve_api_token(paths, env)
+    print(token)
+    return 0
+
+
 def runtime_env(state_dir: str | None) -> dict[str, str]:
     env = dict(os.environ)
     if state_dir:
@@ -313,6 +350,52 @@ def self_command(*args: str) -> list[str]:
     if getattr(sys, "frozen", False):
         return [sys.executable, *args]
     return [sys.executable, "-m", "harness_asset_manager", *args]
+
+
+def resolved_trusted_hosts(args: argparse.Namespace, env: dict[str, str]) -> tuple[str, ...]:
+    """CLI ``--trusted-host`` flags plus ``HARNESS_ASSET_MANAGER_TRUSTED_HOSTS``, deduplicated.
+
+    The env var lets an operator set the tailnet/proxy hostname once (shell profile,
+    launchd, systemd) instead of passing --trusted-host on every launch. CLI flags take
+    no priority over it; both sources are simply merged.
+    """
+    from harness_asset_manager.env_names import TRUSTED_HOSTS_ENV, env_get
+
+    env_value = env_get(env, TRUSTED_HOSTS_ENV, "") or ""
+    env_hosts = [host.strip() for host in env_value.split(",") if host.strip()]
+    cli_hosts = list(getattr(args, "trusted_hosts", ()) or ())
+    seen: set[str] = set()
+    merged: list[str] = []
+    for host in (*env_hosts, *cli_hosts):
+        if host not in seen:
+            seen.add(host)
+            merged.append(host)
+    if merged:
+        return tuple(merged)
+
+    # Nothing explicit was configured. Best-effort auto-detect this device's own
+    # Tailscale hostname so a tailnet launch needs no flag and no env var at all;
+    # explicit configuration above always wins and skips this entirely.
+    from harness_asset_manager.runtime.tailscale import detect_tailnet_dns_name
+
+    detected = detect_tailnet_dns_name()
+    if detected:
+        print(
+            f"note: auto-trusting this device's Tailscale hostname {detected!r} for Host/Origin. "
+            "Override with --trusted-host or HARNESS_ASSET_MANAGER_TRUSTED_HOSTS.",
+            file=sys.stderr,
+        )
+        return (detected,)
+    return ()
+
+
+def trusted_host_args(trusted_hosts: list[str] | None) -> list[str]:
+    if not trusted_hosts:
+        return []
+    result: list[str] = []
+    for host in trusted_hosts:
+        result.extend(["--trusted-host", host])
+    return result
 
 
 def frontend_dist_args(frontend_dist: str | None) -> list[str]:

@@ -39,7 +39,11 @@ class RequestGuardTests(unittest.TestCase):
                 harness.base_url,
                 "PUT",
                 "/api/settings/harnesses/codex/support",
-                {"Origin": "https://evil.example", "Content-Type": "application/json"},
+                {
+                    "Origin": "https://evil.example",
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {harness.api_token}",
+                },
                 body=json.dumps({"enabled": False}),
             )
             self.assertEqual(status, 403)
@@ -62,7 +66,11 @@ class RequestGuardTests(unittest.TestCase):
                 harness.base_url,
                 "PUT",
                 "/api/settings/harnesses/codex/support",
-                {"Origin": "http://127.0.0.1:5173", "Content-Type": "application/json"},
+                {
+                    "Origin": "http://127.0.0.1:5173",
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {harness.api_token}",
+                },
                 body=json.dumps({"enabled": True}),
             )
             self.assertEqual(status, 200)

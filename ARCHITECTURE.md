@@ -371,8 +371,23 @@ restart.
 
 ## 5. Security & Request Guarding
 
-HAM runs as a unauthenticated local daemon listening on loopback (`127.0.0.1`). Security is enforced via ASGI request middleware (`harness_asset_manager/api/guards.py`):
+Harness Asset Manager enforces a multi-layered security model tailored for local-first execution with secure remote access:
 
-1. **DNS Rebinding Guard**: Rejects HTTP requests whose `Host` header does not resolve to a loopback address (`127.0.0.1`, `localhost`).
-2. **CSRF Guard**: Rejects mutating HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) from web browsers with non-loopback `Origin` headers.
-3. **Remote Bind Protection**: Running serve with `--host 0.0.0.0` requires explicit `--allow-remote` flag.
+### Trust Boundary
+
+1. **Same-User Local Access (Loopback Peer *and* Loopback `Host`)**:
+   - A request is trusted without credentials only when its client address is loopback (`127.0.0.1`, `::1`) **and** its `Host` header names loopback.
+   - *Rationale*: A local process running under the same user UID already possesses read/write access to the user's filesystem, environment variables, and process memory. Defending against same-user local access would introduce friction without a genuine boundary.
+   - *The `Host` half is load-bearing, not redundant*: `tailscale serve` proxies to `127.0.0.1`, so tailnet traffic arrives with a loopback peer exactly like a local client. Trusting the peer alone would admit every device on the tailnet unauthenticated and make the rules below unreachable. `test_6_serve_proxied_traffic_is_not_trusted_as_a_loopback_client` pins this.
+2. **Remote Access Boundary**:
+   - Every other request to `/api/*` (exempting unauthenticated `/api/health`) — including anything arriving through a reverse proxy — must satisfy **at least one** of:
+     - **Tailscale Identity Header**: A non-empty `Tailscale-User-Login` header injected by Tailscale Serve (which strips client-provided headers to prevent spoofing).
+     - **API Bearer Token**: An `Authorization: Bearer <token>` header matching the persistent secret stored at `~/.harnessam/api-token` (written with strict `0600` permissions) or overridden by `HARNESSAM_API_TOKEN`.
+   - Any remote request failing all rules is rejected with `401 Unauthorized` and `WWW-Authenticate: Bearer`.
+
+### Request Guards (`LoopbackOnlyMiddleware`)
+
+To protect browsers from cross-origin exploits when accessing the daemon:
+- **DNS Rebinding Guard**: Rejects HTTP requests whose `Host` header is neither loopback nor explicitly registered via `--trusted-host <host>`.
+- **CSRF Guard**: Rejects mutating HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) from web browsers whose `Origin` header is neither loopback nor registered in `--trusted-host`.
+- **Reverse Proxies & Tailscale Serve**: Pass `--trusted-host <tailnet-or-proxy-hostname>` (or set `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS`, comma-separated) to permit the proxy's `Host` and `Origin` headers while keeping DNS rebinding and CSRF guards fully active. When neither is set, `resolved_trusted_hosts` (`cli/main.py`) falls back to `runtime/tailscale.detect_tailnet_dns_name`, a best-effort `tailscale status --json` read of this device's own hostname — so a single-machine tailnet launch needs no configuration at all. Detection never raises and only ever widens the allowlist; any explicit configuration bypasses it entirely. `--allow-remote` is retained for backwards compatibility when binding non-loopback interfaces without request guards.

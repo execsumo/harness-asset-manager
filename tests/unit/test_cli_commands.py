@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import sys
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -63,15 +66,93 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(normalize_argv([]), ["serve"])
 
     def test_runtime_commands_have_no_asset_handler(self) -> None:
-        # `serve`/`start`/`stop`/`status` must keep their own dispatch path so they
+        # `serve`/`start`/`stop`/`status`/`token` must keep their own dispatch path so they
         # never pay for building a backend container.
-        for command in ("serve", "start", "stop", "status"):
+        for command in ("serve", "start", "stop", "status", "token"):
             args = build_parser().parse_args([command])
             self.assertIsNone(getattr(args, "handler", None), msg=command)
 
     def test_refresh_dispatches_through_the_asset_runner(self) -> None:
         args = build_parser().parse_args(["refresh"])
         self.assertIsNotNone(getattr(args, "handler", None))
+
+
+class ResolvedTrustedHostsTests(unittest.TestCase):
+    """Priority: explicit CLI/env wins outright; auto-detect only fills a gap."""
+
+    def _args(self, trusted_hosts: list[str] | None = None) -> mock.Mock:
+        return mock.Mock(trusted_hosts=trusted_hosts or [])
+
+    def test_env_var_is_comma_split_and_stripped(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        env = {"HARNESS_ASSET_MANAGER_TRUSTED_HOSTS": " foo.ts.net, bar.example ,"}
+        self.assertEqual(resolved_trusted_hosts(self._args(), env), ("foo.ts.net", "bar.example"))
+
+    def test_cli_flags_merge_with_env_and_dedupe(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        env = {"HARNESS_ASSET_MANAGER_TRUSTED_HOSTS": "foo.ts.net"}
+        result = resolved_trusted_hosts(self._args(["bar.example", "foo.ts.net"]), env)
+        self.assertEqual(result, ("foo.ts.net", "bar.example"))
+
+    def test_explicit_config_skips_auto_detection(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            side_effect=AssertionError("must not be called when something explicit is set"),
+        ):
+            result = resolved_trusted_hosts(self._args(["bar.example"]), {})
+        self.assertEqual(result, ("bar.example",))
+
+    def test_falls_back_to_auto_detected_tailnet_hostname(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            return_value="my-mac.tailnet-name.ts.net",
+        ):
+            result = resolved_trusted_hosts(self._args(), {})
+        self.assertEqual(result, ("my-mac.tailnet-name.ts.net",))
+
+    def test_nothing_configured_and_nothing_detected_yields_empty(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            return_value=None,
+        ):
+            result = resolved_trusted_hosts(self._args(), {})
+        self.assertEqual(result, ())
+
+
+class TokenCommandTests(CliCommandTestCase):
+    def test_token_reads_and_generates_token(self) -> None:
+        code, out, err = self.run_cli("token")
+        self.assertEqual(code, 0, msg=err)
+        token = out.strip()
+        self.assertTrue(len(token) > 20)
+
+        # Running again prints the same token
+        code2, out2, err2 = self.run_cli("token")
+        self.assertEqual(code2, 0, msg=err2)
+        self.assertEqual(out2.strip(), token)
+
+    def test_token_rotate_generates_new_token(self) -> None:
+        code, out, err = self.run_cli("token")
+        self.assertEqual(code, 0, msg=err)
+        token1 = out.strip()
+
+        code_rot, out_rot, err_rot = self.run_cli("token", "--rotate")
+        self.assertEqual(code_rot, 0, msg=err_rot)
+        token2 = out_rot.strip()
+        self.assertNotEqual(token1, token2)
+
+        # Subsequent token call prints rotated token
+        code3, out3, err3 = self.run_cli("token")
+        self.assertEqual(code3, 0, msg=err3)
+        self.assertEqual(out3.strip(), token2)
 
 
 class RefreshCommandTests(CliCommandTestCase):

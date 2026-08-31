@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -51,7 +52,16 @@ def load_runtime_state(env: dict[str, str] | None = None) -> RuntimeState | None
 def write_runtime_state(state: RuntimeState, env: dict[str, str] | None = None) -> Path:
     path = runtime_state_path(env)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    payload_bytes = (json.dumps(asdict(state), indent=2, sort_keys=True) + "\n").encode("utf-8")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    fd = os.open(str(path), flags, 0o600)
+    try:
+        with open(fd, "wb", closefd=False) as f:
+            f.write(payload_bytes)
+            f.flush()
+    finally:
+        os.close(fd)
+    path.chmod(0o600)
     return path
 
 

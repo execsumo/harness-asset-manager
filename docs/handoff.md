@@ -1,77 +1,122 @@
-# Handoff — native macOS Swift app, moving to Mac
+# Handoff — native macOS app cancelled; API bearer token added
 
-**As of 2026-08-31.** Work continues on a Mac; everything below is on `main` and pushed.
+**As of 2026-08-31.** Newest session on top.
 
-## Where things stand
+## Decision: the native macOS app is cancelled
 
-`docs/plan-native-macos-swift-app.md` is the plan. Phase 0 item 4 (the source-preserving
-format spike) is **done**; everything else in Phase 0 is either portable prep work or blocked
-on macOS hardware.
+`docs/plan-native-macos-swift-app.md` is **not being built**. The plan and the Phase 0 spike
+stay in the repo as the evidence for the decision, not as live work. Do not resume Phases 1–4
+without revisiting the reasoning below.
 
-The spike lives in `spikes/swift-config-document/` with its report at
-`docs/spike-swift-source-preserving-config.md`. Verdicts:
+Why:
 
-| Format | Verdict |
-|---|---|
-| JSON / JSONC | **GO** — hand-written `JsoncDocument`, ~450 lines, ported from the Python original |
-| TOML | **GO only via `TomlSurgicalEngine`** (~320 lines). TOMLKit/toml++ destroys every comment, even on a no-op load/dump |
-| YAML | **NO-GO** — Yams/libyaml drops comments at tokenization; no `ruamel.yaml` equivalent exists. Stays in the Python sidecar |
+- **The Phase 0 spike killed it.** It set out to prove Swift could do source-preserving config
+  editing and came back with JSON/JSONC yes, TOML only via a hand-written ~320-line surgical
+  engine, and **YAML not at all** — Yams/libyaml discards comments at tokenization and no
+  `ruamel.yaml` equivalent exists. That is one subsystem out of roughly ten, already failing a
+  third of the way through, for something Python gets from two dependencies.
+- **The value is in the adapter matrix, not the UI.** Six families × seven harnesses, and the
+  product is the accumulated edge cases — Cursor's single-token `Shell()`, Codex's TOML profiles
+  having no command-prefix concept, verbatim-block YAML round-tripping, "reads must not write"
+  in `SkillsQueryService`, `flock` coexistence with the CLI, drift auto-repair. ~20k LOC of
+  tests encode those. A rewrite re-earns every one of those bugs, and Swift's type system does
+  not help — they are the semantics of other people's config files.
+- **The usual reason to go native is unavailable.** App Sandbox is incompatible with writing
+  into `~/.claude`, `~/.codex`, `~/.cursor`, `~/.gemini` and creating symlinks, so there is no
+  Mac App Store route either way. Native buys UX polish, not distribution or capability.
+- **Cost nobody had priced:** ~30k LOC of hand-written React thrown away and rebuilt in SwiftUI.
 
-The plan has been amended to match: Phase 4 step 6 is split by format, step 9 and both exit
-gates now say the sidecar can only be *reduced* to a YAML-only residue rather than removed,
-and the "Swift format libraries lose comments" risk row is closed as a finding.
+If the browser tab is the actual complaint, the cheap answer the plan never considered is a
+WKWebView shell around the existing SPA — signed `.app`, Dock icon, native menus, days of work,
+frontend kept. That option remains open and unbuilt.
 
-## First thing to do on the Mac
+The spike itself (`spikes/swift-config-document/`, report at
+`docs/spike-swift-source-preserving-config.md`) is still worth keeping: its JSON/JSONC and TOML
+engines are real, tested code, and its findings are the record of why this was stopped.
 
-Re-run the spike suite. Every result was produced on **Linux Swift 6.0.3**, and two findings
-rest on Foundation behavior that differs on Darwin, in code the spike itself wrote:
+## Shipped: per-launch API bearer token
 
-- **UTF-8 BOM in `JSONSerialization`** — Linux Foundation rejects a leading BOM; Darwin's
-  behavior varies by SDK. `JsoncDocument` works around the Linux behavior and that workaround
-  is unvalidated on macOS. The differential already shows this fixture diverging from Python
-  (190 B vs 204 B) because Swift preserves the BOM Python drops.
-- **`NSNumber` / `CFBoolean` bridging** — `ConfigValue` separates booleans from numbers with a
-  `CFGetTypeID` check, which behaves differently under the Objective-C runtime.
+Branch `feat/api-bearer-token`. This was lifted out of the cancelled plan's sidecar security
+section — it was worth doing on its own.
 
-```bash
-cd spikes/swift-config-document && swift test        # expect 58/58
-.venv/bin/python spikes/swift-config-document/differential_runner.py   # from repo root
-```
+**Before:** the API had no authentication of any kind. `LoopbackOnlyMiddleware` was the only
+gate and it explicitly trusts every non-browser local process. `--allow-remote` short-circuits
+*both* the Host and Origin checks (`guards.py:61`), so the documented tailnet deployment ran
+with no guard at all.
 
-## Known gaps in the spike
+**Now:** `ApiTokenMiddleware` (`api/guards.py`) requires `Authorization: Bearer <token>` on
+every `/api/*` request except `/api/health`.
 
-Close these before `TomlSurgicalEngine` is trusted in Phase 4 — the Swift TOML corpus is
-smaller than the Python `TomlRoundTripTests` it claims parity with:
+- Token is `secrets.token_urlsafe(32)` per launch, or `HARNESSAM_API_TOKEN` if set. `start`
+  generates it in the parent and passes it to the child through the environment.
+- The middleware is **deliberately separate from `LoopbackOnlyMiddleware`** and sits inside it,
+  so `--allow-remote` cannot bypass the token. `test_8_middleware_ordering_is_pinned` exists to
+  stop a later reorder from silently undoing that.
+- 401 + `WWW-Authenticate: Bearer` via a new `_reject_unauthorized`; the existing 403 host/origin
+  path is untouched.
+- `/api/health` is exempt because `wait_for_health` (`runtime/startup.py:32`) probes it from
+  `start_command` before runtime state exists. Accepted cost: health discloses `homeDir`
+  (username) and harness install state.
+- Browser delivery injects `<meta name="ham-api-token">` into the served `index.html`.
+  Dev mode uses `VITE_API_TOKEN` (wired in `vite.config.ts`).
+- `RuntimeState` carries the token; the state file is written 0600 and read with
+  `payload.get("token")` so a stale file degrades to "no token" rather than "not running".
+- `harnessam token` prints the token for curl/script use. It only covers `start`-launched
+  instances — a bare `serve` writes no runtime state. There is deliberately no `--no-auth`.
 
-- `test_mutation_after_insertion_is_not_lost` — mutating a table inserted earlier in the same
-  session. Behavioral, not cosmetic.
-- `test_malformed_document_is_reported_not_silently_emptied` — exists for the TOMLKit tests but
-  not for the surgical engine, which is the implementation that would actually ship.
+## Auth model — what is and is not defended
 
-Also note the surgical engine is byte-identical only for *untouched* documents; mutated
-documents differ from Python by ±1 byte inside the rewritten region. That is within the
-concession `config_document.py` already documents, but do not restate it as byte-identical.
+A request to `/api/*` (except `/api/health`) is authenticated by **any one** of:
 
-## Prerequisites with lead time
+1. **A genuine local client** — loopback peer *and* a loopback `Host`.
+2. **`Tailscale-User-Login`** present, injected by `tailscale serve`.
+3. **`Authorization: Bearer <token>`** matching the stored token.
 
-- **Apple Developer Program membership** ($99/yr) — needed for the Developer ID signing and
-  notarization in Phase 0 item 6. Not instant; start it before you need it.
-- **Intel coverage decision.** The plan wants arm64 *and* x86_64. Universal binaries can be
-  *built* on Apple Silicon, but *testing* the x86_64 path needs Intel hardware. Decide whether
-  Intel is genuinely supported or quietly dropped, and write the answer into the plan.
+**The `Host` half of rule 1 is load-bearing.** `tailscale serve` proxies to 127.0.0.1, so
+tailnet traffic arrives with a loopback peer exactly like a local client. Trusting the peer
+alone lets every device on the tailnet through unauthenticated and makes rules 2 and 3
+unreachable. That bug shipped in `db5240f` and is fixed in `f0e2d0d`;
+`test_6_serve_proxied_traffic_is_not_trusted_as_a_loopback_client` pins it and fails with
+`200 != 401` against the broken version. Note the other remote tests use a synthetic
+non-loopback peer, which the real deployment never produces — that is why the suite was green
+while the front door was open.
 
-## Still doable anywhere (Phase 0 items 1–3, none started)
+Remote auth is paste-free because Serve **strips** `Tailscale-User-Login` from incoming
+requests before injecting its own, so a tailnet client cannot forge it
+(<https://tailscale.com/docs/features/tailscale-serve>, "Identity headers"). Funnel traffic
+gets no identity headers; we never use Funnel.
 
-1. Freeze the API surface: all operations and error codes from `frontend/src/api/openapi.json`
-   (77 paths / 89 operations).
-2. Export fake-home fixtures from `tests/support/fake_home.py` for every family × harness.
-3. Golden before/after fixtures for every format, plus symlink ownership, drift, conflicts,
-   migrations, and audit redaction.
+**Same-user local processes are deliberately trusted and not defended.** They can read the
+token file, the child's environment, and anything the browser can read — any secret the browser
+can obtain, a same-user process can obtain. Constraining a local coding agent needs OS-level
+separation, not a token. The boundary this enforces is the remote one, which was previously
+wide open.
+
+## Tailnet deployment
+
+`harnessam start`/`serve` now auto-detects this device's own Tailscale hostname
+(`runtime/tailscale.detect_tailnet_dns_name`, a best-effort `tailscale status --json` read) and
+trusts it for Host/Origin with **no flag required** — `resolved_trusted_hosts` in `cli/main.py`
+only falls back to detection when neither `--trusted-host` nor `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS`
+is set. Detection never raises and only ever widens the allowlist.
+
+**Do not use `--allow-remote`** — it disables the Host and Origin guards wholesale to work
+around a hostname mismatch that auto-detection (or an explicit `--trusted-host`) solves
+precisely. `scripts/serve-tailnet.sh` derives the tailnet name the same way and verifies the
+guard actually passes before pointing Serve at the backend.
+
+The token is now persistent in `~/.harnessam` (0600) rather than per-launch, so `harnessam
+token` works for `serve` as well as `start`, and `harnessam token --rotate` cycles it.
+
+## Next steps
+
+- A launchd plist: a hand-launched server does not survive a reboot, and there is no Dock or
+  Spotlight entry.
+- `tailscale serve status` reported no config as of this session — the front door needs
+  re-applying via `scripts/serve-tailnet.sh` once the app runs with `--trusted-host`.
 
 ## Repo state
 
-- `main` carries the plan, the spike, the report, and these amendments.
-- `spike/swift-config-document` is merged and can be deleted (locally and on `origin`).
-- Swift toolchain on the Linux box: 6.0.3 via swiftly at `~/.local/bin/swift`. Not needed on
-  the Mac, where Xcode supplies it.
-- `DESIGN.md` in the working tree is an unrelated untracked color-theme file, not part of this.
+- `main` carries the cancelled plan, the spike, and its report.
+- `feat/api-bearer-token` carries the token and auth work. Not merged to `main`.
+- `spike/swift-config-document` is merged and can be deleted locally and on `origin`.

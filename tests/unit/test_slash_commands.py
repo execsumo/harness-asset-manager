@@ -326,7 +326,7 @@ class SlashCommandStoreTests(unittest.TestCase):
 
     def test_sync_rewrites_stored_binding_path_not_default_manual_file(self) -> None:
         with TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp).resolve()
             home = root / "home"
             prompt_dir = home / ".codex" / "prompts"
             prompt_dir.mkdir(parents=True)

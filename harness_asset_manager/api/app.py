@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import html
+import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -10,7 +13,7 @@ from harness_asset_manager.api.schemas import ErrorResponse
 from harness_asset_manager.application import BackendContainer
 
 from .errors import install_error_handlers
-from .guards import LoopbackOnlyMiddleware
+from .guards import ApiTokenMiddleware, LoopbackOnlyMiddleware
 from .routers import (
     agents,
     configs,
@@ -60,7 +63,10 @@ def create_app(
     *,
     frontend_dist: Path | None = None,
     allow_remote: bool = False,
+    trusted_hosts: tuple[str, ...] = (),
+    api_token: str | None = None,
 ) -> FastAPI:
+    resolved_token = api_token or os.environ.get("HARNESSAM_API_TOKEN") or secrets.token_urlsafe(32)
     app = FastAPI(
         title="harness-asset-manager",
         docs_url=None,
@@ -78,7 +84,17 @@ def create_app(
     app.openapi = lambda: custom_openapi(app)
     app.state.container = container
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
-    app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
+    app.state.api_token = resolved_token
+
+    app.add_middleware(
+        ApiTokenMiddleware,
+        api_token=resolved_token,
+    )
+    app.add_middleware(
+        LoopbackOnlyMiddleware,
+        allow_remote=allow_remote,
+        trusted_hosts=trusted_hosts,
+    )
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(configs.router)
@@ -123,6 +139,7 @@ def create_app(
         index_path = dist / "index.html"
         if index_path.exists():
             return FileResponse(index_path)
-        return HTMLResponse("<html><body><h1>harness-asset-manager</h1><p>Frontend build missing.</p></body></html>", status_code=404)
+
+        return HTMLResponse("<html><body><h1>harness-asset-manager</h1><p>Frontend index.html missing.</p></body></html>", status_code=404)
 
     return app

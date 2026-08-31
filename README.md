@@ -682,7 +682,34 @@ Running the CLI while the app is serving is completely safe — stores serialize
 harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
 ```
 
-A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is a placeholder. Binding a non-loopback address needs `--allow-remote`; see [Local-first safety](#local-first-safety) first, because the API has no authentication.
+A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is a placeholder.
+
+### Security & Remote Access
+
+Harness Asset Manager enforces a clear security boundary:
+- **Same-user local access**: A request from a loopback peer *carrying a loopback `Host`* is trusted automatically with zero configuration — same-user local processes already share file and environment access, so defending against them buys nothing. Both halves matter: `tailscale serve` proxies from `127.0.0.1`, so the `Host` header is what separates a local client from forwarded tailnet traffic.
+- **Remote tailnet access (Tailscale Serve)**: Tailscale Serve injects a verified `Tailscale-User-Login` header into proxied requests and strips it from anything a client sends directly, so it cannot be forged from the tailnet — this is what makes remote access paste-free.
+- **API Bearer Token**: Remote scripts or clients that aren't going through Tailscale Serve authenticate with `Authorization: Bearer <token>`. The persistent token is stored in `~/.harnessam/api-token` (mode `0600`) and managed via `harnessam token [--rotate]`. `HARNESSAM_API_TOKEN` in the environment overrides it.
+- **Reverse Proxy Support**: `--trusted-host <hostname>` (or `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS`, comma-separated) allows a proxy's `Host` and `Origin` headers while keeping DNS rebinding and CSRF guards fully active. `--allow-remote` is only for binding a non-loopback interface directly, which drops both guards entirely — prefer `--trusted-host` for anything fronted by a proxy.
+
+### Tailnet Launch
+
+The app auto-detects this device's own Tailscale hostname and trusts it for `Host`/`Origin` —
+**no flag needed** for the common case of one machine serving its own tailnet:
+
+```bash
+harnessam start                       # binds loopback; auto-trusts this device's *.ts.net name
+bash scripts/serve-tailnet.sh         # points tailscale serve at it and verifies the guard passes
+```
+
+Auto-detection only fires when nothing is configured explicitly, and only ever *widens* what
+`Host`/`Origin` values are accepted — it never weakens authentication, which still requires the
+Tailscale identity header or a bearer token. Set `--trusted-host <hostname>` or
+`HARNESS_ASSET_MANAGER_TRUSTED_HOSTS` to override the detected name or add another one (e.g. a
+non-Tailscale reverse proxy); either takes priority over auto-detection.
+
+Never use `--allow-remote` for this — it disables the Host and Origin guards altogether to work
+around a hostname mismatch that `--trusted-host` (or auto-detection) solves precisely.
 
 ---
 
@@ -694,6 +721,7 @@ On macOS and Linux, app-owned files live under `~/.harnessam`. Explicit XDG over
 
 Useful macOS paths:
 
+- API bearer token: `~/.harnessam/api-token`
 - skills store: `~/.harnessam/skills`
 - agents store: `~/.harnessam/agents`
 - agent binding ledger: `~/.harnessam/bindings.json`
@@ -709,6 +737,7 @@ Useful macOS paths:
 
 Useful Linux paths:
 
+- API bearer token: `~/.harnessam/api-token`
 - skills store: `~/.harnessam/skills`
 - agents store: `~/.harnessam/agents`
 - agent binding ledger: `~/.harnessam/bindings.json`
