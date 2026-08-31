@@ -682,7 +682,15 @@ Running the CLI while the app is serving is completely safe — stores serialize
 harnessam serve --no-open-browser --host 127.0.0.1 --port 8000
 ```
 
-A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is a placeholder. Binding a non-loopback address needs `--allow-remote`; see [Local-first safety](#local-first-safety) first, because the API has no authentication.
+A missing `frontend/dist` is fine — the API serves normally and only the HTML shell is a placeholder.
+
+### Security & Remote Access
+
+Harness Asset Manager enforces a clear security boundary:
+- **Same-user local access**: Local requests from loopback (`127.0.0.1`, `::1`) are trusted automatically with zero configuration. Same-user local processes already share file and environment access.
+- **Remote tailnet access (Tailscale Serve)**: Tailscale Serve injects verified `Tailscale-User-Login` headers. Start the app with `--trusted-host <tailnet-hostname>` (e.g. via `scripts/serve-tailnet.sh`) for paste-free remote access with active Host/Origin protection.
+- **API Bearer Token**: Remote scripts or clients can authenticate with `Authorization: Bearer <token>`. The persistent token is stored in `~/.harnessam/api-token` (mode `0600`) and managed via `harnessam token [--rotate]`. `HARNESSAM_API_TOKEN` in the environment overrides it.
+- **Reverse Proxy Support**: Use `--trusted-host <hostname>` to allow a proxy's `Host` and `Origin` headers while keeping DNS rebinding and CSRF guards fully active. `--allow-remote` is only needed when directly binding non-loopback interfaces without guards.
 
 ---
 
@@ -694,6 +702,7 @@ On macOS and Linux, app-owned files live under `~/.harnessam`. Explicit XDG over
 
 Useful macOS paths:
 
+- API bearer token: `~/.harnessam/api-token`
 - skills store: `~/.harnessam/skills`
 - agents store: `~/.harnessam/agents`
 - agent binding ledger: `~/.harnessam/bindings.json`
@@ -709,6 +718,7 @@ Useful macOS paths:
 
 Useful Linux paths:
 
+- API bearer token: `~/.harnessam/api-token`
 - skills store: `~/.harnessam/skills`
 - agents store: `~/.harnessam/agents`
 - agent binding ledger: `~/.harnessam/bindings.json`

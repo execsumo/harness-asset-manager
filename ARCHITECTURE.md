@@ -371,8 +371,22 @@ restart.
 
 ## 5. Security & Request Guarding
 
-HAM runs as a unauthenticated local daemon listening on loopback (`127.0.0.1`). Security is enforced via ASGI request middleware (`harness_asset_manager/api/guards.py`):
+Harness Asset Manager enforces a multi-layered security model tailored for local-first execution with secure remote access:
 
-1. **DNS Rebinding Guard**: Rejects HTTP requests whose `Host` header does not resolve to a loopback address (`127.0.0.1`, `localhost`).
-2. **CSRF Guard**: Rejects mutating HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) from web browsers with non-loopback `Origin` headers.
-3. **Remote Bind Protection**: Running serve with `--host 0.0.0.0` requires explicit `--allow-remote` flag.
+### Trust Boundary
+
+1. **Same-User Local Access (Loopback Peer)**:
+   - Requests whose client address originates from loopback (`127.0.0.1`, `::1`) are trusted automatically without requiring tokens or credentials.
+   - *Rationale*: A local process running under the same user UID already possesses read/write access to the user's filesystem, environment variables, and process memory. Defending against same-user local access would introduce friction without genuine security boundaries.
+2. **Remote Access Boundary**:
+   - Non-loopback requests to `/api/*` (exempting unauthenticated `/api/health`) must satisfy **at least one** of:
+     - **Tailscale Identity Header**: A non-empty `Tailscale-User-Login` header injected by Tailscale Serve (which strips client-provided headers to prevent spoofing).
+     - **API Bearer Token**: An `Authorization: Bearer <token>` header matching the persistent secret stored at `~/.harnessam/api-token` (written with strict `0600` permissions) or overridden by `HARNESSAM_API_TOKEN`.
+   - Any remote request failing all rules is rejected with `401 Unauthorized` and `WWW-Authenticate: Bearer`.
+
+### Request Guards (`LoopbackOnlyMiddleware`)
+
+To protect browsers from cross-origin exploits when accessing the daemon:
+- **DNS Rebinding Guard**: Rejects HTTP requests whose `Host` header is neither loopback nor explicitly registered via `--trusted-host <host>`.
+- **CSRF Guard**: Rejects mutating HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) from web browsers whose `Origin` header is neither loopback nor registered in `--trusted-host`.
+- **Reverse Proxies & Tailscale Serve**: Pass `--trusted-host <tailnet-or-proxy-hostname>` to permit the proxy's `Host` and `Origin` headers while keeping DNS rebinding and CSRF guards fully active. `--allow-remote` is retained for backwards compatibility when binding non-loopback interfaces without request guards.
