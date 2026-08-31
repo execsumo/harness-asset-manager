@@ -1,8 +1,9 @@
 from __future__ import annotations
- 
+
+import html
 import os
-from pathlib import Path
 import secrets
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
@@ -131,7 +132,9 @@ def create_app(
         if index_path.exists():
             token = getattr(app.state, "api_token", "")
             raw_html = index_path.read_text(encoding="utf-8")
-            meta_tag = f'<meta name="ham-api-token" content="{token}">'
+            # ``HARNESSAM_API_TOKEN`` is operator-supplied and arbitrary; a value
+            # containing ``">`` would break out of the attribute into markup.
+            meta_tag = f'<meta name="ham-api-token" content="{html.escape(token, quote=True)}">'
             if "<head>" in raw_html:
                 injected_html = raw_html.replace("<head>", f"<head>\n    {meta_tag}", 1)
             elif "</head>" in raw_html:

@@ -266,6 +266,21 @@ class ApiTokenPressureTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn(expected_meta, html)
 
+    def test_injected_token_is_html_escaped(self) -> None:
+        """An operator-supplied token cannot break out of the meta attribute."""
+        hostile = 'abc"><script>alert(1)</script>'
+        with TemporaryDirectory() as temp_dist:
+            dist_path = Path(temp_dist)
+            (dist_path / "index.html").write_text(
+                "<!doctype html><html><head><title>t</title></head><body></body></html>",
+                encoding="utf-8",
+            )
+            with AppTestHarness(frontend_dist=dist_path, api_token=hostile) as harness:
+                status, _, page = raw_request(harness.base_url, "GET", "/")
+                self.assertEqual(status, 200)
+                self.assertNotIn("<script>alert(1)</script>", page)
+                self.assertIn("&quot;&gt;&lt;script&gt;", page)
+
 
 if __name__ == "__main__":
     unittest.main()
