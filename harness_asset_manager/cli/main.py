@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import socket
 import subprocess
 import sys
@@ -37,7 +38,7 @@ AssetHandler = Callable[["BackendContainer", argparse.Namespace], int]
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
-RUNTIME_COMMANDS = {"serve", "start", "stop", "status"}
+RUNTIME_COMMANDS = {"serve", "start", "stop", "status", "token"}
 COMMANDS = RUNTIME_COMMANDS | commands.GROUP_NAMES
 
 
@@ -63,6 +64,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     status_parser = subparsers.add_parser("status", help="Show status for the managed background instance.")
     status_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
+
+    token_parser = subparsers.add_parser("token", help="Print the API bearer token for the running instance.")
+    token_parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
 
     common = asset_flags()
 
@@ -90,8 +94,9 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         "--allow-remote",
         action="store_true",
         help=(
-            "Permit binding a non-loopback --host. WARNING: the API has no authentication; "
-            "anyone who can reach the port can mutate local harness config."
+            "Permit binding a non-loopback --host. WARNING: serving on non-loopback interfaces "
+            "relies solely on API bearer token authentication; anyone with network access "
+            "can access the API if they obtain the token."
         ),
     )
     parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
@@ -119,6 +124,8 @@ def main(argv: list[str] | None = None) -> int:
         return stop_command(args)
     if args.command == "status":
         return status_command(args)
+    if args.command == "token":
+        return token_command(args)
     return serve_command(args)
 
 
@@ -166,14 +173,14 @@ def guard_remote_host(args: argparse.Namespace) -> int | None:
     if not args.allow_remote:
         print(
             f"error: refusing to bind non-loopback host {args.host!r}.\n"
-            "The harness-asset-manager API has no authentication and can mutate local files. "
-            "Pass --allow-remote only on a network you fully trust.",
+            "The harness-asset-manager API can mutate local files. "
+            "Pass --allow-remote only on a network you trust and protect the API bearer token.",
             file=sys.stderr,
         )
         return 2
     print(
-        f"WARNING: serving the unauthenticated harness-asset-manager API on {args.host!r}; "
-        "anyone who can reach this port can mutate local harness configuration.",
+        f"WARNING: serving the harness-asset-manager API on {args.host!r}; "
+        "remote access requires the per-launch bearer token.",
         file=sys.stderr,
     )
     return None
@@ -188,6 +195,7 @@ def serve_command(args: argparse.Namespace) -> int:
         return refusal
     env = runtime_env(args.state_dir)
     container = build_backend_container(env)
+    token = env.get("HARNESSAM_API_TOKEN") or secrets.token_urlsafe(32)
     prebound_socket = socket.socket(fileno=args.socket_fd) if args.socket_fd is not None else None
     return serve_foreground(
         container,
@@ -197,6 +205,7 @@ def serve_command(args: argparse.Namespace) -> int:
         open_browser=args.open_browser,
         allow_remote=args.allow_remote,
         prebound_socket=prebound_socket,
+        api_token=token,
     )
 
 
@@ -214,6 +223,11 @@ def start_command(args: argparse.Namespace) -> int:
         return 0
     if existing is not None:
         clear_runtime_state(env)
+
+    token = env.get("HARNESSAM_API_TOKEN")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        env["HARNESSAM_API_TOKEN"] = token
 
     socket_handle, actual_host, port = bind_socket(args.host, args.port)
     url = f"http://{actual_host}:{port}"
@@ -264,6 +278,7 @@ def start_command(args: argparse.Namespace) -> int:
             version=__version__,
             executable=sys.executable,
             started_at=time.time(),
+            token=token,
         ),
         env,
     )
@@ -299,6 +314,23 @@ def status_command(args: argparse.Namespace) -> int:
         print("harness-asset-manager is not running.")
         return 0
     print(f"harness-asset-manager is running at {state.base_url} (pid {state.pid})")
+    return 0
+
+
+def token_command(args: argparse.Namespace) -> int:
+    env = runtime_env(args.state_dir)
+    state = load_runtime_state(env)
+    if state is None or not is_owned_runtime_process(state):
+        print(
+            "harness-asset-manager is not running.\n"
+            "(harnessam token reads runtime state from 'start'-launched instances.)",
+            file=sys.stderr,
+        )
+        return 1
+    if not state.token:
+        print("error: running instance has no token recorded in runtime state.", file=sys.stderr)
+        return 1
+    print(state.token)
     return 0
 
 
