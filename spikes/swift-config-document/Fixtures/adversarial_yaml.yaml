@@ -1,0 +1,48 @@
+# Hermes Agent Configuration
+# Defines LLM routing, MCP tool bindings, and hook scripts.
+
+version: 2
+model: "claude-3-7-sonnet" # Active reasoning model
+
+# Default environment definitions used across servers
+defaults: &default_env
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+
+# MCP tool bindings
+mcp_servers:
+  exa:
+    command: "npx"
+    args:
+      - "-y"
+      - "exa-mcp-server" # Standard web tool
+    env:
+      <<: *default_env
+      EXA_API_KEY: "secret"
+    disabled: false # Active server
+
+  custom_runner:
+    command: "python3"
+    args:
+      - "-m"
+      - "my_server"
+    env: *default_env
+
+# Complex multi-line prompt instructions
+system_prompt: |
+  You are an expert software engineer assistant.
+  Always inspect context before modifying files.
+  Do not introduce unneeded churn.
+
+prompt_summary: >
+  A concise summary folded
+  over multiple lines without
+  introducing unwanted breaks.
+
+# Nested hooks sequence
+hooks:
+  - name: "pre-commit-check"
+    # Executed before modifying git working tree
+    actions:
+      - "npm run lint"
+      - "npm test"
