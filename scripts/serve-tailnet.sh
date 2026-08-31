@@ -38,15 +38,18 @@ fi
 echo "Tailnet DNS name: ${DNS_NAME}"
 
 if ! curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${BACKEND}/api/health"; then
-  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first." >&2
-  echo "Start command: harnessam start --trusted-host ${DNS_NAME}" >&2
+  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first (\`harnessam start\`)." >&2
   exit 1
 fi
 
-# Verify the app accepts the proxied Host header (running with --trusted-host)
+# The app auto-trusts this device's own Tailscale hostname with no flag needed
+# (harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name); this just
+# confirms that actually happened — e.g. it did not start before tailscaled was up,
+# or --trusted-host/HARNESS_ASSET_MANAGER_TRUSTED_HOSTS names something else.
 if ! curl -fsS --max-time 5 -o /dev/null -H "Host: ${DNS_NAME}" "http://127.0.0.1:${BACKEND}/api/health"; then
   echo "warning: app at 127.0.0.1:${BACKEND} rejected Host: ${DNS_NAME} (HTTP 403)." >&2
-  echo "Make sure the app is running WITHOUT --allow-remote and WITH --trusted-host ${DNS_NAME}" >&2
+  echo "Restart it after tailscaled is up, or set --trusted-host ${DNS_NAME} explicitly." >&2
+  echo "Make sure it is NOT running with --allow-remote, which disables this check entirely." >&2
 fi
 
 tailscale serve --bg --https="${PORT}" "http://127.0.0.1:${BACKEND}"

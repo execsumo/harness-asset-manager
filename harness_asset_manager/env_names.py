@@ -20,6 +20,7 @@ LEGACY_ENV_PREFIX = "SKILL_MANAGER_"
 # Paths
 SETTINGS_PATH_ENV = f"{ENV_PREFIX}SETTINGS_PATH"
 STATE_DIR_ENV = f"{ENV_PREFIX}STATE_DIR"
+TRUSTED_HOSTS_ENV = f"{ENV_PREFIX}TRUSTED_HOSTS"
 
 # Per-harness managed roots
 CLAUDE_ROOT_ENV = f"{ENV_PREFIX}CLAUDE_ROOT"
@@ -65,6 +66,7 @@ ALL_ENV_NAMES: tuple[str, ...] = tuple(
     for new_name in (
         SETTINGS_PATH_ENV,
         STATE_DIR_ENV,
+        TRUSTED_HOSTS_ENV,
         CLAUDE_ROOT_ENV,
         CODEX_ROOT_ENV,
         AGY_ROOT_ENV,
@@ -98,6 +100,7 @@ __all__ = [
     "OPENCODE_ROOT_ENV",
     "SETTINGS_PATH_ENV",
     "STATE_DIR_ENV",
+    "TRUSTED_HOSTS_ENV",
     "env_get",
     "legacy_name",
 ]

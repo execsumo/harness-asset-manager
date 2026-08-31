@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import secrets
 import socket
 import subprocess
 import sys
@@ -96,7 +95,12 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         action="append",
         default=[],
         dest="trusted_hosts",
-        help="Trust an additional Host/Origin header value (e.g. a Tailscale or reverse proxy hostname). Can be passed multiple times.",
+        help=(
+            "Trust an additional Host/Origin header value (e.g. a Tailscale or reverse proxy "
+            "hostname). Can be passed multiple times. Set once instead of passing it on every "
+            "launch via the HARNESS_ASSET_MANAGER_TRUSTED_HOSTS environment variable "
+            "(comma-separated)."
+        ),
     )
     parser.add_argument(
         "--allow-remote",
@@ -212,7 +216,7 @@ def serve_command(args: argparse.Namespace) -> int:
         frontend_dist=args.frontend_dist,
         open_browser=args.open_browser,
         allow_remote=args.allow_remote,
-        trusted_hosts=tuple(getattr(args, "trusted_hosts", ()) or ()),
+        trusted_hosts=resolved_trusted_hosts(args, env),
         prebound_socket=prebound_socket,
         api_token=token,
     )
@@ -346,6 +350,43 @@ def self_command(*args: str) -> list[str]:
     if getattr(sys, "frozen", False):
         return [sys.executable, *args]
     return [sys.executable, "-m", "harness_asset_manager", *args]
+
+
+def resolved_trusted_hosts(args: argparse.Namespace, env: dict[str, str]) -> tuple[str, ...]:
+    """CLI ``--trusted-host`` flags plus ``HARNESS_ASSET_MANAGER_TRUSTED_HOSTS``, deduplicated.
+
+    The env var lets an operator set the tailnet/proxy hostname once (shell profile,
+    launchd, systemd) instead of passing --trusted-host on every launch. CLI flags take
+    no priority over it; both sources are simply merged.
+    """
+    from harness_asset_manager.env_names import TRUSTED_HOSTS_ENV, env_get
+
+    env_value = env_get(env, TRUSTED_HOSTS_ENV, "") or ""
+    env_hosts = [host.strip() for host in env_value.split(",") if host.strip()]
+    cli_hosts = list(getattr(args, "trusted_hosts", ()) or ())
+    seen: set[str] = set()
+    merged: list[str] = []
+    for host in (*env_hosts, *cli_hosts):
+        if host not in seen:
+            seen.add(host)
+            merged.append(host)
+    if merged:
+        return tuple(merged)
+
+    # Nothing explicit was configured. Best-effort auto-detect this device's own
+    # Tailscale hostname so a tailnet launch needs no flag and no env var at all;
+    # explicit configuration above always wins and skips this entirely.
+    from harness_asset_manager.runtime.tailscale import detect_tailnet_dns_name
+
+    detected = detect_tailnet_dns_name()
+    if detected:
+        print(
+            f"note: auto-trusting this device's Tailscale hostname {detected!r} for Host/Origin. "
+            "Override with --trusted-host or HARNESS_ASSET_MANAGER_TRUSTED_HOSTS.",
+            file=sys.stderr,
+        )
+        return (detected,)
+    return ()
 
 
 def trusted_host_args(trusted_hosts: list[str] | None) -> list[str]:

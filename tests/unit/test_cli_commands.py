@@ -77,6 +77,56 @@ class ParserTests(unittest.TestCase):
         self.assertIsNotNone(getattr(args, "handler", None))
 
 
+class ResolvedTrustedHostsTests(unittest.TestCase):
+    """Priority: explicit CLI/env wins outright; auto-detect only fills a gap."""
+
+    def _args(self, trusted_hosts: list[str] | None = None) -> mock.Mock:
+        return mock.Mock(trusted_hosts=trusted_hosts or [])
+
+    def test_env_var_is_comma_split_and_stripped(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        env = {"HARNESS_ASSET_MANAGER_TRUSTED_HOSTS": " foo.ts.net, bar.example ,"}
+        self.assertEqual(resolved_trusted_hosts(self._args(), env), ("foo.ts.net", "bar.example"))
+
+    def test_cli_flags_merge_with_env_and_dedupe(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        env = {"HARNESS_ASSET_MANAGER_TRUSTED_HOSTS": "foo.ts.net"}
+        result = resolved_trusted_hosts(self._args(["bar.example", "foo.ts.net"]), env)
+        self.assertEqual(result, ("foo.ts.net", "bar.example"))
+
+    def test_explicit_config_skips_auto_detection(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            side_effect=AssertionError("must not be called when something explicit is set"),
+        ):
+            result = resolved_trusted_hosts(self._args(["bar.example"]), {})
+        self.assertEqual(result, ("bar.example",))
+
+    def test_falls_back_to_auto_detected_tailnet_hostname(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            return_value="my-mac.tailnet-name.ts.net",
+        ):
+            result = resolved_trusted_hosts(self._args(), {})
+        self.assertEqual(result, ("my-mac.tailnet-name.ts.net",))
+
+    def test_nothing_configured_and_nothing_detected_yields_empty(self) -> None:
+        from harness_asset_manager.cli.main import resolved_trusted_hosts
+
+        with mock.patch(
+            "harness_asset_manager.runtime.tailscale.detect_tailnet_dns_name",
+            return_value=None,
+        ):
+            result = resolved_trusted_hosts(self._args(), {})
+        self.assertEqual(result, ())
+
+
 class TokenCommandTests(CliCommandTestCase):
     def test_token_reads_and_generates_token(self) -> None:
         code, out, err = self.run_cli("token")
