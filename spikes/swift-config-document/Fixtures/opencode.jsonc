@@ -1,0 +1,9 @@
+{
+  // My OpenCode config -- hand written
+  "theme": "dark",
+  "mcp": {
+    "exa": { "type": "local", "command": ["npx", "exa"] }
+  },
+  /* keep this one until the API key rotates */
+  "model": "big"
+}

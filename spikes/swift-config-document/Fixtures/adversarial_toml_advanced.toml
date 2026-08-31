@@ -1,0 +1,33 @@
+# Advanced TOML Fixture
+# Tests inline tables, multiline strings, dotted keys, and deep nesting.
+
+title = "Advanced TOML Spec"
+site."api.example.com".enabled = true
+site."api.example.com".rate_limit = 100
+
+# Inline table
+database = { server = "192.168.1.1", ports = [ 8001, 8002, 8003 ], connection_max = 5000, enabled = true }
+
+# Multiline basic string
+description = """
+The quick brown fox \
+jumps over the lazy dog.
+Roses are red,
+Violets are blue.
+"""
+
+# Multiline literal string
+regex_rules = '''
+I [dw]on't need \d{2} \s escapes
+Lines are literal: \n \t \r
+'''
+
+# Deeply nested tables with comments
+[servers.alpha.us_west.cluster_01]
+ip = "10.0.0.1"
+role = "primary" # Primary leader node
+metrics_port = 9090
+
+[servers.beta.eu_central.cluster_02]
+ip = "10.1.0.1"
+role = "replica"

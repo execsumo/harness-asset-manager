@@ -1,0 +1,39 @@
+# Codex configuration file
+# Contains MCP servers, hooks, and permission configuration across all Codex families.
+# Note: Keep formatting and comments intact.
+
+model = "gpt-5" # Primary model
+model_reasoning_effort = "high"
+
+# Core editor settings
+[editor]
+tab_size = 4
+format_on_save = true # Ensure code is auto-formatted
+
+# MCP Servers configuration
+# Defines tools accessible to the Codex agent
+[mcp_servers.exa]
+command = "npx"
+args = ["-y", "exa-mcp-server"] # Required for web search capabilities
+env = { EXA_API_KEY = "secret-token-value", DEBUG = "0" }
+
+[mcp_servers.sqlite]
+command = "uvx"
+args = ["mcp-server-sqlite", "--db-path", "/var/data/app.db"]
+
+# Hooks configuration
+# Automates checks before and after tool executions
+[hooks]
+enabled = true
+
+[hooks.PreToolUse]
+matcher = "Bash"
+description = "Audit destructive bash commands"
+hooks = [
+    { id = "guard-rm", command = "echo checking command" }
+]
+
+# Security and permissions
+[permissions]
+auto_approve_read = true
+require_confirmation = ["terminal_write", "file_delete"]
