@@ -70,6 +70,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         env_overrides: dict[str, str] | None = None,
         source_fetcher: SourceFetchService | None = None,
         allow_remote: bool = False,
+        api_token: str | None = None,
     ) -> None:
         self._tempdir = TemporaryDirectory(prefix="harnessam-tests-")
         self.spec = create_fake_home_spec(Path(self._tempdir.name), omit_clis=omit_clis)
@@ -101,16 +102,32 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
             )
             # Ensure tests exercising a custom catalog use the same read-model root.
             self.container.skills_read_models.invalidate()
-        self.server = serve_in_thread(self.container, frontend_dist=frontend_dist, allow_remote=allow_remote)
+        self.server = serve_in_thread(
+            self.container,
+            frontend_dist=frontend_dist,
+            allow_remote=allow_remote,
+            api_token=api_token,
+        )
         self.base_url = self.server.base_url
+        self.api_token = self.server.api_token
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.server.stop()
         self._tempdir.cleanup()
 
-    def get_json(self, path: str, *, expected_status: int = 200) -> object:
+    def get_json(
+        self,
+        path: str,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
+        req_headers = {"Authorization": f"Bearer {self.api_token}"}
+        if headers is not None:
+            req_headers.update(headers)
+        request = Request(f"{self.base_url}{path}", headers=req_headers)
         try:
-            with urlopen(f"{self.base_url}{path}") as response:
+            with urlopen(request) as response:
                 status = response.status
                 payload = response.read().decode("utf-8")
         except HTTPError as error:
@@ -120,24 +137,65 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
             raise AssertionError(f"expected {expected_status} for {path}, got {status}: {payload}")
         return json.loads(payload)
 
-    def post_json(self, path: str, body: object = None, *, expected_status: int = 200) -> object:
-        return self._send_json("POST", path, body, expected_status=expected_status)
+    def post_json(
+        self,
+        path: str,
+        body: object = None,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
+        return self._send_json("POST", path, body, expected_status=expected_status, headers=headers)
 
-    def put_json(self, path: str, body: object = None, *, expected_status: int = 200) -> object:
-        return self._send_json("PUT", path, body, expected_status=expected_status)
+    def put_json(
+        self,
+        path: str,
+        body: object = None,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
+        return self._send_json("PUT", path, body, expected_status=expected_status, headers=headers)
 
-    def patch_json(self, path: str, body: object = None, *, expected_status: int = 200) -> object:
-        return self._send_json("PATCH", path, body, expected_status=expected_status)
+    def patch_json(
+        self,
+        path: str,
+        body: object = None,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
+        return self._send_json("PATCH", path, body, expected_status=expected_status, headers=headers)
 
-    def delete_json(self, path: str, *, expected_status: int = 200) -> object:
-        return self._send_json("DELETE", path, None, expected_status=expected_status)
+    def delete_json(
+        self,
+        path: str,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
+        return self._send_json("DELETE", path, None, expected_status=expected_status, headers=headers)
 
-    def _send_json(self, method: str, path: str, body: object = None, *, expected_status: int = 200) -> object:
+    def _send_json(
+        self,
+        method: str,
+        path: str,
+        body: object = None,
+        *,
+        expected_status: int = 200,
+        headers: dict[str, str] | None = None,
+    ) -> object:
         data = json.dumps(body).encode("utf-8") if body is not None else b""
+        req_headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_token}",
+        }
+        if headers is not None:
+            req_headers.update(headers)
         request = Request(
             f"{self.base_url}{path}",
             data=data,
-            headers={"Content-Type": "application/json"},
+            headers=req_headers,
             method=method,
         )
         try:

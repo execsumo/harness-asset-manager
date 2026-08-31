@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import socket
 import unittest
@@ -41,14 +42,36 @@ class RuntimeTests(unittest.TestCase):
                 version="0.1.0",
                 executable="/tmp/harness-asset-manager",
                 started_at=1.23,
+                token="test-token-secret-123",
             )
 
-            write_runtime_state(state, env)
+            path = write_runtime_state(state, env)
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             restored = load_runtime_state(env)
 
             self.assertEqual(restored, state)
+            self.assertEqual(restored.token, "test-token-secret-123")
             clear_runtime_state(env)
             self.assertIsNone(load_runtime_state(env))
+
+    def test_runtime_state_without_token_field_loads_successfully_with_none_token(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
+            state_file = Path(temp_dir) / "runtime.json"
+            legacy_payload = {
+                "pid": 1234,
+                "host": "127.0.0.1",
+                "port": 8123,
+                "base_url": "http://127.0.0.1:8123",
+                "version": "0.1.0",
+                "executable": "/tmp/harness-asset-manager",
+                "started_at": 1.23,
+            }
+            state_file.write_text(json.dumps(legacy_payload), encoding="utf-8")
+            loaded = load_runtime_state(env)
+            self.assertIsNotNone(loaded)
+            self.assertIsNone(loaded.token)
+            self.assertEqual(loaded.pid, 1234)
 
     def test_runtime_state_truncated_corrupt_json_returns_none(self) -> None:
         with TemporaryDirectory() as temp_dir:

@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import sys
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -63,15 +66,43 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(normalize_argv([]), ["serve"])
 
     def test_runtime_commands_have_no_asset_handler(self) -> None:
-        # `serve`/`start`/`stop`/`status` must keep their own dispatch path so they
+        # `serve`/`start`/`stop`/`status`/`token` must keep their own dispatch path so they
         # never pay for building a backend container.
-        for command in ("serve", "start", "stop", "status"):
+        for command in ("serve", "start", "stop", "status", "token"):
             args = build_parser().parse_args([command])
             self.assertIsNone(getattr(args, "handler", None), msg=command)
 
     def test_refresh_dispatches_through_the_asset_runner(self) -> None:
         args = build_parser().parse_args(["refresh"])
         self.assertIsNotNone(getattr(args, "handler", None))
+
+
+class TokenCommandTests(CliCommandTestCase):
+    def test_token_when_not_running_exits_one(self) -> None:
+        code, out, err = self.run_cli("token")
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn("not running", err)
+
+    def test_token_prints_active_instance_token(self) -> None:
+        from harness_asset_manager.runtime.state import RuntimeState, write_runtime_state
+        state = RuntimeState(
+            pid=os.getpid(),
+            host="127.0.0.1",
+            port=8000,
+            base_url="http://127.0.0.1:8000",
+            version="0.1.0",
+            executable=sys.executable,
+            started_at=time.time(),
+            token="secret-token-xyz-789",
+        )
+        write_runtime_state(state, self.spec.env())
+
+        with mock.patch("harness_asset_manager.cli.main.is_owned_runtime_process", return_value=True):
+            code, out, err = self.run_cli("token")
+            self.assertEqual(code, 0, msg=err)
+            self.assertEqual(out.strip(), "secret-token-xyz-789")
+            self.assertEqual(err, "")
 
 
 class RefreshCommandTests(CliCommandTestCase):

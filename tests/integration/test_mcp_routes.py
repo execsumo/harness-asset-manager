@@ -435,11 +435,7 @@ class McpRoutesTests(unittest.TestCase):
             _install(harness)
             harness.post_json("/api/mcp/servers/exa/set-harnesses", {"target": "enabled"})
 
-            # urlopen with custom method — use AppTestHarness internals
-            from urllib.request import Request, urlopen
-            req = Request(f"{harness.base_url}/api/mcp/servers/exa", method="DELETE")
-            with urlopen(req) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
+            payload = harness.delete_json("/api/mcp/servers/exa")
             self.assertTrue(payload["ok"])
 
             # Central gone
