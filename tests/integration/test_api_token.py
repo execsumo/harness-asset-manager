@@ -284,6 +284,66 @@ class ApiTokenPressureTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(status, 403)
             self.assertIn("forbidden origin", body)
 
+    async def test_6_serve_proxied_traffic_is_not_trusted_as_a_loopback_client(self) -> None:
+        """The real Serve shape: loopback peer (the proxy) + tailnet Host.
+
+        ``tailscale serve`` proxies to 127.0.0.1, so tailnet requests arrive with a
+        loopback peer exactly like a local client. If loopback-peer trust applied to
+        them, every device on the tailnet would reach the API unauthenticated and the
+        identity/token rules would be unreachable. The ``Host`` header is what tells
+        them apart. Every other remote case in this suite uses a synthetic non-loopback
+        peer, which this deployment never produces.
+        """
+        with AppTestHarness(trusted_hosts=("foo.ts.net",)) as harness:
+            app = harness.server.server.config.app
+            proxy_client = ("127.0.0.1", 54321)
+
+            # No identity, no token -> 401 even though the peer is loopback.
+            status, _, _ = await asgi_request(
+                app,
+                "GET",
+                "/api/settings",
+                headers={"Host": "foo.ts.net:7443"},
+                client=proxy_client,
+            )
+            self.assertEqual(status, 401)
+
+            # Serve-injected identity -> 200.
+            status, _, _ = await asgi_request(
+                app,
+                "GET",
+                "/api/settings",
+                headers={
+                    "Host": "foo.ts.net:7443",
+                    "Tailscale-User-Login": "alice@example.com",
+                },
+                client=proxy_client,
+            )
+            self.assertEqual(status, 200)
+
+            # Bearer token over the proxy -> 200.
+            status, _, _ = await asgi_request(
+                app,
+                "GET",
+                "/api/settings",
+                headers={
+                    "Host": "foo.ts.net:7443",
+                    "Authorization": f"Bearer {harness.api_token}",
+                },
+                client=proxy_client,
+            )
+            self.assertEqual(status, 200)
+
+            # A genuine local client is still unauthenticated-friendly.
+            status, _, _ = await asgi_request(
+                app,
+                "GET",
+                "/api/settings",
+                headers={"Host": "127.0.0.1:8000"},
+                client=proxy_client,
+            )
+            self.assertEqual(status, 200)
+
     async def test_7_token_persists_across_restart_and_rotates_with_rotate_flag(self) -> None:
         """7. Token persists across simulated restart (same store -> same token); --rotate changes it."""
         with TemporaryDirectory() as temp_state:

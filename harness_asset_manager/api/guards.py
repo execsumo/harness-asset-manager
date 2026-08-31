@@ -15,7 +15,15 @@ calling it. Two browser-side attacks are in scope:
   trust level for same-user local processes.
 
 Both checks are disabled when the operator explicitly launches with
-``--allow-remote`` to bind a non-loopback interface.
+``--allow-remote`` to bind a non-loopback interface. Prefer ``--trusted-host``,
+which names one additional hostname (a reverse proxy such as ``tailscale serve``)
+while leaving both checks active.
+
+``ApiTokenMiddleware`` sits inside this one and authenticates the request itself:
+a local client, a Tailscale Serve identity, or a bearer token. Same-user local
+processes are deliberately trusted — they can read the token file, the process
+environment, and anything the browser can — so the boundary this enforces is the
+remote one.
 """
 
 from __future__ import annotations
@@ -120,13 +128,19 @@ class ApiTokenMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Rule 1: Loopback peer
+        headers = {key.decode("latin-1").lower(): value.decode("latin-1") for key, value in scope.get("headers", [])}
+
+        # Rule 1: a genuine local client — loopback peer *and* a loopback ``Host``.
+        #
+        # The Host check is load-bearing, not belt-and-braces. ``tailscale serve``
+        # proxies to 127.0.0.1, so tailnet traffic also arrives with a loopback peer;
+        # trusting the peer alone would let every device on the tailnet through
+        # unauthenticated and leave rules 2 and 3 unreachable. What separates proxied
+        # traffic from a local client is the ``Host`` header the proxy forwards.
         client = scope.get("client")
-        if is_loopback_client(client):
+        if is_loopback_client(client) and is_loopback_host(headers.get("host", "")):
             await self.app(scope, receive, send)
             return
-
-        headers = {key.decode("latin-1").lower(): value.decode("latin-1") for key, value in scope.get("headers", [])}
 
         # Rule 2: Tailscale-User-Login present (non-empty)
         tailscale_login = headers.get("tailscale-user-login", "").strip()

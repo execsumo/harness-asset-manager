@@ -145,11 +145,38 @@ class ApiTokenMiddlewareTests(unittest.IsolatedAsyncioTestCase):
         scope = {
             "type": "http",
             "path": "/api/settings",
-            "headers": [],
+            # A real request always carries Host; one without it is rejected by
+            # LoopbackOnlyMiddleware before it reaches here.
+            "headers": [(b"host", b"127.0.0.1:8000")],
             "client": ("127.0.0.1", 54321),
         }
         await middleware(scope, None, None)  # type: ignore[arg-type]
         self.assertTrue(called)
+
+    async def test_rule_1_does_not_trust_a_loopback_proxy_forwarding_a_remote_host(self) -> None:
+        """``tailscale serve`` proxies from 127.0.0.1; only the Host tells it apart."""
+        from harness_asset_manager.api.guards import ApiTokenMiddleware
+
+        called = False
+        sent: list[dict] = []
+
+        async def dummy_app(scope, receive, send):
+            nonlocal called
+            called = True
+
+        async def capture(message):
+            sent.append(message)
+
+        middleware = ApiTokenMiddleware(dummy_app, api_token="secret-123")
+        scope = {
+            "type": "http",
+            "path": "/api/settings",
+            "headers": [(b"host", b"foo.ts.net:7443")],
+            "client": ("127.0.0.1", 54321),
+        }
+        await middleware(scope, None, capture)  # type: ignore[arg-type]
+        self.assertFalse(called)
+        self.assertEqual(sent[0]["status"], 401)
 
     async def test_rule_2_tailscale_user_login_allows_remote_client(self) -> None:
         from harness_asset_manager.api.guards import ApiTokenMiddleware
