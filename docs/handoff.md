@@ -94,10 +94,16 @@ wide open.
 
 ## Tailnet deployment
 
-Run the app on loopback with `--trusted-host <tailnet-dns-name>`; **do not use
-`--allow-remote`**, which disables the Host and Origin guards wholesale to work around a
-hostname mismatch. `--trusted-host` names the one extra hostname while both guards stay active.
-`scripts/serve-tailnet.sh` derives the name from `tailscale status --json` (`.Self.DNSName`).
+`harnessam start`/`serve` now auto-detects this device's own Tailscale hostname
+(`runtime/tailscale.detect_tailnet_dns_name`, a best-effort `tailscale status --json` read) and
+trusts it for Host/Origin with **no flag required** — `resolved_trusted_hosts` in `cli/main.py`
+only falls back to detection when neither `--trusted-host` nor `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS`
+is set. Detection never raises and only ever widens the allowlist.
+
+**Do not use `--allow-remote`** — it disables the Host and Origin guards wholesale to work
+around a hostname mismatch that auto-detection (or an explicit `--trusted-host`) solves
+precisely. `scripts/serve-tailnet.sh` derives the tailnet name the same way and verifies the
+guard actually passes before pointing Serve at the backend.
 
 The token is now persistent in `~/.harnessam` (0600) rather than per-launch, so `harnessam
 token` works for `serve` as well as `start`, and `harnessam token --rotate` cycles it.

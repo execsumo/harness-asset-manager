@@ -59,12 +59,16 @@ or to move the front door — reading `HAM_TAILNET_PORT` (default `7443`) and `H
 usually proxies unrelated apps on other ports, and `tailscale serve reset` would take them all
 out. To retire a port, run the `tailscale serve --https=<port> off` line the script prints.
 
-Run the app with `--trusted-host <tailnet-dns-name>`, **not** `--allow-remote`. Serve forwards
-the tailnet hostname in `Host`, which the loopback guard rejects; `--allow-remote` "fixes" that
-by disabling the Host and Origin guards entirely, while `--trusted-host` names the one extra
-hostname and leaves both active. Remote requests then authenticate on the `Tailscale-User-Login`
-header Serve injects (and strips from incoming requests, so it cannot be forged), which is what
-keeps the tailnet front door paste-free.
+The app auto-detects this device's own Tailscale hostname and trusts it for `Host`/`Origin`
+with **no flag needed** — just `harnessam start`. Serve forwards the tailnet hostname in `Host`,
+which the loopback guard would otherwise reject; auto-detection (`runtime/tailscale.py`, a
+best-effort `tailscale status --json` read) fills the same role `--trusted-host` does, without
+disabling either guard. Never use `--allow-remote` here — it "fixes" the hostname mismatch by
+dropping the Host and Origin guards entirely. Override or add a hostname with `--trusted-host`
+or `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS`; either takes priority over auto-detection. Remote
+requests authenticate on the `Tailscale-User-Login` header Serve injects and strips from
+incoming requests (so it cannot be forged), which is what keeps the tailnet front door
+paste-free.
 
 If the app was launched by hand (`nohup … serve --trusted-host …`) rather than by a supervisor,
 it does **not** survive a reboot, and the front door will proxy nothing until it is relaunched.
