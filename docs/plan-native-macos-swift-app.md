@@ -131,11 +131,23 @@ Native conventions:
 1. Record all API operations and error codes from `frontend/src/api/openapi.json`.
 2. Export representative fake-home fixtures from `tests/support/fake_home.py` for every family and harness.
 3. Add golden before/after fixtures for JSON, JSONC, TOML, YAML, Markdown/frontmatter, symlink ownership, drift, conflicts, migrations, and audit redaction.
-4. Spike Swift packages for source-preserving TOML and YAML. The acceptance test is byte-preserving untouched content, not merely equivalent decoded values.
-5. Decide the minimum macOS version after testing `NavigationSplitView`, inspector APIs, table behavior, and updater support.
-6. Produce a signed/notarized proof app that launches the bundled sidecar on both arm64 and x86_64.
+4. ~~Spike Swift packages for source-preserving TOML and YAML.~~ **Done — see
+   [`spike-swift-source-preserving-config.md`](spike-swift-source-preserving-config.md).**
+   Verdicts: **JSON/JSONC GO** (hand-written `JsoncDocument`, ~450 lines);
+   **TOML GO only via a hand-written surgical engine** (~320 lines) — TOMLKit/toml++ destroys
+   every comment, including on a no-op load/dump; **YAML NO-GO** — Yams/libyaml discards
+   comments at tokenization and no `ruamel.yaml` equivalent exists in the Swift ecosystem.
+   Read the report's "Review corrections" section before quoting its pass rates.
+5. Decide the minimum macOS version after testing `NavigationSplitView`, inspector APIs, table behavior, and updater support. **(macOS-only; not started.)**
+6. Produce a signed/notarized proof app that launches the bundled sidecar on both arm64 and x86_64. **(macOS-only; not started. Requires Apple Developer Program membership — allow lead time.)**
 
 **Exit gate:** the app can read a fixture store, perform one harmless mutation through the sidecar, and produce exactly the same bytes as the current implementation.
+
+**Gate status:** item 4 is closed; items 1–3 can proceed on any platform; items 5–6 and the exit
+gate itself require macOS hardware and cannot be advanced on Linux. All spike results were
+produced on Linux Swift 6.0.3 and carry two Darwin-specific re-validations (UTF-8 BOM handling in
+`JSONSerialization`, and `NSNumber`/`CFBoolean` bridging in `ConfigValue`) — re-run the spike's
+`swift test` on macOS as the first task there.
 
 ### Phase 1 — Native shell and read-only inventories
 
@@ -185,10 +197,19 @@ Recommended order:
 3. Tags, settings, and read-only scanning.
 4. Skills and Agents, including parsers, symlink ownership, binding ledger, and conflict preservation.
 5. Slash Commands and rendered-file sync state.
-6. Source-preserving config document engine.
+6. Source-preserving config document engine. **Split by format — this is no longer one step.**
+   - **JSON and JSONC**: port `JsoncDocument` (~450 lines of Swift, already written and tested
+     in the spike). Ready.
+   - **TOML**: port `TomlSurgicalEngine` (~320 lines, already written and tested). Close the two
+     corpus gaps the review found first — `test_mutation_after_insertion_is_not_lost` and a
+     malformed-document test for the surgical engine.
+   - **YAML**: **stays in the sidecar.** A pure-Swift round-trip YAML engine is estimated at
+     1,500–2,500 lines and carries high risk (indentation rules, flow/block styles, block-scalar
+     chomping, anchors/aliases). Only Hermes (`~/.hermes/config.yaml`) binds YAML, so the blast
+     radius of deferring this is one harness.
 7. MCP, Hooks, Permissions, and Configs adapters/codecs.
 8. Marketplace networking, caching, GitHub package acquisition, and availability probes.
-9. Remove the sidecar only after cross-implementation parity has been green for at least one release cycle.
+9. Remove the sidecar only after cross-implementation parity has been green for at least one release cycle. **Note that full removal is now conditional:** while YAML editing stays in Python, the sidecar cannot be removed outright. Either accept a permanently reduced sidecar that serves YAML config writes only, or fund the 1,500–2,500 line Swift YAML engine as an explicit, separately-scoped decision.
 
 For each slice, run the Python and Swift implementations against the same fixture home and compare:
 
@@ -198,7 +219,8 @@ For each slice, run the Python and Swift implementations against the same fixtur
 - audit events with secret fields excluded;
 - behavior under malformed files, permission errors, partial fan-out failures, concurrent CLI access, and sync-conflict artifacts.
 
-**Exit gate:** the bundled Python core is removable without changing the store, CLI interoperability, or user-visible behavior.
+**Exit gate:** the bundled Python core is removable — or reduced to the YAML-only residue described
+in step 9 — without changing the store, CLI interoperability, or user-visible behavior.
 
 ## Validation strategy
 
@@ -217,7 +239,7 @@ For each slice, run the Python and Swift implementations against the same fixtur
 | Risk | Mitigation |
 |---|---|
 | Big-bang rewrite corrupts user configs | Ship SwiftUI over the existing core; port one domain at a time with byte-level differential tests. |
-| Swift format libraries lose comments/order | Make source preservation a Phase 0 gate; port the existing patching behavior or retain that part of the sidecar. |
+| ~~Swift format libraries lose comments/order~~ **Confirmed, not a risk — a finding.** | Measured in Phase 0: TOMLKit and Yams both destroy comments unconditionally. Mitigation is now the plan of record: port HAM's surgical span-patching strategy to Swift for JSON/JSONC/TOML, and retain YAML in the sidecar. |
 | Sandbox blocks required filesystem access | Use Developer ID distribution without App Sandbox initially; document exactly what paths are accessed. |
 | Bundled local HTTP API is callable by another process | Random port, per-launch token, loopback-only bind, version handshake, app-owned lifecycle. |
 | Finder launch cannot find Homebrew/user CLIs | Implement deterministic native executable discovery and user-configurable overrides. |
@@ -238,4 +260,6 @@ The native app is complete when it:
 - is keyboard- and VoiceOver-usable;
 - is signed, hardened, notarized, and upgrade-tested on supported Intel and Apple Silicon Macs;
 - has no unauthenticated app-private network boundary; and
-- can eventually remove the Python sidecar only after differential parity proves the Swift core equivalent.
+- can eventually remove the Python sidecar — or reduce it to the YAML-only residue — after
+  differential parity proves the Swift core equivalent. A fully Python-free build additionally
+  requires a Swift round-trip YAML engine that does not yet exist in the ecosystem.

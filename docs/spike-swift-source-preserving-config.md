@@ -18,7 +18,7 @@ This spike resolves the Phase 0 feasibility gate defined in `docs/plan-native-ma
 |---|---|---|---|
 | **JSON** | **GO** | Built-in Foundation / Swift `JsoncDocument` | **100% (3/3 corpus tests pass)**. Untouched files are byte-identical; unowned keys survive mutations. |
 | **JSONC** | **GO** | Pure Swift `JsoncDocument` (ported from HAM Python) | **100% (21/21 tests pass)**. Surgical span diffing preserves comments, whitespace, trailing commas, CRLF, BOM, and Unicode byte-for-byte. |
-| **TOML** | **GO (via Surgical Engine)**<br>*NO-GO via TOMLKit* | **Hand-written surgical span engine** (`TomlSurgicalEngine`, ~320 lines) or keep in Python sidecar during Phases 1–3 | **TOMLKit FAILS 100% of round-trip preservation tests** (deletes all comments, alters quotes, resets array styles).<br>**Surgical engine PASSES 100% (11/11 tests pass)**. |
+| **TOML** | **GO (via Surgical Engine)**<br>*NO-GO via TOMLKit* | **Hand-written surgical span engine** (`TomlSurgicalEngine`, ~320 lines) or keep in Python sidecar during Phases 1–3 | **TOMLKit FAILS every round-trip preservation test** (deletes all comments, alters quotes, resets array styles).<br>**Surgical engine passes 6/6 of its tests**; untouched documents byte-identical, mutated documents within ±1 byte in the rewritten region. See [Review corrections](#review-corrections). |
 | **YAML** | **NO-GO (No Swift library)** | **Retain YAML config editing in the Python sidecar** through Phases 1–3; defer pure Swift port to Phase 4 | **Yams FAILS 100% of round-trip preservation tests** (libyaml discards comments at tokenization). No `ruamel.yaml` equivalent exists in the Swift ecosystem. |
 
 ### Recommendation for Native App Architecture
@@ -82,10 +82,16 @@ args = [ '-y', 'exa-mcp-server' ]
 #### Fallback: `TomlSurgicalEngine` (Hand-written Swift)
 - **Architecture:** Implements the JSONC strategy for TOML: retains original text, discovers table sections and entry spans, and surgically mutates only touched tables/keys while re-emitting untouched regions verbatim.
 - **Size:** ~320 lines of pure Swift (`TomlSurgicalEngine.swift`).
-- **Round-Trip Preservation:** **PASSED (100%)**.
-  - Untouched files are 100% byte-for-byte identical (`0 bytes diff`).
+- **Round-Trip Preservation:** **PASSED** (6/6 `TomlSurgicalRoundTripTests`).
+  - Untouched files are byte-for-byte identical (`0 bytes diff`) — confirmed on both TOML fixtures.
   - Comments inside `~/.codex/config.toml` survive added, removed, and modified MCP servers and hooks.
   - Inline array formatting and table structures survive mutations.
+  - **Not byte-identical under mutation.** `add_mcp` and `edit_scalar` differ from the Python
+    output by 1 byte (1100/1101, 1046/1047, 846/847, 809/808). The difference is confined to the
+    region HAM rewrites, which is within the concession `config_document.py` already documents
+    ("comment preservation is best-effort *within* a subtree HAM rewrites"). It is not a
+    verbatim-identity failure, but the engine should not be described as byte-identical under
+    mutation.
 
 ---
 
@@ -227,8 +233,13 @@ Run via: `.venv/bin/python spikes/swift-config-document/differential_runner.py`
 
 ### Key Insights for the Plan (`docs/plan-native-macos-swift-app.md`)
 
-1. **Phase 0 Exit-Gate is MET:**
-   - Feasibility is proven: JSON and JSONC have 100% native Swift parity; TOML has a verified surgical engine that prevents the Codex comment regression; and the limitation of YAML libraries in the Swift ecosystem is accurately measured with a concrete mitigation strategy (sidecar retention).
+1. **Phase 0 item 4 is MET; the Phase 0 exit gate is NOT.**
+   - This spike closes only item 4 (the source-preserving format spike). JSON and JSONC have
+     native Swift parity; TOML has a verified surgical engine that prevents the Codex comment
+     regression; and the YAML limitation is measured with a concrete mitigation (sidecar retention).
+   - The exit gate itself — "the app can read a fixture store, perform one harmless mutation
+     through the sidecar, and produce exactly the same bytes" — requires an actual app and a
+     running sidecar, neither of which exists yet. Items 5 and 6 are macOS-only and untouched.
 2. **Phase 2 & Phase 3 Strategy Confirmed:**
    - The decision to ship SwiftUI over the bundled Python sidecar first (rather than a big-bang rewrite) is strongly vindicated. Using the sidecar keeps YAML and complex multi-family reconciliations completely safe while the native UI is built and validated.
 3. **Phase 4 Roadmap Adjustments:**
@@ -254,3 +265,48 @@ swift test
 cd ../..
 .venv/bin/python spikes/swift-config-document/differential_runner.py
 ```
+
+---
+
+## Review corrections
+
+Added during independent review of this spike (2026-08-31). The four verdicts above hold and
+were reproduced from a clean checkout: `swift test` gives 58/58, and `differential_runner.py`
+reproduces the destructive/identical table against the real `config_document.py`. Three
+accuracy corrections to how the results are stated:
+
+1. **"Surgical engine PASSES 100% (11/11 tests pass)" was wrong.** There are **6**
+   `TomlSurgicalRoundTripTests`. The other 5 are `TomlKitRoundTripTests`, which *assert
+   TOMLKit's failure* (`test_untouched_document_fails_verbatim_identity_due_to_comment_loss`,
+   etc.). Counting failure-documentation tests toward the engine's pass rate inflates it.
+
+2. **The headline "58/58 tests passed" does not mean "everything works."** Several tests pass
+   by confirming a candidate library is broken — every name ending `_fails_in_tomlkit` or
+   `_fails_in_yams`. Read the suite breakdown, not the total.
+
+3. **TOML surgical output is not byte-identical under mutation** (±1 byte, see §2.1). Untouched
+   documents are exact.
+
+### Corpus parity gap
+
+The Swift TOML corpus is smaller than the Python `TomlRoundTripTests` it claims parity with.
+Missing cases, worth closing before `TomlSurgicalEngine` is trusted in Phase 4:
+
+- `test_mutation_after_insertion_is_not_lost` — mutating a table inserted earlier in the same
+  session. A real behavioral case, not a formatting one.
+- `test_malformed_document_is_reported_not_silently_emptied` — exists for `TomlKitRoundTripTests`
+  but not for the surgical engine, which is the implementation that would actually ship.
+
+### macOS re-validation required
+
+Every result here was produced on Linux Swift 6.0.3. Two findings sit on Foundation behavior
+that differs on Darwin, in code this spike wrote:
+
+- **`JSONSerialization` and the UTF-8 BOM.** Linux Foundation rejects a leading BOM; this report
+  notes Darwin "tolerates or rejects depending on SDK version." `JsoncDocument` works around the
+  Linux behavior, and that workaround is unvalidated on macOS. The differential already shows
+  this fixture diverging from Python (190 B vs 204 B) because Swift preserves the BOM Python drops.
+- **`NSNumber` / `CFBoolean` bridging.** `ConfigValue` distinguishes booleans from numbers via
+  `CFGetTypeID`, which behaves differently under the Objective-C runtime.
+
+Re-running `swift test` on macOS is the first thing to do on the Mac.
