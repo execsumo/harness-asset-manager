@@ -13,13 +13,6 @@ export class ApiError extends Error {
 }
 
 export function getApiToken(): string | null {
-  if (typeof document !== "undefined") {
-    const meta = document.querySelector('meta[name="ham-api-token"]');
-    const content = meta?.getAttribute("content");
-    if (content && content.trim() !== "") {
-      return content.trim();
-    }
-  }
   const devToken = import.meta.env?.VITE_API_TOKEN;
   if (typeof devToken === "string" && devToken.trim() !== "") {
     return devToken.trim();

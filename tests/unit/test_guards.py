@@ -42,6 +42,67 @@ class IsLoopbackHostTests(unittest.TestCase):
                 self.assertFalse(is_loopback_host(host))
 
 
+class LoopbackOnlyMiddlewareTests(unittest.IsolatedAsyncioTestCase):
+    async def test_trusted_host_allows_specified_host_and_origin(self) -> None:
+        from harness_asset_manager.api.guards import LoopbackOnlyMiddleware
+
+        called = False
+
+        async def dummy_app(scope, receive, send):
+            nonlocal called
+            called = True
+
+        middleware = LoopbackOnlyMiddleware(dummy_app, trusted_hosts=("foo.ts.net",))
+
+        # Trusted host passes
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "headers": [(b"host", b"foo.ts.net:7443")],
+        }
+        await middleware(scope, None, None)  # type: ignore[arg-type]
+        self.assertTrue(called)
+
+        # Trusted origin passes on mutation
+        called = False
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "headers": [(b"host", b"foo.ts.net:7443"), (b"origin", b"https://foo.ts.net:7443")],
+        }
+        await middleware(scope, None, None)  # type: ignore[arg-type]
+        self.assertTrue(called)
+
+    async def test_untrusted_host_and_origin_rejected_with_403(self) -> None:
+        from harness_asset_manager.api.guards import LoopbackOnlyMiddleware
+
+        messages: list[dict] = []
+
+        async def dummy_send(msg):
+            messages.append(msg)
+
+        middleware = LoopbackOnlyMiddleware(None, trusted_hosts=("foo.ts.net",))  # type: ignore[arg-type]
+
+        # Untrusted host
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "headers": [(b"host", b"evil.example")],
+        }
+        await middleware(scope, None, dummy_send)  # type: ignore[arg-type]
+        self.assertEqual(messages[0]["status"], 403)
+
+        # Untrusted origin on mutation with trusted host
+        messages.clear()
+        scope = {
+            "type": "http",
+            "method": "PUT",
+            "headers": [(b"host", b"foo.ts.net"), (b"origin", b"https://evil.example")],
+        }
+        await middleware(scope, None, dummy_send)  # type: ignore[arg-type]
+        self.assertEqual(messages[0]["status"], 403)
+
+
 class ApiTokenMiddlewareTests(unittest.IsolatedAsyncioTestCase):
     async def test_non_http_scope_bypasses(self) -> None:
         from harness_asset_manager.api.guards import ApiTokenMiddleware
@@ -68,10 +129,48 @@ class ApiTokenMiddlewareTests(unittest.IsolatedAsyncioTestCase):
                     called = True
 
                 middleware = ApiTokenMiddleware(dummy_app, api_token="secret-123")
-                await middleware({"type": "http", "path": path, "headers": []}, None, None)  # type: ignore[arg-type]
+                await middleware({"type": "http", "path": path, "headers": [], "client": ("192.168.1.5", 12345)}, None, None)  # type: ignore[arg-type]
                 self.assertTrue(called)
 
-    async def test_valid_token_calls_app(self) -> None:
+    async def test_rule_1_loopback_client_allows_without_credentials(self) -> None:
+        from harness_asset_manager.api.guards import ApiTokenMiddleware
+
+        called = False
+
+        async def dummy_app(scope, receive, send):
+            nonlocal called
+            called = True
+
+        middleware = ApiTokenMiddleware(dummy_app, api_token="secret-123")
+        scope = {
+            "type": "http",
+            "path": "/api/settings",
+            "headers": [],
+            "client": ("127.0.0.1", 54321),
+        }
+        await middleware(scope, None, None)  # type: ignore[arg-type]
+        self.assertTrue(called)
+
+    async def test_rule_2_tailscale_user_login_allows_remote_client(self) -> None:
+        from harness_asset_manager.api.guards import ApiTokenMiddleware
+
+        called = False
+
+        async def dummy_app(scope, receive, send):
+            nonlocal called
+            called = True
+
+        middleware = ApiTokenMiddleware(dummy_app, api_token="secret-123")
+        scope = {
+            "type": "http",
+            "path": "/api/settings",
+            "headers": [(b"tailscale-user-login", b"alice@example.com")],
+            "client": ("100.64.0.5", 54321),
+        }
+        await middleware(scope, None, None)  # type: ignore[arg-type]
+        self.assertTrue(called)
+
+    async def test_rule_3_valid_bearer_token_allows_remote_client(self) -> None:
         from harness_asset_manager.api.guards import ApiTokenMiddleware
 
         called = False
@@ -85,11 +184,12 @@ class ApiTokenMiddlewareTests(unittest.IsolatedAsyncioTestCase):
             "type": "http",
             "path": "/api/settings",
             "headers": [(b"authorization", b"Bearer secret-123")],
+            "client": ("192.168.1.100", 54321),
         }
         await middleware(scope, None, None)  # type: ignore[arg-type]
         self.assertTrue(called)
 
-    async def test_missing_or_invalid_token_sends_401(self) -> None:
+    async def test_remote_client_without_valid_auth_sends_401(self) -> None:
         from harness_asset_manager.api.guards import ApiTokenMiddleware
 
         test_headers = [
@@ -112,6 +212,7 @@ class ApiTokenMiddlewareTests(unittest.IsolatedAsyncioTestCase):
                     "type": "http",
                     "path": "/api/skills",
                     "headers": headers,
+                    "client": ("192.168.1.100", 54321),
                 }
                 await middleware(scope, None, dummy_send)  # type: ignore[arg-type]
 

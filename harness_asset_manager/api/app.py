@@ -63,6 +63,7 @@ def create_app(
     *,
     frontend_dist: Path | None = None,
     allow_remote: bool = False,
+    trusted_hosts: tuple[str, ...] = (),
     api_token: str | None = None,
 ) -> FastAPI:
     resolved_token = api_token or os.environ.get("HARNESSAM_API_TOKEN") or secrets.token_urlsafe(32)
@@ -84,8 +85,16 @@ def create_app(
     app.state.container = container
     app.state.frontend_dist = frontend_dist if frontend_dist is not None and frontend_dist.exists() else None
     app.state.api_token = resolved_token
-    app.add_middleware(ApiTokenMiddleware, api_token=resolved_token)
-    app.add_middleware(LoopbackOnlyMiddleware, allow_remote=allow_remote)
+
+    app.add_middleware(
+        ApiTokenMiddleware,
+        api_token=resolved_token,
+    )
+    app.add_middleware(
+        LoopbackOnlyMiddleware,
+        allow_remote=allow_remote,
+        trusted_hosts=trusted_hosts,
+    )
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(configs.router)
@@ -125,23 +134,12 @@ def create_app(
         # ``is_relative_to`` — not a string prefix check: a sibling like
         # ``dist-backup/`` would pass ``startswith(str(dist_root))``.
         if full_path and requested.is_relative_to(dist_root) and requested.exists() and requested.is_file():
-            if requested.name != "index.html":
-                return FileResponse(requested)
+            return FileResponse(requested)
 
         index_path = dist / "index.html"
         if index_path.exists():
-            token = getattr(app.state, "api_token", "")
-            raw_html = index_path.read_text(encoding="utf-8")
-            # ``HARNESSAM_API_TOKEN`` is operator-supplied and arbitrary; a value
-            # containing ``">`` would break out of the attribute into markup.
-            meta_tag = f'<meta name="ham-api-token" content="{html.escape(token, quote=True)}">'
-            if "<head>" in raw_html:
-                injected_html = raw_html.replace("<head>", f"<head>\n    {meta_tag}", 1)
-            elif "</head>" in raw_html:
-                injected_html = raw_html.replace("</head>", f"    {meta_tag}\n  </head>", 1)
-            else:
-                injected_html = f"{meta_tag}\n{raw_html}"
-            return HTMLResponse(injected_html)
-        return HTMLResponse("<html><body><h1>harness-asset-manager</h1><p>Frontend build missing.</p></body></html>", status_code=404)
+            return FileResponse(index_path)
+
+        return HTMLResponse("<html><body><h1>harness-asset-manager</h1><p>Frontend index.html missing.</p></body></html>", status_code=404)
 
     return app

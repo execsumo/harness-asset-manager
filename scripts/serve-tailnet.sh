@@ -12,9 +12,41 @@ set -euo pipefail
 PORT="${HAM_TAILNET_PORT:-7443}"
 BACKEND="${HAM_BACKEND_PORT:-8000}"
 
-if ! curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${BACKEND}/"; then
-  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first." >&2
+if ! command -v tailscale >/dev/null 2>&1; then
+  echo "error: tailscale CLI not found in PATH." >&2
   exit 1
+fi
+
+TS_STATUS="$(tailscale status --json 2>/dev/null || true)"
+if [ -z "${TS_STATUS}" ]; then
+  echo "error: failed to read tailscale status — is Tailscale running?" >&2
+  exit 1
+fi
+
+DNS_NAME="$(python3 -c '
+import json, sys
+data = json.loads(sys.argv[1])
+dns = data.get("Self", {}).get("DNSName", "").rstrip(".")
+print(dns)
+' "${TS_STATUS}")"
+
+if [ -z "${DNS_NAME}" ]; then
+  echo "error: could not determine Tailscale DNS name from tailscale status." >&2
+  exit 1
+fi
+
+echo "Tailnet DNS name: ${DNS_NAME}"
+
+if ! curl -fsS --max-time 5 -o /dev/null "http://127.0.0.1:${BACKEND}/api/health"; then
+  echo "error: nothing answering on http://127.0.0.1:${BACKEND}/ — start the app first." >&2
+  echo "Start command: harnessam start --trusted-host ${DNS_NAME}" >&2
+  exit 1
+fi
+
+# Verify the app accepts the proxied Host header (running with --trusted-host)
+if ! curl -fsS --max-time 5 -o /dev/null -H "Host: ${DNS_NAME}" "http://127.0.0.1:${BACKEND}/api/health"; then
+  echo "warning: app at 127.0.0.1:${BACKEND} rejected Host: ${DNS_NAME} (HTTP 403)." >&2
+  echo "Make sure the app is running WITHOUT --allow-remote and WITH --trusted-host ${DNS_NAME}" >&2
 fi
 
 tailscale serve --bg --https="${PORT}" "http://127.0.0.1:${BACKEND}"

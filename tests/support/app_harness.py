@@ -70,6 +70,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
         env_overrides: dict[str, str] | None = None,
         source_fetcher: SourceFetchService | None = None,
         allow_remote: bool = False,
+        trusted_hosts: tuple[str, ...] = (),
         api_token: str | None = None,
     ) -> None:
         self._tempdir = TemporaryDirectory(prefix="harnessam-tests-")
@@ -106,6 +107,7 @@ class AppTestHarness(AbstractContextManager["AppTestHarness"]):
             self.container,
             frontend_dist=frontend_dist,
             allow_remote=allow_remote,
+            trusted_hosts=trusted_hosts,
             api_token=api_token,
         )
         self.base_url = self.server.base_url

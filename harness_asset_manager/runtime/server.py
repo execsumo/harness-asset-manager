@@ -76,12 +76,19 @@ def serve_foreground(
     frontend_dist: str | Path | None = None,
     open_browser: bool = True,
     allow_remote: bool = False,
+    trusted_hosts: tuple[str, ...] = (),
     prebound_socket: socket.socket | None = None,
     api_token: str | None = None,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote, api_token=api_token)
+    app = create_app(
+        container,
+        frontend_dist=resolved_frontend,
+        allow_remote=allow_remote,
+        trusted_hosts=trusted_hosts,
+        api_token=api_token,
+    )
     if prebound_socket is None:
         sock, actual_host, actual_port = bind_socket(host, port)
     else:
@@ -109,11 +116,18 @@ def serve_in_thread(
     port: int = 0,
     frontend_dist: str | Path | None = None,
     allow_remote: bool = False,
+    trusted_hosts: tuple[str, ...] = (),
     api_token: str | None = None,
 ) -> ServerHandle:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
-    app = create_app(container, frontend_dist=resolved_frontend, allow_remote=allow_remote, api_token=api_token)
+    app = create_app(
+        container,
+        frontend_dist=resolved_frontend,
+        allow_remote=allow_remote,
+        trusted_hosts=trusted_hosts,
+        api_token=api_token,
+    )
     resolved_token = getattr(app.state, "api_token", "")
     sock, actual_host, actual_port = bind_socket(host, port)
     uvicorn = _uvicorn()

@@ -31,18 +31,22 @@ _MUTATION_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _LOOPBACK_HOSTNAMES = frozenset({"localhost", "localhost."})
 
 
-def is_loopback_host(host: str) -> bool:
-    """True when a ``Host`` header value (optional port) names this machine."""
+def _extract_hostname(host: str) -> str:
     normalized = host.strip().lower()
     if not normalized:
-        return False
+        return ""
     if normalized.startswith("["):
-        # Bracketed IPv6, e.g. "[::1]:8000".
-        candidate = normalized[1:].split("]", 1)[0]
-    elif normalized.count(":") == 1:
-        candidate = normalized.rsplit(":", 1)[0]
-    else:
-        candidate = normalized
+        return normalized[1:].split("]", 1)[0]
+    if normalized.count(":") == 1:
+        return normalized.rsplit(":", 1)[0]
+    return normalized
+
+
+def is_loopback_host(host: str) -> bool:
+    """True when a ``Host`` header value (optional port) names this machine."""
+    candidate = _extract_hostname(host)
+    if not candidate:
+        return False
     if candidate in _LOOPBACK_HOSTNAMES:
         return True
     try:
@@ -51,33 +55,56 @@ def is_loopback_host(host: str) -> bool:
         return False
 
 
-class LoopbackOnlyMiddleware:
-    """ASGI middleware enforcing the loopback Host/Origin policy above."""
+def is_loopback_client(client: tuple[str, int] | list[object] | None) -> bool:
+    """True when an ASGI connection client tuple originates from loopback."""
+    if not client or not client[0]:
+        return False
+    return is_loopback_host(str(client[0]))
 
-    def __init__(self, app: ASGIApp, *, allow_remote: bool = False) -> None:
+
+class LoopbackOnlyMiddleware:
+    """ASGI middleware enforcing the loopback and trusted Host/Origin policy."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        allow_remote: bool = False,
+        trusted_hosts: tuple[str, ...] | frozenset[str] = (),
+    ) -> None:
         self.app = app
         self.allow_remote = allow_remote
+        self.trusted_hosts = frozenset(_extract_hostname(h) for h in trusted_hosts if h.strip())
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or self.allow_remote:
             await self.app(scope, receive, send)
             return
-        headers = {key.decode("latin-1"): value.decode("latin-1") for key, value in scope["headers"]}
-        if not is_loopback_host(headers.get("host", "")):
+        headers = {key.decode("latin-1").lower(): value.decode("latin-1") for key, value in scope.get("headers", [])}
+        host_header = headers.get("host", "")
+        host_candidate = _extract_hostname(host_header)
+        if not (is_loopback_host(host_header) or host_candidate in self.trusted_hosts):
             await _reject(send, "forbidden host: harness-asset-manager only accepts loopback requests")
             return
         if scope["method"] in _MUTATION_METHODS:
             origin = headers.get("origin")
-            if origin is not None and not is_loopback_host(urlsplit(origin).hostname or ""):
-                await _reject(send, "forbidden origin: mutations must originate from the harness-asset-manager app")
-                return
+            if origin is not None:
+                origin_host = (urlsplit(origin).hostname or "").strip().lower()
+                if not (is_loopback_host(origin_host) or origin_host in self.trusted_hosts):
+                    await _reject(send, "forbidden origin: mutations must originate from the harness-asset-manager app")
+                    return
         await self.app(scope, receive, send)
 
 
 class ApiTokenMiddleware:
-    """ASGI middleware enforcing bearer token authentication on /api/* endpoints."""
+    """ASGI middleware enforcing loopback trust, Tailscale identity, or Bearer token authentication."""
 
-    def __init__(self, app: ASGIApp, *, api_token: str) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        api_token: str,
+    ) -> None:
         self.app = app
         self.api_token = api_token
         self._expected_bytes = api_token.encode("utf-8")
@@ -93,35 +120,35 @@ class ApiTokenMiddleware:
             await self.app(scope, receive, send)
             return
 
-        auth_header: str | None = None
-        for key, value in scope.get("headers", []):
-            if key.lower() == b"authorization":
+        # Rule 1: Loopback peer
+        client = scope.get("client")
+        if is_loopback_client(client):
+            await self.app(scope, receive, send)
+            return
+
+        headers = {key.decode("latin-1").lower(): value.decode("latin-1") for key, value in scope.get("headers", [])}
+
+        # Rule 2: Tailscale-User-Login present (non-empty)
+        tailscale_login = headers.get("tailscale-user-login", "").strip()
+        if tailscale_login:
+            await self.app(scope, receive, send)
+            return
+
+        # Rule 3: Authorization: Bearer <token> valid
+        auth_header = headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token_candidate = auth_header[7:].strip()
+            if token_candidate:
                 try:
-                    auth_header = value.decode("latin-1")
+                    candidate_bytes = token_candidate.encode("utf-8")
+                    if secrets.compare_digest(candidate_bytes, self._expected_bytes):
+                        await self.app(scope, receive, send)
+                        return
                 except Exception:
-                    auth_header = None
-                break
+                    pass
 
-        if auth_header is None or not auth_header.startswith("Bearer "):
-            await _reject_unauthorized(send, "unauthorized: missing or invalid bearer token")
-            return
-
-        token_candidate = auth_header[7:].strip()
-        if not token_candidate:
-            await _reject_unauthorized(send, "unauthorized: missing or invalid bearer token")
-            return
-
-        try:
-            candidate_bytes = token_candidate.encode("utf-8")
-            valid = secrets.compare_digest(candidate_bytes, self._expected_bytes)
-        except Exception:
-            valid = False
-
-        if not valid:
-            await _reject_unauthorized(send, "unauthorized: invalid bearer token")
-            return
-
-        await self.app(scope, receive, send)
+        # Everything else -> 401
+        await _reject_unauthorized(send, "unauthorized: request requires loopback peer, tailscale identity, or valid bearer token")
 
 
 async def _reject(send: Send, message: str) -> None:
