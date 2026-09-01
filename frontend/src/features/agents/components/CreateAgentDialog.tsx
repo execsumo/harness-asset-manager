@@ -209,174 +209,210 @@ export function CreateAgentDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="dialog-content agent-dialog-content">
-          <div className="dialog-header">
-            <Dialog.Title className="dialog-title">
-              Create New Agent Persona
-            </Dialog.Title>
-            <Dialog.Close className="dialog-close-btn" disabled={isPending}>
-              <X size={18} />
+          <div className="dialog-header dialog-header--split">
+            <div>
+              <Dialog.Title className="dialog-title">Create Agent</Dialog.Title>
+              <Dialog.Description className="dialog-subtitle">
+                {derivedSlug ? (
+                  <>
+                    Written as <code>{derivedSlug}.md</code> to every harness enabled below.
+                  </>
+                ) : (
+                  <>Fill in the agent contract, then pick the harnesses it is written to.</>
+                )}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close className="dialog-close-btn" aria-label="Close" disabled={isPending}>
+              <X size={16} aria-hidden="true" />
             </Dialog.Close>
           </div>
 
           <form onSubmit={handleSubmit} className="dialog-form agent-dialog-form">
-            <div className="dialog-form-fields agent-dialog-form-fields">
+            <div className="dialog-form-body agent-dialog-body ui-scrollbar">
               {error && (
                 <ErrorBanner message={error} onDismiss={() => setError(null)} />
               )}
 
-              {/* Frontmatter fields in AGENT_CONTRACT_KEYS order, so the dialog and the
-                  structured editor present the contract the same way round. The prompt is
-                  the document body, not frontmatter, so it follows them. */}
-              <label className="form-field">
-                <span className="form-field__label">Agent Name *</span>
-                <input
-                  type="text"
-                  className="form-field__input"
-                  placeholder="e.g. Code Reviewer"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isPending}
-                  required
-                  aria-invalid={Boolean(nameError)}
-                  aria-describedby={nameError ? "agent-name-error" : undefined}
-                />
-                {nameError ? (
-                  <small id="agent-name-error" className="form-field__error" role="alert">
-                    {nameError}
-                  </small>
-                ) : null}
-              </label>
+              {/* Sections mirror the detail view: identity, then the frontmatter
+                  contract in AGENT_CONTRACT_KEYS order, then the document body,
+                  then harness bindings — so the dialog and the detail view
+                  present the same agent the same way round. */}
+              <section className="detail-sheet__section">
+                <h3 className="detail-sheet__section-heading">Identity</h3>
+                <div className="dialog-form-fields">
+                  <label className="form-field">
+                    <span className="form-field__label">
+                      Agent Name
+                      <span className="form-field__required">Required</span>
+                    </span>
+                    <input
+                      type="text"
+                      className="form-field__input"
+                      placeholder="e.g. Code Reviewer"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={isPending}
+                      required
+                      aria-invalid={Boolean(nameError)}
+                      aria-describedby={nameError ? "agent-name-error" : undefined}
+                    />
+                    {nameError ? (
+                      <small id="agent-name-error" className="form-field__error" role="alert">
+                        {nameError}
+                      </small>
+                    ) : null}
+                  </label>
 
-              <label className="form-field">
-                <span className="form-field__label">Description *</span>
-                <textarea
-                  className="form-field__textarea"
-                  placeholder="Describe the agent's purpose and functionality..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  disabled={isPending}
-                  rows={2}
-                  required
-                />
-              </label>
+                  <label className="form-field">
+                    <span className="form-field__label">
+                      Description
+                      <span className="form-field__required">Required</span>
+                    </span>
+                    <textarea
+                      className="form-field__textarea"
+                      placeholder="Describe the agent's purpose and functionality..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      disabled={isPending}
+                      rows={2}
+                      required
+                    />
+                  </label>
+                </div>
+              </section>
 
-              <label className="form-field">
-                <span className="form-field__label">Color</span>
-                <select
-                  className="form-field__input"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  disabled={isPending}
-                >
-                  <option value="">(none)</option>
-                  {COLOR_VALUES.map((val) => (
-                    <option key={val} value={val}>
-                      {val}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <section className="detail-sheet__section">
+                <h3 className="detail-sheet__section-heading">Frontmatter</h3>
+                <div className="dialog-fieldset">
+                  <div className="dialog-form-fields dialog-form-fields--split">
+                    <label className="form-field">
+                      <span className="form-field__label">Color</span>
+                      <select
+                        className="form-field__input"
+                        value={color}
+                        onChange={(e) => setColor(e.target.value)}
+                        disabled={isPending}
+                      >
+                        <option value="">(none)</option>
+                        {COLOR_VALUES.map((val) => (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-              <label className="form-field">
-                <span className="form-field__label">Model</span>
-                <input
-                  type="text"
-                  className="form-field__input"
-                  placeholder="e.g. sonnet, opus"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={isPending}
-                />
-              </label>
+                    <label className="form-field">
+                      <span className="form-field__label">Model</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="e.g. sonnet, opus"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
 
-              <label className="form-field">
-                <span className="form-field__label">Effort</span>
-                <select
-                  className="form-field__input"
-                  value={effort}
-                  onChange={(e) => setEffort(e.target.value)}
-                  disabled={isPending}
-                >
-                  <option value="">(none)</option>
-                  {EFFORT_VALUES.map((val) => (
-                    <option key={val} value={val}>
-                      {val}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                    <label className="form-field">
+                      <span className="form-field__label">Effort</span>
+                      <select
+                        className="form-field__input"
+                        value={effort}
+                        onChange={(e) => setEffort(e.target.value)}
+                        disabled={isPending}
+                      >
+                        <option value="">(none)</option>
+                        {EFFORT_VALUES.map((val) => (
+                          <option key={val} value={val}>
+                            {val}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-              <label className="form-field">
-                <span className="form-field__label">Tools (comma-separated)</span>
-                <input
-                  type="text"
-                  className="form-field__input"
-                  placeholder="e.g. bash, edit, grep"
-                  value={toolsStr}
-                  onChange={(e) => setToolsStr(e.target.value)}
-                  disabled={isPending}
-                />
-              </label>
+                    <label className="form-field">
+                      <span className="form-field__label">Max Turns</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
+                        value={maxTurns}
+                        onChange={(e) => setMaxTurns(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+                  </div>
 
-              <div className="form-field">
-                <span className="form-field__label">Skills</span>
-                <AgentSkillsFieldEditor
-                  skills={skills}
-                  knownSkills={adoptedSkills}
-                  onChange={setSkills}
-                  disabled={isPending}
-                />
-              </div>
+                  <div className="dialog-form-fields">
+                    <label className="form-field">
+                      <span className="form-field__label">Tools (comma-separated)</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="e.g. bash, edit, grep"
+                        value={toolsStr}
+                        onChange={(e) => setToolsStr(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
 
-              <div className="form-field">
-                <span className="form-field__label">Allowed Subagents</span>
-                <FrontmatterSegmentedField
-                  label="Allowed Subagents"
-                  value={allowedSubagents}
-                  options={ALLOWED_SUBAGENTS_VALUES}
-                  onChange={setAllowedSubagents}
-                  disabled={isPending}
-                />
-              </div>
+                    <div className="form-field">
+                      <span className="form-field__label">Skills</span>
+                      <AgentSkillsFieldEditor
+                        skills={skills}
+                        knownSkills={adoptedSkills}
+                        onChange={setSkills}
+                        disabled={isPending}
+                      />
+                    </div>
 
-              <label className="form-field">
-                <span className="form-field__label">Max Turns</span>
-                <input
-                  type="text"
-                  className="form-field__input"
-                  placeholder={`${MAX_TURNS_DEFAULT} — the default when the key is absent`}
-                  value={maxTurns}
-                  onChange={(e) => setMaxTurns(e.target.value)}
-                  disabled={isPending}
-                />
-              </label>
+                    <div className="form-field">
+                      <span className="form-field__label">Allowed Subagents</span>
+                      <FrontmatterSegmentedField
+                        label="Allowed Subagents"
+                        value={allowedSubagents}
+                        options={ALLOWED_SUBAGENTS_VALUES}
+                        onChange={setAllowedSubagents}
+                        disabled={isPending}
+                      />
+                    </div>
 
-              <div className="form-field">
-                <span className="form-field__label">Isolation</span>
-                <FrontmatterSegmentedField
-                  label="Isolation"
-                  value={isolation}
-                  options={ISOLATION_VALUES}
-                  onChange={setIsolation}
-                  disabled={isPending}
-                />
-              </div>
+                    <div className="form-field">
+                      <span className="form-field__label">Isolation</span>
+                      <FrontmatterSegmentedField
+                        label="Isolation"
+                        value={isolation}
+                        options={ISOLATION_VALUES}
+                        onChange={setIsolation}
+                        disabled={isPending}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
 
-              <label className="form-field">
-                <span className="form-field__label">Prompt *</span>
-                <textarea
-                  className="form-field__textarea"
-                  placeholder="System instructions..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  disabled={isPending}
-                  rows={4}
-                  required
-                />
-              </label>
+              <section className="detail-sheet__section">
+                <h3 className="detail-sheet__section-heading">System Prompt</h3>
+                <label className="form-field">
+                  <span className="form-field__label">
+                    Prompt
+                    <span className="form-field__required">Required</span>
+                  </span>
+                  <textarea
+                    className="form-field__textarea form-field__textarea--mono"
+                    placeholder="System instructions..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    disabled={isPending}
+                    rows={8}
+                    required
+                  />
+                </label>
+              </section>
 
               <fieldset className="agent-target-picker">
-                <legend className="form-field__label">Harnesses</legend>
+                <legend className="detail-sheet__section-heading">Harnesses</legend>
                 <div className="detail-sheet__bindings">
                   {columns.map((col) => {
                     const checked = selectedHarnesses.includes(col.harness);

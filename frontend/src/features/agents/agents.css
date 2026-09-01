@@ -67,23 +67,31 @@
   opacity: 0.5;
 }
 
+/* Create dialog — fixed chrome, scrolling body, pinned footer, so a long
+   contract form never scrolls its own actions out of reach. */
 .agent-dialog-content {
-  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
   width: 92vw;
+  max-width: 620px;
   max-height: calc(100vh - 48px);
-  overflow-y: auto;
+  padding: var(--space-6);
+  overflow: hidden;
 }
 
 .agent-dialog-form {
-  margin-top: 16px;
+  min-height: 0;
 }
 
-.agent-dialog-form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+/* Breathing room between the content and the overlay scrollbar. */
+.agent-dialog-body {
+  padding-right: var(--space-2);
 }
 
+/* A fieldset, not a <section>, so the harness toggles are announced as one
+   group. It stays display:block — a grid/flex fieldset takes its legend out
+   of the normal flow in some engines. */
 .agent-target-picker {
   min-width: 0;
   padding: 0;
@@ -91,15 +99,19 @@
   margin: 0;
 }
 
+.agent-target-picker > legend {
+  margin-bottom: var(--space-3);
+}
+
 .agent-dialog-harness-hint {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   line-height: 1.5;
 }
 
 .agent-dialog-footer {
-  margin-top: 24px;
+  margin-top: var(--space-5);
 }
 
 .agent-dialog-loading {
