@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import secrets
-from pathlib import Path
 
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 

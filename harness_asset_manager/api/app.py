@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import os
 import secrets
 from pathlib import Path
