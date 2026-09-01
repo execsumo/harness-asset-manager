@@ -64,6 +64,11 @@ export interface AutoEnableFailureDto {
   error: string;
 }
 
+export interface AgentMutationFailureDto {
+  harness: string;
+  error: string;
+}
+
 export interface AgentRepairDto {
   at: number;
   ref: string;
@@ -120,6 +125,7 @@ export interface AgentCreateRequest {
   allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
+  harnesses?: string[];
 }
 
 export interface AgentUpdateRequest {
@@ -183,4 +189,5 @@ export interface AgentDetailDto {
   ok?: boolean;
   autoEnabled?: AutoEnabledSkillDto[];
   failed?: AutoEnableFailureDto[];
+  harnessFailures?: AgentMutationFailureDto[];
 }
