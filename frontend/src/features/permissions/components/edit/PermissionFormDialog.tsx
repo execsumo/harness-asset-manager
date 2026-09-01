@@ -114,7 +114,7 @@ export function PermissionFormDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
         <Dialog.Content className="dialog-content" aria-describedby="permission-form-dialog-desc">
-          <div className="dialog-header">
+          <div className="dialog-header dialog-header--split">
             <Dialog.Title className="dialog-title">
               Add Permission
             </Dialog.Title>
