@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, authHeaders, deleteJson, fetchJson, getApiToken, postJson, putJson } from "./http";
+import { ApiError, authHeaders, fetchJson, getApiToken, postJson } from "./http";
 
 describe("API errors", () => {
   afterEach(() => {

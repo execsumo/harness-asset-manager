@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import socket
 import unittest
@@ -11,7 +10,11 @@ from unittest.mock import MagicMock, patch
 from harness_asset_manager.runtime import process as runtime_process
 from harness_asset_manager.runtime import server as server_module
 from harness_asset_manager.runtime.assets import resolve_frontend_dist
-from harness_asset_manager.runtime.server import bind_socket, choose_port, serve_foreground
+from harness_asset_manager.runtime.server import (
+    bind_socket,
+    choose_port,
+    serve_foreground,
+)
 from harness_asset_manager.runtime.startup import (
     PACKAGED_STARTUP_TIMEOUT_SECONDS,
     SOURCE_STARTUP_TIMEOUT_SECONDS,
@@ -55,7 +58,10 @@ class RuntimeTests(unittest.TestCase):
 
     def test_resolve_and_rotate_api_token(self) -> None:
         from harness_asset_manager.paths import resolve_app_paths
-        from harness_asset_manager.runtime.token import resolve_api_token, rotate_api_token
+        from harness_asset_manager.runtime.token import (
+            resolve_api_token,
+            rotate_api_token,
+        )
 
         with TemporaryDirectory() as temp_dir:
             env = {"HARNESS_ASSET_MANAGER_STATE_DIR": temp_dir}
