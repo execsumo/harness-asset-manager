@@ -139,6 +139,7 @@ class CreateAgentRequest(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    harnesses: list[str] = Field(default_factory=list)
 
 
 class AgentConfigEntryResponse(BaseModel):
@@ -207,6 +208,7 @@ class AgentDetailResponse(BaseModel):
     ok: bool = True
     autoEnabled: list[AutoEnabledSkillResponse] = Field(default_factory=list)
     failed: list[AutoEnableFailureResponse] = Field(default_factory=list)
+    harnessFailures: list[AgentMutationFailureResponse] = Field(default_factory=list)
 
 
 __all__ = [

@@ -4,7 +4,6 @@ import type {
   AgentInventoryDto,
   AgentCreateRequest,
   AgentUpdateRequest,
-  AgentSummaryResponse,
   AgentAdoptConflict,
   AdoptAllResponse,
   AgentDetailDto,
@@ -20,8 +19,8 @@ export async function fetchAgentDetail(ref: string): Promise<AgentDetailDto> {
 
 export async function createAgent(
   request: AgentCreateRequest,
-): Promise<AgentSummaryResponse> {
-  return postJson<AgentSummaryResponse>("/agents", request);
+): Promise<AgentDetailDto> {
+  return postJson<AgentDetailDto>("/agents", request);
 }
 
 export async function updateAgent({

@@ -457,6 +457,13 @@
             "title": "Failed",
             "type": "array"
           },
+          "harnessFailures": {
+            "items": {
+              "$ref": "#/components/schemas/AgentMutationFailureResponse"
+            },
+            "title": "Harnessfailures",
+            "type": "array"
+          },
           "harnesses": {
             "items": {
               "$ref": "#/components/schemas/AgentHarnessDetailResponse"
@@ -1327,6 +1334,13 @@
               }
             ],
             "title": "Effort"
+          },
+          "harnesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Harnesses",
+            "type": "array"
           },
           "isolation": {
             "anyOf": [
