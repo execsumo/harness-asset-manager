@@ -100,9 +100,15 @@
   display: grid;
   gap: var(--space-7);
   padding-top: var(--space-8);
-  padding-bottom: var(--space-7);
+  /* Opaque band that masks rows scrolling under the sticky chrome. The
+     following table header is 54px tall with its label vertically centred and
+     no top border, so ~20px of its own leading reads as part of this gap —
+     keep the band tight or the seam looks unbalanced against the 24px rhythm
+     inside the chrome. */
+  padding-bottom: var(--space-5);
   margin-top: calc(-1 * var(--space-8));
-  margin-bottom: calc(-1 * var(--space-7));
+  /* Cancel the .page-shell row gap; the padding above is the whole step. */
+  margin-bottom: calc(-1 * var(--space-8));
   background: var(--color-bg);
 }
 
