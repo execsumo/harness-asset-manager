@@ -159,6 +159,20 @@ Launch the background daemon and open the browser interface:
 harnessam start
 ```
 
+Check on it, or bring it down, the same way:
+
+```bash
+harnessam status   # running? at what URL, which pid
+harnessam stop     # stop the managed background instance
+```
+
+There's no separate "restart" command — stop, then start again, to pick up an upgrade or a
+config change:
+
+```bash
+harnessam stop && harnessam start
+```
+
 Or run the server directly in the foreground (for containers, systemd, or remote setups):
 
 ```bash
@@ -835,17 +849,28 @@ scripts/install-dev.sh
 
 ### Run Locally
 
+`scripts/start-dev.sh` (aliased as `npm run start:dev`) builds the frontend and launches the app
+**isolated in `.artifacts/runtime`** — its own skills/agents/config store, entirely separate from
+your real harness configs (`~/.claude`, `~/.codex`, …) and your real HAM store (`~/.harnessam`).
+It's for iterating on the app itself without touching anything real, and it will look empty —
+that's expected, not a bug:
+
 ```bash
-scripts/start-dev.sh
+scripts/start-dev.sh   # or: npm run start:dev
+scripts/stop-dev.sh    # or: npm run stop:dev
 ```
 
-Stop the managed local instance:
+To run the app for real from a source checkout — reading and managing your actual harness
+configs, same as an installed `harnessam` binary would — build once, then invoke the module
+directly with **no** `--state-dir`:
 
 ```bash
-scripts/stop-dev.sh
+npm run build
+.venv/bin/python -m harness_asset_manager start   # status / stop work the same way
 ```
 
-The split dev flow is available when you want Vite hot reload:
+The split dev flow is available when you want Vite hot reload (also isolated, same as
+`start-dev.sh`):
 
 ```bash
 npm run dev
