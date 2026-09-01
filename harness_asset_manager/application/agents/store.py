@@ -88,8 +88,12 @@ class AgentStore:
         prompt: str,
         tools: tuple[str, ...] = (),
         skills: tuple[str, ...] = (),
+        color: str | None = None,
         model: str | None = None,
         effort: str | None = None,
+        allowed_subagents: str | None = None,
+        max_turns: str | None = None,
+        isolation: str | None = None,
     ) -> AgentDefinition:
         slug = slugify(name)
         path = self.path_for(slug)
@@ -104,8 +108,12 @@ class AgentStore:
                 prompt=prompt,
                 tools=tools,
                 skills=skills,
+                color=color,
                 model=model,
                 effort=effort,
+                allowed_subagents=allowed_subagents,
+                max_turns=max_turns,
+                isolation=isolation,
             ),
         )
         self._notify_write(slug)
@@ -120,8 +128,12 @@ class AgentStore:
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
         skills: tuple[str, ...] | None = None,
+        color: str | None = None,
         model: str | None = None,
         effort: str | None = None,
+        allowed_subagents: str | None = None,
+        max_turns: str | None = None,
+        isolation: str | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
     ) -> AgentDefinition:
         current = self.get(slug)
@@ -137,8 +149,16 @@ class AgentStore:
                 skills=skills if skills is not None else current.skills,
                 # An omitted edit carries the current value forward; an explicit empty
                 # string clears the key (render drops it instead of writing null).
+                color=color if color is not None else current.color,
                 model=model if model is not None else current.model,
                 effort=effort if effort is not None else current.effort,
+                allowed_subagents=(
+                    allowed_subagents
+                    if allowed_subagents is not None
+                    else current.allowed_subagents
+                ),
+                max_turns=max_turns if max_turns is not None else current.max_turns,
+                isolation=isolation if isolation is not None else current.isolation,
                 base_metadata=current.metadata if metadata is None else None,
                 extra_metadata=metadata,
             ),

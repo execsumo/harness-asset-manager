@@ -11,6 +11,12 @@ export interface KnownFieldConfig {
   helpText?: string;
   serialize?: (value: string) => string | null;
   renderInput?: (props: { disabled?: boolean }) => ReactNode;
+  /**
+   * Set false when `renderInput` renders a group rather than one labelable control.
+   * A `<label>` wrapping several buttons hands every one of them the label's text as
+   * its accessible name, so the group must name itself instead.
+   */
+  wrapInLabel?: boolean;
 }
 
 export interface OtherFrontmatterEntry {
@@ -236,24 +242,27 @@ export function FrontmatterEditor({
       ) : (
         <>
           <div className="frontmatter-editor__known-fields">
-            {knownFields.map((field) => (
-              <label key={field.key} className="frontmatter-editor__field">
-                <span className="frontmatter-editor__label">{field.label}</span>
-                {field.renderInput ? (
-                  field.renderInput({ disabled: disabled || field.disabled })
-                ) : (
-                  <input
-                    type="text"
-                    className="frontmatter-editor__input"
-                    value={field.value}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    disabled={disabled || field.disabled}
-                    placeholder={field.placeholder}
-                    aria-label={field.label}
-                  />
-                )}
-              </label>
-            ))}
+            {knownFields.map((field) => {
+              const Field = field.wrapInLabel === false ? "div" : "label";
+              return (
+                <Field key={field.key} className="frontmatter-editor__field">
+                  <span className="frontmatter-editor__label">{field.label}</span>
+                  {field.renderInput ? (
+                    field.renderInput({ disabled: disabled || field.disabled })
+                  ) : (
+                    <input
+                      type="text"
+                      className="frontmatter-editor__input"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      disabled={disabled || field.disabled}
+                      placeholder={field.placeholder}
+                      aria-label={field.label}
+                    />
+                  )}
+                </Field>
+              );
+            })}
           </div>
 
           <div className="frontmatter-editor__other-section">

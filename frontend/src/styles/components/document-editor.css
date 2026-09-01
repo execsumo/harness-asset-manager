@@ -109,6 +109,55 @@
   cursor: not-allowed;
 }
 
+/* Fixed-vocabulary contract fields (allowed_subagents, isolation): a segmented toggle
+   whose first segment clears the key, so "absent" stays a state the user can pick. */
+.frontmatter-toggle {
+  display: inline-flex;
+  align-self: start;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.frontmatter-toggle__btn {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.frontmatter-toggle__btn:hover:not(:disabled) {
+  color: var(--color-text);
+}
+
+.frontmatter-toggle__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.frontmatter-toggle__btn[data-active="true"] {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.frontmatter-toggle__btn[data-invalid="true"] {
+  color: var(--color-danger);
+}
+
+.frontmatter-toggle__btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .frontmatter-editor__other-section {
   display: grid;
   gap: var(--space-2);

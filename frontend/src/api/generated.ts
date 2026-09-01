@@ -1475,6 +1475,8 @@ export interface components {
         };
         /** AgentDetailResponse */
         AgentDetailResponse: {
+            /** Allowedsubagents */
+            allowedSubagents?: string | null;
             /** Autoenabled */
             autoEnabled?: components["schemas"]["AutoEnabledSkillResponse"][];
             /** Candelete */
@@ -1484,6 +1486,8 @@ export interface components {
              * @default true
              */
             canEdit: boolean;
+            /** Color */
+            color?: string | null;
             /** Configuration */
             configuration?: components["schemas"]["AgentConfigEntryResponse"][];
             /** Description */
@@ -1496,6 +1500,10 @@ export interface components {
             failed?: components["schemas"]["AutoEnableFailureResponse"][];
             /** Harnesses */
             harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
+            /** Isolation */
+            isolation?: string | null;
+            /** Maxturns */
+            maxTurns?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1755,6 +1763,10 @@ export interface components {
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
+            /** Allowedsubagents */
+            allowedSubagents?: string | null;
+            /** Color */
+            color?: string | null;
             /**
              * Description
              * @default
@@ -1762,6 +1774,10 @@ export interface components {
             description: string;
             /** Effort */
             effort?: string | null;
+            /** Isolation */
+            isolation?: string | null;
+            /** Maxturns */
+            maxTurns?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -3345,10 +3361,18 @@ export interface components {
         };
         /** UpdateAgentRequest */
         UpdateAgentRequest: {
+            /** Allowedsubagents */
+            allowedSubagents?: string | null;
+            /** Color */
+            color?: string | null;
             /** Description */
             description?: string | null;
             /** Effort */
             effort?: string | null;
+            /** Isolation */
+            isolation?: string | null;
+            /** Maxturns */
+            maxTurns?: string | null;
             /** Metadata */
             metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
             /** Model */

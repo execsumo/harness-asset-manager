@@ -18,9 +18,17 @@ from harness_asset_manager.application.agents import (
     render_agent_document,
 )
 from harness_asset_manager.application.agents.model import (
+    ALLOWED_SUBAGENTS_VALUES,
+    COLOR_VALUES,
     CONTRACT_KEYS,
     EFFORT_VALUES,
+    ISOLATION_VALUES,
+    MAX_TURNS_DEFAULT,
+    validate_allowed_subagents,
+    validate_color,
     validate_effort,
+    validate_isolation,
+    validate_max_turns,
 )
 from harness_asset_manager.errors import MutationError
 
@@ -835,10 +843,18 @@ class ContractKeyParityTests(unittest.TestCase):
     rows the detail view hides from the custom-configuration editor. If they drift, a
     contract field silently shows up as an editable custom row and gets written twice.
 
-    ``EFFORT_VALUES`` is mirrored the same way: Python rejects anything outside it,
-    TypeScript builds the picker from it, so drift means a picker offering a value
-    the API refuses.
+    The fixed vocabularies are mirrored the same way: Python rejects anything outside
+    them, TypeScript builds the pickers from them, so drift means a picker offering a
+    value the API refuses.
     """
+
+    #: Every ``name = [...] as const;`` tuple types.ts mirrors, and its Python source.
+    MIRRORED_VOCABULARIES = {
+        "EFFORT_VALUES": EFFORT_VALUES,
+        "COLOR_VALUES": COLOR_VALUES,
+        "ISOLATION_VALUES": ISOLATION_VALUES,
+        "ALLOWED_SUBAGENTS_VALUES": ALLOWED_SUBAGENTS_VALUES,
+    }
 
     TYPES_TS = (
         Path(__file__).resolve().parents[2] / "frontend/src/features/agents/api/types.ts"
@@ -858,17 +874,26 @@ class ContractKeyParityTests(unittest.TestCase):
             "frontend AGENT_CONTRACT_KEYS drifted from backend CONTRACT_KEYS",
         )
 
-    def test_typescript_effort_values_match_python(self) -> None:
+    def test_typescript_vocabularies_match_python(self) -> None:
         source = self.TYPES_TS.read_text(encoding="utf-8")
-        match = re.search(r"export const EFFORT_VALUES = \[(.*?)\] as const;", source, re.S)
-        self.assertIsNotNone(match, "EFFORT_VALUES not found in types.ts")
+        for name, expected in self.MIRRORED_VOCABULARIES.items():
+            with self.subTest(vocabulary=name):
+                match = re.search(
+                    rf"export const {name} = \[(.*?)\] as const;", source, re.S
+                )
+                self.assertIsNotNone(match, f"{name} not found in types.ts")
+                assert match is not None
+                ts_values = tuple(re.findall(r'"([^"]+)"', match.group(1)))
+                self.assertEqual(
+                    ts_values, expected, f"frontend {name} drifted from backend {name}"
+                )
+
+    def test_typescript_max_turns_default_matches_python(self) -> None:
+        source = self.TYPES_TS.read_text(encoding="utf-8")
+        match = re.search(r"export const MAX_TURNS_DEFAULT = (\d+);", source)
+        self.assertIsNotNone(match, "MAX_TURNS_DEFAULT not found in types.ts")
         assert match is not None
-        ts_values = tuple(re.findall(r'"([^"]+)"', match.group(1)))
-        self.assertEqual(
-            ts_values,
-            EFFORT_VALUES,
-            "frontend EFFORT_VALUES drifted from backend EFFORT_VALUES",
-        )
+        self.assertEqual(int(match.group(1)), MAX_TURNS_DEFAULT)
 
     def test_contract_keys_are_the_fields_the_parser_lifts_out(self) -> None:
         """Every contract key must leave metadata as a real parsed field, not a custom row."""
@@ -902,6 +927,148 @@ class EffortValidationTests(unittest.TestCase):
         cannot produce, inventing a case-insensitive contract nothing declares."""
         with self.assertRaises(MutationError):
             validate_effort("HIGH")
+
+
+class ContractFieldValidationTests(unittest.TestCase):
+    """The fixed vocabularies added alongside `effort`, enforced on the same terms."""
+
+    VOCABULARIES = (
+        (validate_color, COLOR_VALUES, "invalid_color", "chartreuse"),
+        (validate_isolation, ISOLATION_VALUES, "invalid_isolation", "sandbox"),
+        (
+            validate_allowed_subagents,
+            ALLOWED_SUBAGENTS_VALUES,
+            "invalid_allowed_subagents",
+            "yes",
+        ),
+    )
+
+    def test_every_declared_value_is_accepted(self) -> None:
+        for validate, values, _code, _rejected in self.VOCABULARIES:
+            for value in values:
+                with self.subTest(validator=validate.__name__, value=value):
+                    self.assertEqual(validate(value), value)
+
+    def test_omitted_stays_omitted_and_empty_clears(self) -> None:
+        for validate, _values, _code, _rejected in self.VOCABULARIES:
+            with self.subTest(validator=validate.__name__):
+                self.assertIsNone(validate(None))
+                self.assertEqual(validate(""), "")
+                self.assertEqual(validate("   "), "")
+
+    def test_unknown_value_is_rejected_with_the_standard_envelope(self) -> None:
+        for validate, _values, code, rejected in self.VOCABULARIES:
+            with self.subTest(validator=validate.__name__):
+                with self.assertRaises(MutationError) as caught:
+                    validate(rejected)
+                self.assertEqual(caught.exception.status, 400)
+                self.assertEqual(caught.exception.code, code)
+
+    def test_max_turns_accepts_a_positive_whole_number(self) -> None:
+        self.assertEqual(validate_max_turns("30"), "30")
+        self.assertEqual(validate_max_turns("  7 "), "7")
+        self.assertIsNone(validate_max_turns(None))
+        self.assertEqual(validate_max_turns(""), "")
+
+    def test_max_turns_rejects_non_numbers_and_non_positives(self) -> None:
+        for rejected in ("many", "3.5", "0", "-1"):
+            with self.subTest(value=rejected):
+                with self.assertRaises(MutationError) as caught:
+                    validate_max_turns(rejected)
+                self.assertEqual(caught.exception.status, 400)
+                self.assertEqual(caught.exception.code, "invalid_max_turns")
+
+
+class ContractFieldRoundTripTests(unittest.TestCase):
+    """The new scalars must survive a parse/render cycle as the YAML types they are."""
+
+    def _round_trip(self, document: str):
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rendered = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            tools=agent.tools,
+            skills=agent.skills,
+            color=agent.color,
+            model=agent.model,
+            effort=agent.effort,
+            allowed_subagents=agent.allowed_subagents,
+            max_turns=agent.max_turns,
+            isolation=agent.isolation,
+            base_metadata=agent.metadata,
+        )
+        return agent, rendered
+
+    def test_bool_and_int_scalars_keep_their_yaml_spelling(self) -> None:
+        """``str(True)`` is ``"True"`` — a value neither the file nor the picker uses."""
+        agent, rendered = self._round_trip(
+            "---\n"
+            "name: A\n"
+            "description: d\n"
+            "allowed_subagents: true\n"
+            "max_turns: 30\n"
+            "---\n\nbody\n"
+        )
+        self.assertEqual(agent.allowed_subagents, "true")
+        self.assertEqual(agent.max_turns, "30")
+        self.assertIn("allowed_subagents: true", rendered)
+        self.assertIn("max_turns: 30", rendered)
+        reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
+        self.assertEqual(reparsed.allowed_subagents, "true")
+        self.assertEqual(reparsed.max_turns, "30")
+        self.assertEqual(reparsed.extra_metadata, ())
+
+    def test_isolation_none_is_the_literal_string_not_a_null(self) -> None:
+        agent, rendered = self._round_trip(
+            "---\nname: A\ndescription: d\nisolation: none\n---\n\nbody\n"
+        )
+        self.assertEqual(agent.isolation, "none")
+        self.assertIn("isolation: none", rendered)
+
+    def test_contract_fields_render_in_declared_order(self) -> None:
+        rendered = render_agent_document(
+            name="A",
+            description="d",
+            prompt="body",
+            tools=("Read",),
+            skills=("code-review",),
+            color="cyan",
+            model="opus",
+            effort="high",
+            allowed_subagents="false",
+            max_turns="12",
+            isolation="worktree",
+            extra_metadata=[{"key": "permissionMode", "value": "ask"}],
+        )
+        keys = [
+            line.split(":", 1)[0]
+            for line in rendered.splitlines()
+            if line and not line.startswith((" ", "-", "---"))
+        ]
+        self.assertEqual(keys[: len(CONTRACT_KEYS)], list(CONTRACT_KEYS))
+        self.assertEqual(keys[len(CONTRACT_KEYS)], "permissionMode")
+
+    def test_an_explicit_empty_string_clears_the_key(self) -> None:
+        rendered = render_agent_document(
+            name="A",
+            description="d",
+            prompt="body",
+            color="",
+            allowed_subagents="",
+            max_turns="",
+            isolation="",
+            base_metadata={
+                "name": "A",
+                "description": "d",
+                "color": "cyan",
+                "allowed_subagents": True,
+                "max_turns": 30,
+                "isolation": "worktree",
+            },
+        )
+        for cleared in ("color", "allowed_subagents", "max_turns", "isolation"):
+            self.assertNotIn(f"{cleared}:", rendered)
 
 
 class _CountingSkillsQueries:
