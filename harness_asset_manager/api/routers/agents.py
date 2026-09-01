@@ -119,8 +119,32 @@ def create_agent(
         max_turns=validate_max_turns(body.maxTurns),
         isolation=validate_isolation(body.isolation),
     )
+    harness_failures: list[AgentMutationFailureResponse] = []
+    if body.harnesses:
+        valid_harnesses: list[str] = []
+        for h in body.harnesses:
+            try:
+                container.agents_mutations._adapter(h)
+                valid_harnesses.append(h)
+            except MutationError as error:
+                harness_failures.append(
+                    AgentMutationFailureResponse(harness=h, error=str(error))
+                )
+        if valid_harnesses:
+            try:
+                _succeeded, failed = container.agents_mutations.set_harnesses(
+                    agent.slug, valid_harnesses
+                )
+                for h, error in failed:
+                    harness_failures.append(
+                        AgentMutationFailureResponse(harness=h, error=error)
+                    )
+            except MutationError as error:
+                harness_failures.append(
+                    AgentMutationFailureResponse(harness="unknown", error=str(error))
+                )
     container.invalidation.invalidate_all()
-    return _require_detail(container, agent.slug)
+    return _require_detail(container, agent.slug, harness_failures=harness_failures)
 
 
 @router.post("/adopt-all", response_model=AdoptAllAgentsResponse)
@@ -328,8 +352,10 @@ def _detail(
     *,
     auto_enabled: list[AutoEnabledSkillResponse] | None = None,
     failed: list[AutoEnableFailureResponse] | None = None,
+    harness_failures: list[AgentMutationFailureResponse] | None = None,
 ) -> AgentDetailResponse:
     failed_list = failed or []
+    harness_failures_list = harness_failures or []
     return AgentDetailResponse(
         ref=detail.ref,
         name=detail.name,
@@ -366,9 +392,10 @@ def _detail(
         allowedSubagents=detail.allowed_subagents,
         maxTurns=detail.max_turns,
         isolation=detail.isolation,
-        ok=len(failed_list) == 0,
+        ok=len(failed_list) == 0 and len(harness_failures_list) == 0,
         autoEnabled=auto_enabled or [],
         failed=failed_list,
+        harnessFailures=harness_failures_list,
     )
 
 
@@ -378,8 +405,14 @@ def _require_detail(
     *,
     auto_enabled: list[AutoEnabledSkillResponse] | None = None,
     failed: list[AutoEnableFailureResponse] | None = None,
+    harness_failures: list[AgentMutationFailureResponse] | None = None,
 ) -> AgentDetailResponse:
     detail = container.agents_inventory.detail(ref)
     if detail is None:
         raise MutationError(f"agent not found: {ref}", status=404)
-    return _detail(detail, auto_enabled=auto_enabled, failed=failed)
+    return _detail(
+        detail,
+        auto_enabled=auto_enabled,
+        failed=failed,
+        harness_failures=harness_failures,
+    )

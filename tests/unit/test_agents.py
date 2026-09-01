@@ -30,7 +30,12 @@ from harness_asset_manager.application.agents.model import (
     validate_isolation,
     validate_max_turns,
 )
+from harness_asset_manager.api.routers.agents import create_agent
+from harness_asset_manager.api.schemas.agents import CreateAgentRequest
+from harness_asset_manager.application import build_backend_container
 from harness_asset_manager.errors import MutationError
+from tests.support.app_harness import AppTestHarness
+from tests.support.fake_home import create_fake_home_spec
 
 AGENT_DOC = """---
 name: Chief of Staff
@@ -1192,3 +1197,65 @@ class AgentSkillResolutionTests(unittest.TestCase):
             [[("alpha", "alpha")]] * 3,
         )
         self.assertEqual(broken.calls, 1, "a failing scan must not be retried per agent")
+ 
+ 
+class AgentCreateHarnessBindingTests(unittest.TestCase):
+    """Pin create-time harness binding, empty preselection, and partial failure handling."""
+
+    def setUp(self) -> None:
+        self._tmp = TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.spec = create_fake_home_spec(Path(self._tmp.name))
+        self.container = build_backend_container(self.spec.env())
+
+    def test_create_with_supported_harnesses_binds_them_and_returns_ok(self) -> None:
+        req = CreateAgentRequest(
+            name="Reviewer",
+            description="Reviews PRs",
+            prompt="Be thorough.",
+            harnesses=["claude", "cursor"],
+        )
+        detail = create_agent(req, container=self.container)
+        self.assertTrue(detail.ok)
+        self.assertEqual(detail.harnessFailures, [])
+        enabled = [h.harness for h in detail.harnesses if h.state == "enabled"]
+        self.assertEqual(sorted(enabled), ["claude", "cursor"])
+        self.assertTrue((self.spec.home / ".claude" / "agents" / "reviewer.md").exists())
+        self.assertTrue((self.spec.home / ".cursor" / "agents" / "reviewer.md").exists())
+
+    def test_create_with_empty_harness_list_succeeds_bound_to_nothing(self) -> None:
+        req = CreateAgentRequest(
+            name="Bare Agent",
+            description="No harnesses yet",
+            prompt="Wait for bindings.",
+            harnesses=[],
+        )
+        detail = create_agent(req, container=self.container)
+        self.assertTrue(detail.ok)
+        self.assertEqual(detail.harnessFailures, [])
+        enabled = [h.harness for h in detail.harnesses if h.state == "enabled"]
+        self.assertEqual(enabled, [])
+        self.assertTrue((self.spec.agents_root / "bare-agent.md").exists())
+        self.assertFalse((self.spec.home / ".claude" / "agents" / "bare-agent.md").exists())
+
+    def test_create_with_unsupported_harness_creates_agent_and_reports_failure(self) -> None:
+        with AppTestHarness() as harness:
+            resp = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Partial Agent",
+                    "description": "Partially bound",
+                    "prompt": "Do your best.",
+                    "harnesses": ["claude", "unsupported-harness"],
+                },
+                expected_status=200,
+            )
+            self.assertFalse(resp["ok"])
+            self.assertEqual(len(resp["harnessFailures"]), 1)
+            self.assertEqual(resp["harnessFailures"][0]["harness"], "unsupported-harness")
+            self.assertIn("unsupported-harness", resp["harnessFailures"][0]["error"])
+            self.assertEqual(resp["ref"], "partial-agent")
+            claude_binding = next(h for h in resp["harnesses"] if h["harness"] == "claude")
+            self.assertEqual(claude_binding["state"], "enabled")
+            self.assertTrue((harness.spec.agents_root / "partial-agent.md").exists())
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "partial-agent.md").exists())

@@ -1498,6 +1498,8 @@ export interface components {
             effort?: string | null;
             /** Failed */
             failed?: components["schemas"]["AutoEnableFailureResponse"][];
+            /** Harnessfailures */
+            harnessFailures?: components["schemas"]["AgentMutationFailureResponse"][];
             /** Harnesses */
             harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
             /** Isolation */
@@ -1774,6 +1776,8 @@ export interface components {
             description: string;
             /** Effort */
             effort?: string | null;
+            /** Harnesses */
+            harnesses?: string[];
             /** Isolation */
             isolation?: string | null;
             /** Maxturns */
