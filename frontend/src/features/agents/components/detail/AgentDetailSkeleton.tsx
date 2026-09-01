@@ -44,13 +44,6 @@ export function AgentDetailSkeleton({ onClose }: AgentDetailSkeletonProps) {
               </div>
             </div>
           </DetailSection>
-
-          <DetailSection heading="Locations">
-            <div className="detail-skeleton-paragraph">
-              <span className="detail-skeleton detail-skeleton--label" />
-              <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-            </div>
-          </DetailSection>
         </div>
       </div>
     </>

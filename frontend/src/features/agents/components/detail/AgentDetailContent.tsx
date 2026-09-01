@@ -15,7 +15,6 @@ import {
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
 import { useToast } from "../../../../components/Toast";
-import { useFormatPath } from "../../../../lib/paths";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
@@ -52,7 +51,6 @@ export function AgentDetailContent({
   onDismissActionError,
 }: AgentDetailContentProps) {
   const headingId = useId();
-  const formatPath = useFormatPath();
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
@@ -550,38 +548,6 @@ export function AgentDetailContent({
                   </div>
                 );
               })}
-            </div>
-          </DetailSection>
-
-          <DetailSection heading="Locations">
-            <div className="skill-detail__locations">
-              {!detail.storePath ? (
-                <p className="skill-detail__context-note">
-                  This agent is not managed by Harness Asset Manager yet. Edits save directly to
-                  the harness file below; adopt it to manage it across harnesses.
-                </p>
-              ) : null}
-              {detail.storePath ? (
-                <article className="skill-detail__location">
-                  <div className="skill-detail__location-header">
-                    <strong>Harness Asset Manager's copy</strong>
-                  </div>
-                  <p className="skill-detail__location-path">{formatPath(detail.storePath)}</p>
-                </article>
-              ) : null}
-              {detail.harnesses.filter(h => h.state === "enabled" || (!detail.storePath && h.state !== "unsupported")).map(h => (
-                <article key={h.harness} className="skill-detail__location">
-                  <div className="skill-detail__location-header">
-                    <strong>{h.label}</strong>
-                  </div>
-                  <p className="skill-detail__location-path">{formatPath(h.path)}</p>
-                  {h.installMethod === "rendered" ? (
-                    <p className="skill-detail__location-note agent-detail__rendered-note">
-                      This agent is rendered as a TOML file. Local edits to it will be overwritten on re-enable.
-                    </p>
-                  ) : null}
-                </article>
-              ))}
             </div>
           </DetailSection>
         </div>

@@ -51,13 +51,6 @@ export function SkillDetailSkeleton({ onClose }: SkillDetailSkeletonProps) {
             </div>
           </div>
         </DetailSection>
-
-        <DetailSection heading={copy.detail.locations}>
-          <div className="detail-skeleton-paragraph">
-            <span className="detail-skeleton detail-skeleton--label" />
-            <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-          </div>
-        </DetailSection>
         </>
       )}
       bodyAriaHidden

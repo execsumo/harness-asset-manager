@@ -16,11 +16,9 @@ import {
 } from "../../../../components/detail/editing/FrontmatterEditor";
 import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { useToast } from "../../../../components/Toast";
-import { useFormatPath } from "../../../../lib/paths";
 import { useSetSlashCommandTagsMutation, useUpdateSlashCommandMutation } from "../../api/queries";
 import type {
   SlashCommandDto,
-  SlashSyncEntryDto,
   SlashTargetDto,
   SlashTargetId,
 } from "../../api/types";
@@ -56,10 +54,6 @@ export function SlashCommandDetailView({
 
   const commandPending = pendingName === command.name;
   const enabledTargetIds = useMemo(() => syncedTargetIds(command), [command]);
-  const writtenEntries = useMemo(
-    () => writtenLocationEntries(command.syncTargets, targets),
-    [command.syncTargets, targets],
-  );
 
   const isStarred = (command.tags || []).some((t) => t.toLowerCase() === "starred");
 
@@ -316,8 +310,6 @@ export function SlashCommandDetailView({
             onToggleTarget={onToggleTarget}
             copy={copy}
           />
-
-          <LocationsSection entries={writtenEntries} targets={targets} copy={copy} />
         </div>
       </div>
 
@@ -410,72 +402,6 @@ function HarnessesSection({
       </div>
     </DetailSection>
   );
-}
-
-function LocationsSection({
-  entries,
-  targets,
-  copy,
-}: {
-  entries: SlashSyncEntryDto[];
-  targets: SlashTargetDto[];
-  copy: SlashCommandsCopy;
-}) {
-  const targetById = new Map(targets.map((target) => [target.id, target]));
-  return (
-    <DetailSection heading={copy.detail.locations}>
-      {entries.length > 0 ? (
-        <div className="detail-sheet__bindings">
-          {entries.map((entry) => (
-            <SlashCommandLocationRow
-              key={`${entry.target}:${entry.path}`}
-              entry={entry}
-              target={targetById.get(entry.target)}
-              copy={copy}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="slash-review-detail__empty">{copy.detail.noHarnessLocations}</p>
-      )}
-    </DetailSection>
-  );
-}
-
-function SlashCommandLocationRow({
-  entry,
-  target,
-  copy,
-}: {
-  entry: SlashSyncEntryDto;
-  target: SlashTargetDto | undefined;
-  copy: SlashCommandsCopy;
-}) {
-  const label = target?.label ?? entry.target;
-  const formatPath = useFormatPath();
-  return (
-    <div className="detail-sheet__binding-row slash-written-location-row">
-      <DetailBindingIdentity
-        harness={entry.target}
-        label={label}
-        logoKey={logoKeyForHarness(entry.target)}
-        statusLabel={copy.detail.written}
-        tone="enabled"
-        visibleStatus={copy.detail.written}
-      />
-      <p className="slash-written-location-row__path">{formatPath(entry.path)}</p>
-    </div>
-  );
-}
-
-function writtenLocationEntries(
-  entries: SlashSyncEntryDto[],
-  targets: SlashTargetDto[],
-): SlashSyncEntryDto[] {
-  const order = new Map(targets.map((target, index) => [target.id, index]));
-  return [...entries]
-    .filter((entry) => entry.status === "synced")
-    .sort((left, right) => (order.get(left.target) ?? 99) - (order.get(right.target) ?? 99));
 }
 
 function logoKeyForHarness(id: string): string {

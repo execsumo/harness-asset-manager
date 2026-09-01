@@ -127,7 +127,7 @@ describe("SkillDetailContent", () => {
     expect(screen.getByLabelText("Value for entry 1")).toHaveValue("custom-value");
   });
 
-  it("shows the shared-store note only for managed entries with a shared location and keeps passive source status in the footer", () => {
+  it("keeps passive source status in the footer for managed entries with a shared location", () => {
     render(
       <SkillDetailContent
         detail={{
@@ -167,9 +167,6 @@ describe("SkillDetailContent", () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Harness Asset Manager Store is the canonical physical package\. Tool locations are/i),
-    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add to Harness Asset Manager" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Skill actions")).toBeInTheDocument();
     expect(screen.getByText("No Update Available")).toBeInTheDocument();

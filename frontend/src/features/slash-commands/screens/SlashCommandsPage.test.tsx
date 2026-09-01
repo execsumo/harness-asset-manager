@@ -72,7 +72,7 @@ describe("SlashCommandsPage", () => {
     expect(screen.queryByRole("heading", { name: "New slash command" })).not.toBeInTheDocument();
   });
 
-  it("opens a read-only detail sheet with normalized sections and written locations", async () => {
+  it("opens a read-only detail sheet with normalized sections", async () => {
     fetchMock.mockImplementation(
       createRouteFetchMock([
         {
@@ -119,12 +119,9 @@ describe("SlashCommandsPage", () => {
     const aboutHeading = within(dialog).getByRole("heading", { name: "About" });
     const documentHeading = within(dialog).getByRole("heading", { name: "Document" });
     const harnessesHeading = within(dialog).getByRole("heading", { name: "Harnesses" });
-    const locationsHeading = within(dialog).getByRole("heading", { name: "Locations" });
     expect(Boolean(aboutHeading.compareDocumentPosition(documentHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(Boolean(documentHeading.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
-    expect(Boolean(harnessesHeading.compareDocumentPosition(locationsHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
-    expect(within(dialog).getByText("/tmp/home/.claude/commands/code-review.md")).toBeInTheDocument();
-    expect(within(dialog).queryByText("/tmp/home/.codex/prompts/not-written.md")).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("heading", { name: "Locations" })).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
     expect(screen.getByDisplayValue("Review code")).toBeInTheDocument();
@@ -275,7 +272,6 @@ describe("SlashCommandsPage", () => {
     const dialog = screen.getByRole("dialog", { name: "Slash command details print-1-9" });
     expect(within(dialog).getByRole("button", { name: "Enable Claude Code for print-1-9" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Enable Codex for print-1-9" })).toBeInTheDocument();
-    expect(within(dialog).getByText("No harness locations are enabled.")).toBeInTheDocument();
   });
 
   it("toggles harnesses from the adopted command detail sheet", async () => {

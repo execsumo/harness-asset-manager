@@ -17,7 +17,6 @@ import {
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
 import MarkdownDocument from "../../../../components/MarkdownDocument";
-import { useFormatPath } from "../../../../lib/paths";
 import { skillStatusConcept } from "../../../../lib/product-language";
 import { useSkillsCopy, type SkillsCopy } from "../../i18n";
 import { useSetSkillTagsMutation, useUpdateSkillDocumentMutation } from "../../api/queries";
@@ -64,7 +63,6 @@ export function SkillDetailContent({
 }: SkillDetailContentProps) {
   const headingId = useId();
   const copy = useSkillsCopy();
-  const formatPath = useFormatPath();
   const { toast } = useToast();
   const updateDocumentMutation = useUpdateSkillDocumentMutation();
   const setTagsMutation = useSetSkillTagsMutation();
@@ -104,9 +102,6 @@ export function SkillDetailContent({
     });
   };
 
-  const showSkillManagerStoreNote =
-    skillStatusConcept(detail.displayStatus) === "inUse" &&
-    detail.locations.some((location) => location.kind === "shared");
   const hasPendingHarnessToggles = pendingToggleHarnesses.size > 0;
   const structuralLocked = pendingStructuralAction !== null;
   const controlsDisabled = structuralLocked || hasPendingHarnessToggles;
@@ -379,38 +374,6 @@ export function SkillDetailContent({
               </DetailSection>
             ) : null}
 
-            {detail.locations.length > 0 ? (
-              <DetailSection heading={copy.detail.locations}>
-                {showSkillManagerStoreNote ? (
-                  <p className="skill-detail__context-note">
-                    {copy.detail.storeNote}
-                  </p>
-                ) : null}
-                <div className="skill-detail__locations">
-                  {detail.locations.map((location, index) => {
-                    const descriptor = locationDescriptor(detail, location, copy);
-                    return (
-                      <article
-                        key={`${location.kind}:${location.path ?? index}`}
-                        className="skill-detail__location"
-                      >
-                        <div className="skill-detail__location-header">
-                          <strong>{location.label}</strong>
-                          {descriptor ? (
-                            <span className="skill-detail__location-note">{descriptor}</span>
-                          ) : null}
-                        </div>
-                        <p className="skill-detail__location-path">
-                          {location.path
-                            ? formatPath(location.path)
-                            : location.detail ?? location.sourceLocator}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-              </DetailSection>
-            ) : null}
           </>
         )}
         footer={showFooter ? (
@@ -504,21 +467,4 @@ function computeShowFooter(detail: SkillDetail): boolean {
     detail.actions.stopManagingStatus !== null ||
     detail.actions.canDelete
   );
-}
-
-function locationDescriptor(
-  detail: SkillDetail,
-  location: SkillDetail["locations"][number],
-  copy: SkillsCopy,
-): string | null {
-  if (skillStatusConcept(detail.displayStatus) !== "inUse") {
-    return null;
-  }
-  if (location.kind === "shared") {
-    return copy.detail.canonicalPhysicalPackage;
-  }
-  if (location.kind === "harness") {
-    return copy.detail.symlinkToStore;
-  }
-  return null;
 }
