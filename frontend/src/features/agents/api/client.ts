@@ -4,7 +4,6 @@ import type {
   AgentInventoryDto,
   AgentCreateRequest,
   AgentUpdateRequest,
-  AgentSummaryResponse,
   AgentAdoptConflict,
   AdoptAllResponse,
   AgentDetailDto,

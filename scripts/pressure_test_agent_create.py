@@ -11,11 +11,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-# Ensure virtualenv python is used if invoked with system python
-VENV_DIR = REPO_ROOT / ".venv"
-VENV_PYTHON = VENV_DIR / "bin" / "python3"
-if VENV_DIR.exists() and sys.prefix != str(VENV_DIR):
-    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON)] + sys.argv)
+# The app's dependencies live in the venv, and this script is documented as
+# `python3 scripts/pressure_test_agent_create.py`. Re-exec under the venv interpreter
+# rather than failing on the first import when that is not already the one running.
+VENV_PYTHON = REPO_ROOT / ".venv" / "bin" / "python3"
+if VENV_PYTHON.exists() and Path(sys.prefix) != VENV_PYTHON.parent.parent:
+    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), *sys.argv])
 
 from tests.support.app_harness import AppTestHarness
 

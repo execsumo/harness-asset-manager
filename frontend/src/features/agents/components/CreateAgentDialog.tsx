@@ -23,7 +23,11 @@ import {
   type AgentCreateRequest,
 } from "../api/types";
 
-export function slugify(name: string): string {
+/**
+ * Mirrors `slugify` in application/agents/store.py, so a name the server would
+ * reject is caught before the request rather than after a round trip.
+ */
+function slugify(name: string): string {
   return name
     .trim()
     .toLowerCase()
@@ -60,38 +64,34 @@ export function CreateAgentDialog({
   const inventoryQuery = useAgentsInventoryQuery();
   const skillsListQuery = useSkillsListQuery();
 
-  const prevOpenRef = useRef(false);
-  const initializedHarnessesRef = useRef(false);
-
-  useEffect(() => {
-    if (open && !prevOpenRef.current) {
-      setName("");
-      setDescription("");
-      setColor("");
-      setModel("");
-      setEffort("");
-      setToolsStr("");
-      setSkills([]);
-      setAllowedSubagents("");
-      setMaxTurns("");
-      setIsolation("");
-      setPrompt("");
-      setError(null);
-      initializedHarnessesRef.current = false;
-    }
-    prevOpenRef.current = open;
-  }, [open]);
+  // Settings can still be in flight when the dialog opens, so the harness preselection
+  // is seeded separately from the rest of the form — once per opening, so that a later
+  // settings refetch never overwrites a choice the user has made in the meantime.
+  const harnessesSeeded = useRef(false);
 
   useEffect(() => {
     if (!open) {
-      initializedHarnessesRef.current = false;
+      harnessesSeeded.current = false;
       return;
     }
-    if (!initializedHarnessesRef.current && settingsQuery.data !== undefined) {
-      const autoAdopt = settingsQuery.data?.autoAdoptHarnesses?.agents;
-      setSelectedHarnesses(autoAdopt && autoAdopt.length > 0 ? autoAdopt : []);
-      initializedHarnessesRef.current = true;
-    }
+    setName("");
+    setDescription("");
+    setColor("");
+    setModel("");
+    setEffort("");
+    setToolsStr("");
+    setSkills([]);
+    setAllowedSubagents("");
+    setMaxTurns("");
+    setIsolation("");
+    setPrompt("");
+    setError(null);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || harnessesSeeded.current || !settingsQuery.data) return;
+    setSelectedHarnesses(settingsQuery.data.autoAdoptHarnesses?.agents ?? []);
+    harnessesSeeded.current = true;
   }, [open, settingsQuery.data]);
 
   const existingSlugs = useMemo(() => {
@@ -186,13 +186,13 @@ export function CreateAgentDialog({
     }
 
     try {
-      const result = await createMutation.mutateAsync(payload);
-      if (result?.harnessFailures && result.harnessFailures.length > 0) {
-        const failed = result.harnessFailures.map((f) => f.harness).join(", ");
-        toast(`Created agent ${result.name || trimmedName}, but failed to bind to: ${failed}`);
-      } else {
-        toast(`Successfully created agent ${result?.name || trimmedName}`);
-      }
+      const created = await createMutation.mutateAsync(payload);
+      const failures = created.harnessFailures ?? [];
+      toast(
+        failures.length > 0
+          ? `Created agent ${created.name}, but failed to bind to: ${failures.map((failure) => failure.harness).join(", ")}`
+          : `Successfully created agent ${created.name}`,
+      );
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while creating the agent.");
@@ -224,7 +224,9 @@ export function CreateAgentDialog({
                 <ErrorBanner message={error} onDismiss={() => setError(null)} />
               )}
 
-              {/* 1. Name */}
+              {/* Frontmatter fields in AGENT_CONTRACT_KEYS order, so the dialog and the
+                  structured editor present the contract the same way round. The prompt is
+                  the document body, not frontmatter, so it follows them. */}
               <label className="form-field">
                 <span className="form-field__label">Agent Name *</span>
                 <input
@@ -245,7 +247,6 @@ export function CreateAgentDialog({
                 ) : null}
               </label>
 
-              {/* 2. Description */}
               <label className="form-field">
                 <span className="form-field__label">Description *</span>
                 <textarea
@@ -259,7 +260,6 @@ export function CreateAgentDialog({
                 />
               </label>
 
-              {/* 3. Color */}
               <label className="form-field">
                 <span className="form-field__label">Color</span>
                 <select
@@ -267,7 +267,6 @@ export function CreateAgentDialog({
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
                   disabled={isPending}
-                  aria-label="Color"
                 >
                   <option value="">(none)</option>
                   {COLOR_VALUES.map((val) => (
@@ -278,7 +277,6 @@ export function CreateAgentDialog({
                 </select>
               </label>
 
-              {/* 4. Model */}
               <label className="form-field">
                 <span className="form-field__label">Model</span>
                 <input
@@ -291,7 +289,6 @@ export function CreateAgentDialog({
                 />
               </label>
 
-              {/* 5. Effort */}
               <label className="form-field">
                 <span className="form-field__label">Effort</span>
                 <select
@@ -299,7 +296,6 @@ export function CreateAgentDialog({
                   value={effort}
                   onChange={(e) => setEffort(e.target.value)}
                   disabled={isPending}
-                  aria-label="Effort"
                 >
                   <option value="">(none)</option>
                   {EFFORT_VALUES.map((val) => (
@@ -310,7 +306,6 @@ export function CreateAgentDialog({
                 </select>
               </label>
 
-              {/* 6. Tools */}
               <label className="form-field">
                 <span className="form-field__label">Tools (comma-separated)</span>
                 <input
@@ -323,7 +318,6 @@ export function CreateAgentDialog({
                 />
               </label>
 
-              {/* 7. Skills */}
               <div className="form-field">
                 <span className="form-field__label">Skills</span>
                 <AgentSkillsFieldEditor
@@ -334,7 +328,6 @@ export function CreateAgentDialog({
                 />
               </div>
 
-              {/* 8. Allowed Subagents */}
               <div className="form-field">
                 <span className="form-field__label">Allowed Subagents</span>
                 <FrontmatterSegmentedField
@@ -346,7 +339,6 @@ export function CreateAgentDialog({
                 />
               </div>
 
-              {/* 9. Max Turns */}
               <label className="form-field">
                 <span className="form-field__label">Max Turns</span>
                 <input
@@ -359,7 +351,6 @@ export function CreateAgentDialog({
                 />
               </label>
 
-              {/* 10. Isolation */}
               <div className="form-field">
                 <span className="form-field__label">Isolation</span>
                 <FrontmatterSegmentedField
@@ -371,7 +362,6 @@ export function CreateAgentDialog({
                 />
               </div>
 
-              {/* Prompt */}
               <label className="form-field">
                 <span className="form-field__label">Prompt *</span>
                 <textarea
@@ -385,7 +375,6 @@ export function CreateAgentDialog({
                 />
               </label>
 
-              {/* Harness Picker */}
               <fieldset className="agent-target-picker">
                 <legend className="form-field__label">Harnesses</legend>
                 <div className="detail-sheet__bindings">

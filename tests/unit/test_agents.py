@@ -1197,8 +1197,8 @@ class AgentSkillResolutionTests(unittest.TestCase):
             [[("alpha", "alpha")]] * 3,
         )
         self.assertEqual(broken.calls, 1, "a failing scan must not be retried per agent")
- 
- 
+
+
 class AgentCreateHarnessBindingTests(unittest.TestCase):
     """Pin create-time harness binding, empty preselection, and partial failure handling."""
 

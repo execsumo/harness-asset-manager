@@ -7,13 +7,16 @@ import { CreateAgentDialog } from "./CreateAgentDialog";
 const mockMutateAsync = vi.fn();
 const mockToast = vi.fn();
 
-let mockSettingsData: {
+interface MockSettings {
   autoAdoptHarnesses?: { agents?: string[] };
-} = {
-  autoAdoptHarnesses: { agents: ["claude", "cursor"] },
-};
+}
 
-let mockInventoryData: AgentInventoryDto = {
+const settingsWithDefaults = (): MockSettings => ({
+  autoAdoptHarnesses: { agents: ["claude", "cursor"] },
+});
+
+// Hermes is deliberately uninstalled: it must render but stay unselectable.
+const inventory = (): AgentInventoryDto => ({
   columns: [
     { harness: "claude", label: "Claude", logoKey: "claude", installed: true },
     { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true },
@@ -31,7 +34,10 @@ let mockInventoryData: AgentInventoryDto = {
     },
   ],
   issues: [],
-};
+});
+
+let mockSettingsData: MockSettings = settingsWithDefaults();
+let mockInventoryData: AgentInventoryDto = inventory();
 
 vi.mock("../../../components/Toast", () => ({
   useToast: () => ({ toast: mockToast }),
@@ -66,28 +72,8 @@ vi.mock("../../skills/public", () => ({
 describe("CreateAgentDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSettingsData = {
-      autoAdoptHarnesses: { agents: ["claude", "cursor"] },
-    };
-    mockInventoryData = {
-      columns: [
-        { harness: "claude", label: "Claude", logoKey: "claude", installed: true },
-        { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true },
-        { harness: "hermes", label: "Hermes", logoKey: "hermes", installed: false },
-      ],
-      entries: [
-        {
-          ref: "existing-agent",
-          name: "Existing Agent",
-          kind: "managed",
-          description: "already exists",
-          harnessPath: null,
-          bindings: [],
-          actions: { canAdopt: false, canDelete: true },
-        },
-      ],
-      issues: [],
-    };
+    mockSettingsData = settingsWithDefaults();
+    mockInventoryData = inventory();
   });
 
   afterEach(() => {
@@ -154,7 +140,7 @@ describe("CreateAgentDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("carries contract fields and selected harnesses in the create body, and omits unset keys", async () => {
+  it("carries contract fields and selected harnesses in the create body, and omits unset keys", () => {
     mockSettingsData = {
       autoAdoptHarnesses: { agents: ["claude"] },
     };

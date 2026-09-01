@@ -101,6 +101,25 @@ class AgentMutationService:
         self._require_agent(slug)
         self._disable(self._adapter(harness), harness, slug)
 
+    def partition_harnesses(self, harnesses: list[str]) -> tuple[list[str], list[tuple[str, str]]]:
+        """Split requested harness ids into the ones that can carry an agent and the rest.
+
+        ``set_harnesses`` validates up front and raises on the first id it does not
+        recognise, which is right when the caller is correcting an existing binding set.
+        Creation is the other case: the agent file already exists by then, so one bad id
+        must degrade to a named failure rather than sink the whole request.
+        """
+        supported: list[str] = []
+        unsupported: list[tuple[str, str]] = []
+        for harness in harnesses:
+            try:
+                self._adapter(harness)
+            except MutationError as error:
+                unsupported.append((harness, str(error)))
+            else:
+                supported.append(harness)
+        return supported, unsupported
+
     def set_harnesses(self, slug: str, harnesses: list[str]) -> tuple[list[str], list[tuple[str, str]]]:
         agent = self._require_agent(slug)
         wanted = set(harnesses)

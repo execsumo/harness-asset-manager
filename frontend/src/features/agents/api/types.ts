@@ -144,16 +144,6 @@ export interface AgentUpdateRequest {
   metadata?: Array<{ key: string; value: string }>;
 }
 
-export interface AgentSummaryResponse {
-  ref: string;
-  name: string;
-  description: string;
-  slug: string;
-  prompt?: string;
-  tools?: string[];
-  skills?: AgentSkillDto[];
-}
-
 export interface AgentDetailDto {
   ref: string;
   name: string;

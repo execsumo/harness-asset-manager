@@ -119,30 +119,18 @@ def create_agent(
         max_turns=validate_max_turns(body.maxTurns),
         isolation=validate_isolation(body.isolation),
     )
+    # Binding happens here rather than in a follow-up request from the client: a second
+    # call that fails would leave an agent nobody asked for, bound to nothing, with no undo.
     harness_failures: list[AgentMutationFailureResponse] = []
     if body.harnesses:
-        valid_harnesses: list[str] = []
-        for h in body.harnesses:
-            try:
-                container.agents_mutations._adapter(h)
-                valid_harnesses.append(h)
-            except MutationError as error:
-                harness_failures.append(
-                    AgentMutationFailureResponse(harness=h, error=str(error))
-                )
-        if valid_harnesses:
-            try:
-                _succeeded, failed = container.agents_mutations.set_harnesses(
-                    agent.slug, valid_harnesses
-                )
-                for h, error in failed:
-                    harness_failures.append(
-                        AgentMutationFailureResponse(harness=h, error=error)
-                    )
-            except MutationError as error:
-                harness_failures.append(
-                    AgentMutationFailureResponse(harness="unknown", error=str(error))
-                )
+        supported, rejected = container.agents_mutations.partition_harnesses(body.harnesses)
+        if supported:
+            _succeeded, failed = container.agents_mutations.set_harnesses(agent.slug, supported)
+            rejected.extend(failed)
+        harness_failures = [
+            AgentMutationFailureResponse(harness=harness, error=error)
+            for harness, error in rejected
+        ]
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug, harness_failures=harness_failures)
 
