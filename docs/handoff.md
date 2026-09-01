@@ -1,6 +1,159 @@
-# Handoff — native macOS app cancelled; API bearer token added
+# Handoff — agent contract fields shipped; agent creation flow planned
 
-**As of 2026-08-31.** Newest session on top.
+**As of 2026-09-01.** Newest session on top.
+
+## Shipped (uncommitted, working tree on `main`): four new agent contract fields
+
+`color`, `max_turns`, `allowed_subagents`, and `isolation` are now real agent contract
+fields, threaded parser → store → mutations → inventory → API → structured editor, rather
+than free-form rows in the "other frontmatter" channel.
+
+`CONTRACT_KEYS` (`application/agents/model.py`) is the single source of truth for both the
+render order and the editor's field order, and it now reads as a progression: identity
+(`name`, `description`, `color`) → which model runs it (`model`, `effort`) → what it may
+reach for (`tools`, `skills`, `allowed_subagents`) → the envelope it runs in (`max_turns`,
+`isolation`). `ContractKeyParityTests` pins the TypeScript mirror, and its vocabulary check
+was generalized to cover every mirrored tuple rather than just `EFFORT_VALUES`.
+
+Three decisions worth not re-litigating:
+
+- **Every fixed-vocabulary control has an explicit "unset" state.** `FrontmatterSegmentedField`
+  renders `Unset · true · false`, not a two-state switch. A key that is absent from the file
+  is a third state; a plain toggle would have to invent a value for it and write that value on
+  the next save.
+- **`max_turns: 30` is a placeholder, never prefilled.** Writing 30 into every agent file that
+  never asked for it converts an implicit harness default into an explicit, now-frozen setting.
+- **`allowed_subagents` and `max_turns` round-trip as a real YAML bool and int.**
+  `parser._optional_bool_str` exists because `str(True)` is `"True"` — a value neither the file
+  nor the picker ever produces.
+
+Fixed along the way: `FrontmatterEditor` wrapped every field in a `<label>`, which handed all
+three buttons of a segmented group the same accessible name (`"Allowed Subagents Allowed
+Subagents"`). Fields rendering a group now opt out via `wrapInLabel: false` and name themselves.
+
+Suite green: typecheck, backend 740 + 257, frontend 435, build. `npm run codegen:openapi` was
+re-run. The two `eslint` errors in `frontend/src/api/http.test.ts` are pre-existing and unrelated.
+
+## Plan: shore up the agent creation flow
+
+### The problem
+
+`CreateAgentDialog` is the only way to create an agent — `AgentsInUsePage.tsx:440`, opened from
+the header **Add Agent** (`:308`) and the empty-state **Add Agent** (`:432`). It is well behind
+what an agent now is.
+
+- **A created agent is bound to zero harnesses.** `create_agent` (`api/routers/agents.py:103`)
+  only writes the store file. The reconciler cannot rescue it either: `reconcile()` iterates the
+  *ledger* and returns immediately when it is empty (`application/agents/reconcile.py:77-79`),
+  and per-slug it requires drift against an existing harness file. A brand-new agent has neither,
+  so `_enable_defaults` is unreachable for it — **even when auto-adopt defaults are configured**.
+  "Add Agent" therefore produces a row that is disabled everywhere.
+- **It can only produce a four-key agent.** `CreateAgentRequest` accepts `skills`, `model`,
+  `effort` and now the four fields above, but the dialog sends only name/description/prompt/tools
+  (`CreateAgentDialog.tsx:45-50`). Every agent is born bare and must immediately be edited.
+- **Name errors only surface after a round trip.** `slugify` runs server-side, so `"???"` returns
+  *"cannot derive a file name"* and a duplicate returns a 409, both after a request.
+- **No component tests** on the sole creation entry point.
+- **Two small inconsistencies:** description is not required (the harness reads it to decide when
+  to invoke the agent), and `Dialog.Root` (`:59`) passes `onOpenChange` through unguarded, so
+  Escape closes the dialog mid-create even though Cancel and the X are correctly disabled.
+
+### Decisions
+
+1. **The harness picker preselects `autoAdoptHarnesses.agents`, and nothing when that is empty.**
+   This is one rule, not two: `AutoAdoptStore.is_enabled(family)` is literally
+   `bool(default_harnesses()[family])` (`application/settings/auto_adopt.py:44-51`), so
+   "auto-adopt is off" *is* "the configured list is empty". Do not add a branch on an
+   `autoAdopt[family]` boolean — that map is retained only as the family catalog for API
+   compatibility and is derived from the same list.
+2. **Binding happens server-side, inside the create request.** Add `harnesses: list[str]` to
+   `CreateAgentRequest`. This matches slash-commands, which sends `targets` in the create body
+   (`useSlashCommandsController.ts:194`). *Rejected:* a client-side two-step of `createAgent`
+   then `setAgentHarnesses`. A failed second call leaves an agent the user did not ask for, bound
+   to nothing, with no undo — the exact failure this work exists to remove.
+3. **Reuse the structured editor's controls and constants.** Same field order, same pickers,
+   importing `COLOR_VALUES` / `ISOLATION_VALUES` / `ALLOWED_SUBAGENTS_VALUES` / `MAX_TURNS_DEFAULT`
+   from `features/agents/api/types.ts` and reusing `FrontmatterSegmentedField` and
+   `AgentSkillsFieldEditor`. A second set of pickers would drift from the first.
+4. **`EditAgentDialog.tsx` is deleted.** It is exported and referenced by nothing — editing moved
+   into the detail sheet. It still models an agent as name/description/prompt/tools, so leaving it
+   invites someone to rewire a dialog that silently cannot express most of the contract.
+
+### Work items
+
+**A — Backend: bind at create.**
+- `CreateAgentRequest.harnesses: list[str] = Field(default_factory=list)` in `api/schemas/agents.py`.
+- In `create_agent` (`api/routers/agents.py:103`), after `store.create`, call
+  `container.agents_mutations.set_harnesses(agent.slug, body.harnesses)` when the list is non-empty.
+- `AgentDetailResponse.failed` is skills-shaped (`AutoEnableFailureResponse`: skillRef/harness/error).
+  Do **not** overload it. Add `harnessFailures: list[AgentMutationFailureResponse] = []` and set
+  `ok=False` when it is non-empty.
+- An unknown or unsupported harness id must not 500; `set_harnesses` already returns
+  `(succeeded, failed)` and that contract must hold through the router.
+- Tests in `tests/unit/test_agents.py`: creates with defaults, creates with an empty list, creates
+  with an unsupported harness (partial success surfaced, agent still created).
+
+**B — Frontend: rewrite `CreateAgentDialog`.**
+- Read `useSettingsQuery()` via `features/settings/public` for `autoAdoptHarnesses.agents`
+  (settings already imports from `agents/public`, so this direction is the sanctioned pattern).
+  Harness labels, logos and `installed` come from the agents inventory `columns`.
+- Model the harness fieldset on `SlashCommandFormDialog.tsx:159-190`, reusing `DetailBindingIdentity`.
+- Add the contract fields in `AGENT_CONTRACT_KEYS` order with the controls from decision 3.
+- Inline name validation: slugify client-side, block an empty slug and a collision against the
+  inventory before submit, in the shape of `SlashCommandFormDialog.tsx:71-74`.
+- Require description in `canSubmit`; guard `onOpenChange` while pending.
+- Judgment call left to the implementer: the dialog roughly triples in height, so it may need the
+  scroll or two-column treatment the detail sheet uses.
+
+**C — Frontend: tests for the dialog.** Preselection from configured defaults; nothing preselected
+when the list is empty; the create body carries the contract fields and the selected harnesses;
+duplicate-name blocked before any fetch; partial harness failure surfaced rather than swallowed.
+
+**D — Delete `EditAgentDialog.tsx`.** Its own commit.
+
+### What to delegate
+
+**Delegate A + B + C to `agy` as one brief on one short-lived branch** (`feat/agent-create-flow`
+off `main`). They share the create-request shape; splitting A from B across panes creates a
+cross-pane dependency and a stale-contract window for no gain.
+
+The brief must state: the branch and that it is short-lived per the working agreement; logical
+commits and a push; **no merge to `main` without review**; the definition of done below; and a
+**mandatory** pressure test at `scripts/pressure_test_agent_create.py` in the style of
+`scripts/pressure_test_agent_skills.py`, driving `AppTestHarness` end to end — create with
+defaults, create with none, create against an uninstalled harness.
+
+**Keep D and the verification pass in the driving session.** D is a deletion, which should be a
+reviewed commit of its own rather than buried in a feature branch. Per the working agreement,
+agy's work is independently verified here — re-run the suite and spot-check the diff; do not
+relay its pass counts on faith.
+
+### Definition of done
+
+```
+npm run typecheck
+bash scripts/test_backend.sh
+npm test
+npm run build
+npm run codegen:check     # the create-request shape changes the OpenAPI schema
+python3 scripts/pressure_test_agent_create.py
+```
+
+`codegen:check` is the one most likely to be forgotten and will fail the branch if `generated.ts`
+and `openapi.json` are not regenerated. Also confirm by hand: creating an agent with **no**
+harnesses selected still succeeds and reports cleanly.
+
+### Open question for the next session
+
+Preselecting nothing when auto-adopt is off means a user who has never opened Settings gets
+"create an agent bound to nothing" as the default path — which is the complaint that motivated
+this work. The rule is right (silently binding harnesses the user never chose is worse), but the
+dialog should probably say so: an inline note when the selection is empty, pointing at Settings →
+auto-adopt defaults. Not decided; do not invent copy for it without asking.
+
+---
+
+*Everything below is the 2026-08-31 session — native macOS app cancelled; API bearer token added.*
 
 ## Decision: the native macOS app is cancelled
 
