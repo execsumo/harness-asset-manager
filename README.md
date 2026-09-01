@@ -694,17 +694,23 @@ Harness Asset Manager enforces a clear security boundary:
 
 ### Tailnet Launch
 
-The app auto-detects this device's own Tailscale hostname and trusts it for `Host`/`Origin` —
-**no flag needed** for the common case of one machine serving its own tailnet:
+**No flag needed** for the common case of one machine serving its own tailnet:
 
 ```bash
-harnessam start                       # binds loopback; auto-trusts this device's *.ts.net name
-bash scripts/serve-tailnet.sh         # points tailscale serve at it and verifies the guard passes
+harnessam start                       # binds loopback, and when tailscale is available:
+                                       #   auto-trusts this device's *.ts.net name for Host/Origin
+                                       #   auto-publishes itself via `tailscale serve` on :7443
 ```
 
-Auto-detection only fires when nothing is configured explicitly, and only ever *widens* what
-`Host`/`Origin` values are accepted — it never weakens authentication, which still requires the
-Tailscale identity header or a bearer token. Set `--trusted-host <hostname>` or
+Both are best-effort and skip themselves silently if the `tailscale` CLI or daemon isn't
+reachable — nothing about a launch without Tailscale changes. Disable the serve mapping with
+`--no-tailnet`, or change its port with `--tailnet-port`/`$HAM_TAILNET_PORT`. It is torn down
+again (that port only) on a clean `harnessam stop`; `scripts/serve-tailnet.sh` re-applies it by
+hand after tailscaled state loss or for an instance launched with `--no-tailnet`.
+
+Host/Origin auto-detection only fires when nothing is configured explicitly, and only ever
+*widens* what `Host`/`Origin` values are accepted — it never weakens authentication, which still
+requires the Tailscale identity header or a bearer token. Set `--trusted-host <hostname>` or
 `HARNESS_ASSET_MANAGER_TRUSTED_HOSTS` to override the detected name or add another one (e.g. a
 non-Tailscale reverse proxy); either takes priority over auto-detection.
 

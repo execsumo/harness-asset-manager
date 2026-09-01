@@ -127,6 +127,48 @@ class ResolvedTrustedHostsTests(unittest.TestCase):
         self.assertEqual(result, ())
 
 
+class ResolvedTailnetPortTests(unittest.TestCase):
+    """Priority: explicit --tailnet-port wins; else $HAM_TAILNET_PORT; else 7443."""
+
+    def _args(self, tailnet_port: int | None = None) -> mock.Mock:
+        return mock.Mock(tailnet_port=tailnet_port)
+
+    def test_explicit_flag_wins(self) -> None:
+        from harness_asset_manager.cli.main import resolved_tailnet_port
+
+        self.assertEqual(resolved_tailnet_port(self._args(9443), {"HAM_TAILNET_PORT": "1111"}), 9443)
+
+    def test_falls_back_to_env_var(self) -> None:
+        from harness_asset_manager.cli.main import resolved_tailnet_port
+
+        self.assertEqual(resolved_tailnet_port(self._args(), {"HAM_TAILNET_PORT": "9000"}), 9000)
+
+    def test_defaults_to_7443(self) -> None:
+        from harness_asset_manager.cli.main import resolved_tailnet_port
+
+        self.assertEqual(resolved_tailnet_port(self._args(), {}), 7443)
+
+    def test_malformed_env_var_falls_back_to_default(self) -> None:
+        from harness_asset_manager.cli.main import resolved_tailnet_port
+
+        self.assertEqual(resolved_tailnet_port(self._args(), {"HAM_TAILNET_PORT": "not-a-port"}), 7443)
+
+
+class TailnetFlagParsingTests(unittest.TestCase):
+    def test_tailnet_defaults_to_enabled(self) -> None:
+        args = build_parser().parse_args(["serve"])
+        self.assertTrue(args.tailnet)
+        self.assertIsNone(args.tailnet_port)
+
+    def test_no_tailnet_disables_it(self) -> None:
+        args = build_parser().parse_args(["serve", "--no-tailnet"])
+        self.assertFalse(args.tailnet)
+
+    def test_tailnet_port_flag_is_parsed(self) -> None:
+        args = build_parser().parse_args(["serve", "--tailnet-port", "9443"])
+        self.assertEqual(args.tailnet_port, 9443)
+
+
 class TokenCommandTests(CliCommandTestCase):
     def test_token_reads_and_generates_token(self) -> None:
         code, out, err = self.run_cli("token")

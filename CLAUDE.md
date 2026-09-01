@@ -49,17 +49,19 @@ npm run build
 ### Serving over a tailnet
 
 Where the app is published to a tailnet, it stays on its loopback port and `tailscale serve`
-terminates TLS in front of it. That mapping lives in tailscaled's own state and survives
-reboots, so it needs no boot-time step — and it is per-machine, never checked in. Ports and
-hostnames are therefore a property of the host, not of this repo.
+terminates TLS in front of it. Ports and hostnames are a property of the host, not of this
+repo, and are never checked in.
 
-`scripts/serve-tailnet.sh` applies or re-applies the mapping — after a tailscaled state loss,
-or to move the front door — reading `HAM_TAILNET_PORT` (default `7443`) and `HAM_BACKEND_PORT`
-(default `8000`) from the environment. It is idempotent and **never deletes mappings**: a host
-usually proxies unrelated apps on other ports, and `tailscale serve reset` would take them all
-out. To retire a port, run the `tailscale serve --https=<port> off` line the script prints.
+**This is now automatic.** Every `harnessam start`/`serve` best-effort applies the
+`tailscale serve --bg` mapping itself on launch (when the `tailscale` CLI and daemon are
+reachable — silently skipped otherwise) and tears down that one port again on clean shutdown
+(`--https=<port> off`, never a full `serve reset`, so other apps this host proxies on other
+ports are untouched). Disable with `--no-tailnet`; the published port defaults to `7443` and
+is overridden with `--tailnet-port` or `$HAM_TAILNET_PORT`. `scripts/serve-tailnet.sh` still
+exists as the manual re-apply path for an instance that was launched by hand with
+`--no-tailnet`, or after tailscaled state loss.
 
-The app auto-detects this device's own Tailscale hostname and trusts it for `Host`/`Origin`
+The app also auto-detects this device's own Tailscale hostname and trusts it for `Host`/`Origin`
 with **no flag needed** — just `harnessam start`. Serve forwards the tailnet hostname in `Host`,
 which the loopback guard would otherwise reject; auto-detection (`runtime/tailscale.py`, a
 best-effort `tailscale status --json` read) fills the same role `--trusted-host` does, without
@@ -70,8 +72,9 @@ requests authenticate on the `Tailscale-User-Login` header Serve injects and str
 incoming requests (so it cannot be forged), which is what keeps the tailnet front door
 paste-free.
 
-If the app was launched by hand (`nohup … serve --trusted-host …`) rather than by a supervisor,
-it does **not** survive a reboot, and the front door will proxy nothing until it is relaunched.
+If the app is killed with SIGKILL (not a clean `harnessam stop`/SIGTERM), the teardown never
+runs and the mapping is left pointing at a dead backend until the app is relaunched or
+`scripts/serve-tailnet.sh` is re-applied.
 
 ## Delegating development (herdr + agy)
 

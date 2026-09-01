@@ -112,6 +112,22 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument("--state-dir", help="Isolate this run in one directory (config, data, state) so nothing else is touched.")
     parser.add_argument("--socket-fd", type=int, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--tailnet",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Auto-publish this app over the tailnet via `tailscale serve` when the tailscale "
+            "CLI and daemon are available (best-effort; does nothing if either is absent, and "
+            "is torn down again on shutdown). Disable with --no-tailnet."
+        ),
+    )
+    parser.add_argument(
+        "--tailnet-port",
+        type=int,
+        default=None,
+        help="HTTPS port to publish on the tailnet. Defaults to $HAM_TAILNET_PORT or 7443.",
+    )
 
 
 def normalize_argv(argv: list[str] | None) -> list[str]:
@@ -219,6 +235,8 @@ def serve_command(args: argparse.Namespace) -> int:
         trusted_hosts=resolved_trusted_hosts(args, env),
         prebound_socket=prebound_socket,
         api_token=token,
+        tailnet=args.tailnet,
+        tailnet_port=resolved_tailnet_port(args, env),
     )
 
 
@@ -254,6 +272,8 @@ def start_command(args: argparse.Namespace) -> int:
         *trusted_host_args(getattr(args, "trusted_hosts", None)),
         *frontend_dist_args(args.frontend_dist),
         *state_dir_args(args.state_dir),
+        *(["--tailnet"] if args.tailnet else ["--no-tailnet"]),
+        *tailnet_port_args(args.tailnet_port),
     )
     try:
         with log_path.open("ab") as log_file:
@@ -387,6 +407,28 @@ def resolved_trusted_hosts(args: argparse.Namespace, env: dict[str, str]) -> tup
         )
         return (detected,)
     return ()
+
+
+def resolved_tailnet_port(args: argparse.Namespace, env: dict[str, str]) -> int:
+    """``--tailnet-port``, else ``$HAM_TAILNET_PORT``, else 7443.
+
+    ``HAM_TAILNET_PORT`` matches ``scripts/serve-tailnet.sh``'s own env var so the two
+    stay interchangeable — it names a host-level front-door port, not app config, so it
+    deliberately lives outside the ``HARNESS_ASSET_MANAGER_*`` namespace.
+    """
+    explicit = getattr(args, "tailnet_port", None)
+    if explicit is not None:
+        return int(explicit)
+    try:
+        return int(env.get("HAM_TAILNET_PORT", "7443"))
+    except ValueError:
+        return 7443
+
+
+def tailnet_port_args(tailnet_port: int | None) -> list[str]:
+    if tailnet_port is None:
+        return []
+    return ["--tailnet-port", str(tailnet_port)]
 
 
 def trusted_host_args(trusted_hosts: list[str] | None) -> list[str]:

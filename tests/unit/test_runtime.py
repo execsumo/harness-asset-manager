@@ -6,11 +6,12 @@ import socket
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from harness_asset_manager.runtime import process as runtime_process
+from harness_asset_manager.runtime import server as server_module
 from harness_asset_manager.runtime.assets import resolve_frontend_dist
-from harness_asset_manager.runtime.server import bind_socket, choose_port
+from harness_asset_manager.runtime.server import bind_socket, choose_port, serve_foreground
 from harness_asset_manager.runtime.startup import (
     PACKAGED_STARTUP_TIMEOUT_SECONDS,
     SOURCE_STARTUP_TIMEOUT_SECONDS,
@@ -128,6 +129,87 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(command, "python -m harness_asset_manager")
         self.assertEqual(which_mock.call_count, 2)
         self.assertEqual(run_mock.call_args.args[0][0], "/bin/ps")
+
+    def test_serve_foreground_applies_and_disables_tailnet_mapping(self) -> None:
+        fake_server = MagicMock()
+        fake_uvicorn = MagicMock()
+        fake_uvicorn.Server.return_value = fake_server
+
+        sock, host, port = bind_socket("127.0.0.1", 0)
+        with (
+            patch.object(server_module, "_uvicorn", return_value=fake_uvicorn),
+            patch.object(server_module, "_create_app", return_value=lambda *a, **k: MagicMock()),
+            patch.object(server_module, "maybe_open_browser"),
+            patch(
+                "harness_asset_manager.runtime.tailscale.apply_tailnet_serve", return_value=True
+            ) as apply_mock,
+            patch("harness_asset_manager.runtime.tailscale.disable_tailnet_serve") as disable_mock,
+        ):
+            result = serve_foreground(
+                MagicMock(),
+                host=host,
+                port=port,
+                open_browser=False,
+                prebound_socket=sock,
+                tailnet=True,
+                tailnet_port=7443,
+            )
+
+        self.assertEqual(result, 0)
+        apply_mock.assert_called_once_with(https_port=7443, backend_port=port)
+        disable_mock.assert_called_once_with(https_port=7443)
+
+    def test_serve_foreground_skips_tailnet_when_disabled(self) -> None:
+        fake_server = MagicMock()
+        fake_uvicorn = MagicMock()
+        fake_uvicorn.Server.return_value = fake_server
+
+        sock, host, port = bind_socket("127.0.0.1", 0)
+        with (
+            patch.object(server_module, "_uvicorn", return_value=fake_uvicorn),
+            patch.object(server_module, "_create_app", return_value=lambda *a, **k: MagicMock()),
+            patch.object(server_module, "maybe_open_browser"),
+            patch("harness_asset_manager.runtime.tailscale.apply_tailnet_serve") as apply_mock,
+            patch("harness_asset_manager.runtime.tailscale.disable_tailnet_serve") as disable_mock,
+        ):
+            serve_foreground(
+                MagicMock(),
+                host=host,
+                port=port,
+                open_browser=False,
+                prebound_socket=sock,
+                tailnet=False,
+            )
+
+        apply_mock.assert_not_called()
+        disable_mock.assert_not_called()
+
+    def test_serve_foreground_does_not_disable_when_apply_failed(self) -> None:
+        fake_server = MagicMock()
+        fake_uvicorn = MagicMock()
+        fake_uvicorn.Server.return_value = fake_server
+
+        sock, host, port = bind_socket("127.0.0.1", 0)
+        with (
+            patch.object(server_module, "_uvicorn", return_value=fake_uvicorn),
+            patch.object(server_module, "_create_app", return_value=lambda *a, **k: MagicMock()),
+            patch.object(server_module, "maybe_open_browser"),
+            patch(
+                "harness_asset_manager.runtime.tailscale.apply_tailnet_serve", return_value=False
+            ),
+            patch("harness_asset_manager.runtime.tailscale.disable_tailnet_serve") as disable_mock,
+        ):
+            serve_foreground(
+                MagicMock(),
+                host=host,
+                port=port,
+                open_browser=False,
+                prebound_socket=sock,
+                tailnet=True,
+                tailnet_port=7443,
+            )
+
+        disable_mock.assert_not_called()
 
     def test_process_command_returns_empty_string_when_ps_is_unavailable(self) -> None:
         with (

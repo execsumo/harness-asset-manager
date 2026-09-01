@@ -79,6 +79,8 @@ def serve_foreground(
     trusted_hosts: tuple[str, ...] = (),
     prebound_socket: socket.socket | None = None,
     api_token: str | None = None,
+    tailnet: bool = True,
+    tailnet_port: int = 7443,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
@@ -99,6 +101,19 @@ def serve_foreground(
     url = f"http://{actual_host}:{actual_port}"
     print(url, flush=True)
     maybe_open_browser(url, enabled=open_browser)
+
+    tailnet_applied = False
+    if tailnet:
+        from .tailscale import apply_tailnet_serve
+
+        tailnet_applied = apply_tailnet_serve(https_port=tailnet_port, backend_port=actual_port)
+        if tailnet_applied:
+            print(
+                f"note: published on the tailnet at https://<this device>:{tailnet_port} "
+                "(tailscale serve). Disable with --no-tailnet.",
+                flush=True,
+            )
+
     try:
         uvicorn = _uvicorn()
         config = uvicorn.Config(app, fd=sock.fileno(), log_level="info", access_log=False)
@@ -106,6 +121,10 @@ def serve_foreground(
         server.run()
         return 0
     finally:
+        if tailnet_applied:
+            from .tailscale import disable_tailnet_serve
+
+            disable_tailnet_serve(https_port=tailnet_port)
         sock.close()
 
 
