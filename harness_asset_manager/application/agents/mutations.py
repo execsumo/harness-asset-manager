@@ -293,8 +293,12 @@ class AgentMutationService:
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
         skills: tuple[str, ...] | None = None,
+        color: str | None = None,
         model: str | None = None,
         effort: str | None = None,
+        allowed_subagents: str | None = None,
+        max_turns: str | None = None,
+        isolation: str | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -332,8 +336,16 @@ class AgentMutationService:
             prompt=prompt if prompt is not None else current.prompt,
             tools=tools if tools is not None else current.tools,
             skills=skills if skills is not None else current.skills,
+            color=color if color is not None else current.color,
             model=model if model is not None else current.model,
             effort=effort if effort is not None else current.effort,
+            allowed_subagents=(
+                allowed_subagents
+                if allowed_subagents is not None
+                else current.allowed_subagents
+            ),
+            max_turns=max_turns if max_turns is not None else current.max_turns,
+            isolation=isolation if isolation is not None else current.isolation,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )

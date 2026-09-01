@@ -17,9 +17,17 @@ import {
 import { useToast } from "../../../../components/Toast";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
+import { FrontmatterSegmentedField } from "../../../../components/detail/editing/FrontmatterSegmentedField";
 import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
 import { useSkillsListQuery } from "../../../skills/public";
-import { AGENT_CONTRACT_KEYS, EFFORT_VALUES } from "../../api/types";
+import {
+  AGENT_CONTRACT_KEYS,
+  ALLOWED_SUBAGENTS_VALUES,
+  COLOR_VALUES,
+  EFFORT_VALUES,
+  ISOLATION_VALUES,
+  MAX_TURNS_DEFAULT,
+} from "../../api/types";
 import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
 import {
@@ -133,8 +141,12 @@ export function AgentDetailContent({
   const [description, setDescription] = useState(detail.description);
   const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
   const [skills, setSkills] = useState<string[]>(initialSkills);
+  const [colorStr, setColorStr] = useState(detail.color ?? "");
   const [modelStr, setModelStr] = useState(detail.model ?? "");
   const [effortStr, setEffortStr] = useState(detail.effort ?? "");
+  const [allowedSubagentsStr, setAllowedSubagentsStr] = useState(detail.allowedSubagents ?? "");
+  const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
+  const [isolationStr, setIsolationStr] = useState(detail.isolation ?? "");
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -145,8 +157,12 @@ export function AgentDetailContent({
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
     setSkills((detail.skills || []).map((s) => s.slug));
+    setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
     setEffortStr(detail.effort ?? "");
+    setAllowedSubagentsStr(detail.allowedSubagents ?? "");
+    setMaxTurnsStr(detail.maxTurns ?? "");
+    setIsolationStr(detail.isolation ?? "");
     setOtherEntries(
       (detail.configuration || [])
         .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
@@ -181,6 +197,33 @@ export function AgentDetailContent({
         label: "Description",
         value: description,
         onChange: setDescription,
+      },
+      {
+        key: "color",
+        label: "Color",
+        value: colorStr,
+        onChange: setColorStr,
+        renderInput: ({ disabled }) => (
+          <select
+            className="frontmatter-editor__input"
+            value={colorStr}
+            onChange={(event) => setColorStr(event.target.value)}
+            disabled={disabled}
+            aria-label="Color"
+          >
+            <option value="">(none)</option>
+            {COLOR_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            {/* Same escape hatch the effort picker offers: surface a hand-authored
+                value rather than silently rewriting it on the next save. */}
+            {colorStr && !(COLOR_VALUES as readonly string[]).includes(colorStr) ? (
+              <option value={colorStr}>{colorStr} — not a valid color</option>
+            ) : null}
+          </select>
+        ),
       },
       {
         key: "model",
@@ -242,8 +285,59 @@ export function AgentDetailContent({
           />
         ),
       },
+      {
+        key: "allowed_subagents",
+        wrapInLabel: false,
+        label: "Allowed Subagents",
+        value: allowedSubagentsStr,
+        onChange: setAllowedSubagentsStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterSegmentedField
+            label="Allowed Subagents"
+            value={allowedSubagentsStr}
+            options={ALLOWED_SUBAGENTS_VALUES}
+            onChange={setAllowedSubagentsStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        key: "max_turns",
+        label: "Max Turns",
+        value: maxTurnsStr,
+        onChange: setMaxTurnsStr,
+        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
+      },
+      {
+        key: "isolation",
+        wrapInLabel: false,
+        label: "Isolation",
+        value: isolationStr,
+        onChange: setIsolationStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterSegmentedField
+            label="Isolation"
+            value={isolationStr}
+            options={ISOLATION_VALUES}
+            onChange={setIsolationStr}
+            disabled={disabled}
+          />
+        ),
+      },
     ],
-    [name, description, toolsStr, skills, adoptedSkills, modelStr, effortStr],
+    [
+      name,
+      description,
+      colorStr,
+      modelStr,
+      effortStr,
+      toolsStr,
+      skills,
+      adoptedSkills,
+      allowedSubagentsStr,
+      maxTurnsStr,
+      isolationStr,
+    ],
   );
 
   const isDirty = useMemo(() => {
@@ -252,8 +346,12 @@ export function AgentDetailContent({
     if (toolsStr !== detail.tools.join(", ")) return true;
     if (prompt !== detail.prompt) return true;
 
+    if (colorStr !== (detail.color ?? "")) return true;
     if (modelStr !== (detail.model ?? "")) return true;
     if (effortStr !== (detail.effort ?? "")) return true;
+    if (allowedSubagentsStr !== (detail.allowedSubagents ?? "")) return true;
+    if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
+    if (isolationStr !== (detail.isolation ?? "")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -270,15 +368,19 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, effortStr]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
     setDescription(detail.description);
     setToolsStr(detail.tools.join(", "));
     setSkills(initialSkills);
+    setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
     setEffortStr(detail.effort ?? "");
+    setAllowedSubagentsStr(detail.allowedSubagents ?? "");
+    setMaxTurnsStr(detail.maxTurns ?? "");
+    setIsolationStr(detail.isolation ?? "");
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -292,8 +394,12 @@ export function AgentDetailContent({
     let finalDesc = description;
     let finalToolsStr = toolsStr;
     let finalSkills = skills;
+    let finalColor = colorStr;
     let finalModel = modelStr;
     let finalEffort = effortStr;
+    let finalAllowedSubagents = allowedSubagentsStr;
+    let finalMaxTurns = maxTurnsStr;
+    let finalIsolation = isolationStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
@@ -306,15 +412,23 @@ export function AgentDetailContent({
       finalDesc = parsed.known.description ?? description;
       finalToolsStr = parsed.known.tools ?? toolsStr;
       finalSkills = parseSkillSlugs(parsed.known.skills ?? "");
+      finalColor = parsed.known.color ?? "";
       finalModel = parsed.known.model ?? "";
       finalEffort = parsed.known.effort ?? "";
+      finalAllowedSubagents = parsed.known.allowed_subagents ?? "";
+      finalMaxTurns = parsed.known.max_turns ?? "";
+      finalIsolation = parsed.known.isolation ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
       setToolsStr(finalToolsStr);
       setSkills(finalSkills);
+      setColorStr(finalColor);
       setModelStr(finalModel);
       setEffortStr(finalEffort);
+      setAllowedSubagentsStr(finalAllowedSubagents);
+      setMaxTurnsStr(finalMaxTurns);
+      setIsolationStr(finalIsolation);
       setOtherEntries(finalOther);
     }
 
@@ -341,8 +455,12 @@ export function AgentDetailContent({
           prompt: prompt,
           tools: toolsList,
           skills: finalSkills,
+          color: finalColor.trim(),
           model: finalModel.trim(),
           effort: finalEffort.trim(),
+          allowedSubagents: finalAllowedSubagents.trim(),
+          maxTurns: finalMaxTurns.trim(),
+          isolation: finalIsolation.trim(),
           metadata: metadataPayload,
         },
       });

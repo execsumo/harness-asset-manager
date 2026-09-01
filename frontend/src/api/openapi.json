@@ -386,6 +386,17 @@
       },
       "AgentDetailResponse": {
         "properties": {
+          "allowedSubagents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedsubagents"
+          },
           "autoEnabled": {
             "items": {
               "$ref": "#/components/schemas/AutoEnabledSkillResponse"
@@ -401,6 +412,17 @@
             "default": true,
             "title": "Canedit",
             "type": "boolean"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
           },
           "configuration": {
             "items": {
@@ -441,6 +463,28 @@
             },
             "title": "Harnesses",
             "type": "array"
+          },
+          "isolation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isolation"
+          },
+          "maxTurns": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxturns"
           },
           "model": {
             "anyOf": [
@@ -1246,6 +1290,28 @@
       },
       "CreateAgentRequest": {
         "properties": {
+          "allowedSubagents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedsubagents"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "description": {
             "default": "",
             "title": "Description",
@@ -1261,6 +1327,28 @@
               }
             ],
             "title": "Effort"
+          },
+          "isolation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isolation"
+          },
+          "maxTurns": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxturns"
           },
           "model": {
             "anyOf": [
@@ -6029,6 +6117,28 @@
       },
       "UpdateAgentRequest": {
         "properties": {
+          "allowedSubagents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedsubagents"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
           "description": {
             "anyOf": [
               {
@@ -6050,6 +6160,28 @@
               }
             ],
             "title": "Effort"
+          },
+          "isolation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Isolation"
+          },
+          "maxTurns": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxturns"
           },
           "metadata": {
             "anyOf": [

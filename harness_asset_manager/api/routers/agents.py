@@ -37,7 +37,11 @@ from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
     AgentDetail,
+    validate_allowed_subagents,
+    validate_color,
     validate_effort,
+    validate_isolation,
+    validate_max_turns,
 )
 from harness_asset_manager.errors import MutationError
 
@@ -108,8 +112,12 @@ def create_agent(
         prompt=body.prompt,
         tools=tuple(body.tools),
         skills=validated_skills,
+        color=validate_color(body.color),
         model=body.model,
         effort=validate_effort(body.effort),
+        allowed_subagents=validate_allowed_subagents(body.allowedSubagents),
+        max_turns=validate_max_turns(body.maxTurns),
+        isolation=validate_isolation(body.isolation),
     )
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug)
@@ -165,7 +173,11 @@ def update_agent(
         if body.skills is not None
         else None
     )
+    validated_color = validate_color(body.color)
     validated_effort = validate_effort(body.effort)
+    validated_allowed_subagents = validate_allowed_subagents(body.allowedSubagents)
+    validated_max_turns = validate_max_turns(body.maxTurns)
+    validated_isolation = validate_isolation(body.isolation)
 
     if "/" in agent_ref:
         # Unmanaged ref (<harness>/<slug>): edit the harness file in place.
@@ -182,8 +194,12 @@ def update_agent(
             prompt=body.prompt,
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
+            color=validated_color,
             model=body.model,
             effort=validated_effort,
+            allowed_subagents=validated_allowed_subagents,
+            max_turns=validated_max_turns,
+            isolation=validated_isolation,
             metadata=extra_metadata,
         )
     else:
@@ -198,8 +214,12 @@ def update_agent(
             prompt=body.prompt,
             tools=tuple(body.tools) if body.tools is not None else None,
             skills=validated_skills,
+            color=validated_color,
             model=body.model,
             effort=validated_effort,
+            allowed_subagents=validated_allowed_subagents,
+            max_turns=validated_max_turns,
+            isolation=validated_isolation,
             metadata=extra_metadata,
         )
 
@@ -340,8 +360,12 @@ def _detail(
         skills=[
             AgentSkillResponse(slug=s.slug, name=s.name) for s in detail.skills
         ],
+        color=detail.color,
         model=detail.model,
         effort=detail.effort,
+        allowedSubagents=detail.allowed_subagents,
+        maxTurns=detail.max_turns,
+        isolation=detail.isolation,
         ok=len(failed_list) == 0,
         autoEnabled=auto_enabled or [],
         failed=failed_list,

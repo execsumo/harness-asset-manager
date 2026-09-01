@@ -30,13 +30,12 @@ def parse_agent_file(path: Path) -> AgentDefinition:
 def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefinition:
     """Parse an agent definition.
 
-    ``name``, ``description``, ``tools``, ``skills``, ``model``, and ``effort`` drive
-    behavior as contract fields. Every other frontmatter key is kept verbatim in
-    ``metadata`` — harness agents carry `permissionMode`, `maxTurns`, Cursor's
-    `readonly`, and so on, and Harness Asset Manager must display those without
-    interpreting or destroying them. The only keys dropped on write are
-    ``RETIRED_KEYS`` and attempts to smuggle standard contract fields through the
-    custom metadata channel.
+    Everything in ``CONTRACT_KEYS`` drives behavior as a contract field. Every other
+    frontmatter key is kept verbatim in ``metadata`` — harness agents carry
+    `permissionMode`, Cursor's `readonly`, and so on, and Harness Asset Manager must
+    display those without interpreting or destroying them. The only keys dropped on
+    write are ``RETIRED_KEYS`` and attempts to smuggle standard contract fields through
+    the custom metadata channel.
     """
     metadata, prompt = split_frontmatter(document)
     return AgentDefinition(
@@ -48,8 +47,12 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         path=path,
         metadata=dict(metadata),
         skills=_str_tuple(metadata.get("skills"), "skills", dedupe=True),
+        color=_optional_str(metadata, "color"),
         model=_optional_str(metadata, "model"),
         effort=_optional_str(metadata, "effort"),
+        allowed_subagents=_optional_bool_str(metadata, "allowed_subagents"),
+        max_turns=_optional_str(metadata, "max_turns"),
+        isolation=_optional_str(metadata, "isolation"),
     )
 
 
@@ -60,8 +63,12 @@ def render_agent_document(
     prompt: str,
     tools: tuple[str, ...] = (),
     skills: tuple[str, ...] = (),
+    color: str | None = None,
     model: str | None = None,
     effort: str | None = None,
+    allowed_subagents: str | None = None,
+    max_turns: str | None = None,
+    isolation: str | None = None,
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -81,10 +88,18 @@ def render_agent_document(
             metadata["tools"] = ", ".join(tools)
         if skills:
             metadata["skills"] = list(skills)
-        if model:
-            metadata["model"] = model
-        if effort:
-            metadata["effort"] = effort
+        # Written unquoted, so `max_turns: 30` and `allowed_subagents: true` come back
+        # out of YAML as the int and bool the harness expects rather than as strings.
+        for scalar_key, scalar_value in (
+            ("color", color),
+            ("model", model),
+            ("effort", effort),
+            ("allowed_subagents", allowed_subagents),
+            ("max_turns", max_turns),
+            ("isolation", isolation),
+        ):
+            if scalar_value:
+                metadata[scalar_key] = scalar_value
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -121,7 +136,14 @@ def render_agent_document(
 
         # Contract fields: an explicit empty string clears the key; None leaves
         # whatever base_metadata carries untouched.
-        for contract_key, contract_value in (("model", model), ("effort", effort)):
+        for contract_key, contract_value in (
+            ("color", color),
+            ("model", model),
+            ("effort", effort),
+            ("allowed_subagents", allowed_subagents),
+            ("max_turns", max_turns),
+            ("isolation", isolation),
+        ):
             if contract_value is None:
                 continue
             if contract_value:
@@ -189,6 +211,20 @@ def _optional_str(metadata: dict, key: str) -> str | None:
     if key not in metadata or metadata[key] is None:
         return None
     return str(metadata[key]).strip()
+
+
+def _optional_bool_str(metadata: dict, key: str) -> str | None:
+    """Like ``_optional_str``, but for a key YAML resolves to a real boolean.
+
+    ``str(True)`` is ``"True"``, which is neither what the file said nor a value the
+    picker offers, so the two literals are normalized back to their YAML spelling.
+    """
+    if key not in metadata or metadata[key] is None:
+        return None
+    value = metadata[key]
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value).strip()
 
 
 def _str_tuple(value: object, label: str, *, dedupe: bool = False) -> tuple[str, ...]:

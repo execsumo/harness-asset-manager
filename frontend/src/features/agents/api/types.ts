@@ -4,15 +4,49 @@
  * application/agents/model.py; anything not in this list is custom configuration
  * and is round-tripped verbatim.
  */
-export const AGENT_CONTRACT_KEYS = ["name", "description", "model", "effort", "tools", "skills"] as const;
+export const AGENT_CONTRACT_KEYS = [
+  // Identity
+  "name",
+  "description",
+  "color",
+  // Which model runs it
+  "model",
+  "effort",
+  // What it may reach for
+  "tools",
+  "skills",
+  "allowed_subagents",
+  // The envelope it runs in
+  "max_turns",
+  "isolation",
+] as const;
 
 /**
- * The values `effort` accepts, plus the empty choice that clears the key. Fixed and
- * global — not per-harness. Mirrors EFFORT_VALUES in application/agents/model.py,
- * which rejects anything else with a 400; keep the two in step or the picker offers
+ * The fixed vocabularies, each plus the empty choice that clears the key. Global, not
+ * per-harness. Mirror the tuples of the same names in application/agents/model.py,
+ * which reject anything else with a 400; keep the two sides in step or a picker offers
  * a value the API refuses. `model` is deliberately absent: its value set is open.
  */
 export const EFFORT_VALUES = ["low", "medium", "high"] as const;
+export const COLOR_VALUES = [
+  "red",
+  "blue",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "cyan",
+] as const;
+export const ISOLATION_VALUES = ["worktree", "none"] as const;
+export const ALLOWED_SUBAGENTS_VALUES = ["true", "false"] as const;
+
+/**
+ * What a harness assumes when `max_turns` is absent. Shown as the field's placeholder
+ * rather than written on save — filling every agent file with a value nobody asked for
+ * would freeze an implicit default into an explicit setting.
+ */
+export const MAX_TURNS_DEFAULT = 30;
 
 export interface AgentSkillDto {
   slug: string;
@@ -80,8 +114,12 @@ export interface AgentCreateRequest {
   prompt: string;
   tools?: string[];
   skills?: string[];
+  color?: string;
   model?: string;
   effort?: string;
+  allowedSubagents?: string;
+  maxTurns?: string;
+  isolation?: string;
 }
 
 export interface AgentUpdateRequest {
@@ -91,8 +129,12 @@ export interface AgentUpdateRequest {
   tools?: string[];
   skills?: string[];
   /** Omitted carries the current value forward; an explicit empty string clears the key. */
+  color?: string;
   model?: string;
   effort?: string;
+  allowedSubagents?: string;
+  maxTurns?: string;
+  isolation?: string;
   metadata?: Array<{ key: string; value: string }>;
 }
 
@@ -132,8 +174,12 @@ export interface AgentDetailDto {
   canEdit: boolean;
   tags?: string[];
   skills?: AgentSkillDto[];
+  color?: string | null;
   model?: string | null;
   effort?: string | null;
+  allowedSubagents?: string | null;
+  maxTurns?: string | null;
+  isolation?: string | null;
   ok?: boolean;
   autoEnabled?: AutoEnabledSkillDto[];
   failed?: AutoEnableFailureDto[];

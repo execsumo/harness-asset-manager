@@ -16,37 +16,126 @@ class AgentParseError(ValueError):
 # never surfaced or accepted as custom configuration. Single source of truth --
 # the parser, the renderer, and ``extra_metadata`` all derive from it, so adding a
 # contract field is a one-line change here.
-CONTRACT_KEYS: tuple[str, ...] = ("name", "description", "model", "effort", "tools", "skills")
+# Grouped so the rendered frontmatter reads top to bottom as identity -> which model
+# runs it -> what it may reach for -> the envelope it runs in. The detail editor lists
+# its fields in this same order, so the two never disagree about what comes next.
+CONTRACT_KEYS: tuple[str, ...] = (
+    "name",
+    "description",
+    "color",
+    "model",
+    "effort",
+    "tools",
+    "skills",
+    "allowed_subagents",
+    "max_turns",
+    "isolation",
+)
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
-# ``effort`` is a fixed, global vocabulary — not per-harness, unlike ``model``, whose
-# value set is genuinely open-ended and therefore stays free text. The picker offers
-# exactly these plus an empty choice that clears the key, and the write paths reject
-# anything else, so a hand-edited file or a raw-YAML edit cannot smuggle in a value
-# the picker could not have produced. Mirrored by ``EFFORT_VALUES`` in
-# frontend/src/features/agents/api/types.ts and pinned by ``EffortValueParityTests``.
+# Fixed, global vocabularies — not per-harness, unlike ``model``, whose value set is
+# genuinely open-ended and therefore stays free text. Each picker offers exactly these
+# plus an empty choice that clears the key, and the write paths reject anything else,
+# so a hand-edited file or a raw-YAML edit cannot smuggle in a value the picker could
+# not have produced. Mirrored one-for-one in frontend/src/features/agents/api/types.ts
+# and pinned by ``ContractKeyParityTests``.
 EFFORT_VALUES: tuple[str, ...] = ("low", "medium", "high")
+COLOR_VALUES: tuple[str, ...] = (
+    "red",
+    "blue",
+    "green",
+    "yellow",
+    "purple",
+    "orange",
+    "pink",
+    "cyan",
+)
+ISOLATION_VALUES: tuple[str, ...] = ("worktree", "none")
+# Written as a bare YAML boolean, so the two literals are lowercase on the way in and
+# on the way out; ``parser._optional_bool_str`` is what keeps Python's ``True`` from
+# leaking back into the file as ``True``.
+ALLOWED_SUBAGENTS_VALUES: tuple[str, ...] = ("true", "false")
+
+# What a harness assumes when ``max_turns`` is absent. The editor shows it as the
+# placeholder rather than writing it: filling every agent file with a value nobody
+# asked for would turn an implicit default into an explicit, now-frozen setting.
+MAX_TURNS_DEFAULT = 30
 
 
-def validate_effort(effort: str | None) -> str | None:
-    """Normalize an effort value on its way into an agent file.
+def _validate_choice(
+    value: str | None, allowed: tuple[str, ...], *, label: str, code: str
+) -> str | None:
+    """Normalize one fixed-vocabulary value on its way into an agent file.
 
     ``None`` means the caller omitted the field, so whatever the file holds stands;
     an empty string is an explicit clear. Matching is exact: accepting ``HIGH`` and
     silently rewriting it would invent a case-insensitive contract the picker cannot
     produce and the file does not describe.
     """
-    if effort is None:
+    if value is None:
         return None
-    value = effort.strip()
-    if value and value not in EFFORT_VALUES:
+    normalized = value.strip()
+    if normalized and normalized not in allowed:
         raise MutationError(
-            f"unknown effort: {effort!r}; expected one of "
-            f"{', '.join(EFFORT_VALUES)}, or empty to clear the key",
+            f"unknown {label}: {value!r}; expected one of "
+            f"{', '.join(allowed)}, or empty to clear the key",
             status=400,
-            code="invalid_effort",
+            code=code,
         )
-    return value
+    return normalized
+
+
+def validate_effort(effort: str | None) -> str | None:
+    return _validate_choice(effort, EFFORT_VALUES, label="effort", code="invalid_effort")
+
+
+def validate_color(color: str | None) -> str | None:
+    return _validate_choice(color, COLOR_VALUES, label="color", code="invalid_color")
+
+
+def validate_isolation(isolation: str | None) -> str | None:
+    return _validate_choice(
+        isolation, ISOLATION_VALUES, label="isolation", code="invalid_isolation"
+    )
+
+
+def validate_allowed_subagents(allowed_subagents: str | None) -> str | None:
+    return _validate_choice(
+        allowed_subagents,
+        ALLOWED_SUBAGENTS_VALUES,
+        label="allowed_subagents",
+        code="invalid_allowed_subagents",
+    )
+
+
+def validate_max_turns(max_turns: str | None) -> str | None:
+    """Normalize a turn budget: a positive integer, or empty to clear the key.
+
+    Zero and negatives are refused rather than clamped — an agent allowed no turns at
+    all is a typo, not a configuration, and silently rewriting it would hide the typo.
+    """
+    if max_turns is None:
+        return None
+    value = max_turns.strip()
+    if not value:
+        return ""
+    try:
+        turns = int(value)
+    except ValueError:
+        raise MutationError(
+            f"invalid max_turns: {max_turns!r}; expected a positive whole number, "
+            "or empty to clear the key",
+            status=400,
+            code="invalid_max_turns",
+        ) from None
+    if turns < 1:
+        raise MutationError(
+            f"invalid max_turns: {max_turns!r}; expected a positive whole number, "
+            "or empty to clear the key",
+            status=400,
+            code="invalid_max_turns",
+        )
+    return str(turns)
 
 
 @dataclass(frozen=True)
@@ -60,11 +149,10 @@ class AgentDefinition:
     """A subagent: a markdown file with `name`, `description`, and a prompt body.
 
     ``metadata`` is the frontmatter mapping **verbatim**, including custom keys Harness
-    Asset Manager does not interpret (``permissionMode``, ``maxTurns``, Cursor's
-    ``readonly``, …). Standard contract fields (including ``model``, ``effort``,
-    ``tools``, and ``skills``) are parsed separately and never treated as custom metadata.
-    Custom keys are surfaced and written back untouched — an edit here must never silently
-    drop a harness's own configuration.
+    Asset Manager does not interpret (``permissionMode``, Cursor's ``readonly``, …).
+    Standard contract fields (everything in ``CONTRACT_KEYS``) are parsed separately and
+    never treated as custom metadata. Custom keys are surfaced and written back untouched
+    — an edit here must never silently drop a harness's own configuration.
     """
 
     slug: str
@@ -80,9 +168,15 @@ class AgentDefinition:
     codex_extras: Mapping[str, object] = field(default_factory=dict)
     skills: tuple[str, ...] = ()
     # Contract fields: parsed and rendered as their own frontmatter keys, never
-    # treated as custom metadata.
+    # treated as custom metadata. Held as strings even where the file spells them as a
+    # YAML scalar (``max_turns`` an int, ``allowed_subagents`` a bool) so that "" can
+    # mean "clear the key" the whole way through the edit path.
+    color: str | None = None
     model: str | None = None
     effort: str | None = None
+    allowed_subagents: str | None = None
+    max_turns: str | None = None
+    isolation: str | None = None
 
     @property
     def ref(self) -> str:
@@ -185,8 +279,12 @@ class AgentDetail:
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
     skills: tuple[AgentSkill, ...] = ()
+    color: str | None = None
     model: str | None = None
     effort: str | None = None
+    allowed_subagents: str | None = None
+    max_turns: str | None = None
+    isolation: str | None = None
 
 
 @dataclass(frozen=True)
@@ -213,9 +311,13 @@ class AgentAdoptConflict(MutationError):
 
 
 __all__ = [
+    "ALLOWED_SUBAGENTS_VALUES",
+    "COLOR_VALUES",
     "CONTRACT_KEYS",
     "CONTRACT_KEY_SET",
     "EFFORT_VALUES",
+    "ISOLATION_VALUES",
+    "MAX_TURNS_DEFAULT",
     "AgentAdoptConflict",
     "AgentBinding",
     "AgentDefinition",
@@ -226,5 +328,9 @@ __all__ = [
     "AgentSkill",
     "AgentTarget",
     "BindingState",
+    "validate_allowed_subagents",
+    "validate_color",
     "validate_effort",
+    "validate_isolation",
+    "validate_max_turns",
 ]

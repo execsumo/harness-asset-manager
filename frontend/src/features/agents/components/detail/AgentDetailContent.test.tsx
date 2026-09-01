@@ -1,10 +1,24 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../../test/fetch";
 import { renderWithAppProviders } from "../../../../test/render";
 import { AgentDetailContent } from "./AgentDetailContent";
+import { AGENT_CONTRACT_KEYS, MAX_TURNS_DEFAULT } from "../../api/types";
 import type { AgentDetailDto } from "../../api/types";
+
+function renderDetail(detail: AgentDetailDto) {
+  return renderWithAppProviders(
+    <AgentDetailContent
+      detail={detail}
+      pendingPerHarnessKeys={new Set()}
+      onToggleHarness={vi.fn()}
+      actionErrorMessage={null}
+      onClose={vi.fn()}
+      onDismissActionError={vi.fn()}
+    />,
+  );
+}
 
 const fetchMock = vi.fn();
 
@@ -208,6 +222,127 @@ describe("AgentDetailContent", () => {
     const effort = screen.getByRole("combobox", { name: "Effort" });
     expect(effort).toHaveValue("maximum");
     expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
+  });
+
+  it("lists the structured frontmatter fields in the agent contract order", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    const { container } = renderDetail(agentDetailFixture());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const labels = Array.from(
+      container.querySelectorAll(".frontmatter-editor__known-fields .frontmatter-editor__label"),
+    ).map((node) => node.textContent);
+
+    // The editor and the renderer read top to bottom in the same order, so a field
+    // never appears in one place before the key it follows in the file.
+    expect(labels).toEqual([
+      "Agent Name",
+      "Description",
+      "Color",
+      "Model",
+      "Effort",
+      "Tools (comma-separated)",
+      "Skills",
+      "Allowed Subagents",
+      "Max Turns",
+      "Isolation",
+    ]);
+    expect(labels).toHaveLength(AGENT_CONTRACT_KEYS.length);
+  });
+
+  it("offers color as a dropdown with an empty option that clears the key", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(agentDetailFixture({ color: "cyan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const color = screen.getByRole("combobox", { name: "Color" });
+    expect(color).toHaveValue("cyan");
+    expect(
+      Array.from((color as HTMLSelectElement).options).map((option) => option.value),
+    ).toEqual(["", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"]);
+  });
+
+  it("renders the boolean-ish contract fields as toggles that can also unset the key", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(agentDetailFixture({ allowedSubagents: "true", isolation: "worktree" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const subagents = screen.getByRole("group", { name: "Allowed Subagents" });
+    expect(
+      within(subagents).getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["Unset", "true", "false"]);
+    expect(within(subagents).getByRole("button", { name: "true" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+
+    const isolation = screen.getByRole("group", { name: "Isolation" });
+    expect(
+      within(isolation).getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["Unset", "worktree", "none"]);
+    expect(within(isolation).getByRole("button", { name: "worktree" })).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+  });
+
+  it("shows the max_turns default as a placeholder instead of prefilling the field", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(agentDetailFixture());
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const maxTurns = screen.getByRole("textbox", { name: "Max Turns" });
+    expect(maxTurns).toHaveValue("");
+    expect(maxTurns).toHaveAttribute(
+      "placeholder",
+      expect.stringContaining(String(MAX_TURNS_DEFAULT)),
+    );
+  });
+
+  it("saves the added contract fields, and clears the ones the user unsets", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      if (url.includes("/api/agents/chief") && (init?.method || "GET") === "PUT") {
+        return Promise.resolve(okJson({ ...agentDetailFixture(), ok: true }));
+      }
+      return Promise.resolve(okJson({ rows: [] }));
+    });
+
+    renderDetail(
+      agentDetailFixture({ color: "cyan", allowedSubagents: "true", maxTurns: "30" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    const isolation = screen.getByRole("group", { name: "Isolation" });
+    fireEvent.click(within(isolation).getByRole("button", { name: "worktree" }));
+
+    const subagents = screen.getByRole("group", { name: "Allowed Subagents" });
+    fireEvent.click(within(subagents).getByRole("button", { name: "Unset" }));
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Max Turns" }), {
+      target: { value: "12" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      const put = fetchMock.mock.calls.find(
+        (call) => String(call[0]).includes("/api/agents/chief") && call[1]?.method === "PUT",
+      );
+      expect(put).toBeDefined();
+      expect(JSON.parse(put![1].body)).toMatchObject({
+        color: "cyan",
+        isolation: "worktree",
+        maxTurns: "12",
+        // An explicit empty string is what clears the key; omitting it would carry
+        // the file's current value forward instead.
+        allowedSubagents: "",
+      });
+    });
   });
 
   it("allows starring and unstarring a managed agent via title action", async () => {

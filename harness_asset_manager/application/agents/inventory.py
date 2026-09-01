@@ -187,8 +187,12 @@ class AgentInventoryService:
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),
             skills=self._resolve_agent_skills(agent.skills),
+            color=agent.color,
             model=agent.model,
             effort=agent.effort,
+            allowed_subagents=agent.allowed_subagents,
+            max_turns=agent.max_turns,
+            isolation=agent.isolation,
         )
 
     def _unmanaged_detail(self, ref: str) -> AgentDetail | None:
@@ -222,8 +226,12 @@ class AgentInventoryService:
             tools: tuple[str, ...] = ()
             extra_metadata = tuple(codex_agent.extras.items())
             skills: tuple[AgentSkill, ...] = ()
+            color: str | None = None
             model: str | None = None
             effort: str | None = None
+            allowed_subagents: str | None = None
+            max_turns: str | None = None
+            isolation: str | None = None
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -235,8 +243,12 @@ class AgentInventoryService:
             tools = agent.tools
             extra_metadata = agent.extra_metadata
             skills = self._resolve_agent_skills(agent.skills)
+            color = agent.color
             model = agent.model
             effort = agent.effort
+            allowed_subagents = agent.allowed_subagents
+            max_turns = agent.max_turns
+            isolation = agent.isolation
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -262,8 +274,12 @@ class AgentInventoryService:
                 (key, _format_config_value(value)) for key, value in extra_metadata
             ),
             skills=skills,
+            color=color,
             model=model,
             effort=effort,
+            allowed_subagents=allowed_subagents,
+            max_turns=max_turns,
+            isolation=isolation,
         )
 
     def _harness_rows(
