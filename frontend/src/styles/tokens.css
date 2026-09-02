@@ -35,6 +35,13 @@
   --color-accent-soft: rgba(82, 156, 202, 0.14);
   --color-accent-softer: rgba(82, 156, 202, 0.08);
 
+  /* Selection highlight — warm amber to sit with the warm dark neutrals
+     (the blue accent reads cold against this palette). Light themes mirror
+     the brand amber accent instead. */
+  --color-highlight: #f3c969;
+  --color-highlight-soft: rgba(243, 201, 105, 0.16);
+  --color-highlight-softer: rgba(243, 201, 105, 0.09);
+
   /* Status */
   --color-success: #6bc2a4;
   --color-success-soft: rgba(107, 194, 164, 0.12);
@@ -113,6 +120,11 @@
     --color-accent-soft: rgba(192, 114, 4, 0.12);
     --color-accent-softer: rgba(192, 114, 4, 0.06);
 
+    /* Selection highlight mirrors the brand amber accent in light themes. */
+    --color-highlight: #c07204;
+    --color-highlight-soft: rgba(192, 114, 4, 0.12);
+    --color-highlight-softer: rgba(192, 114, 4, 0.06);
+
     /* Status */
     --color-success: #0f6e56;
     --color-success-soft: #e8f5ee;
@@ -162,6 +174,11 @@
   --color-accent-strong: #965303;
   --color-accent-soft: rgba(192, 114, 4, 0.12);
   --color-accent-softer: rgba(192, 114, 4, 0.06);
+
+  /* Selection highlight mirrors the brand amber accent in light themes. */
+  --color-highlight: #c07204;
+  --color-highlight-soft: rgba(192, 114, 4, 0.12);
+  --color-highlight-softer: rgba(192, 114, 4, 0.06);
 
   /* Status */
   --color-success: #0f6e56;
