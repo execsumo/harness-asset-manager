@@ -69,8 +69,43 @@ class AdoptionApplier:
     explicitly permitted, invalidates read models once at the end, and writes audit logs.
     """
 
-    def __init__(self, container: "BackendContainer") -> None:
-        self.container = container
+    def __init__(
+        self,
+        container: "BackendContainer" | None = None,
+        *,
+        skills_store: Any = None,
+        skills_read_models: Any = None,
+        skills_mutations: Any = None,
+        agents_store: Any = None,
+        agents_mutations: Any = None,
+        slash_command_store: Any = None,
+        slash_command_sync_state: Any = None,
+        slash_command_mutations: Any = None,
+        harness_kernel: Any = None,
+        mutation_audit: Any = None,
+    ) -> None:
+        if container is not None:
+            self.skills_store = container.skills_store
+            self.skills_read_models = container.skills_read_models
+            self.skills_mutations = container.skills_mutations
+            self.agents_store = container.agents_store
+            self.agents_mutations = container.agents_mutations
+            self.slash_command_store = container.slash_command_store
+            self.slash_command_sync_state = container.slash_command_sync_state
+            self.slash_command_mutations = container.slash_command_mutations
+            self.harness_kernel = container.harness_kernel
+            self.mutation_audit = container.mutation_audit
+        else:
+            self.skills_store = skills_store
+            self.skills_read_models = skills_read_models
+            self.skills_mutations = skills_mutations
+            self.agents_store = agents_store
+            self.agents_mutations = agents_mutations
+            self.slash_command_store = slash_command_store
+            self.slash_command_sync_state = slash_command_sync_state
+            self.slash_command_mutations = slash_command_mutations
+            self.harness_kernel = harness_kernel
+            self.mutation_audit = mutation_audit
 
     def apply(
         self,
@@ -86,7 +121,7 @@ class AdoptionApplier:
 
         # Invalidate read models once at the end
         try:
-            self.container.skills_read_models.invalidate()
+            self.skills_read_models.invalidate()
         except Exception:
             pass
 
@@ -116,7 +151,7 @@ class AdoptionApplier:
             if action.action != "conflict" and not allow_conflicts:
                 msg = f"Target {target} is occupied; refusing to overwrite"
                 record_adopt(
-                    self.container.mutation_audit,
+                    self.mutation_audit,
                     family=action.family,
                     ref=action.ref,
                     harness=action.harness,
@@ -136,11 +171,11 @@ class AdoptionApplier:
         # Execute the family-specific primitive
         try:
             if action.family == "agents":
-                self.container.agents_mutations.enable(action.ref, action.harness)
+                self.agents_mutations.enable(action.ref, action.harness)
             elif action.family == "skills":
                 package_dir = action.ref.removeprefix("shared:")
-                package_path = self.container.skills_store.root / package_dir
-                self.container.skills_mutations.enable_managed_package(
+                package_path = self.skills_store.root / package_dir
+                self.skills_mutations.enable_managed_package(
                     package_path, action.harness
                 )
             elif action.family == "slash_commands":
@@ -149,7 +184,7 @@ class AdoptionApplier:
                 raise ValueError(f"Unknown family: {action.family}")
 
             record_adopt(
-                self.container.mutation_audit,
+                self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -165,7 +200,7 @@ class AdoptionApplier:
             )
         except Exception as error:  # noqa: BLE001
             record_adopt(
-                self.container.mutation_audit,
+                self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -185,7 +220,7 @@ class AdoptionApplier:
     def _check_already_linked(self, action: AdoptionAction, target: Path) -> bool:
         if action.family == "skills":
             package_dir = action.ref.removeprefix("shared:")
-            store_pkg = self.container.skills_store.root / package_dir
+            store_pkg = self.skills_store.root / package_dir
             if target.is_symlink():
                 try:
                     return target.resolve() == store_pkg.resolve()
@@ -194,10 +229,10 @@ class AdoptionApplier:
             return False
 
         if action.family == "agents":
-            agent = self.container.agents_store.get(action.ref)
+            agent = self.agents_store.get(action.ref)
             if agent is None:
                 return False
-            adapter = self.container.agents_mutations.adapters.get(action.harness)
+            adapter = self.agents_mutations.adapters.get(action.harness)
             if adapter is not None and adapter.renders:
                 rendered_content = render_codex_agent(agent)
                 target_hash = _safe_hash(target)
@@ -214,10 +249,10 @@ class AdoptionApplier:
             return False
 
         if action.family == "slash_commands":
-            command = self.container.slash_command_store.get_command(action.ref)
+            command = self.slash_command_store.get_command(action.ref)
             if command is None or not target.is_file():
                 return False
-            binding = self.container.harness_kernel.binding_for(action.harness, "slash_commands")
+            binding = self.harness_kernel.binding_for(action.harness, "slash_commands")
             render_format = (
                 binding.render_format
                 if isinstance(binding, CommandFileBindingProfile)
@@ -230,25 +265,25 @@ class AdoptionApplier:
 
     def _apply_slash_command(self, name: str, harness: str) -> None:
         # Find all targets currently live on disk for this command
-        all_targets = self.container.slash_command_mutations.resolve_targets()
+        all_targets = self.slash_command_mutations.resolve_targets()
         active_targets = {
             t.id
             for t in all_targets
-            if self.container.slash_command_mutations.path_policy.output_path(t, name).is_file()
+            if self.slash_command_mutations.path_policy.output_path(t, name).is_file()
         }
         targets_to_sync = list(active_targets | {harness})
 
         # Preserve any unselected intent from sync_state
         previous_records = dict(
-            self.container.slash_command_sync_state.load().get(name, {})
+            self.slash_command_sync_state.load().get(name, {})
         )
 
-        self.container.slash_command_mutations.sync_command(name, targets=targets_to_sync)
+        self.slash_command_mutations.sync_command(name, targets=targets_to_sync)
 
         # Restore unselected previous records so they aren't lost from intent
         for target_id, rec in previous_records.items():
             if target_id not in targets_to_sync:
-                self.container.slash_command_sync_state.add_target(name, rec)
+                self.slash_command_sync_state.add_target(name, rec)
 
 
 __all__ = ["AdoptionApplier", "record_adopt"]

@@ -11,6 +11,11 @@ from harness_asset_manager.harness.resolution import resolve_context
 from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
+from .adopt import (
+    AdoptionApplier,
+    AdoptionDismissalStore,
+    AdoptionPlanner,
+)
 from .agents import (
     AgentAuditLog,
     AgentBindingLedger,
@@ -130,6 +135,9 @@ class BackendContainer:
     configs_queries: ConfigsQueryService
     configs_mutations: ConfigsMutationService
     mutation_audit: MutationAuditJournal
+    adoption_planner: AdoptionPlanner
+    adoption_applier: AdoptionApplier
+    adoption_dismissal: AdoptionDismissalStore
     app_home: Path
 
 
@@ -636,6 +644,31 @@ def build_backend_container(
         path_tracker=scaffold_tracker,
     )
 
+    adoption_planner = AdoptionPlanner(
+        skills_store=skills_store,
+        skills_read_models=skills_read_models,
+        agents_store=audited_agents_store,
+        agents_ledger=agent_bindings,
+        agents_mutations=audited_agents_mutations,
+        slash_command_store=slash_command_store,
+        slash_command_sync_state=slash_command_sync_state,
+        slash_command_mutations=audited_slash_mutations,
+        harness_kernel=harness_kernel,
+    )
+    adoption_applier = AdoptionApplier(
+        skills_store=skills_store,
+        skills_read_models=skills_read_models,
+        skills_mutations=audited_skills_mutations,
+        agents_store=audited_agents_store,
+        agents_mutations=audited_agents_mutations,
+        slash_command_store=slash_command_store,
+        slash_command_sync_state=slash_command_sync_state,
+        slash_command_mutations=audited_slash_mutations,
+        harness_kernel=harness_kernel,
+        mutation_audit=mutation_audit,
+    )
+    adoption_dismissal = AdoptionDismissalStore(paths.state_dir)
+
     return BackendContainer(
         paths=paths,
         harness_kernel=harness_kernel,
@@ -682,5 +715,8 @@ def build_backend_container(
         configs_queries=configs_queries,
         configs_mutations=audited_configs_mutations,
         mutation_audit=mutation_audit,
+        adoption_planner=adoption_planner,
+        adoption_applier=adoption_applier,
+        adoption_dismissal=adoption_dismissal,
         app_home=app_home,
     )
