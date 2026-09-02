@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 
 from . import (
+    adopt,
     agents,
     configs,
     hooks,
@@ -27,6 +28,7 @@ from . import (
 # be parsed as ``serve skills list``.
 GROUP_NAMES = frozenset(
     {
+        "adopt",
         "agents",
         "commands",
         "configs",
@@ -48,4 +50,4 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
 
 
 __all__ = ["GROUP_NAMES", "register"]
-_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)
+_MODULES = (adopt, skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)
