@@ -32,15 +32,18 @@ import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
 import {
   AgentSkillsFieldEditor,
+  deriveSkillTagOptions,
   type AdoptedSkillOption,
+  type SkillTagOption,
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
 
-interface AgentDetailContentProps {
+export interface AgentDetailContentProps {
   detail: AgentDetailDto;
   knownTags?: string[];
   knownSkills?: AdoptedSkillOption[];
+  tagOptions?: SkillTagOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   actionErrorMessage: string | null;
@@ -52,6 +55,7 @@ export function AgentDetailContent({
   detail,
   knownTags,
   knownSkills,
+  tagOptions: tagOptionsProp,
   pendingPerHarnessKeys,
   onToggleHarness,
   actionErrorMessage,
@@ -78,8 +82,22 @@ export function AgentDetailContent({
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
   }, [knownSkills, skillsListQuery.data?.rows]);
+
+  const effectiveTagOptions = useMemo<SkillTagOption[]>(() => {
+    if (tagOptionsProp !== undefined) {
+      return tagOptionsProp;
+    }
+    if (skillsListQuery.data?.rows && skillsListQuery.data.rows.length > 0) {
+      return deriveSkillTagOptions(skillsListQuery.data.rows);
+    }
+    if (adoptedSkills.length > 0) {
+      return deriveSkillTagOptions(adoptedSkills);
+    }
+    return [];
+  }, [tagOptionsProp, skillsListQuery.data?.rows, adoptedSkills]);
 
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;
@@ -269,6 +287,7 @@ export function AgentDetailContent({
       },
       {
         key: "skills",
+        wrapInLabel: false,
         label: "Skills",
         value: skills.join(", "),
         onChange: (val) => setSkills(parseSkillSlugs(val)),
@@ -280,6 +299,7 @@ export function AgentDetailContent({
           <AgentSkillsFieldEditor
             skills={skills}
             knownSkills={adoptedSkills}
+            tagOptions={effectiveTagOptions}
             onChange={setSkills}
             disabled={disabled}
           />

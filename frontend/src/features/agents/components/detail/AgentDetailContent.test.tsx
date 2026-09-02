@@ -153,6 +153,57 @@ describe("AgentDetailContent", () => {
     });
   });
 
+  it("renders tag collection quick-picks in edit mode and attaches matching skill slugs on pick", async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/api/skills")) {
+        return Promise.resolve(
+          okJson({
+            columns: [],
+            entries: [],
+            rows: [
+              { skillRef: "shared:code-review", name: "Code Review", displayStatus: "Managed", tags: ["dev-suite"] },
+              { skillRef: "shared:test-debugging", name: "Test Debugging", displayStatus: "Managed", tags: ["dev-suite"] },
+            ],
+          }),
+        );
+      }
+      return Promise.resolve(okJson({}));
+    });
+
+    renderWithAppProviders(
+      <AgentDetailContent
+        detail={agentDetailFixture({ skills: [] })}
+        knownSkills={[
+          { slug: "code-review", name: "Code Review", tags: ["dev-suite"] },
+          { slug: "test-debugging", name: "Test Debugging", tags: ["dev-suite"] },
+        ]}
+        pendingPerHarnessKeys={new Set()}
+        onToggleHarness={vi.fn()}
+        actionErrorMessage={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+      />,
+    );
+
+    // Switch to edit mode
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    // The tag collection quick-pick button for "dev-suite" should be visible
+    const tagBtn = await screen.findByRole("button", { name: "dev-suite" });
+    expect(tagBtn).toBeInTheDocument();
+
+    // Click tag collection
+    fireEvent.click(tagBtn);
+
+    // Both skills should now be attached
+    expect(screen.getByText("Code Review")).toBeInTheDocument();
+    expect(screen.getByText("Test Debugging")).toBeInTheDocument();
+
+    // The tag collection is now fully attached, so it should disappear
+    expect(screen.queryByRole("button", { name: "dev-suite" })).not.toBeInTheDocument();
+  });
+
   it("previews the document body without its YAML frontmatter", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 

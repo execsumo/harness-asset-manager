@@ -4,11 +4,62 @@ import { X } from "lucide-react";
 export interface AdoptedSkillOption {
   slug: string;
   name: string;
+  tags?: string[];
+}
+
+export interface SkillTagOption {
+  tag: string;
+  skills: string[];
+}
+
+export interface SkillTagSourceItem {
+  skillRef?: string;
+  slug?: string;
+  displayStatus?: string;
+  tags?: string[];
+}
+
+export function deriveSkillTagOptions(items?: SkillTagSourceItem[] | null): SkillTagOption[] {
+  if (!items || items.length === 0) return [];
+  const tagMap = new Map<string, { tag: string; skills: string[] }>();
+
+  for (const item of items) {
+    let slug = "";
+    if (item.skillRef) {
+      if (!item.skillRef.startsWith("shared:") && item.displayStatus !== "Managed") {
+        continue;
+      }
+      slug = item.skillRef.replace(/^shared:/, "");
+    } else if (item.slug) {
+      slug = item.slug;
+    }
+
+    if (!slug) continue;
+    const tags = item.tags || [];
+    for (const rawTag of tags) {
+      const tag = typeof rawTag === "string" ? rawTag.trim() : "";
+      if (!tag) continue;
+      const key = tag.toLowerCase();
+      let entry = tagMap.get(key);
+      if (!entry) {
+        entry = { tag, skills: [] };
+        tagMap.set(key, entry);
+      }
+      if (!entry.skills.includes(slug)) {
+        entry.skills.push(slug);
+      }
+    }
+  }
+
+  return Array.from(tagMap.values()).sort((a, b) =>
+    a.tag.localeCompare(b.tag, undefined, { sensitivity: "base" })
+  );
 }
 
 export interface AgentSkillsFieldEditorProps {
   skills: string[];
   knownSkills?: AdoptedSkillOption[];
+  tagOptions?: SkillTagOption[];
   onChange: (skills: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
@@ -17,6 +68,7 @@ export interface AgentSkillsFieldEditorProps {
 export function AgentSkillsFieldEditor({
   skills,
   knownSkills = [],
+  tagOptions,
   onChange,
   disabled = false,
   placeholder = "Add skill...",
@@ -47,6 +99,37 @@ export function AgentSkillsFieldEditor({
 
   const normalizedExisting = new Set(skills.map((s) => s.toLowerCase()));
   const trimmed = inputVal.trim().toLowerCase();
+
+  const effectiveTagOptions = tagOptions !== undefined
+    ? tagOptions
+    : deriveSkillTagOptions(knownSkills);
+
+  const visibleTagOptions = effectiveTagOptions.filter((opt) => {
+    if (!opt.skills || opt.skills.length === 0) return false;
+    const allAttached = opt.skills.every((slug) =>
+      normalizedExisting.has(slug.toLowerCase())
+    );
+    return !allAttached;
+  });
+
+  const handlePickTag = (opt: SkillTagOption) => {
+    if (disabled) return;
+    const existing = new Set(skills.map((s) => s.toLowerCase()));
+    const missingSlugs: string[] = [];
+
+    for (const slug of opt.skills) {
+      const lower = slug.toLowerCase();
+      if (!existing.has(lower)) {
+        missingSlugs.push(slug);
+        existing.add(lower);
+      }
+    }
+
+    if (missingSlugs.length === 0) return;
+
+    setError(null);
+    onChange([...skills, ...missingSlugs]);
+  };
 
   // Every match, never a first page: a capped list looks complete and is not, and
   // any cap tells the same lie further down. The dropdown scrolls instead.
@@ -116,6 +199,26 @@ export function AgentSkillsFieldEditor({
 
   return (
     <div className="agent-skills-editor" ref={containerRef}>
+      {visibleTagOptions.length > 0 ? (
+        <div
+          className="agent-skills-editor__tag-options"
+          role="group"
+          aria-label="Skill collections"
+        >
+          {visibleTagOptions.map((opt) => (
+            <button
+              key={opt.tag}
+              type="button"
+              className="agent-skills-editor__tag-pill"
+              onClick={() => handlePickTag(opt)}
+              disabled={disabled}
+            >
+              {opt.tag}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div
         className="agent-skills-editor__chips"
         onClick={() => inputRef.current?.focus()}

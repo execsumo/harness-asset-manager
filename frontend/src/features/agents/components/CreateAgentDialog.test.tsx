@@ -63,7 +63,7 @@ vi.mock("../../skills/public", () => ({
   useSkillsListQuery: () => ({
     data: {
       rows: [
-        { skillRef: "shared:review", name: "Review", displayStatus: "Managed" },
+        { skillRef: "shared:review", name: "Review", displayStatus: "Managed", tags: ["quality"] },
       ],
     },
   }),
@@ -265,5 +265,16 @@ describe("CreateAgentDialog", () => {
 
     // Dialog closes because agent was successfully created
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("allows selecting a skill tag collection to attach all matching skills", () => {
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+
+    const tagBtn = screen.getByRole("button", { name: "quality" });
+    expect(tagBtn).toBeInTheDocument();
+    fireEvent.click(tagBtn);
+
+    expect(screen.getByText("Review")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "quality" })).not.toBeInTheDocument();
   });
 });
