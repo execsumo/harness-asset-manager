@@ -1,0 +1,197 @@
+@layer components {
+
+/* -------------------------------------------------------------------------- */
+/* Adoption Banner & Review Sheet                                             */
+/* -------------------------------------------------------------------------- */
+
+.adoption-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 12px 18px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-soft-border);
+  color: var(--color-text);
+}
+
+.adoption-banner__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.adoption-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.adoption-banner__text {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.adoption-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.adoption-dialog {
+  max-width: 720px;
+  width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.adoption-dialog__body {
+  overflow-y: auto;
+  max-height: 55vh;
+  padding: var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.adoption-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.adoption-group__title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+
+.adoption-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: background 120ms ease;
+}
+
+.adoption-item-row:hover {
+  background: var(--color-surface-raised);
+}
+
+.adoption-item-row__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.adoption-item-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.adoption-item-row__name {
+  font-weight: 500;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adoption-item-row__target {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adoption-item-row__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.adoption-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.adoption-badge--link {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.adoption-badge--conflict {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.adoption-dialog__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.85rem;
+}
+
+.adoption-dialog__controls-links {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.adoption-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.adoption-link-btn:hover {
+  opacity: 0.8;
+}
+
+.adoption-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.adoption-status-chip--applied {
+  color: var(--color-success, #10b981);
+}
+
+.adoption-status-chip--failed {
+  color: var(--color-danger);
+}
+
+}
