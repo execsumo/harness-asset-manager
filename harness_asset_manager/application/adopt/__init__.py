@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .applier import AdoptionApplier, record_adopt
 from .models import (
     Action,
     AdoptionAction,
@@ -12,6 +13,8 @@ __all__ = [
     "Action",
     "AdoptionAction",
     "AdoptionApplyResult",
+    "AdoptionApplier",
     "AdoptionPlan",
     "AdoptionPlanner",
+    "record_adopt",
 ]
