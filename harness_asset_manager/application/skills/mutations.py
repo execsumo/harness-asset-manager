@@ -41,6 +41,21 @@ class SkillsMutationService:
         self.source_fetcher = source_fetcher
         self.asset_tags = asset_tags
 
+    def _record_binding(self, package_dir: str | None, harness: str, *, bound: bool) -> None:
+        """Persist binding intent alongside the binding we just made on disk.
+
+        Swallows failures on purpose. The adapter call has already succeeded by the
+        time we get here, so the user's skill *is* enabled; a manifest that could not
+        be written costs them a re-enable on their next device, which is strictly
+        better than reporting a completed enable as a 500.
+        """
+        if not package_dir:
+            return
+        try:
+            self.read_models.store.record_binding(package_dir, harness, bound=bound)
+        except OSError:
+            return
+
     def set_skill_tags(self, skill_ref: str, tags: Iterable[str]) -> dict[str, object]:
         entry = self.queries.require_entry(skill_ref)
         if self.asset_tags is None:
@@ -57,6 +72,7 @@ class SkillsMutationService:
             raise MutationError("managed skill is missing its shared package path", status=500)
         adapter = self.read_models.require_enabled_adapter(harness)
         adapter.enable_shared_package(entry.package_path)
+        self._record_binding(entry.package_dir, harness, bound=True)
         self.read_models.invalidate()
         return {"ok": True}
 
@@ -68,6 +84,7 @@ class SkillsMutationService:
             raise MutationError("managed skill is missing its package directory name", status=500)
         adapter = self.read_models.require_enabled_adapter(harness)
         adapter.disable_shared_package(entry.package_dir)
+        self._record_binding(entry.package_dir, harness, bound=False)
         self.read_models.invalidate()
         return {"ok": True}
 
@@ -106,6 +123,7 @@ class SkillsMutationService:
             except Exception as error:  # noqa: BLE001 — aggregate partial failures
                 failures.append({"harness": adapter.harness, "error": str(error)})
                 continue
+            self._record_binding(entry.package_dir, adapter.harness, bound=target == "enabled")
             succeeded.append(adapter.harness)
             flipped_any = True
 
@@ -175,6 +193,10 @@ class SkillsMutationService:
         """
         adapter = self.read_models.require_enabled_adapter(harness)
         adapter.enable_shared_package(package_path)
+        # Safe despite the caller's reconciliation lock: that is a different lock from
+        # the manifest's, and store.ingest() already takes the manifest lock on this
+        # same path during adoption.
+        self._record_binding(package_path.name, harness, bound=True)
         self.read_models.invalidate()
 
     def manage_all_skills(self) -> dict[str, object]:
@@ -365,6 +387,10 @@ class SkillsMutationService:
             adapter = self.read_models.require_enabled_adapter(sighting.harness)
             adapter.enable_shared_package(ingested)
             canonical_bound_harnesses.add(sighting.harness)
+        # Adoption binds every harness the skill was already sitting in; record that
+        # as intent so a synced store can rebuild it, not just the store contents.
+        for bound_harness in sorted(canonical_bound_harnesses):
+            self._record_binding(ingested.name, bound_harness, bound=True)
         if self.asset_tags is not None:
             existing_tags = self.asset_tags.get_tags("skills", entry.skill_ref)
             if existing_tags:
