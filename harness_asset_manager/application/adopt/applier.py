@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any
 
 from harness_asset_manager.application.agents.adapters import (
     _has_marker,

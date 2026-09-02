@@ -11,18 +11,29 @@ from harness_asset_manager.application.agents.adapters import (
 from harness_asset_manager.application.agents.ledger import AgentBindingLedger
 from harness_asset_manager.application.agents.mutations import AgentMutationService
 from harness_asset_manager.application.agents.store import AgentStore
+from harness_asset_manager.application.agents.targets import (
+    _is_installed as _is_agent_installed,
+)
 from harness_asset_manager.application.drift import classify_drift
 from harness_asset_manager.application.skills.manifest import load_skill_store_manifest
 from harness_asset_manager.application.skills.read_models import SkillsReadModelService
 from harness_asset_manager.application.skills.store import SkillStore
 from harness_asset_manager.application.slash_commands.codecs import render_slash_command
-from harness_asset_manager.application.slash_commands.mutations import SlashCommandMutationService
+from harness_asset_manager.application.slash_commands.mutations import (
+    SlashCommandMutationService,
+)
 from harness_asset_manager.application.slash_commands.store import SlashCommandStore
-from harness_asset_manager.application.slash_commands.sync_state import SlashCommandSyncStateStore
-from harness_asset_manager.application.agents.targets import _is_installed as _is_agent_installed
-from harness_asset_manager.application.slash_commands.targets import _is_detected as _is_slash_detected
+from harness_asset_manager.application.slash_commands.sync_state import (
+    SlashCommandSyncStateStore,
+)
+from harness_asset_manager.application.slash_commands.targets import (
+    _is_detected as _is_slash_detected,
+)
 from harness_asset_manager.harness import HarnessKernelService
-from harness_asset_manager.harness.contracts import AgentFileBindingProfile, CommandFileBindingProfile
+from harness_asset_manager.harness.contracts import (
+    AgentFileBindingProfile,
+    CommandFileBindingProfile,
+)
 from harness_asset_manager.hashing import hash_file, hash_text
 
 from .models import AdoptionAction, AdoptionPlan
