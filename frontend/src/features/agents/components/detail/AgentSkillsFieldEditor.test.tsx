@@ -161,6 +161,22 @@ describe("AgentSkillsFieldEditor", () => {
       expect(onChange).toHaveBeenCalledWith(["test-debugging", "code-review"]);
     });
 
+    it("deduplicates pre-existing case-variant slugs while preserving their first occurrence", () => {
+      const onChange = vi.fn();
+      render(
+        <AgentSkillsFieldEditor
+          skills={["custom", "CODE-REVIEW", "code-review"]}
+          knownSkills={knownSkills}
+          tagOptions={tagOptions}
+          onChange={onChange}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "quality" }));
+
+      expect(onChange).toHaveBeenCalledWith(["custom", "CODE-REVIEW", "test-debugging"]);
+    });
+
     it("does not render empty collections", () => {
       render(
         <AgentSkillsFieldEditor

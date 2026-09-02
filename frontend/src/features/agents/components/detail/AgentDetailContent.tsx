@@ -354,6 +354,7 @@ export function AgentDetailContent({
       toolsStr,
       skills,
       adoptedSkills,
+      effectiveTagOptions,
       allowedSubagentsStr,
       maxTurnsStr,
       isolationStr,

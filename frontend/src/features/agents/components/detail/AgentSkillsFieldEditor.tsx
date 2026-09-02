@@ -45,7 +45,7 @@ export function deriveSkillTagOptions(items?: SkillTagSourceItem[] | null): Skil
         entry = { tag, skills: [] };
         tagMap.set(key, entry);
       }
-      if (!entry.skills.includes(slug)) {
+      if (!entry.skills.some((skill) => skill.toLowerCase() === slug.toLowerCase())) {
         entry.skills.push(slug);
       }
     }
@@ -114,21 +114,25 @@ export function AgentSkillsFieldEditor({
 
   const handlePickTag = (opt: SkillTagOption) => {
     if (disabled) return;
-    const existing = new Set(skills.map((s) => s.toLowerCase()));
-    const missingSlugs: string[] = [];
 
-    for (const slug of opt.skills) {
+    const nextSkills: string[] = [];
+    const seen = new Set<string>();
+    for (const slug of [...skills, ...opt.skills]) {
       const lower = slug.toLowerCase();
-      if (!existing.has(lower)) {
-        missingSlugs.push(slug);
-        existing.add(lower);
-      }
+      if (seen.has(lower)) continue;
+      seen.add(lower);
+      nextSkills.push(slug);
     }
 
-    if (missingSlugs.length === 0) return;
+    if (
+      nextSkills.length === skills.length &&
+      nextSkills.every((slug, index) => slug === skills[index])
+    ) {
+      return;
+    }
 
     setError(null);
-    onChange([...skills, ...missingSlugs]);
+    onChange(nextSkills);
   };
 
   // Every match, never a first page: a capped list looks complete and is not, and
