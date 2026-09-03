@@ -8,7 +8,7 @@ Action = Literal["link", "skip", "conflict"]
 
 
 @dataclass(frozen=True)
-class AdoptionAction:
+class BootstrapAction:
     family: str  # "skills" | "agents" | "slash_commands"
     ref: str  # skill_ref / agent slug / command name
     display_name: str
@@ -34,19 +34,19 @@ class AdoptionAction:
 
 
 @dataclass(frozen=True)
-class AdoptionPlan:
-    actions: tuple[AdoptionAction, ...]
+class BootstrapPlan:
+    actions: tuple[BootstrapAction, ...]
 
     @property
-    def linkable(self) -> tuple[AdoptionAction, ...]:
+    def linkable(self) -> tuple[BootstrapAction, ...]:
         return tuple(action for action in self.actions if action.action == "link")
 
     @property
-    def conflicts(self) -> tuple[AdoptionAction, ...]:
+    def conflicts(self) -> tuple[BootstrapAction, ...]:
         return tuple(action for action in self.actions if action.action == "conflict")
 
     @property
-    def skipped(self) -> tuple[AdoptionAction, ...]:
+    def skipped(self) -> tuple[BootstrapAction, ...]:
         return tuple(action for action in self.actions if action.action == "skip")
 
     def to_dict(self) -> dict[str, object]:
@@ -60,7 +60,7 @@ class AdoptionPlan:
 
 
 @dataclass(frozen=True)
-class AdoptionApplyResult:
+class BootstrapApplyResult:
     family: str
     ref: str
     harness: str
@@ -81,7 +81,7 @@ class AdoptionApplyResult:
 
 __all__ = [
     "Action",
-    "AdoptionAction",
-    "AdoptionApplyResult",
-    "AdoptionPlan",
+    "BootstrapAction",
+    "BootstrapApplyResult",
+    "BootstrapPlan",
 ]

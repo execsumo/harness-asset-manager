@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harness_asset_manager.application.adopt import (
-    AdoptionAction,
-    AdoptionApplier,
-    AdoptionPlanner,
+from harness_asset_manager.application.bootstrap import (
+    BootstrapAction,
+    BootstrapApplier,
+    BootstrapPlanner,
 )
 from harness_asset_manager.application.container import build_backend_container
 from harness_asset_manager.application.hooks.store import HookSpec
@@ -22,7 +22,7 @@ from tests.support.fake_home import (
 )
 
 
-class AdoptApplierTests(unittest.TestCase):
+class BootstrapApplierTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = TemporaryDirectory()
         self.tmp_path = Path(self.tmp.name)
@@ -113,12 +113,12 @@ class AdoptApplierTests(unittest.TestCase):
         self.container.permissions_store.upsert_managed(perm_spec)
 
         # Plan
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
         plan = planner.plan()
         self.assertEqual(len(plan.linkable), 6)
 
         # Apply
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
         results = applier.apply(plan.linkable)
         self.assertEqual(len(results), 6)
         self.assertTrue(all(r.status == "applied" for r in results))
@@ -142,9 +142,9 @@ class AdoptApplierTests(unittest.TestCase):
 
         # Audit events recorded
         events = self.container.mutation_audit.read_recent(limit=20)
-        adopt_events = [e for e in events if e.get("operation") == "adopt"]
-        self.assertEqual(len(adopt_events), 6)
-        self.assertTrue(all(e.get("outcome") == "succeeded" for e in adopt_events))
+        bootstrap_events = [e for e in events if e.get("operation") == "bootstrap"]
+        self.assertEqual(len(bootstrap_events), 6)
+        self.assertTrue(all(e.get("outcome") == "succeeded" for e in bootstrap_events))
 
         # Idempotence: re-planning yields zero linkable actions; all are skipped
         re_plan = planner.plan()
@@ -159,7 +159,7 @@ class AdoptApplierTests(unittest.TestCase):
         claude_link.unlink()
 
         # Create action with action="link"
-        action = AdoptionAction(
+        action = BootstrapAction(
             family="agents",
             ref="reviewer",
             display_name="Reviewer",
@@ -171,7 +171,7 @@ class AdoptApplierTests(unittest.TestCase):
         # Now before apply runs, target becomes occupied by a foreign file
         claude_link.write_text("pre-existing foreign file", encoding="utf-8")
 
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
         results = applier.apply([action], allow_conflicts=False)
 
         self.assertEqual(len(results), 1)
@@ -188,7 +188,7 @@ class AdoptApplierTests(unittest.TestCase):
         good_link = self.spec.home / ".claude" / "agents" / "goodagent.md"
         good_link.unlink()
 
-        action_bad = AdoptionAction(
+        action_bad = BootstrapAction(
             family="agents",
             ref="non-existent",
             display_name="Bad",
@@ -196,7 +196,7 @@ class AdoptApplierTests(unittest.TestCase):
             action="link",
             target=self.spec.home / ".claude" / "agents" / "non-existent.md",
         )
-        action_good = AdoptionAction(
+        action_good = BootstrapAction(
             family="agents",
             ref="goodagent",
             display_name="GoodAgent",
@@ -205,7 +205,7 @@ class AdoptApplierTests(unittest.TestCase):
             target=good_link,
         )
 
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
         results = applier.apply([action_bad, action_good])
 
         self.assertEqual(len(results), 2)
@@ -223,7 +223,7 @@ class AdoptApplierTests(unittest.TestCase):
         codex_file.unlink()
 
         # Suppose user only applies codex
-        action_codex = AdoptionAction(
+        action_codex = BootstrapAction(
             family="slash_commands",
             ref="lint",
             display_name="lint",
@@ -232,7 +232,7 @@ class AdoptApplierTests(unittest.TestCase):
             target=codex_file,
         )
 
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
         results = applier.apply([action_codex])
         self.assertEqual(results[0].status, "applied")
         self.assertTrue(codex_file.is_file())
@@ -265,7 +265,7 @@ class AdoptApplierTests(unittest.TestCase):
         cursor_adapter.enable_server(foreign_spec)
         orig_content = cursor_adapter.config_path.read_text(encoding="utf-8")
 
-        action = AdoptionAction(
+        action = BootstrapAction(
             family="mcp",
             ref="exa",
             display_name="Exa",
@@ -274,7 +274,7 @@ class AdoptApplierTests(unittest.TestCase):
             target=cursor_adapter.config_path,
         )
 
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
 
         # 1. Applying without allow_conflicts -> fails, config untouched
         results = applier.apply([action], allow_conflicts=False)
@@ -301,7 +301,7 @@ class AdoptApplierTests(unittest.TestCase):
         )
         claude_adapter.enable_server(existing_spec)
 
-        # Now adopt a new server
+        # Now bootstrap a new server
         spec = McpServerSpec(
             name="new-server",
             display_name="NewServer",
@@ -312,7 +312,7 @@ class AdoptApplierTests(unittest.TestCase):
         )
         self.container.mcp_store.upsert_managed(spec)
 
-        action = AdoptionAction(
+        action = BootstrapAction(
             family="mcp",
             ref="new-server",
             display_name="NewServer",
@@ -321,7 +321,7 @@ class AdoptApplierTests(unittest.TestCase):
             target=claude_adapter.config_path,
         )
 
-        applier = AdoptionApplier(self.container)
+        applier = BootstrapApplier(self.container)
         results = applier.apply([action])
         self.assertEqual(results[0].status, "applied")
 

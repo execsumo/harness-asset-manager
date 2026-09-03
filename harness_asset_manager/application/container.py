@@ -11,10 +11,10 @@ from harness_asset_manager.harness.resolution import resolve_context
 from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
-from .adopt import (
-    AdoptionApplier,
-    AdoptionDismissalStore,
-    AdoptionPlanner,
+from .bootstrap import (
+    BootstrapApplier,
+    BootstrapDismissalStore,
+    BootstrapPlanner,
 )
 from .agents import (
     AgentAuditLog,
@@ -135,9 +135,9 @@ class BackendContainer:
     configs_queries: ConfigsQueryService
     configs_mutations: ConfigsMutationService
     mutation_audit: MutationAuditJournal
-    adoption_planner: AdoptionPlanner
-    adoption_applier: AdoptionApplier
-    adoption_dismissal: AdoptionDismissalStore
+    bootstrap_planner: BootstrapPlanner
+    bootstrap_applier: BootstrapApplier
+    bootstrap_dismissal: BootstrapDismissalStore
     app_home: Path
 
 
@@ -644,7 +644,7 @@ def build_backend_container(
         path_tracker=scaffold_tracker,
     )
 
-    adoption_planner = AdoptionPlanner(
+    bootstrap_planner = BootstrapPlanner(
         skills_store=skills_store,
         skills_read_models=skills_read_models,
         agents_store=audited_agents_store,
@@ -661,7 +661,7 @@ def build_backend_container(
         permissions_store=permissions_store,
         permissions_read_models=permissions_read_models,
     )
-    adoption_applier = AdoptionApplier(
+    bootstrap_applier = BootstrapApplier(
         skills_store=skills_store,
         skills_read_models=skills_read_models,
         skills_mutations=audited_skills_mutations,
@@ -682,7 +682,7 @@ def build_backend_container(
         permissions_read_models=permissions_read_models,
         permissions_mutations=audited_permissions_mutations,
     )
-    adoption_dismissal = AdoptionDismissalStore(paths.state_dir)
+    bootstrap_dismissal = BootstrapDismissalStore(paths.state_dir)
 
     return BackendContainer(
         paths=paths,
@@ -730,8 +730,8 @@ def build_backend_container(
         configs_queries=configs_queries,
         configs_mutations=audited_configs_mutations,
         mutation_audit=mutation_audit,
-        adoption_planner=adoption_planner,
-        adoption_applier=adoption_applier,
-        adoption_dismissal=adoption_dismissal,
+        bootstrap_planner=bootstrap_planner,
+        bootstrap_applier=bootstrap_applier,
+        bootstrap_dismissal=bootstrap_dismissal,
         app_home=app_home,
     )

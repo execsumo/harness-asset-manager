@@ -176,8 +176,8 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     f"Agent binding for {binding.harness} should be disabled on fresh machine, got {binding.state}",
                 )
 
-            # Assert 3: Adopt plan on Machine B identifies all 7 bindings from Machine A
-            plan_b = container_b.adoption_planner.plan()
+            # Assert 3: Bootstrap plan on Machine B identifies all 7 bindings from Machine A
+            plan_b = container_b.bootstrap_planner.plan()
             self.assertEqual(
                 len(plan_b.linkable),
                 7,
@@ -196,8 +196,8 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 },
             )
 
-            # Assert 4: Apply adoption on Machine B creates all valid bindings rooted under Bob's home
-            results_b = container_b.adoption_applier.apply(plan_b.linkable)
+            # Assert 4: Apply bootstrap on Machine B creates all valid bindings rooted under Bob's home
+            results_b = container_b.bootstrap_applier.apply(plan_b.linkable)
             self.assertEqual(len(results_b), 7)
             self.assertTrue(all(r.status == "applied" for r in results_b))
 
@@ -227,13 +227,13 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             self.assertTrue(container_b.permissions_read_models.require_enabled_adapter("claude").has_binding("deny-secrets"))
 
             # Assert 5: Idempotence — re-running planner on Machine B yields 0 linkable actions
-            plan_b_second = container_b.adoption_planner.plan()
+            plan_b_second = container_b.bootstrap_planner.plan()
             self.assertEqual(len(plan_b_second.linkable), 0)
             self.assertEqual(len(plan_b_second.skipped), 7)
             self.assertTrue(all(a.reason == "already-linked" for a in plan_b_second.skipped))
 
             # Re-applying yields status=applied as a no-op
-            reapply_results = container_b.adoption_applier.apply(plan_b.actions)
+            reapply_results = container_b.bootstrap_applier.apply(plan_b.actions)
             self.assertTrue(all(r.status == "applied" for r in reapply_results))
 
             # Assert 6: Reconcile / auto-adopt runs cleanly without crashing or corrupting store
@@ -340,9 +340,9 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 "~/.local/share/harnessam/agents/reviewer.md",
             )
 
-    def test_cross_device_adoption_pressure_invariants(self) -> None:
-        """Pressure-test adoption invariants:
-        - Additive-only: local bindings on machine B survive adoption of A's assets untouched
+    def test_cross_device_bootstrap_pressure_invariants(self) -> None:
+        """Pressure-test bootstrap invariants:
+        - Additive-only: local bindings on machine B survive bootstrap of A's assets untouched
         - Occupied target refusal: foreign occupied files are not clobbered without explicit permission
         - Harness absent: intent for uninstalled harnesses degrades to skip, never error
         - Corrupt ledgers: unparseable files degrade to empty plan, never 500 or crash
@@ -403,7 +403,7 @@ class CrossDeviceArrivalTests(unittest.TestCase):
 
             container_b = build_backend_container(spec_b.env())
 
-            # 1. Additive-only: B creates a local agent BEFORE adopting A's assets
+            # 1. Additive-only: B creates a local agent BEFORE bootstrapping A's assets
             container_b.agents_store.create(name="LocalAgent", description="local", prompt="local prompt")
             container_b.agents_mutations.enable("localagent", "claude")
             local_agent_link = spec_b.home / ".claude" / "agents" / "localagent.md"
@@ -414,7 +414,7 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             auditor_claude_target.write_text("pre-existing foreign file", encoding="utf-8")
 
             # 3. Plan on B
-            plan = container_b.adoption_planner.plan()
+            plan = container_b.bootstrap_planner.plan()
 
             # Verify:
             # - auditor on codex -> skip (harness-not-installed on B)
@@ -428,11 +428,11 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             self.assertEqual(claude_action.reason, "target-occupied")
 
             # Apply only linkable (none) -> foreign file unchanged
-            container_b.adoption_applier.apply(plan.linkable)
+            container_b.bootstrap_applier.apply(plan.linkable)
             self.assertEqual(auditor_claude_target.read_text(encoding="utf-8"), "pre-existing foreign file")
 
             # Try applying conflict action without allow_conflicts -> refuses
-            refused = container_b.adoption_applier.apply([claude_action], allow_conflicts=False)
+            refused = container_b.bootstrap_applier.apply([claude_action], allow_conflicts=False)
             self.assertEqual(refused[0].status, "failed")
             self.assertIn("overwrite", refused[0].error or "")
             self.assertEqual(auditor_claude_target.read_text(encoding="utf-8"), "pre-existing foreign file")
@@ -442,7 +442,7 @@ class CrossDeviceArrivalTests(unittest.TestCase):
 
             # 4. Corrupt ledger degradation
             container_b.paths.bindings_ledger_path.write_text("{corrupt-json", encoding="utf-8")
-            degraded_plan = container_b.adoption_planner.plan()
+            degraded_plan = container_b.bootstrap_planner.plan()
             # Degrades safely without raising; returns whatever else is valid or empty
             self.assertTrue(isinstance(degraded_plan.actions, tuple))
 

@@ -14,7 +14,7 @@ from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.contracts import CommandFileBindingProfile
 from harness_asset_manager.hashing import hash_file, hash_text
 
-from .models import AdoptionAction, AdoptionApplyResult
+from .models import BootstrapAction, BootstrapApplyResult
 
 if TYPE_CHECKING:
     from harness_asset_manager.application import BackendContainer
@@ -36,7 +36,7 @@ def _safe_hash_text(payload: str) -> str | None:
         return None
 
 
-def record_adopt(
+def record_bootstrap(
     journal: MutationAuditJournal,
     *,
     family: str,
@@ -46,10 +46,10 @@ def record_adopt(
     outcome: str = "succeeded",
     error_type: str | None = None,
 ) -> None:
-    """Record an adopted binding in the MutationAuditJournal, mirroring record_auto_adopt."""
+    """Record a bootstrapped binding in the MutationAuditJournal, mirroring record_auto_adopt."""
     event: dict[str, object] = {
         "family": family,
-        "operation": "adopt",
+        "operation": "bootstrap",
         "parameters": {"ref": ref, "harness": harness},
         "target_paths": tuple(target_paths),
         "outcome": outcome,
@@ -62,8 +62,8 @@ def record_adopt(
         return
 
 
-class AdoptionApplier:
-    """Applies reviewed adoption actions to create local bindings.
+class BootstrapApplier:
+    """Applies reviewed bootstrap actions to create local bindings.
 
     Takes an explicit list of actions, re-checks each target immediately before acting,
     aggregates failures without aborting the run, applies conflict actions only when
@@ -137,11 +137,11 @@ class AdoptionApplier:
 
     def apply(
         self,
-        actions: tuple[AdoptionAction, ...] | list[AdoptionAction],
+        actions: tuple[BootstrapAction, ...] | list[BootstrapAction],
         *,
         allow_conflicts: bool = False,
-    ) -> tuple[AdoptionApplyResult, ...]:
-        results: list[AdoptionApplyResult] = []
+    ) -> tuple[BootstrapApplyResult, ...]:
+        results: list[BootstrapApplyResult] = []
 
         for action in actions:
             result = self._apply_one(action, allow_conflicts=allow_conflicts)
@@ -164,10 +164,10 @@ class AdoptionApplier:
 
     def _apply_one(
         self,
-        action: AdoptionAction,
+        action: BootstrapAction,
         *,
         allow_conflicts: bool,
-    ) -> AdoptionApplyResult:
+    ) -> BootstrapApplyResult:
         if action.family in ("skills", "agents", "slash_commands"):
             return self._apply_placement_one(action, allow_conflicts=allow_conflicts)
         if action.family in ("mcp", "hooks", "permissions"):
@@ -176,16 +176,16 @@ class AdoptionApplier:
 
     def _apply_placement_one(
         self,
-        action: AdoptionAction,
+        action: BootstrapAction,
         *,
         allow_conflicts: bool,
-    ) -> AdoptionApplyResult:
+    ) -> BootstrapApplyResult:
         target = Path(action.target)
 
         # Re-check on disk immediately before acting
         already_linked = self._check_already_linked(action, target)
         if already_linked:
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -197,7 +197,7 @@ class AdoptionApplier:
         if target.exists() or target.is_symlink():
             if not allow_conflicts:
                 msg = f"Target {target} is occupied; refusing to overwrite"
-                record_adopt(
+                record_bootstrap(
                     self.mutation_audit,
                     family=action.family,
                     ref=action.ref,
@@ -206,7 +206,7 @@ class AdoptionApplier:
                     outcome="failed",
                     error_type="TargetOccupiedConflict",
                 )
-                return AdoptionApplyResult(
+                return BootstrapApplyResult(
                     family=action.family,
                     ref=action.ref,
                     harness=action.harness,
@@ -230,7 +230,7 @@ class AdoptionApplier:
             else:
                 raise ValueError(f"Unknown placement family: {action.family}")
 
-            record_adopt(
+            record_bootstrap(
                 self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
@@ -238,7 +238,7 @@ class AdoptionApplier:
                 target_paths=(str(target),),
                 outcome="succeeded",
             )
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -246,7 +246,7 @@ class AdoptionApplier:
                 target=str(target),
             )
         except Exception as error:  # noqa: BLE001
-            record_adopt(
+            record_bootstrap(
                 self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
@@ -255,7 +255,7 @@ class AdoptionApplier:
                 outcome="failed",
                 error_type=error.__class__.__name__,
             )
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -266,16 +266,16 @@ class AdoptionApplier:
 
     def _apply_config_merge_one(
         self,
-        action: AdoptionAction,
+        action: BootstrapAction,
         *,
         allow_conflicts: bool,
-    ) -> AdoptionApplyResult:
+    ) -> BootstrapApplyResult:
         target = Path(action.target)
 
         # Re-check on disk immediately before acting at key granularity
         already_linked = self._check_config_already_linked(action)
         if already_linked:
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -287,7 +287,7 @@ class AdoptionApplier:
         if self._check_config_key_occupied(action):
             if not allow_conflicts:
                 msg = f"Key '{action.ref}' in {target.name} is occupied; refusing to overwrite"
-                record_adopt(
+                record_bootstrap(
                     self.mutation_audit,
                     family=action.family,
                     ref=action.ref,
@@ -296,7 +296,7 @@ class AdoptionApplier:
                     outcome="failed",
                     error_type="KeyOccupiedConflict",
                 )
-                return AdoptionApplyResult(
+                return BootstrapApplyResult(
                     family=action.family,
                     ref=action.ref,
                     harness=action.harness,
@@ -336,7 +336,7 @@ class AdoptionApplier:
             else:
                 raise ValueError(f"Unknown config-merge family: {action.family}")
 
-            record_adopt(
+            record_bootstrap(
                 self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
@@ -344,7 +344,7 @@ class AdoptionApplier:
                 target_paths=(str(target),),
                 outcome="succeeded",
             )
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -352,7 +352,7 @@ class AdoptionApplier:
                 target=str(target),
             )
         except Exception as error:  # noqa: BLE001
-            record_adopt(
+            record_bootstrap(
                 self.mutation_audit,
                 family=action.family,
                 ref=action.ref,
@@ -361,7 +361,7 @@ class AdoptionApplier:
                 outcome="failed",
                 error_type=error.__class__.__name__,
             )
-            return AdoptionApplyResult(
+            return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
@@ -370,7 +370,7 @@ class AdoptionApplier:
                 error=str(error),
             )
 
-    def _check_config_already_linked(self, action: AdoptionAction) -> bool:
+    def _check_config_already_linked(self, action: BootstrapAction) -> bool:
         if action.family == "mcp":
             if self.mcp_store is None or self.mcp_read_models is None:
                 return False
@@ -421,7 +421,7 @@ class AdoptionApplier:
 
         return False
 
-    def _check_config_key_occupied(self, action: AdoptionAction) -> bool:
+    def _check_config_key_occupied(self, action: BootstrapAction) -> bool:
         if action.family == "mcp":
             if self.mcp_store is None or self.mcp_read_models is None:
                 return False
@@ -472,7 +472,7 @@ class AdoptionApplier:
 
         return False
 
-    def _check_already_linked(self, action: AdoptionAction, target: Path) -> bool:
+    def _check_already_linked(self, action: BootstrapAction, target: Path) -> bool:
         if action.family == "skills":
             package_dir = action.ref.removeprefix("shared:")
             store_pkg = self.skills_store.root / package_dir
@@ -541,4 +541,4 @@ class AdoptionApplier:
                 self.slash_command_sync_state.add_target(name, rec)
 
 
-__all__ = ["AdoptionApplier", "record_adopt"]
+__all__ = ["BootstrapApplier", "record_bootstrap"]

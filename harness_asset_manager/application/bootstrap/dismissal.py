@@ -7,16 +7,16 @@ from pathlib import Path
 from harness_asset_manager.atomic_files import atomic_write_text
 
 
-class AdoptionDismissalStore:
-    """Device-local dismissal persistence for the adoption banner.
+class BootstrapDismissalStore:
+    """Device-local dismissal persistence for the bootstrap banner.
 
     Stored under xdg_state_home (state_dir), NEVER in the synced store data_dir.
     A dismissal that traveled with the store would suppress the banner on every
-    future device, defeating the adoption flow on new devices.
+    future device, defeating the bootstrap flow on new devices.
     """
 
     def __init__(self, state_dir: Path) -> None:
-        self.path = state_dir / "adopt_dismissal.json"
+        self.path = state_dir / "bootstrap_dismissal.json"
 
     def is_dismissed(self) -> bool:
         if not self.path.is_file():
@@ -45,4 +45,4 @@ class AdoptionDismissalStore:
         atomic_write_text(self.path, json.dumps(payload, indent=2) + "\n")
 
 
-__all__ = ["AdoptionDismissalStore"]
+__all__ = ["BootstrapDismissalStore"]

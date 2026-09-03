@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class AdoptionActionDto(BaseModel):
+class BootstrapActionDto(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     family: str
@@ -18,10 +18,10 @@ class AdoptionActionDto(BaseModel):
     detail: str | None = None
 
 
-class AdoptionPlanResponse(BaseModel):
+class BootstrapPlanResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    actions: list[AdoptionActionDto]
+    actions: list[BootstrapActionDto]
     linkable_count: int = Field(alias="linkableCount")
     conflict_count: int = Field(alias="conflictCount")
     skipped_count: int = Field(alias="skippedCount")
@@ -29,14 +29,14 @@ class AdoptionPlanResponse(BaseModel):
     dismissed: bool = False
 
 
-class AdoptionApplyRequest(BaseModel):
+class BootstrapApplyRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    actions: list[AdoptionActionDto]
+    actions: list[BootstrapActionDto]
     allow_conflicts: bool = Field(alias="allowConflicts", default=False)
 
 
-class AdoptionApplyResultDto(BaseModel):
+class BootstrapApplyResultDto(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     family: str
@@ -47,15 +47,15 @@ class AdoptionApplyResultDto(BaseModel):
     error: str | None = None
 
 
-class AdoptionApplyResponse(BaseModel):
+class BootstrapApplyResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    results: list[AdoptionApplyResultDto]
+    results: list[BootstrapApplyResultDto]
     applied_count: int = Field(alias="appliedCount")
     failed_count: int = Field(alias="failedCount")
 
 
-class AdoptionDismissResponse(BaseModel):
+class BootstrapDismissResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     ok: bool = True
@@ -63,10 +63,10 @@ class AdoptionDismissResponse(BaseModel):
 
 
 __all__ = [
-    "AdoptionActionDto",
-    "AdoptionApplyRequest",
-    "AdoptionApplyResponse",
-    "AdoptionApplyResultDto",
-    "AdoptionDismissResponse",
-    "AdoptionPlanResponse",
+    "BootstrapActionDto",
+    "BootstrapApplyRequest",
+    "BootstrapApplyResponse",
+    "BootstrapApplyResultDto",
+    "BootstrapDismissResponse",
+    "BootstrapPlanResponse",
 ]

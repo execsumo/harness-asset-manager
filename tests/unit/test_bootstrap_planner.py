@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harness_asset_manager.application.adopt import AdoptionPlanner
+from harness_asset_manager.application.bootstrap import BootstrapPlanner
 from harness_asset_manager.application.container import build_backend_container
 from harness_asset_manager.application.hooks.store import HookSpec
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
@@ -19,7 +19,7 @@ from tests.support.fake_home import (
 )
 
 
-class AdoptPlannerDecisionTableTests(unittest.TestCase):
+class BootstrapPlannerDecisionTableTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = TemporaryDirectory()
         self.tmp_path = Path(self.tmp.name)
@@ -52,7 +52,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_empty_store_yields_empty_plan(self) -> None:
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
         plan = planner.plan()
         self.assertEqual(plan.actions, ())
         self.assertEqual(plan.linkable, ())
@@ -88,7 +88,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         perms_manifest.parent.mkdir(parents=True, exist_ok=True)
         perms_manifest.write_text("{corrupt permissions json", encoding="utf-8")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
         plan = planner.plan()
         self.assertEqual(plan.actions, ())
 
@@ -106,7 +106,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.container.skills_mutations.enable_managed_package(dest, "claude")
         self.container.skills_mutations.enable_managed_package(dest, "cursor")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Target already the correct binding -> skip, reason: already-linked
         plan = planner.plan()
@@ -173,7 +173,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.container.agents_mutations.enable("reviewer", "claude")
         self.container.agents_mutations.enable("reviewer", "codex")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Target already correct binding (claude symlink, codex rendered) -> skip, reason: already-linked
         plan = planner.plan()
@@ -238,7 +238,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         )
         self.container.slash_command_mutations.sync_command("lint", targets=["codex"])
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Target already correct binding -> skip, reason: already-linked
         plan = planner.plan()
@@ -301,7 +301,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
             json.dumps(foreign_ledger, indent=2), encoding="utf-8"
         )
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
         plan = planner.plan()
         legacy_action = next((a for a in plan.actions if a.ref == "legacy-agent"), None)
         self.assertIsNotNone(legacy_action)
@@ -321,7 +321,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.container.mcp_store.upsert_managed(spec)
         self.container.mcp_mutations.enable_server("exa", "claude")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Claude already configured -> skip, reason: already-linked
         plan = planner.plan()
@@ -386,7 +386,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.container.hooks_store.upsert_managed(spec)
         self.container.hooks_mutations.enable_hook("lint-hook", "claude")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Claude already configured -> skip, reason: already-linked
         plan = planner.plan()
@@ -433,7 +433,7 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.container.permissions_store.upsert_managed(spec)
         self.container.permissions_mutations.enable_permission("block-secrets", "claude")
 
-        planner = AdoptionPlanner.from_container(self.container)
+        planner = BootstrapPlanner.from_container(self.container)
 
         # 1. Claude already configured -> skip, reason: already-linked
         plan = planner.plan()

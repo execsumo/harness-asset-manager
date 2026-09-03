@@ -13,9 +13,9 @@ from harness_asset_manager.cli.main import main, normalize_argv
 from tests.support.fake_home import create_fake_home_spec, seed_skill_package
 
 
-class AdoptCliTests(unittest.TestCase):
+class BootstrapCliTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._tempdir = TemporaryDirectory(prefix="harnessam-adopt-cli-")
+        self._tempdir = TemporaryDirectory(prefix="harnessam-bootstrap-cli-")
         self.addCleanup(self._tempdir.cleanup)
         self.spec = create_fake_home_spec(Path(self._tempdir.name))
         env_patch = mock.patch.dict("os.environ", self.spec.env(), clear=True)
@@ -36,16 +36,16 @@ class AdoptCliTests(unittest.TestCase):
         self.assertEqual(code, 0, msg=err or out)
         return json.loads(out)
 
-    def test_adopt_group_is_not_treated_as_serve_argument(self) -> None:
-        self.assertEqual(normalize_argv(["adopt"]), ["adopt"])
-        self.assertEqual(normalize_argv(["adopt", "--dry-run"]), ["adopt", "--dry-run"])
+    def test_bootstrap_group_is_not_treated_as_serve_argument(self) -> None:
+        self.assertEqual(normalize_argv(["bootstrap"]), ["bootstrap"])
+        self.assertEqual(normalize_argv(["bootstrap", "--dry-run"]), ["bootstrap", "--dry-run"])
 
-    def test_adopt_nothing_to_adopt(self) -> None:
-        code, out, _ = self.run_cli("adopt")
+    def test_bootstrap_nothing_to_bootstrap(self) -> None:
+        code, out, _ = self.run_cli("bootstrap")
         self.assertEqual(code, 0)
-        self.assertIn("Nothing to adopt", out)
+        self.assertIn("Nothing to bootstrap", out)
 
-    def test_adopt_dry_run_and_json(self) -> None:
+    def test_bootstrap_dry_run_and_json(self) -> None:
         container = build_backend_container(self.spec.env())
         skill_src = seed_skill_package(self.spec.home / "downloads", "my-skill", "My Skill")
         dest = container.skills_store.ingest(
@@ -59,7 +59,7 @@ class AdoptCliTests(unittest.TestCase):
         (self.spec.claude_root / "my-skill").unlink()
 
         # Dry run text
-        code, out, _ = self.run_cli("adopt", "--dry-run")
+        code, out, _ = self.run_cli("bootstrap", "--dry-run")
         self.assertEqual(code, 0)
         self.assertIn("skills", out)
         self.assertIn("My Skill", out)
@@ -68,12 +68,12 @@ class AdoptCliTests(unittest.TestCase):
         self.assertFalse((self.spec.claude_root / "my-skill").exists())
 
         # Dry run json
-        payload = self.run_json("adopt", "--dry-run")
+        payload = self.run_json("bootstrap", "--dry-run")
         self.assertIsInstance(payload, dict)
         self.assertEqual(payload.get("linkableCount"), 1)
         self.assertFalse((self.spec.claude_root / "my-skill").exists())
 
-    def test_adopt_non_interactive_requires_yes(self) -> None:
+    def test_bootstrap_non_interactive_requires_yes(self) -> None:
         container = build_backend_container(self.spec.env())
         skill_src = seed_skill_package(self.spec.home / "downloads", "my-skill", "My Skill")
         dest = container.skills_store.ingest(
@@ -87,11 +87,11 @@ class AdoptCliTests(unittest.TestCase):
         (self.spec.claude_root / "my-skill").unlink()
 
         # Running without --yes in non-tty raises / exits 1
-        code, _, err = self.run_cli("adopt")
+        code, _, err = self.run_cli("bootstrap")
         self.assertEqual(code, 1)
         self.assertIn("pass --yes", err)
 
-    def test_adopt_yes_applies_links(self) -> None:
+    def test_bootstrap_yes_applies_links(self) -> None:
         container = build_backend_container(self.spec.env())
         skill_src = seed_skill_package(self.spec.home / "downloads", "my-skill", "My Skill")
         dest = container.skills_store.ingest(
@@ -105,17 +105,17 @@ class AdoptCliTests(unittest.TestCase):
         (self.spec.claude_root / "my-skill").unlink()
 
         # Run with --yes
-        code, out, _ = self.run_cli("adopt", "--yes")
+        code, out, _ = self.run_cli("bootstrap", "--yes")
         self.assertEqual(code, 0)
-        self.assertIn("Adopted 1 binding(s)", out)
+        self.assertIn("Bootstrapped 1 binding(s)", out)
         self.assertTrue((self.spec.claude_root / "my-skill").is_symlink())
 
-        # Next run reports nothing to adopt
-        code, out, _ = self.run_cli("adopt")
+        # Next run reports nothing to bootstrap
+        code, out, _ = self.run_cli("bootstrap")
         self.assertEqual(code, 0)
-        self.assertIn("Nothing to adopt", out)
+        self.assertIn("Nothing to bootstrap", out)
 
-    def test_adopt_interactive_confirm(self) -> None:
+    def test_bootstrap_interactive_confirm(self) -> None:
         container = build_backend_container(self.spec.env())
         skill_src = seed_skill_package(self.spec.home / "downloads", "my-skill", "My Skill")
         dest = container.skills_store.ingest(
@@ -129,9 +129,9 @@ class AdoptCliTests(unittest.TestCase):
         (self.spec.claude_root / "my-skill").unlink()
 
         with mock.patch("sys.stdin.isatty", return_value=True), mock.patch("builtins.input", return_value="y"):
-            code, out, _ = self.run_cli("adopt")
+            code, out, _ = self.run_cli("bootstrap")
             self.assertEqual(code, 0)
-            self.assertIn("Adopted 1 binding(s)", out)
+            self.assertIn("Bootstrapped 1 binding(s)", out)
             self.assertTrue((self.spec.claude_root / "my-skill").is_symlink())
 
 

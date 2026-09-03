@@ -44,7 +44,7 @@ from harness_asset_manager.harness.contracts import (
 )
 from harness_asset_manager.hashing import hash_file, hash_text
 
-from .models import AdoptionAction, AdoptionPlan
+from .models import BootstrapAction, BootstrapPlan
 
 if TYPE_CHECKING:
     from harness_asset_manager.application import BackendContainer
@@ -86,8 +86,8 @@ def _is_slash_harness_installed(kernel: HarnessKernelService, harness: str) -> b
     return _is_slash_detected(kernel, definition, binding)
 
 
-class AdoptionPlanner:
-    """Computes the new-device adoption plan pure with respect to mutation.
+class BootstrapPlanner:
+    """Computes the new-device bootstrap plan pure with respect to mutation.
 
     Reads the synced store intent and stats the filesystem on THIS device to derive
     the exact set of link, skip, and conflict actions. Writes nothing.
@@ -129,7 +129,7 @@ class AdoptionPlanner:
         self.permissions_read_models = permissions_read_models
 
     @classmethod
-    def from_container(cls, container: "BackendContainer") -> "AdoptionPlanner":
+    def from_container(cls, container: "BackendContainer") -> "BootstrapPlanner":
         return cls(
             skills_store=container.skills_store,
             skills_read_models=container.skills_read_models,
@@ -152,8 +152,8 @@ class AdoptionPlanner:
             permissions_read_models=container.permissions_read_models,
         )
 
-    def plan(self) -> AdoptionPlan:
-        actions: list[AdoptionAction] = []
+    def plan(self) -> BootstrapPlan:
+        actions: list[BootstrapAction] = []
         actions.extend(self._plan_skills())
         actions.extend(self._plan_agents())
         actions.extend(self._plan_slash_commands())
@@ -163,10 +163,10 @@ class AdoptionPlanner:
         sorted_actions = tuple(
             sorted(actions, key=lambda a: (a.family, a.ref, a.harness))
         )
-        return AdoptionPlan(actions=sorted_actions)
+        return BootstrapPlan(actions=sorted_actions)
 
-    def _plan_skills(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_skills(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         try:
             manifest = load_skill_store_manifest(self.skills_store.manifest_path)
         except Exception:
@@ -197,7 +197,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if adapter is None or not adapter.status().installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="skills",
                             ref=ref,
                             display_name=display_name,
@@ -213,7 +213,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if harness not in enabled_harnesses_in_settings:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="skills",
                             ref=ref,
                             display_name=display_name,
@@ -229,7 +229,7 @@ class AdoptionPlanner:
                 # 3. Store no longer holds the asset
                 if not store_pkg.exists() or not store_pkg.is_dir():
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="skills",
                             ref=ref,
                             display_name=display_name,
@@ -247,7 +247,7 @@ class AdoptionPlanner:
                     try:
                         if target.resolve() == store_pkg.resolve():
                             actions.append(
-                                AdoptionAction(
+                                BootstrapAction(
                                     family="skills",
                                     ref=ref,
                                     display_name=display_name,
@@ -270,7 +270,7 @@ class AdoptionPlanner:
                         store_sha256=None,
                     )
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="skills",
                             ref=ref,
                             display_name=display_name,
@@ -285,7 +285,7 @@ class AdoptionPlanner:
 
                 # 6. Otherwise
                 actions.append(
-                    AdoptionAction(
+                    BootstrapAction(
                         family="skills",
                         ref=ref,
                         display_name=display_name,
@@ -297,8 +297,8 @@ class AdoptionPlanner:
 
         return actions
 
-    def _plan_agents(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_agents(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         if not self.agents_ledger.path.is_file():
             return []
 
@@ -346,7 +346,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if not is_installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="agents",
                             ref=slug,
                             display_name=display_name,
@@ -362,7 +362,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if not is_support_enabled:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="agents",
                             ref=slug,
                             display_name=display_name,
@@ -379,7 +379,7 @@ class AdoptionPlanner:
                 record = parsed_state.get(slug, {}).get(harness)
                 if record is None or agent is None or not agent.path.is_file():
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="agents",
                             ref=slug,
                             display_name=display_name,
@@ -401,7 +401,7 @@ class AdoptionPlanner:
                     target_hash = _safe_hash(target)
                     if target.is_file() and _has_marker(target) and target_hash == rendered_hash:
                         actions.append(
-                            AdoptionAction(
+                            BootstrapAction(
                                 family="agents",
                                 ref=slug,
                                 display_name=display_name,
@@ -418,7 +418,7 @@ class AdoptionPlanner:
                         try:
                             if target.resolve() == agent.path.resolve():
                                 actions.append(
-                                    AdoptionAction(
+                                    BootstrapAction(
                                         family="agents",
                                         ref=slug,
                                         display_name=display_name,
@@ -448,7 +448,7 @@ class AdoptionPlanner:
                         store_sha256=store_sha,
                     )
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="agents",
                             ref=slug,
                             display_name=display_name,
@@ -463,7 +463,7 @@ class AdoptionPlanner:
 
                 # 6. Otherwise
                 actions.append(
-                    AdoptionAction(
+                    BootstrapAction(
                         family="agents",
                         ref=slug,
                         display_name=display_name,
@@ -475,8 +475,8 @@ class AdoptionPlanner:
 
         return actions
 
-    def _plan_slash_commands(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_slash_commands(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         if not self.slash_command_sync_state.path.is_file():
             return []
 
@@ -530,7 +530,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if not is_installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="slash_commands",
                             ref=name,
                             display_name=display_name,
@@ -546,7 +546,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if not is_support_enabled:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="slash_commands",
                             ref=name,
                             display_name=display_name,
@@ -563,7 +563,7 @@ class AdoptionPlanner:
                 record = parsed_state.get(name, {}).get(target_id)
                 if record is None or command is None:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="slash_commands",
                             ref=name,
                             display_name=display_name,
@@ -584,7 +584,7 @@ class AdoptionPlanner:
                 # 4. Target already the correct binding
                 if target.is_file() and target_hash == rendered_hash:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="slash_commands",
                             ref=name,
                             display_name=display_name,
@@ -605,7 +605,7 @@ class AdoptionPlanner:
                         store_sha256=rendered_hash,
                     )
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="slash_commands",
                             ref=name,
                             display_name=display_name,
@@ -620,7 +620,7 @@ class AdoptionPlanner:
 
                 # 6. Otherwise
                 actions.append(
-                    AdoptionAction(
+                    BootstrapAction(
                         family="slash_commands",
                         ref=name,
                         display_name=display_name,
@@ -632,8 +632,8 @@ class AdoptionPlanner:
 
         return actions
 
-    def _plan_mcp(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_mcp(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         if self.mcp_store is None or self.mcp_read_models is None:
             return []
         try:
@@ -657,7 +657,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if adapter is None or not adapter.status().installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -673,7 +673,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if harness not in enabled_harnesses_in_settings:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -689,7 +689,7 @@ class AdoptionPlanner:
                 # 3. Store no longer holds the asset
                 if self.mcp_store.get_managed(spec.name) is None:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -707,7 +707,7 @@ class AdoptionPlanner:
                     scan = adapter.scan((spec,))
                 except Exception as error:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -725,7 +725,7 @@ class AdoptionPlanner:
 
                 if entry is None or entry.state == "missing":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -736,7 +736,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state == "managed":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -749,7 +749,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state in ("drifted", "unmanaged"):
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -762,7 +762,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state == "unsupported":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -775,7 +775,7 @@ class AdoptionPlanner:
                     )
                 else:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="mcp",
                             ref=ref,
                             display_name=display_name,
@@ -787,8 +787,8 @@ class AdoptionPlanner:
 
         return actions
 
-    def _plan_hooks(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_hooks(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         if self.hooks_store is None or self.hooks_read_models is None:
             return []
         try:
@@ -812,7 +812,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if adapter is None or not adapter.status().installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -828,7 +828,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if harness not in enabled_harnesses_in_settings:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -844,7 +844,7 @@ class AdoptionPlanner:
                 # 3. Store no longer holds the asset
                 if self.hooks_store.get_managed(spec.id) is None:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -862,7 +862,7 @@ class AdoptionPlanner:
                     scan = adapter.scan((spec,))
                 except Exception as error:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -882,7 +882,7 @@ class AdoptionPlanner:
                     is_repr, reason, _ = adapter._mapper.representable(spec)
                     if not is_repr:
                         actions.append(
-                            AdoptionAction(
+                            BootstrapAction(
                                 family="hooks",
                                 ref=ref,
                                 display_name=display_name,
@@ -895,7 +895,7 @@ class AdoptionPlanner:
                         )
                     else:
                         actions.append(
-                            AdoptionAction(
+                            BootstrapAction(
                                 family="hooks",
                                 ref=ref,
                                 display_name=display_name,
@@ -906,7 +906,7 @@ class AdoptionPlanner:
                         )
                 elif entry.state == "managed":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -919,7 +919,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state in ("drifted", "unmanaged"):
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -932,7 +932,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state == "unsupported":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -945,7 +945,7 @@ class AdoptionPlanner:
                     )
                 else:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="hooks",
                             ref=ref,
                             display_name=display_name,
@@ -957,8 +957,8 @@ class AdoptionPlanner:
 
         return actions
 
-    def _plan_permissions(self) -> list[AdoptionAction]:
-        actions: list[AdoptionAction] = []
+    def _plan_permissions(self) -> list[BootstrapAction]:
+        actions: list[BootstrapAction] = []
         if self.permissions_store is None or self.permissions_read_models is None:
             return []
         try:
@@ -982,7 +982,7 @@ class AdoptionPlanner:
                 # 1. Harness not installed on this device
                 if adapter is None or not adapter.status().installed:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -998,7 +998,7 @@ class AdoptionPlanner:
                 # 2. Harness support disabled in settings
                 if harness not in enabled_harnesses_in_settings:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1014,7 +1014,7 @@ class AdoptionPlanner:
                 # 3. Store no longer holds the asset
                 if self.permissions_store.get_managed(spec.id) is None:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1032,7 +1032,7 @@ class AdoptionPlanner:
                     scan = adapter.scan((spec,))
                 except Exception as error:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1052,7 +1052,7 @@ class AdoptionPlanner:
                     is_repr, reason, _ = adapter._mapper.representable(spec)
                     if not is_repr:
                         actions.append(
-                            AdoptionAction(
+                            BootstrapAction(
                                 family="permissions",
                                 ref=ref,
                                 display_name=display_name,
@@ -1065,7 +1065,7 @@ class AdoptionPlanner:
                         )
                     else:
                         actions.append(
-                            AdoptionAction(
+                            BootstrapAction(
                                 family="permissions",
                                 ref=ref,
                                 display_name=display_name,
@@ -1076,7 +1076,7 @@ class AdoptionPlanner:
                         )
                 elif entry.state == "managed":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1089,7 +1089,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state in ("drifted", "unmanaged"):
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1102,7 +1102,7 @@ class AdoptionPlanner:
                     )
                 elif entry.state == "unsupported":
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1115,7 +1115,7 @@ class AdoptionPlanner:
                     )
                 else:
                     actions.append(
-                        AdoptionAction(
+                        BootstrapAction(
                             family="permissions",
                             ref=ref,
                             display_name=display_name,
@@ -1128,4 +1128,4 @@ class AdoptionPlanner:
         return actions
 
 
-__all__ = ["AdoptionPlanner"]
+__all__ = ["BootstrapPlanner"]

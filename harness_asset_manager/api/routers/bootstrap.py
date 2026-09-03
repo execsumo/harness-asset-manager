@@ -5,30 +5,30 @@ from pathlib import Path
 from fastapi import APIRouter, Depends
 
 from harness_asset_manager.api.deps import get_container
-from harness_asset_manager.api.schemas.adopt import (
-    AdoptionActionDto,
-    AdoptionApplyRequest,
-    AdoptionApplyResponse,
-    AdoptionApplyResultDto,
-    AdoptionDismissResponse,
-    AdoptionPlanResponse,
+from harness_asset_manager.api.schemas.bootstrap import (
+    BootstrapActionDto,
+    BootstrapApplyRequest,
+    BootstrapApplyResponse,
+    BootstrapApplyResultDto,
+    BootstrapDismissResponse,
+    BootstrapPlanResponse,
 )
 from harness_asset_manager.application import BackendContainer
-from harness_asset_manager.application.adopt import AdoptionAction
+from harness_asset_manager.application.bootstrap import BootstrapAction
 
-router = APIRouter(prefix="/api/adopt", tags=["Adopt"])
+router = APIRouter(prefix="/api/bootstrap", tags=["Bootstrap"])
 
 
-@router.get("/plan", response_model=AdoptionPlanResponse)
-def get_adoption_plan(
+@router.get("/plan", response_model=BootstrapPlanResponse)
+def get_bootstrap_plan(
     container: BackendContainer = Depends(get_container),
-) -> AdoptionPlanResponse:
-    plan = container.adoption_planner.plan()
-    dismissed = container.adoption_dismissal.is_dismissed()
+) -> BootstrapPlanResponse:
+    plan = container.bootstrap_planner.plan()
+    dismissed = container.bootstrap_dismissal.is_dismissed()
 
-    return AdoptionPlanResponse(
+    return BootstrapPlanResponse(
         actions=[
-            AdoptionActionDto(
+            BootstrapActionDto(
                 family=action.family,
                 ref=action.ref,
                 displayName=action.display_name,
@@ -48,13 +48,13 @@ def get_adoption_plan(
     )
 
 
-@router.post("/apply", response_model=AdoptionApplyResponse)
-def apply_adoption_plan(
-    payload: AdoptionApplyRequest,
+@router.post("/apply", response_model=BootstrapApplyResponse)
+def apply_bootstrap_plan(
+    payload: BootstrapApplyRequest,
     container: BackendContainer = Depends(get_container),
-) -> AdoptionApplyResponse:
+) -> BootstrapApplyResponse:
     actions = tuple(
-        AdoptionAction(
+        BootstrapAction(
             family=dto.family,
             ref=dto.ref,
             display_name=dto.display_name,
@@ -66,16 +66,16 @@ def apply_adoption_plan(
         )
         for dto in payload.actions
     )
-    results = container.adoption_applier.apply(
+    results = container.bootstrap_applier.apply(
         actions, allow_conflicts=payload.allow_conflicts
     )
 
     applied_count = sum(1 for r in results if r.status == "applied")
     failed_count = sum(1 for r in results if r.status == "failed")
 
-    return AdoptionApplyResponse(
+    return BootstrapApplyResponse(
         results=[
-            AdoptionApplyResultDto(
+            BootstrapApplyResultDto(
                 family=r.family,
                 ref=r.ref,
                 harness=r.harness,
@@ -90,17 +90,17 @@ def apply_adoption_plan(
     )
 
 
-@router.post("/dismiss", response_model=AdoptionDismissResponse)
-def dismiss_adoption_banner(
+@router.post("/dismiss", response_model=BootstrapDismissResponse)
+def dismiss_bootstrap_banner(
     container: BackendContainer = Depends(get_container),
-) -> AdoptionDismissResponse:
-    container.adoption_dismissal.dismiss()
-    return AdoptionDismissResponse(ok=True, dismissed=True)
+) -> BootstrapDismissResponse:
+    container.bootstrap_dismissal.dismiss()
+    return BootstrapDismissResponse(ok=True, dismissed=True)
 
 
-@router.post("/reset-dismiss", response_model=AdoptionDismissResponse)
-def reset_adoption_banner(
+@router.post("/reset-dismiss", response_model=BootstrapDismissResponse)
+def reset_bootstrap_banner(
     container: BackendContainer = Depends(get_container),
-) -> AdoptionDismissResponse:
-    container.adoption_dismissal.reset()
-    return AdoptionDismissResponse(ok=True, dismissed=False)
+) -> BootstrapDismissResponse:
+    container.bootstrap_dismissal.reset()
+    return BootstrapDismissResponse(ok=True, dismissed=False)

@@ -6,11 +6,11 @@ from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import seed_skill_package
 
 
-class AdoptApiTests(unittest.TestCase):
+class BootstrapApiTests(unittest.TestCase):
     def test_plan_and_dismiss_flow(self) -> None:
         with AppTestHarness() as harness:
             # Initially empty store -> zero linkable actions
-            plan = harness.get_json("/api/adopt/plan")
+            plan = harness.get_json("/api/bootstrap/plan")
             self.assertEqual(plan["linkableCount"], 0)
             self.assertEqual(plan["actions"], [])
             self.assertFalse(plan["dismissed"])
@@ -31,7 +31,7 @@ class AdoptApiTests(unittest.TestCase):
             claude_symlink.unlink()
 
             # Now plan shows 1 linkable action
-            plan = harness.get_json("/api/adopt/plan")
+            plan = harness.get_json("/api/bootstrap/plan")
             self.assertEqual(plan["linkableCount"], 1)
             self.assertFalse(plan["dismissed"])
             self.assertEqual(plan["actions"][0]["family"], "skills")
@@ -39,22 +39,22 @@ class AdoptApiTests(unittest.TestCase):
             self.assertEqual(plan["actions"][0]["action"], "link")
 
             # Dismiss the banner
-            dismiss_res = harness.post_json("/api/adopt/dismiss", {})
+            dismiss_res = harness.post_json("/api/bootstrap/dismiss", {})
             self.assertTrue(dismiss_res["ok"])
             self.assertTrue(dismiss_res["dismissed"])
 
             # Subsequent plan call shows dismissed=True
-            plan = harness.get_json("/api/adopt/plan")
+            plan = harness.get_json("/api/bootstrap/plan")
             self.assertTrue(plan["dismissed"])
             self.assertEqual(plan["linkableCount"], 1)
 
             # Reset dismissal
-            reset_res = harness.post_json("/api/adopt/reset-dismiss", {})
+            reset_res = harness.post_json("/api/bootstrap/reset-dismiss", {})
             self.assertTrue(reset_res["ok"])
             self.assertFalse(reset_res["dismissed"])
 
             # Subsequent plan call shows dismissed=False
-            plan = harness.get_json("/api/adopt/plan")
+            plan = harness.get_json("/api/bootstrap/plan")
             self.assertFalse(plan["dismissed"])
 
     def test_apply_flow(self) -> None:
@@ -70,12 +70,12 @@ class AdoptApiTests(unittest.TestCase):
             claude_agent = harness.spec.home / ".claude" / "agents" / "auditor.md"
             claude_agent.unlink()
 
-            plan = harness.get_json("/api/adopt/plan")
+            plan = harness.get_json("/api/bootstrap/plan")
             self.assertEqual(plan["linkableCount"], 1)
 
-            # Apply adoption
+            # Apply bootstrap
             apply_res = harness.post_json(
-                "/api/adopt/apply",
+                "/api/bootstrap/apply",
                 {"actions": plan["actions"], "allowConflicts": False},
             )
             self.assertEqual(apply_res["appliedCount"], 1)
@@ -86,7 +86,7 @@ class AdoptApiTests(unittest.TestCase):
             self.assertTrue(claude_agent.is_symlink())
 
             # Verify subsequent plan now shows 0 linkable actions (already-linked)
-            plan_after = harness.get_json("/api/adopt/plan")
+            plan_after = harness.get_json("/api/bootstrap/plan")
             self.assertEqual(plan_after["linkableCount"], 0)
             self.assertEqual(plan_after["skippedCount"], 1)
             self.assertEqual(plan_after["actions"][0]["reason"], "already-linked")
