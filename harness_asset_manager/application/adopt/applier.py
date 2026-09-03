@@ -10,6 +10,7 @@ from harness_asset_manager.application.agents.adapters import (
 )
 from harness_asset_manager.application.mutation_audit import MutationAuditJournal
 from harness_asset_manager.application.slash_commands.codecs import render_slash_command
+from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.contracts import CommandFileBindingProfile
 from harness_asset_manager.hashing import hash_file, hash_text
 
@@ -83,6 +84,15 @@ class AdoptionApplier:
         slash_command_mutations: Any = None,
         harness_kernel: Any = None,
         mutation_audit: Any = None,
+        mcp_store: Any = None,
+        mcp_read_models: Any = None,
+        mcp_mutations: Any = None,
+        hooks_store: Any = None,
+        hooks_read_models: Any = None,
+        hooks_mutations: Any = None,
+        permissions_store: Any = None,
+        permissions_read_models: Any = None,
+        permissions_mutations: Any = None,
     ) -> None:
         if container is not None:
             self.skills_store = container.skills_store
@@ -95,6 +105,15 @@ class AdoptionApplier:
             self.slash_command_mutations = container.slash_command_mutations
             self.harness_kernel = container.harness_kernel
             self.mutation_audit = container.mutation_audit
+            self.mcp_store = container.mcp_store
+            self.mcp_read_models = container.mcp_read_models
+            self.mcp_mutations = container.mcp_mutations
+            self.hooks_store = container.hooks_store
+            self.hooks_read_models = container.hooks_read_models
+            self.hooks_mutations = container.hooks_mutations
+            self.permissions_store = container.permissions_store
+            self.permissions_read_models = container.permissions_read_models
+            self.permissions_mutations = container.permissions_mutations
         else:
             self.skills_store = skills_store
             self.skills_read_models = skills_read_models
@@ -106,6 +125,15 @@ class AdoptionApplier:
             self.slash_command_mutations = slash_command_mutations
             self.harness_kernel = harness_kernel
             self.mutation_audit = mutation_audit
+            self.mcp_store = mcp_store
+            self.mcp_read_models = mcp_read_models
+            self.mcp_mutations = mcp_mutations
+            self.hooks_store = hooks_store
+            self.hooks_read_models = hooks_read_models
+            self.hooks_mutations = hooks_mutations
+            self.permissions_store = permissions_store
+            self.permissions_read_models = permissions_read_models
+            self.permissions_mutations = permissions_mutations
 
     def apply(
         self,
@@ -120,14 +148,33 @@ class AdoptionApplier:
             results.append(result)
 
         # Invalidate read models once at the end
-        try:
-            self.skills_read_models.invalidate()
-        except Exception:
-            pass
+        for rm in (
+            self.skills_read_models,
+            getattr(self, "mcp_read_models", None),
+            getattr(self, "hooks_read_models", None),
+            getattr(self, "permissions_read_models", None),
+        ):
+            if rm is not None:
+                try:
+                    rm.invalidate()
+                except Exception:
+                    pass
 
         return tuple(results)
 
     def _apply_one(
+        self,
+        action: AdoptionAction,
+        *,
+        allow_conflicts: bool,
+    ) -> AdoptionApplyResult:
+        if action.family in ("skills", "agents", "slash_commands"):
+            return self._apply_placement_one(action, allow_conflicts=allow_conflicts)
+        if action.family in ("mcp", "hooks", "permissions"):
+            return self._apply_config_merge_one(action, allow_conflicts=allow_conflicts)
+        raise ValueError(f"Unknown family: {action.family}")
+
+    def _apply_placement_one(
         self,
         action: AdoptionAction,
         *,
@@ -181,7 +228,7 @@ class AdoptionApplier:
             elif action.family == "slash_commands":
                 self._apply_slash_command(action.ref, action.harness)
             else:
-                raise ValueError(f"Unknown family: {action.family}")
+                raise ValueError(f"Unknown placement family: {action.family}")
 
             record_adopt(
                 self.mutation_audit,
@@ -216,6 +263,214 @@ class AdoptionApplier:
                 target=str(target),
                 error=str(error),
             )
+
+    def _apply_config_merge_one(
+        self,
+        action: AdoptionAction,
+        *,
+        allow_conflicts: bool,
+    ) -> AdoptionApplyResult:
+        target = Path(action.target)
+
+        # Re-check on disk immediately before acting at key granularity
+        already_linked = self._check_config_already_linked(action)
+        if already_linked:
+            return AdoptionApplyResult(
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                status="applied",
+                target=str(target),
+            )
+
+        # Check for occupied key (conflict) inside shared file
+        if self._check_config_key_occupied(action):
+            if action.action != "conflict" and not allow_conflicts:
+                msg = f"Key '{action.ref}' in {target.name} is occupied; refusing to overwrite"
+                record_adopt(
+                    self.mutation_audit,
+                    family=action.family,
+                    ref=action.ref,
+                    harness=action.harness,
+                    target_paths=(str(target),),
+                    outcome="failed",
+                    error_type="KeyOccupiedConflict",
+                )
+                return AdoptionApplyResult(
+                    family=action.family,
+                    ref=action.ref,
+                    harness=action.harness,
+                    status="failed",
+                    target=str(target),
+                    error=msg,
+                )
+
+        # Execute family-specific primitive reusing existing merge-and-render paths
+        try:
+            if action.family == "mcp":
+                if allow_conflicts:
+                    spec = self.mcp_store.get_managed(action.ref) if self.mcp_store else None
+                    if spec is None:
+                        raise ValueError(f"MCP server '{action.ref}' not found in store")
+                    adapter = self.mcp_read_models.require_enabled_adapter(action.harness)
+                    res = self.mcp_mutations.harness_application.enable_one(adapter, spec)
+                    if res.failed:
+                        raise MutationError(res.failed[0]["error"], status=400)
+                    self.mcp_store.record_binding(action.ref, action.harness, bound=True)
+                else:
+                    self.mcp_mutations.enable_server(action.ref, action.harness)
+            elif action.family == "hooks":
+                if allow_conflicts:
+                    spec = self.hooks_store.get_managed(action.ref) if self.hooks_store else None
+                    if spec is None:
+                        raise ValueError(f"Hook '{action.ref}' not found in store")
+                    adapter = self.hooks_read_models.require_enabled_adapter(action.harness)
+                    res = self.hooks_mutations.harness_application.enable_one(adapter, spec)
+                    if res.failed:
+                        raise MutationError(res.failed[0]["error"], status=400)
+                    self.hooks_store.record_binding(action.ref, action.harness, bound=True)
+                else:
+                    self.hooks_mutations.enable_hook(action.ref, action.harness)
+            elif action.family == "permissions":
+                self.permissions_mutations.enable_permission(action.ref, action.harness)
+            else:
+                raise ValueError(f"Unknown config-merge family: {action.family}")
+
+            record_adopt(
+                self.mutation_audit,
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                target_paths=(str(target),),
+                outcome="succeeded",
+            )
+            return AdoptionApplyResult(
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                status="applied",
+                target=str(target),
+            )
+        except Exception as error:  # noqa: BLE001
+            record_adopt(
+                self.mutation_audit,
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                target_paths=(str(target),),
+                outcome="failed",
+                error_type=error.__class__.__name__,
+            )
+            return AdoptionApplyResult(
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                status="failed",
+                target=str(target),
+                error=str(error),
+            )
+
+    def _check_config_already_linked(self, action: AdoptionAction) -> bool:
+        if action.family == "mcp":
+            if self.mcp_store is None or self.mcp_read_models is None:
+                return False
+            spec = self.mcp_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.mcp_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.name == action.ref), None)
+                return entry is not None and entry.state == "managed"
+            except Exception:
+                return False
+
+        if action.family == "hooks":
+            if self.hooks_store is None or self.hooks_read_models is None:
+                return False
+            spec = self.hooks_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.hooks_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.id == action.ref), None)
+                return entry is not None and entry.state == "managed"
+            except Exception:
+                return False
+
+        if action.family == "permissions":
+            if self.permissions_store is None or self.permissions_read_models is None:
+                return False
+            spec = self.permissions_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.permissions_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.id == action.ref), None)
+                return entry is not None and entry.state == "managed"
+            except Exception:
+                return False
+
+        return False
+
+    def _check_config_key_occupied(self, action: AdoptionAction) -> bool:
+        if action.family == "mcp":
+            if self.mcp_store is None or self.mcp_read_models is None:
+                return False
+            spec = self.mcp_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.mcp_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.name == action.ref), None)
+                return entry is not None and entry.state in ("drifted", "unmanaged")
+            except Exception:
+                return False
+
+        if action.family == "hooks":
+            if self.hooks_store is None or self.hooks_read_models is None:
+                return False
+            spec = self.hooks_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.hooks_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.id == action.ref), None)
+                return entry is not None and entry.state in ("drifted", "unmanaged")
+            except Exception:
+                return False
+
+        if action.family == "permissions":
+            if self.permissions_store is None or self.permissions_read_models is None:
+                return False
+            spec = self.permissions_store.get_managed(action.ref)
+            if spec is None:
+                return False
+            adapter = self.permissions_read_models.find_adapter(action.harness)
+            if adapter is None or not adapter.status().installed:
+                return False
+            try:
+                scan = adapter.scan((spec,))
+                entry = next((e for e in scan.entries if e.id == action.ref), None)
+                return entry is not None and entry.state in ("drifted", "unmanaged")
+            except Exception:
+                return False
+
+        return False
 
     def _check_already_linked(self, action: AdoptionAction, target: Path) -> bool:
         if action.family == "skills":

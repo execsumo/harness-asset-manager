@@ -654,6 +654,12 @@ def build_backend_container(
         slash_command_sync_state=slash_command_sync_state,
         slash_command_mutations=audited_slash_mutations,
         harness_kernel=harness_kernel,
+        mcp_store=mcp_store,
+        mcp_read_models=mcp_read_models,
+        hooks_store=hooks_store,
+        hooks_read_models=hooks_read_models,
+        permissions_store=permissions_store,
+        permissions_read_models=permissions_read_models,
     )
     adoption_applier = AdoptionApplier(
         skills_store=skills_store,
@@ -666,6 +672,15 @@ def build_backend_container(
         slash_command_mutations=audited_slash_mutations,
         harness_kernel=harness_kernel,
         mutation_audit=mutation_audit,
+        mcp_store=mcp_store,
+        mcp_read_models=mcp_read_models,
+        mcp_mutations=audited_mcp_mutations,
+        hooks_store=hooks_store,
+        hooks_read_models=hooks_read_models,
+        hooks_mutations=audited_hooks_mutations,
+        permissions_store=permissions_store,
+        permissions_read_models=permissions_read_models,
+        permissions_mutations=audited_permissions_mutations,
     )
     adoption_dismissal = AdoptionDismissalStore(paths.state_dir)
 

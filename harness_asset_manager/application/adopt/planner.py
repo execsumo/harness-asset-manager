@@ -15,6 +15,14 @@ from harness_asset_manager.application.agents.targets import (
     _is_installed as _is_agent_installed,
 )
 from harness_asset_manager.application.drift import classify_drift
+from harness_asset_manager.application.hooks.read_models import HooksReadModelService
+from harness_asset_manager.application.hooks.store import HookStore
+from harness_asset_manager.application.mcp.read_models import McpReadModelService
+from harness_asset_manager.application.mcp.store import McpServerStore
+from harness_asset_manager.application.permissions.read_models import (
+    PermissionsReadModelService,
+)
+from harness_asset_manager.application.permissions.store import PermissionStore
 from harness_asset_manager.application.skills.manifest import load_skill_store_manifest
 from harness_asset_manager.application.skills.read_models import SkillsReadModelService
 from harness_asset_manager.application.skills.store import SkillStore
@@ -97,6 +105,12 @@ class AdoptionPlanner:
         slash_command_sync_state: SlashCommandSyncStateStore,
         slash_command_mutations: SlashCommandMutationService,
         harness_kernel: HarnessKernelService,
+        mcp_store: McpServerStore | None = None,
+        mcp_read_models: McpReadModelService | None = None,
+        hooks_store: HookStore | None = None,
+        hooks_read_models: HooksReadModelService | None = None,
+        permissions_store: PermissionStore | None = None,
+        permissions_read_models: PermissionsReadModelService | None = None,
     ) -> None:
         self.skills_store = skills_store
         self.skills_read_models = skills_read_models
@@ -107,6 +121,12 @@ class AdoptionPlanner:
         self.slash_command_sync_state = slash_command_sync_state
         self.slash_command_mutations = slash_command_mutations
         self.harness_kernel = harness_kernel
+        self.mcp_store = mcp_store
+        self.mcp_read_models = mcp_read_models
+        self.hooks_store = hooks_store
+        self.hooks_read_models = hooks_read_models
+        self.permissions_store = permissions_store
+        self.permissions_read_models = permissions_read_models
 
     @classmethod
     def from_container(cls, container: "BackendContainer") -> "AdoptionPlanner":
@@ -124,6 +144,12 @@ class AdoptionPlanner:
             slash_command_sync_state=container.slash_command_sync_state,
             slash_command_mutations=container.slash_command_mutations,
             harness_kernel=container.harness_kernel,
+            mcp_store=container.mcp_store,
+            mcp_read_models=container.mcp_read_models,
+            hooks_store=container.hooks_store,
+            hooks_read_models=container.hooks_read_models,
+            permissions_store=container.permissions_store,
+            permissions_read_models=container.permissions_read_models,
         )
 
     def plan(self) -> AdoptionPlan:
@@ -131,6 +157,9 @@ class AdoptionPlanner:
         actions.extend(self._plan_skills())
         actions.extend(self._plan_agents())
         actions.extend(self._plan_slash_commands())
+        actions.extend(self._plan_mcp())
+        actions.extend(self._plan_hooks())
+        actions.extend(self._plan_permissions())
         sorted_actions = tuple(
             sorted(actions, key=lambda a: (a.family, a.ref, a.harness))
         )
@@ -600,6 +629,501 @@ class AdoptionPlanner:
                         target=target,
                     )
                 )
+
+        return actions
+
+    def _plan_mcp(self) -> list[AdoptionAction]:
+        actions: list[AdoptionAction] = []
+        if self.mcp_store is None or self.mcp_read_models is None:
+            return []
+        try:
+            specs = self.mcp_store.list_managed()
+        except Exception:
+            return []
+
+        enabled_harnesses_in_settings = set(self.mcp_read_models.enabled_harnesses())
+
+        for spec in specs:
+            ref = spec.name
+            display_name = spec.display_name or spec.name
+
+            for harness in spec.enabled_harnesses:
+                adapter = self.mcp_read_models.find_adapter(harness)
+                default_target = (
+                    self.harness_kernel.context.home / f".{harness}.json"
+                )
+                target = adapter.config_path if adapter is not None else default_target
+
+                # 1. Harness not installed on this device
+                if adapter is None or not adapter.status().installed:
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-not-installed",
+                            detail=f"Harness '{harness}' is not installed on this device",
+                        )
+                    )
+                    continue
+
+                # 2. Harness support disabled in settings
+                if harness not in enabled_harnesses_in_settings:
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-support-disabled",
+                            detail=f"Support for harness '{harness}' is disabled in settings",
+                        )
+                    )
+                    continue
+
+                # 3. Store no longer holds the asset
+                if self.mcp_store.get_managed(spec.name) is None:
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="asset-missing-from-store",
+                            detail=f"MCP server '{spec.name}' is missing from store",
+                        )
+                    )
+                    continue
+
+                # 4. Key-level inspection inside shared config file
+                try:
+                    scan = adapter.scan((spec,))
+                except Exception as error:
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="scan-error",
+                            detail=f"Failed to scan harness config {target}: {error}",
+                        )
+                    )
+                    continue
+
+                matching = [e for e in scan.entries if e.name == spec.name]
+                entry = matching[0] if matching else None
+
+                if entry is None or entry.state == "missing":
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="link",
+                            target=target,
+                        )
+                    )
+                elif entry.state == "managed":
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="already-linked",
+                            detail=f"MCP server '{spec.name}' in {target.name} is already configured",
+                        )
+                    )
+                elif entry.state in ("drifted", "unmanaged"):
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="target-occupied",
+                            detail=f"Key '{spec.name}' in {target.name} is occupied ({entry.drift_detail or 'different configuration'})",
+                        )
+                    )
+                elif entry.state == "unsupported":
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="unsupported",
+                            detail=entry.drift_detail or f"MCP server '{spec.name}' is unsupported on {adapter.label}",
+                        )
+                    )
+                else:
+                    actions.append(
+                        AdoptionAction(
+                            family="mcp",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="link",
+                            target=target,
+                        )
+                    )
+
+        return actions
+
+    def _plan_hooks(self) -> list[AdoptionAction]:
+        actions: list[AdoptionAction] = []
+        if self.hooks_store is None or self.hooks_read_models is None:
+            return []
+        try:
+            specs = self.hooks_store.list_managed()
+        except Exception:
+            return []
+
+        enabled_harnesses_in_settings = set(self.hooks_read_models.enabled_harnesses())
+
+        for spec in specs:
+            ref = spec.id
+            display_name = spec.description or spec.id
+
+            for harness in spec.enabled_harnesses:
+                adapter = self.hooks_read_models.find_adapter(harness)
+                default_target = (
+                    self.harness_kernel.context.home / f".{harness}" / "hooks.json"
+                )
+                target = adapter.config_path if adapter is not None else default_target
+
+                # 1. Harness not installed on this device
+                if adapter is None or not adapter.status().installed:
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-not-installed",
+                            detail=f"Harness '{harness}' is not installed on this device",
+                        )
+                    )
+                    continue
+
+                # 2. Harness support disabled in settings
+                if harness not in enabled_harnesses_in_settings:
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-support-disabled",
+                            detail=f"Support for harness '{harness}' is disabled in settings",
+                        )
+                    )
+                    continue
+
+                # 3. Store no longer holds the asset
+                if self.hooks_store.get_managed(spec.id) is None:
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="asset-missing-from-store",
+                            detail=f"Hook '{spec.id}' is missing from store",
+                        )
+                    )
+                    continue
+
+                # 4. Key-level inspection inside shared config file
+                try:
+                    scan = adapter.scan((spec,))
+                except Exception as error:
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="scan-error",
+                            detail=f"Failed to scan harness config {target}: {error}",
+                        )
+                    )
+                    continue
+
+                matching = [e for e in scan.entries if e.id == spec.id]
+                entry = matching[0] if matching else None
+
+                if entry is None or entry.state == "missing":
+                    is_repr, reason, _ = adapter._mapper.representable(spec)
+                    if not is_repr:
+                        actions.append(
+                            AdoptionAction(
+                                family="hooks",
+                                ref=ref,
+                                display_name=display_name,
+                                harness=harness,
+                                action="skip",
+                                target=target,
+                                reason="unsupported",
+                                detail=f"Hook '{spec.id}' is not supported on {adapter.label}: {reason}",
+                            )
+                        )
+                    else:
+                        actions.append(
+                            AdoptionAction(
+                                family="hooks",
+                                ref=ref,
+                                display_name=display_name,
+                                harness=harness,
+                                action="link",
+                                target=target,
+                            )
+                        )
+                elif entry.state == "managed":
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="already-linked",
+                            detail=f"Hook '{spec.id}' in {target.name} is already configured",
+                        )
+                    )
+                elif entry.state in ("drifted", "unmanaged"):
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="target-occupied",
+                            detail=f"Key '{spec.id}' in {target.name} is occupied ({entry.drift_detail or 'different configuration'})",
+                        )
+                    )
+                elif entry.state == "unsupported":
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="unsupported",
+                            detail=entry.drift_detail or f"Hook '{spec.id}' is unsupported on {adapter.label}",
+                        )
+                    )
+                else:
+                    actions.append(
+                        AdoptionAction(
+                            family="hooks",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="link",
+                            target=target,
+                        )
+                    )
+
+        return actions
+
+    def _plan_permissions(self) -> list[AdoptionAction]:
+        actions: list[AdoptionAction] = []
+        if self.permissions_store is None or self.permissions_read_models is None:
+            return []
+        try:
+            specs = self.permissions_store.list_managed()
+        except Exception:
+            return []
+
+        enabled_harnesses_in_settings = set(self.permissions_read_models.enabled_harnesses())
+
+        for spec in specs:
+            ref = spec.id
+            display_name = spec.description or spec.id
+
+            for harness in spec.enabled_harnesses:
+                adapter = self.permissions_read_models.find_adapter(harness)
+                default_target = (
+                    self.harness_kernel.context.home / f".{harness}" / "permissions.json"
+                )
+                target = adapter.config_path if adapter is not None else default_target
+
+                # 1. Harness not installed on this device
+                if adapter is None or not adapter.status().installed:
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-not-installed",
+                            detail=f"Harness '{harness}' is not installed on this device",
+                        )
+                    )
+                    continue
+
+                # 2. Harness support disabled in settings
+                if harness not in enabled_harnesses_in_settings:
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="harness-support-disabled",
+                            detail=f"Support for harness '{harness}' is disabled in settings",
+                        )
+                    )
+                    continue
+
+                # 3. Store no longer holds the asset
+                if self.permissions_store.get_managed(spec.id) is None:
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="asset-missing-from-store",
+                            detail=f"Permission '{spec.id}' is missing from store",
+                        )
+                    )
+                    continue
+
+                # 4. Key-level inspection inside shared config file
+                try:
+                    scan = adapter.scan((spec,))
+                except Exception as error:
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="scan-error",
+                            detail=f"Failed to scan harness config {target}: {error}",
+                        )
+                    )
+                    continue
+
+                matching = [e for e in scan.entries if e.id == spec.id]
+                entry = matching[0] if matching else None
+
+                if entry is None or entry.state == "missing":
+                    is_repr, reason, _ = adapter._mapper.representable(spec)
+                    if not is_repr:
+                        actions.append(
+                            AdoptionAction(
+                                family="permissions",
+                                ref=ref,
+                                display_name=display_name,
+                                harness=harness,
+                                action="skip",
+                                target=target,
+                                reason="unsupported",
+                                detail=f"Permission '{spec.id}' is not supported on {adapter.label}: {reason}",
+                            )
+                        )
+                    else:
+                        actions.append(
+                            AdoptionAction(
+                                family="permissions",
+                                ref=ref,
+                                display_name=display_name,
+                                harness=harness,
+                                action="link",
+                                target=target,
+                            )
+                        )
+                elif entry.state == "managed":
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="already-linked",
+                            detail=f"Permission '{spec.id}' in {target.name} is already configured",
+                        )
+                    )
+                elif entry.state in ("drifted", "unmanaged"):
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="conflict",
+                            target=target,
+                            reason="target-occupied",
+                            detail=f"Key '{spec.id}' in {target.name} is occupied ({entry.drift_detail or 'different configuration'})",
+                        )
+                    )
+                elif entry.state == "unsupported":
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="skip",
+                            target=target,
+                            reason="unsupported",
+                            detail=entry.drift_detail or f"Permission '{spec.id}' is unsupported on {adapter.label}",
+                        )
+                    )
+                else:
+                    actions.append(
+                        AdoptionAction(
+                            family="permissions",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            action="link",
+                            target=target,
+                        )
+                    )
 
         return actions
 
