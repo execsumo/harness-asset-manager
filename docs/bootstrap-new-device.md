@@ -1,4 +1,4 @@
-# Plan — Adopting a synced store on a new device
+# Plan — Bootstrapping a synced store on a new device
 
 **Status: Phase 0 shipped 2026-09-02** (`36afd4e` — skills now record per-harness binding
 intent). Phases 1–3 unbuilt.
@@ -94,7 +94,7 @@ a 500). Reuse `normalize_enabled_harnesses` rather than re-implementing the coer
 
 ## 4. Phase 1 — the planner
 
-New module: `harness_asset_manager/application/adopt/`.
+New module: `harness_asset_manager/application/bootstrap/`.
 
 ### 4.1 Data model
 
@@ -102,7 +102,7 @@ New module: `harness_asset_manager/application/adopt/`.
 Action = Literal["link", "skip", "conflict"]
 
 @dataclass(frozen=True)
-class AdoptionAction:
+class BootstrapAction:
     family: str            # "skills" | "agents" | "slash_commands"
     ref: str               # skill_ref / agent slug / command name
     display_name: str
@@ -113,11 +113,11 @@ class AdoptionAction:
     detail: str | None     # human sentence for the UI
 
 @dataclass(frozen=True)
-class AdoptionPlan:
-    actions: tuple[AdoptionAction, ...]
+class BootstrapPlan:
+    actions: tuple[BootstrapAction, ...]
 
     @property
-    def linkable(self) -> tuple[AdoptionAction, ...]: ...
+    def linkable(self) -> tuple[BootstrapAction, ...]: ...
 ```
 
 The planner is **pure with respect to mutation**: it reads the store and stats the filesystem,
@@ -186,25 +186,25 @@ So the applier is a loop with bookkeeping, not new binding logic. Requirements:
 
 ### API
 
-New router `api/routers/adopt.py`:
+New router `api/routers/bootstrap.py`:
 
-- `GET /api/adopt/plan` → the plan payload.
-- `POST /api/adopt/apply` → body carries the selected actions; returns per-action results
+- `GET /api/bootstrap/plan` → the plan payload.
+- `POST /api/bootstrap/apply` → body carries the selected actions; returns per-action results
   (`applied` / `failed` with error text).
 
 ### CLI
 
-New command `harnessam adopt` (`cli/commands/adopt.py`), sharing the planner with the API:
+New command `harnessam bootstrap` (`cli/commands/bootstrap.py`), sharing the planner with the API:
 
 ```
-harnessam adopt --dry-run     # print the plan, change nothing
-harnessam adopt               # interactive confirm, then apply
-harnessam adopt --yes         # non-interactive; for dotfiles bootstrap scripts
-harnessam adopt --yes --json  # machine-readable, for the same
+harnessam bootstrap --dry-run     # print the plan, change nothing
+harnessam bootstrap               # interactive confirm, then apply
+harnessam bootstrap --yes         # non-interactive; for dotfiles bootstrap scripts
+harnessam bootstrap --yes --json  # machine-readable, for the same
 ```
 
 The headless path is not a nice-to-have. A new device is very often a server reached over SSH,
-and the whole feature lives inside a dotfiles workflow — `adopt --yes` is the line users will put
+and the whole feature lives inside a dotfiles workflow — `bootstrap --yes` is the line users will put
 at the end of their bootstrap script.
 
 ### Web UI
@@ -247,7 +247,7 @@ Two steps, in order, and only after Phase 1 has shipped and been used:
 2. **Extend the planner.** Their conflict semantics differ: the unit is a key inside a shared
    config file, not a path. "Occupied" means the harness config already defines that server / hook
    / permission with different content. Resolve at key granularity and reuse each family's existing
-   merge-and-render path rather than writing config files from the adopt module.
+   merge-and-render path rather than writing config files from the bootstrap module.
 
 ---
 

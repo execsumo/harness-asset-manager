@@ -662,7 +662,7 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `settings show` | Storage paths, per-harness support and install state, auto-adopt |
 | `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
 | `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
-| `adopt [--dry-run] [-y]` | Adopt synced store assets onto this device by creating local bindings |
+| `bootstrap [--dry-run] [-y]` | Bootstrap synced store assets onto this device by creating local bindings |
 | `refresh [--sync-all]` | Run inventory pass; `--sync-all` enables auto-adoption & drift reconciliation across all asset families |
 | `configs list` | Captured portable preferences per harness |
 | `configs enable <harness>` | Enable managing a harness's preferences |
@@ -811,7 +811,7 @@ MCP `env`/`headers` values and hook `command` strings live in the manifests, so 
 When you sync or copy your store to a new machine:
 1. HAM starts immediately and discovers all stored skills, agents, commands, and configs.
 2. Harnesses on the new machine initially show up as **disabled** (since symlinks and rendered target files have not been generated on the new machine yet), not in an error state.
-3. Run `harnessam adopt` in your terminal (or click "Review & Adopt" on the workspace banner in the web UI) to inspect and instantiate the bindings recorded in your synced store on the new device.
+3. Run `harnessam bootstrap` in your terminal (or click "Review & Bootstrap" on the workspace banner in the web UI) to inspect and instantiate the bindings recorded in your synced store on the new device.
 4. Auto-adoption and integrity checks tolerate sync conflict files and unreadable artifacts without crashing or corrupting the store.
 
 ### Environment Variable Overrides
