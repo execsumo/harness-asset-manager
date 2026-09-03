@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useAdoptionPlanQuery, useDismissAdoptionMutation } from "../queries";
-import { AdoptionReviewSheet } from "./AdoptionReviewSheet";
+import { useBootstrapPlanQuery, useDismissBootstrapMutation } from "../queries";
+import { BootstrapReviewSheet } from "./BootstrapReviewSheet";
 
-export function AdoptionBanner() {
-  const { data: plan, isLoading } = useAdoptionPlanQuery();
-  const dismissMutation = useDismissAdoptionMutation();
+export function BootstrapBanner() {
+  const { data: plan, isLoading } = useBootstrapPlanQuery();
+  const dismissMutation = useDismissBootstrapMutation();
   const [reviewOpen, setReviewOpen] = useState(false);
 
   if (isLoading || !plan || plan.dismissed || plan.linkableCount === 0) {
@@ -17,34 +17,34 @@ export function AdoptionBanner() {
   return (
     <>
       <div
-        className="adoption-banner"
+        className="bootstrap-banner"
         role="region"
-        aria-label="New device adoption"
+        aria-label="New device bootstrap"
       >
-        <div className="adoption-banner__content">
-          <span className="adoption-banner__icon" aria-hidden="true">
+        <div className="bootstrap-banner__content">
+          <span className="bootstrap-banner__icon" aria-hidden="true">
             ✦
           </span>
-          <span className="adoption-banner__text">
+          <span className="bootstrap-banner__text">
             <strong>New device detected:</strong> {count} {itemLabel} from your
-            synced store can be adopted into your local harnesses.
+            synced store are ready to bootstrap onto this device.
           </span>
         </div>
 
-        <div className="adoption-banner__actions">
+        <div className="bootstrap-banner__actions">
           <button
             type="button"
             className="action-pill action-pill--primary"
             onClick={() => setReviewOpen(true)}
           >
-            Review &amp; Adopt
+            Review &amp; Bootstrap
           </button>
           <button
             type="button"
             className="action-pill"
             onClick={() => dismissMutation.mutate()}
             disabled={dismissMutation.isPending}
-            title="Dismiss adoption banner on this device"
+            title="Dismiss bootstrap banner on this device"
           >
             Dismiss
           </button>
@@ -52,7 +52,7 @@ export function AdoptionBanner() {
       </div>
 
       {reviewOpen && (
-        <AdoptionReviewSheet
+        <BootstrapReviewSheet
           open={reviewOpen}
           onOpenChange={setReviewOpen}
           plan={plan}

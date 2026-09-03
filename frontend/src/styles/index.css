@@ -46,6 +46,6 @@
 @import "./components/detail-sheet.css";
 @import "./components/document-editor.css";
 @import "./dialogs.css";
-@import "../features/adopt/styles/adopt.css";
+@import "../features/bootstrap/styles/bootstrap.css";
 
 @import "./utilities.css";

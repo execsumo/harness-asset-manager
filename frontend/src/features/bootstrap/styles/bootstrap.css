@@ -1,10 +1,10 @@
 @layer components {
 
 /* -------------------------------------------------------------------------- */
-/* Adoption Banner & Review Sheet                                             */
+/* Bootstrap Banner & Review Sheet                                             */
 /* -------------------------------------------------------------------------- */
 
-.adoption-banner {
+.bootstrap-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,14 +17,14 @@
   color: var(--color-text);
 }
 
-.adoption-banner__content {
+.bootstrap-banner__content {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
 }
 
-.adoption-banner__icon {
+.bootstrap-banner__icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,19 +32,19 @@
   flex-shrink: 0;
 }
 
-.adoption-banner__text {
+.bootstrap-banner__text {
   font-size: 0.92rem;
   line-height: 1.4;
 }
 
-.adoption-banner__actions {
+.bootstrap-banner__actions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
 }
 
-.adoption-dialog {
+.bootstrap-dialog {
   max-width: 720px;
   width: 90vw;
   max-height: 85vh;
@@ -52,7 +52,7 @@
   flex-direction: column;
 }
 
-.adoption-dialog__body {
+.bootstrap-dialog__body {
   overflow-y: auto;
   max-height: 55vh;
   padding: var(--space-4) 0;
@@ -61,13 +61,13 @@
   gap: var(--space-5);
 }
 
-.adoption-group {
+.bootstrap-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.adoption-group__title {
+.bootstrap-group__title {
   font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -76,7 +76,7 @@
   margin-bottom: var(--space-1);
 }
 
-.adoption-item-row {
+.bootstrap-item-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -88,11 +88,11 @@
   transition: background 120ms ease;
 }
 
-.adoption-item-row:hover {
+.bootstrap-item-row:hover {
   background: var(--color-surface-raised);
 }
 
-.adoption-item-row__left {
+.bootstrap-item-row__left {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -100,7 +100,7 @@
   flex: 1;
 }
 
-.adoption-item-row__label {
+.bootstrap-item-row__label {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -108,7 +108,7 @@
   cursor: pointer;
 }
 
-.adoption-item-row__name {
+.bootstrap-item-row__name {
   font-weight: 500;
   font-size: 0.92rem;
   white-space: nowrap;
@@ -116,7 +116,7 @@
   text-overflow: ellipsis;
 }
 
-.adoption-item-row__target {
+.bootstrap-item-row__target {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
@@ -125,31 +125,31 @@
   text-overflow: ellipsis;
 }
 
-.adoption-item-row__right {
+.bootstrap-item-row__right {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
 }
 
-.adoption-badge {
+.bootstrap-badge {
   font-size: 0.75rem;
   padding: 2px 8px;
   border-radius: var(--radius-full);
   font-weight: 500;
 }
 
-.adoption-badge--link {
+.bootstrap-badge--link {
   background: var(--color-accent-soft);
   color: var(--color-accent);
 }
 
-.adoption-badge--conflict {
+.bootstrap-badge--conflict {
   background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 
-.adoption-dialog__controls {
+.bootstrap-dialog__controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -158,12 +158,12 @@
   font-size: 0.85rem;
 }
 
-.adoption-dialog__controls-links {
+.bootstrap-dialog__controls-links {
   display: flex;
   gap: var(--space-3);
 }
 
-.adoption-link-btn {
+.bootstrap-link-btn {
   background: none;
   border: none;
   padding: 0;
@@ -174,11 +174,11 @@
   text-decoration: underline;
 }
 
-.adoption-link-btn:hover {
+.bootstrap-link-btn:hover {
   opacity: 0.8;
 }
 
-.adoption-status-chip {
+.bootstrap-status-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -186,11 +186,11 @@
   font-weight: 500;
 }
 
-.adoption-status-chip--applied {
+.bootstrap-status-chip--applied {
   color: var(--color-success, #10b981);
 }
 
-.adoption-status-chip--failed {
+.bootstrap-status-chip--failed {
   color: var(--color-danger);
 }
 

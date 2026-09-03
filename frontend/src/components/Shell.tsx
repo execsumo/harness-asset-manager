@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { AdoptionBanner } from "../features/adopt";
+import { BootstrapBanner } from "../features/bootstrap";
 import { Sidebar } from "./Sidebar";
 
 interface ShellProps {
@@ -15,7 +15,7 @@ export function Shell({ children, onRefresh, refreshPending }: ShellProps) {
       <Sidebar onRefresh={onRefresh} refreshPending={refreshPending} />
       <main className="app-main ui-scrollbar">
         <div className="page-shell">
-          <AdoptionBanner />
+          <BootstrapBanner />
           {children}
         </div>
       </main>

@@ -1,18 +1,18 @@
-export type AdoptionActionType = "link" | "skip" | "conflict";
+export type BootstrapActionType = "link" | "skip" | "conflict";
 
-export interface AdoptionActionDto {
+export interface BootstrapActionDto {
   family: string;
   ref: string;
   displayName: string;
   harness: string;
-  action: AdoptionActionType;
+  action: BootstrapActionType;
   targetPath: string;
   reason?: string | null;
   detail?: string | null;
 }
 
-export interface AdoptionPlanDto {
-  actions: AdoptionActionDto[];
+export interface BootstrapPlanDto {
+  actions: BootstrapActionDto[];
   linkableCount: number;
   conflictCount: number;
   skippedCount: number;
@@ -20,7 +20,7 @@ export interface AdoptionPlanDto {
   dismissed: boolean;
 }
 
-export interface AdoptionApplyResultDto {
+export interface BootstrapApplyResultDto {
   family: string;
   ref: string;
   harness: string;
@@ -29,13 +29,13 @@ export interface AdoptionApplyResultDto {
   error?: string | null;
 }
 
-export interface AdoptionApplyResponse {
-  results: AdoptionApplyResultDto[];
+export interface BootstrapApplyResponse {
+  results: BootstrapApplyResultDto[];
   appliedCount: number;
   failedCount: number;
 }
 
-export interface AdoptionDismissResponse {
+export interface BootstrapDismissResponse {
   ok: boolean;
   dismissed: boolean;
 }

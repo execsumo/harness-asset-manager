@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../api";
-import type { AdoptionPlanDto } from "../types";
-import { AdoptionReviewSheet } from "./AdoptionReviewSheet";
+import type { BootstrapPlanDto } from "../types";
+import { BootstrapReviewSheet } from "./BootstrapReviewSheet";
 
 function renderWithClient(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -17,7 +17,7 @@ function renderWithClient(ui: ReactNode) {
   );
 }
 
-const mockPlan: AdoptionPlanDto = {
+const mockPlan: BootstrapPlanDto = {
   actions: [
     {
       family: "skills",
@@ -45,10 +45,10 @@ const mockPlan: AdoptionPlanDto = {
   dismissed: false,
 };
 
-describe("AdoptionReviewSheet", () => {
+describe("BootstrapReviewSheet", () => {
   it("renders grouped actions with link checked and conflict unchecked", () => {
     renderWithClient(
-      <AdoptionReviewSheet
+      <BootstrapReviewSheet
         open={true}
         onOpenChange={vi.fn()}
         plan={mockPlan}
@@ -70,8 +70,8 @@ describe("AdoptionReviewSheet", () => {
     expect(screen.getByText("1 of 2 selected")).toBeInTheDocument();
   });
 
-  it("applies selected items when clicking Adopt Selected", async () => {
-    const applySpy = vi.spyOn(api, "applyAdoption").mockResolvedValueOnce({
+  it("applies selected items when clicking Bootstrap Selected", async () => {
+    const applySpy = vi.spyOn(api, "applyBootstrap").mockResolvedValueOnce({
       results: [
         {
           family: "skills",
@@ -86,15 +86,15 @@ describe("AdoptionReviewSheet", () => {
     });
 
     renderWithClient(
-      <AdoptionReviewSheet
+      <BootstrapReviewSheet
         open={true}
         onOpenChange={vi.fn()}
         plan={mockPlan}
       />,
     );
 
-    const adoptBtn = screen.getByRole("button", { name: /adopt selected/i });
-    fireEvent.click(adoptBtn);
+    const bootstrapBtn = screen.getByRole("button", { name: /bootstrap selected/i });
+    fireEvent.click(bootstrapBtn);
 
     await vi.waitFor(() => {
       expect(applySpy).toHaveBeenCalledWith(

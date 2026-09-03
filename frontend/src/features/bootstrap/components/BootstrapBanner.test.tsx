@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import * as api from "../api";
-import { AdoptionBanner } from "./AdoptionBanner";
+import { BootstrapBanner } from "./BootstrapBanner";
 
 function renderWithClient(ui: ReactNode) {
   const queryClient = new QueryClient({
@@ -16,9 +16,9 @@ function renderWithClient(ui: ReactNode) {
   );
 }
 
-describe("AdoptionBanner", () => {
+describe("BootstrapBanner", () => {
   it("renders nothing when plan has no linkable actions", async () => {
-    vi.spyOn(api, "fetchAdoptionPlan").mockResolvedValueOnce({
+    vi.spyOn(api, "fetchBootstrapPlan").mockResolvedValueOnce({
       actions: [],
       linkableCount: 0,
       conflictCount: 0,
@@ -27,15 +27,15 @@ describe("AdoptionBanner", () => {
       dismissed: false,
     });
 
-    const { container } = renderWithClient(<AdoptionBanner />);
+    const { container } = renderWithClient(<BootstrapBanner />);
     // Wait a tick for query
     await vi.waitFor(() => {
-      expect(container.querySelector(".adoption-banner")).toBeNull();
+      expect(container.querySelector(".bootstrap-banner")).toBeNull();
     });
   });
 
   it("renders nothing when plan is dismissed", async () => {
-    vi.spyOn(api, "fetchAdoptionPlan").mockResolvedValueOnce({
+    vi.spyOn(api, "fetchBootstrapPlan").mockResolvedValueOnce({
       actions: [
         {
           family: "skills",
@@ -53,14 +53,14 @@ describe("AdoptionBanner", () => {
       dismissed: true,
     });
 
-    const { container } = renderWithClient(<AdoptionBanner />);
+    const { container } = renderWithClient(<BootstrapBanner />);
     await vi.waitFor(() => {
-      expect(container.querySelector(".adoption-banner")).toBeNull();
+      expect(container.querySelector(".bootstrap-banner")).toBeNull();
     });
   });
 
   it("renders banner and allows dismissal", async () => {
-    vi.spyOn(api, "fetchAdoptionPlan").mockResolvedValueOnce({
+    vi.spyOn(api, "fetchBootstrapPlan").mockResolvedValueOnce({
       actions: [
         {
           family: "skills",
@@ -77,16 +77,16 @@ describe("AdoptionBanner", () => {
       totalCount: 1,
       dismissed: false,
     });
-    const dismissSpy = vi.spyOn(api, "dismissAdoption").mockResolvedValueOnce({
+    const dismissSpy = vi.spyOn(api, "dismissBootstrap").mockResolvedValueOnce({
       ok: true,
       dismissed: true,
     });
 
-    renderWithClient(<AdoptionBanner />);
+    renderWithClient(<BootstrapBanner />);
 
     await screen.findByText(/New device detected:/i);
     expect(
-      screen.getByText(/1 asset from your synced store can be adopted/i),
+      screen.getByText(/1 asset from your synced store are ready to bootstrap/i),
     ).toBeInTheDocument();
 
     const dismissBtn = screen.getByRole("button", { name: /dismiss/i });
