@@ -54,6 +54,19 @@ class McpMutationService:
         self.asset_tags = asset_tags
         self.harness_application = McpHarnessApplication(read_models)
 
+    def _record_binding(self, name: str, harness: str, *, bound: bool) -> None:
+        """Persist binding intent alongside the binding on disk.
+
+        Best-effort by contract: a failed manifest write must never turn a successful
+        adapter mutation into an error.
+        """
+        if not name:
+            return
+        try:
+            self.store.record_binding(name, harness, bound=bound)
+        except OSError:
+            return
+
     def set_tags(self, name: str, tags: Iterable[str]) -> dict[str, object]:
         if self.store.get_managed(name) is None:
             snapshot = self.read_models.snapshot()
@@ -128,6 +141,7 @@ class McpMutationService:
         record = self._require_record(name)
         adapter = self.read_models.require_enabled_adapter(harness)
         if adapter.has_binding(name):
+            self._record_binding(name, harness, bound=True)
             return {"ok": True}
         binding_record = self._record_for_enable(record, config=config)
         result = self.harness_application.enable_one(
@@ -137,6 +151,7 @@ class McpMutationService:
         )
         if result.failed:
             raise MutationError(result.failed[0]["error"], status=400)
+        self._record_binding(name, harness, bound=True)
         return {"ok": True}
 
     def disable_server(self, name: str, harness: str) -> dict[str, bool]:
@@ -144,6 +159,7 @@ class McpMutationService:
             raise MutationError(f"unknown server: {name}", status=404)
         adapter = self.read_models.require_enabled_adapter(harness)
         adapter.disable_server(name)
+        self._record_binding(name, harness, bound=False)
         self.read_models.invalidate()
         return {"ok": True}
 
@@ -161,18 +177,24 @@ class McpMutationService:
 
         bound_now = self._harnesses_in_states(name, {"managed", "drifted"})
         if target == "enabled":
-            return self.harness_application.enable_many(
+            res = self.harness_application.enable_many(
                 binding_record.spec,
                 self.read_models.enabled_harnesses(),
                 writable_only=True,
                 skip_harnesses=bound_now,
                 commit=(lambda: self.store.upsert_record(binding_record)) if binding_record != record else None,
-            ).to_dict()
-        return self.harness_application.disable_many(
+            )
+            for h in res.succeeded:
+                self._record_binding(name, h, bound=True)
+            return res.to_dict()
+        res = self.harness_application.disable_many(
             name,
             bound_now,
             addressable_only=True,
-        ).to_dict()
+        )
+        for h in res.succeeded:
+            self._record_binding(name, h, bound=False)
+        return res.to_dict()
 
     def _record_for_enable(
         self,
@@ -227,6 +249,8 @@ class McpMutationService:
             target_harnesses,
             commit=(lambda: self.store.upsert_record(source_record)) if source_record != current_record else None,
         )
+        for h in result.succeeded:
+            self._record_binding(name, h, bound=True)
         stored = self.store.get_public_spec(name) or source_record.spec
         return {
             "ok": result.ok,
@@ -289,6 +313,8 @@ class McpMutationService:
             target_harnesses,
             commit=lambda: self.store.upsert_record(target_record),
         )
+        for h in result.succeeded:
+            self._record_binding(target_spec.name, h, bound=True)
 
         response_spec = self.store.get_public_spec(target_spec.name) or target_spec
         return {
