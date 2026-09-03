@@ -110,10 +110,13 @@
 }
 
 /* Fixed-vocabulary contract fields (allowed_subagents, isolation): a segmented toggle
-   whose first segment clears the key, so "absent" stays a state the user can pick. */
+   whose first segment clears the key, so "absent" stays a state the user can pick.
+   The toggle spans its field like the inputs around it, and the segments share that
+   width evenly so the control reads as one balanced unit instead of three chips
+   clustered at the left of an empty box. */
 .frontmatter-toggle {
-  display: inline-flex;
-  align-self: start;
+  display: flex;
+  width: 100%;
   max-width: 100%;
   flex-wrap: wrap;
   gap: 2px;
@@ -124,6 +127,8 @@
 }
 
 .frontmatter-toggle__btn {
+  flex: 1 1 0;
+  min-width: 0;
   padding: var(--space-1) var(--space-3);
   border: none;
   border-radius: calc(var(--radius-sm) - 2px);
@@ -131,22 +136,28 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-family: inherit;
+  text-align: center;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
-.frontmatter-toggle__btn:hover:not(:disabled) {
+.frontmatter-toggle__btn:hover:not(:disabled):not([data-active="true"]) {
   color: var(--color-text);
+  background: var(--color-highlight-softer);
 }
 
 .frontmatter-toggle__btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 1px var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-highlight);
 }
 
+/* The selected segment is a highlight-filled pill: the inset ring plus tinted
+   background keep it unmistakable at a glance, in both light and dark themes. */
 .frontmatter-toggle__btn[data-active="true"] {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
+  background: var(--color-highlight-soft);
+  color: var(--color-highlight);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--color-highlight);
 }
 
 .frontmatter-toggle__btn[data-invalid="true"] {
