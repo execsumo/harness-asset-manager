@@ -7,7 +7,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.container import build_backend_container
+from harness_asset_manager.application.hooks.store import HookSpec
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.permissions.store import PermissionSpec
 from harness_asset_manager.application.slash_commands.models import SlashCommand
 from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import (
@@ -95,12 +97,38 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     args=("-y", "exa-mcp-server"),
                 )
             )
+            container_a.mcp_mutations.enable_server("exa", "claude")
+
+            # Hooks
+            container_a.hooks_store.upsert_managed(
+                HookSpec(
+                    id="lint-hook",
+                    event="pre_tool_use",
+                    command="flake8",
+                    match="file_write",
+                )
+            )
+            container_a.hooks_mutations.enable_hook("lint-hook", "claude")
+
+            # Permissions
+            container_a.permissions_store.upsert_managed(
+                PermissionSpec(
+                    id="deny-secrets",
+                    decision="deny",
+                    scope="file_read",
+                    pattern="/secrets/**",
+                )
+            )
+            container_a.permissions_mutations.enable_permission("deny-secrets", "claude")
 
             # Verify Machine A state
             self.assertTrue((spec_a.claude_root / "shared-audit").is_symlink())
             self.assertTrue((spec_a.home / ".claude" / "agents" / "auditor.md").is_symlink())
             self.assertTrue((spec_a.home / ".codex" / "agents" / "auditor.toml").is_file())
             self.assertTrue((spec_a.home / ".codex" / "prompts" / "code-review.md").is_file())
+            self.assertTrue(container_a.mcp_read_models.require_enabled_adapter("claude").has_binding("exa"))
+            self.assertTrue(container_a.hooks_read_models.require_enabled_adapter("claude").has_binding("lint-hook"))
+            self.assertTrue(container_a.permissions_read_models.require_enabled_adapter("claude").has_binding("deny-secrets"))
 
             # === 2. Copy store from Machine A to Machine B ===
             store_a = spec_a.xdg_data_home / APP_NAME
@@ -133,6 +161,12 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             mcp_b = container_b.mcp_store.list_managed()
             self.assertEqual([s.name for s in mcp_b], ["exa"])
 
+            hooks_b = container_b.hooks_store.list_managed()
+            self.assertEqual([h.id for h in hooks_b], ["lint-hook"])
+
+            perms_b = container_b.permissions_store.list_managed()
+            self.assertEqual([p.id for p in perms_b], ["deny-secrets"])
+
             # Assert 2: Bindings on Machine B show up as disabled (links don't exist on B yet), not broken/error
             auditor_entry = next(e for e in agents_b.entries if e.ref == "auditor")
             for binding in auditor_entry.bindings:
@@ -142,14 +176,13 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     f"Agent binding for {binding.harness} should be disabled on fresh machine, got {binding.state}",
                 )
 
-            # Assert 3: Adopt plan on Machine B identifies all 4 bindings from Machine A
+            # Assert 3: Adopt plan on Machine B identifies all 7 bindings from Machine A
             plan_b = container_b.adoption_planner.plan()
             self.assertEqual(
                 len(plan_b.linkable),
-                4,
-                f"Expected 4 linkable actions on arrival, got {len(plan_b.linkable)}: {plan_b.linkable}",
+                7,
+                f"Expected 7 linkable actions on arrival, got {len(plan_b.linkable)}: {plan_b.linkable}",
             )
-            # 1 skill (claude), 2 agents (claude, codex), 1 slash command (codex)
             self.assertEqual(
                 {(a.family, a.ref, a.harness) for a in plan_b.linkable},
                 {
@@ -157,12 +190,15 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     ("agents", "auditor", "claude"),
                     ("agents", "auditor", "codex"),
                     ("slash_commands", "code-review", "codex"),
+                    ("mcp", "exa", "claude"),
+                    ("hooks", "lint-hook", "claude"),
+                    ("permissions", "deny-secrets", "claude"),
                 },
             )
 
             # Assert 4: Apply adoption on Machine B creates all valid bindings rooted under Bob's home
             results_b = container_b.adoption_applier.apply(plan_b.linkable)
-            self.assertEqual(len(results_b), 4)
+            self.assertEqual(len(results_b), 7)
             self.assertTrue(all(r.status == "applied" for r in results_b))
 
             b_claude_link = spec_b.home / ".claude" / "agents" / "auditor.md"
@@ -185,10 +221,15 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             b_cmd_file = spec_b.home / ".codex" / "prompts" / "code-review.md"
             self.assertTrue(b_cmd_file.is_file())
 
+            # Verify MCP, Hooks, Permissions live on Bob's machine
+            self.assertTrue(container_b.mcp_read_models.require_enabled_adapter("claude").has_binding("exa"))
+            self.assertTrue(container_b.hooks_read_models.require_enabled_adapter("claude").has_binding("lint-hook"))
+            self.assertTrue(container_b.permissions_read_models.require_enabled_adapter("claude").has_binding("deny-secrets"))
+
             # Assert 5: Idempotence — re-running planner on Machine B yields 0 linkable actions
             plan_b_second = container_b.adoption_planner.plan()
             self.assertEqual(len(plan_b_second.linkable), 0)
-            self.assertEqual(len(plan_b_second.skipped), 4)
+            self.assertEqual(len(plan_b_second.skipped), 7)
             self.assertTrue(all(a.reason == "already-linked" for a in plan_b_second.skipped))
 
             # Re-applying yields status=applied as a no-op
@@ -199,8 +240,11 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             container_b.agents_reconcile.reconcile()
             container_b.skills_queries.inventory()
             container_b.slash_command_queries.list_commands()
+            container_b.mcp_read_models.snapshot()
+            container_b.hooks_read_models.snapshot()
+            container_b.permissions_read_models.snapshot()
 
-            # Assert 5: No paths from Machine A leak into Machine B's persisted state files
+            # Assert 7: No paths from Machine A leak into Machine B's persisted state files
             ledger_text = container_b.paths.bindings_ledger_path.read_text(encoding="utf-8")
             self.assertNotIn(str(root_a), ledger_text)
             self.assertIn("~/", ledger_text)

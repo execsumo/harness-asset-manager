@@ -195,7 +195,7 @@ class AdoptionApplier:
 
         # Check for occupied target (conflict)
         if target.exists() or target.is_symlink():
-            if action.action != "conflict" and not allow_conflicts:
+            if not allow_conflicts:
                 msg = f"Target {target} is occupied; refusing to overwrite"
                 record_adopt(
                     self.mutation_audit,
@@ -285,7 +285,7 @@ class AdoptionApplier:
 
         # Check for occupied key (conflict) inside shared file
         if self._check_config_key_occupied(action):
-            if action.action != "conflict" and not allow_conflicts:
+            if not allow_conflicts:
                 msg = f"Key '{action.ref}' in {target.name} is occupied; refusing to overwrite"
                 record_adopt(
                     self.mutation_audit,

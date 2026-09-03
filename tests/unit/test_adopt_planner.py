@@ -7,6 +7,9 @@ from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.adopt import AdoptionPlanner
 from harness_asset_manager.application.container import build_backend_container
+from harness_asset_manager.application.hooks.store import HookSpec
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.permissions.store import PermissionSpec
 from harness_asset_manager.application.slash_commands.models import SlashCommand
 from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import (
@@ -69,6 +72,21 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         sync_path = self.container.paths.slash_command_sync_state_path
         sync_path.parent.mkdir(parents=True, exist_ok=True)
         sync_path.write_text("[not a dict", encoding="utf-8")
+
+        # Corrupt MCP manifest
+        mcp_manifest = self.container.paths.mcp_store_manifest
+        mcp_manifest.parent.mkdir(parents=True, exist_ok=True)
+        mcp_manifest.write_text("{corrupt mcp json", encoding="utf-8")
+
+        # Corrupt hooks manifest
+        hooks_manifest = self.container.paths.hooks_store_manifest
+        hooks_manifest.parent.mkdir(parents=True, exist_ok=True)
+        hooks_manifest.write_text("{corrupt hooks json", encoding="utf-8")
+
+        # Corrupt permissions manifest
+        perms_manifest = self.container.paths.permissions_store_manifest
+        perms_manifest.parent.mkdir(parents=True, exist_ok=True)
+        perms_manifest.write_text("{corrupt permissions json", encoding="utf-8")
 
         planner = AdoptionPlanner.from_container(self.container)
         plan = planner.plan()
@@ -289,6 +307,156 @@ class AdoptPlannerDecisionTableTests(unittest.TestCase):
         self.assertIsNotNone(legacy_action)
         self.assertEqual(legacy_action.action, "skip")
         self.assertEqual(legacy_action.reason, "asset-missing-from-store")
+
+    def test_decision_table_mcp(self) -> None:
+        spec = McpServerSpec(
+            name="exa",
+            display_name="Exa",
+            source=McpSource.manual("exa"),
+            transport="stdio",
+            command="npx",
+            args=("-y", "exa-mcp-server"),
+            enabled_harnesses=("claude", "cursor"),
+        )
+        self.container.mcp_store.upsert_managed(spec)
+        self.container.mcp_mutations.enable_server("exa", "claude")
+
+        planner = AdoptionPlanner.from_container(self.container)
+
+        # 1. Claude already configured -> skip, reason: already-linked
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "mcp" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "skip")
+        self.assertEqual(claude_action.reason, "already-linked")
+
+        # 2. Cursor vacant -> link
+        cursor_action = next(a for a in plan.actions if a.family == "mcp" and a.harness == "cursor")
+        self.assertEqual(cursor_action.action, "link")
+
+        # 3. Cursor occupied key with different config -> conflict, reason: target-occupied
+        cursor_adapter = self.container.mcp_read_models.require_enabled_adapter("cursor")
+        foreign_spec = McpServerSpec(
+            name="exa",
+            display_name="Exa",
+            source=McpSource.manual("exa"),
+            transport="stdio",
+            command="different-cmd",
+        )
+        cursor_adapter.enable_server(foreign_spec)
+        plan = planner.plan()
+        cursor_action = next(a for a in plan.actions if a.family == "mcp" and a.harness == "cursor")
+        self.assertEqual(cursor_action.action, "conflict")
+        self.assertEqual(cursor_action.reason, "target-occupied")
+
+        # Remove key from cursor config
+        cursor_adapter.disable_server("exa")
+
+        # 4. Harness support disabled in settings -> skip, reason: harness-support-disabled
+        self.container.harness_kernel.support_store.set_enabled("cursor", False)
+        plan = planner.plan()
+        cursor_action = next(a for a in plan.actions if a.family == "mcp" and a.harness == "cursor")
+        self.assertEqual(cursor_action.action, "skip")
+        self.assertEqual(cursor_action.reason, "harness-support-disabled")
+        self.container.harness_kernel.support_store.set_enabled("cursor", True)
+
+        # 5. Harness not installed -> skip, reason: harness-not-installed
+        cursor_bin = self.spec.bin_dir / "cursor-agent"
+        if cursor_bin.exists():
+            cursor_bin.unlink()
+        plan = planner.plan()
+        cursor_action = next(a for a in plan.actions if a.family == "mcp" and a.harness == "cursor")
+        self.assertEqual(cursor_action.action, "skip")
+        self.assertEqual(cursor_action.reason, "harness-not-installed")
+        write_cli_stub(cursor_bin, "cursor-agent")
+
+        # 6. Asset missing from store
+        self.container.mcp_store.remove("exa")
+        plan = planner.plan()
+        mcp_actions = [a for a in plan.actions if a.family == "mcp"]
+        self.assertEqual(mcp_actions, [])
+
+    def test_decision_table_hooks(self) -> None:
+        spec = HookSpec(
+            id="lint-hook",
+            event="pre_tool_use",
+            command="flake8",
+            match="file_write",
+            enabled_harnesses=("claude",),
+        )
+        self.container.hooks_store.upsert_managed(spec)
+        self.container.hooks_mutations.enable_hook("lint-hook", "claude")
+
+        planner = AdoptionPlanner.from_container(self.container)
+
+        # 1. Claude already configured -> skip, reason: already-linked
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "hooks" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "skip")
+        self.assertEqual(claude_action.reason, "already-linked")
+
+        # Disable on claude -> key becomes vacant -> link
+        claude_adapter = self.container.hooks_read_models.require_enabled_adapter("claude")
+        claude_adapter.disable_hook("lint-hook")
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "hooks" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "link")
+
+        # Occupied key with different command -> conflict, reason: target-occupied
+        diff_spec = HookSpec(
+            id="lint-hook",
+            event="pre_tool_use",
+            command="pylint",
+            match="file_write",
+        )
+        claude_adapter.enable_hook(diff_spec)
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "hooks" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "conflict")
+        self.assertEqual(claude_action.reason, "target-occupied")
+
+        # Harness disabled in settings -> skip, reason: harness-support-disabled
+        self.container.harness_kernel.support_store.set_enabled("claude", False)
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "hooks" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "skip")
+        self.assertEqual(claude_action.reason, "harness-support-disabled")
+        self.container.harness_kernel.support_store.set_enabled("claude", True)
+
+    def test_decision_table_permissions(self) -> None:
+        spec = PermissionSpec(
+            id="block-secrets",
+            decision="deny",
+            scope="file_write",
+            pattern="/secrets/**",
+            enabled_harnesses=("claude",),
+        )
+        self.container.permissions_store.upsert_managed(spec)
+        self.container.permissions_mutations.enable_permission("block-secrets", "claude")
+
+        planner = AdoptionPlanner.from_container(self.container)
+
+        # 1. Claude already configured -> skip, reason: already-linked
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "permissions" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "skip")
+        self.assertEqual(claude_action.reason, "already-linked")
+
+        # Disable on claude -> key becomes vacant -> link
+        claude_adapter = self.container.permissions_read_models.require_enabled_adapter("claude")
+        claude_adapter.disable_permission("block-secrets")
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "permissions" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "link")
+
+        # Partial rules (only Edit, missing Write) -> drifted state -> conflict, reason: target-occupied
+        claude_adapter.config_path.write_text(
+            json.dumps({"permissions": {"deny": ["Edit(/secrets/**)"]}}, indent=2),
+            encoding="utf-8",
+        )
+        plan = planner.plan()
+        claude_action = next(a for a in plan.actions if a.family == "permissions" and a.harness == "claude")
+        self.assertEqual(claude_action.action, "conflict")
+        self.assertEqual(claude_action.reason, "target-occupied")
 
 
 if __name__ == "__main__":

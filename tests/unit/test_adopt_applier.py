@@ -11,6 +11,9 @@ from harness_asset_manager.application.adopt import (
     AdoptionPlanner,
 )
 from harness_asset_manager.application.container import build_backend_container
+from harness_asset_manager.application.hooks.store import HookSpec
+from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.permissions.store import PermissionSpec
 from harness_asset_manager.application.slash_commands.models import SlashCommand
 from tests.support.fake_home import (
     FakeHomeSpec,
@@ -51,7 +54,7 @@ class AdoptApplierTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def test_apply_creates_bindings_across_all_three_families(self) -> None:
+    def test_apply_creates_bindings_across_all_six_families(self) -> None:
         # 1. Skill
         skill_src = seed_skill_package(self.spec.home / "downloads", "my-skill", "My Skill")
         dest = self.container.skills_store.ingest(
@@ -77,15 +80,47 @@ class AdoptApplierTests(unittest.TestCase):
         self.container.slash_command_mutations.sync_command("lint", targets=["codex"])
         (self.spec.home / ".codex" / "prompts" / "lint.md").unlink()
 
+        # 4. MCP server
+        mcp_spec = McpServerSpec(
+            name="exa",
+            display_name="Exa",
+            source=McpSource.manual("exa"),
+            transport="stdio",
+            command="npx",
+            args=("-y", "exa-mcp-server"),
+            enabled_harnesses=("claude",),
+        )
+        self.container.mcp_store.upsert_managed(mcp_spec)
+
+        # 5. Hook
+        hook_spec = HookSpec(
+            id="my-hook",
+            event="pre_tool_use",
+            command="flake8",
+            match="file_write",
+            enabled_harnesses=("claude",),
+        )
+        self.container.hooks_store.upsert_managed(hook_spec)
+
+        # 6. Permission
+        perm_spec = PermissionSpec(
+            id="block-secrets",
+            decision="deny",
+            scope="file_read",
+            pattern="/secrets/**",
+            enabled_harnesses=("claude",),
+        )
+        self.container.permissions_store.upsert_managed(perm_spec)
+
         # Plan
         planner = AdoptionPlanner.from_container(self.container)
         plan = planner.plan()
-        self.assertEqual(len(plan.linkable), 3)
+        self.assertEqual(len(plan.linkable), 6)
 
         # Apply
         applier = AdoptionApplier(self.container)
         results = applier.apply(plan.linkable)
-        self.assertEqual(len(results), 3)
+        self.assertEqual(len(results), 6)
         self.assertTrue(all(r.status == "applied" for r in results))
 
         # Verify bindings live on disk
@@ -93,11 +128,29 @@ class AdoptApplierTests(unittest.TestCase):
         self.assertTrue((self.spec.home / ".claude" / "agents" / "reviewer.md").is_symlink())
         self.assertTrue((self.spec.home / ".codex" / "prompts" / "lint.md").is_file())
 
+        # Verify MCP live on disk
+        claude_mcp_adapter = self.container.mcp_read_models.require_enabled_adapter("claude")
+        self.assertTrue(claude_mcp_adapter.has_binding("exa"))
+
+        # Verify Hook live on disk
+        claude_hook_adapter = self.container.hooks_read_models.require_enabled_adapter("claude")
+        self.assertTrue(claude_hook_adapter.has_binding("my-hook"))
+
+        # Verify Permission live on disk
+        claude_perm_adapter = self.container.permissions_read_models.require_enabled_adapter("claude")
+        self.assertTrue(claude_perm_adapter.has_binding("block-secrets"))
+
         # Audit events recorded
-        events = self.container.mutation_audit.read_recent(limit=10)
+        events = self.container.mutation_audit.read_recent(limit=20)
         adopt_events = [e for e in events if e.get("operation") == "adopt"]
-        self.assertEqual(len(adopt_events), 3)
+        self.assertEqual(len(adopt_events), 6)
         self.assertTrue(all(e.get("outcome") == "succeeded" for e in adopt_events))
+
+        # Idempotence: re-planning yields zero linkable actions; all are skipped
+        re_plan = planner.plan()
+        self.assertEqual(len(re_plan.linkable), 0)
+        self.assertEqual(len(re_plan.skipped), 6)
+        self.assertTrue(all(a.reason == "already-linked" for a in re_plan.skipped))
 
     def test_apply_rechecks_occupied_target_and_refuses_overwrite(self) -> None:
         self.container.agents_store.create(name="Reviewer", description="reviews", prompt="review code")
@@ -188,6 +241,94 @@ class AdoptApplierTests(unittest.TestCase):
         state = self.container.slash_command_sync_state.load()
         self.assertIn("cursor", state.get("lint", {}))
         self.assertIn("codex", state.get("lint", {}))
+
+    def test_apply_config_merge_key_conflict_and_allow_conflicts(self) -> None:
+        spec = McpServerSpec(
+            name="exa",
+            display_name="Exa",
+            source=McpSource.manual("exa"),
+            transport="stdio",
+            command="npx",
+            args=("-y", "exa-mcp-server"),
+            enabled_harnesses=("cursor",),
+        )
+        self.container.mcp_store.upsert_managed(spec)
+
+        cursor_adapter = self.container.mcp_read_models.require_enabled_adapter("cursor")
+        foreign_spec = McpServerSpec(
+            name="exa",
+            display_name="Exa",
+            source=McpSource.manual("exa"),
+            transport="stdio",
+            command="foreign-command",
+        )
+        cursor_adapter.enable_server(foreign_spec)
+        orig_content = cursor_adapter.config_path.read_text(encoding="utf-8")
+
+        action = AdoptionAction(
+            family="mcp",
+            ref="exa",
+            display_name="Exa",
+            harness="cursor",
+            action="conflict",
+            target=cursor_adapter.config_path,
+        )
+
+        applier = AdoptionApplier(self.container)
+
+        # 1. Applying without allow_conflicts -> fails, config untouched
+        results = applier.apply([action], allow_conflicts=False)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].status, "failed")
+        self.assertIn("occupied", results[0].error or "")
+        self.assertEqual(cursor_adapter.config_path.read_text(encoding="utf-8"), orig_content)
+
+        # 2. Applying with allow_conflicts=True -> succeeds, config overwritten with store version
+        results = applier.apply([action], allow_conflicts=True)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].status, "applied")
+        doc = json.loads(cursor_adapter.config_path.read_text(encoding="utf-8"))
+        self.assertEqual(doc["mcpServers"]["exa"]["command"], "npx")
+
+    def test_apply_config_merge_is_additive(self) -> None:
+        claude_adapter = self.container.mcp_read_models.require_enabled_adapter("claude")
+        existing_spec = McpServerSpec(
+            name="preexisting",
+            display_name="PreExisting",
+            source=McpSource.manual("preexisting"),
+            transport="stdio",
+            command="existing-cmd",
+        )
+        claude_adapter.enable_server(existing_spec)
+
+        # Now adopt a new server
+        spec = McpServerSpec(
+            name="new-server",
+            display_name="NewServer",
+            source=McpSource.manual("new-server"),
+            transport="stdio",
+            command="new-cmd",
+            enabled_harnesses=("claude",),
+        )
+        self.container.mcp_store.upsert_managed(spec)
+
+        action = AdoptionAction(
+            family="mcp",
+            ref="new-server",
+            display_name="NewServer",
+            harness="claude",
+            action="link",
+            target=claude_adapter.config_path,
+        )
+
+        applier = AdoptionApplier(self.container)
+        results = applier.apply([action])
+        self.assertEqual(results[0].status, "applied")
+
+        # Both pre-existing and new servers exist in the config
+        doc = json.loads(claude_adapter.config_path.read_text(encoding="utf-8"))
+        self.assertIn("preexisting", doc["mcpServers"])
+        self.assertIn("new-server", doc["mcpServers"])
 
 
 if __name__ == "__main__":
