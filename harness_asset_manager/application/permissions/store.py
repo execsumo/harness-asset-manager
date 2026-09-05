@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Mapping
 
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.application.skills.manifest import normalize_enabled_harnesses
 
 CURRENT_PERMISSIONS_MANIFEST_VERSION = 1
 
@@ -34,6 +35,20 @@ class PermissionSpec:
     description: str = ""
     installed_at: str = ""
     revision: str = ""
+    enabled_harnesses: tuple[str, ...] = ()
+
+    def with_binding(self, harness: str, *, bound: bool) -> "PermissionSpec":
+        """Return a copy with ``harness`` added to / removed from recorded intent.
+
+        Returns ``self`` unchanged when the intent already matches, so callers can
+        skip a manifest write on a no-op toggle.
+        """
+        updated = normalize_enabled_harnesses(
+            [h for h in self.enabled_harnesses if h != harness] + ([harness] if bound else [])
+        )
+        if updated == self.enabled_harnesses:
+            return self
+        return replace(self, enabled_harnesses=updated)
 
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -46,6 +61,8 @@ class PermissionSpec:
         }
         if self.pattern is not None:
             payload["pattern"] = self.pattern
+        if self.enabled_harnesses:
+            payload["enabledHarnesses"] = list(self.enabled_harnesses)
         return payload
 
     @classmethod
@@ -58,6 +75,7 @@ class PermissionSpec:
             description=str(payload.get("description", "")),
             installed_at=str(payload.get("installedAt", "")),
             revision=str(payload.get("revision", "")),
+            enabled_harnesses=normalize_enabled_harnesses(payload.get("enabledHarnesses")),
         )
 
 
@@ -133,6 +151,9 @@ class PermissionStore:
     def upsert_managed(self, spec: PermissionSpec) -> PermissionSpec:
         with file_lock(self._lock_path):
             manifest = self._load_manifest_result().manifest
+            existing = next((e for e in manifest.entries if e.id == spec.id), None)
+            if existing is not None and not spec.enabled_harnesses and existing.enabled_harnesses:
+                spec = replace(spec, enabled_harnesses=existing.enabled_harnesses)
             stamped = prepare_managed_spec(spec)
             new_entries = tuple(
                 stamped if entry.id == stamped.id else entry for entry in manifest.entries
@@ -141,6 +162,28 @@ class PermissionStore:
                 new_entries = manifest.entries + (stamped,)
             write_permissions_manifest(self.manifest_path, PermissionManagedManifest(entries=new_entries))
             return stamped
+
+    def record_binding(self, id: str, harness: str, *, bound: bool) -> None:
+        """Record that ``id`` was bound into / unbound from ``harness``.
+
+        Intent only. Never raises on missing or unmanaged permissions, and skips the write
+        if the recorded set is unchanged.
+        """
+        with file_lock(self._lock_path):
+            manifest = self._load_manifest_result().manifest
+            updated_entries: list[PermissionSpec] = []
+            changed = False
+            for entry in manifest.entries:
+                if entry.id != id:
+                    updated_entries.append(entry)
+                    continue
+                next_entry = entry.with_binding(harness, bound=bound)
+                if next_entry is not entry:
+                    changed = True
+                updated_entries.append(next_entry)
+            if not changed:
+                return
+            write_permissions_manifest(self.manifest_path, PermissionManagedManifest(entries=tuple(updated_entries)))
 
     def remove(self, id: str) -> bool:
         with file_lock(self._lock_path):

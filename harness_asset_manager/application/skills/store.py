@@ -139,16 +139,20 @@ class SkillStore:
             shutil.rmtree(dest)
             shutil.copytree(source_path, dest)
             manifest = load_skill_store_manifest(self.manifest_path)
+            # Keyword args on purpose: this rebuild silently drops any field added
+            # to SkillStoreEntry that the call does not name, and dropping recorded
+            # binding intent here would wipe it on every source update.
             updated = tuple(
                 SkillStoreEntry(
-                    e.package_dir,
-                    e.declared_name,
-                    e.source_kind,
-                    e.source_locator,
-                    new_fp,
-                    e.source_ref if source_ref is None else source_ref,
-                    e.source_path if source_path_hint is None else source_path_hint,
-                    e.origin_harness,
+                    package_dir=e.package_dir,
+                    declared_name=e.declared_name,
+                    source_kind=e.source_kind,
+                    source_locator=e.source_locator,
+                    revision=new_fp,
+                    source_ref=e.source_ref if source_ref is None else source_ref,
+                    source_path=e.source_path if source_path_hint is None else source_path_hint,
+                    origin_harness=e.origin_harness,
+                    enabled_harnesses=e.enabled_harnesses,
                 )
                 if e.package_dir == package_dir
                 else e
@@ -159,6 +163,40 @@ class SkillStore:
                 SkillStoreManifest(entries=updated),
             )
             return dest, True
+
+    def record_binding(self, package_dir: str, harness: str, *, bound: bool) -> None:
+        """Record that ``package_dir`` was bound into / unbound from ``harness``.
+
+        Intent only. This never touches a symlink and is never consulted to decide
+        what is enabled *here* — the filesystem still answers that. It exists so a
+        store synced to a new device knows which harnesses to offer to rebuild.
+
+        Best-effort by contract: a package with no manifest entry (an unmanaged
+        skill, or one deleted concurrently) is a silent no-op, and a toggle that
+        does not change the recorded set skips the write entirely. Callers treat a
+        binding as successful once the adapter succeeds, so a failure to persist
+        intent must never turn a completed enable into an error.
+
+        Takes the manifest lock, so it must not be called while already holding it
+        (``file_lock`` is a non-reentrant ``flock``).
+        """
+        with file_lock(self.lock_path):
+            manifest = load_skill_store_manifest(self.manifest_path)
+            updated: list[SkillStoreEntry] = []
+            changed = False
+            for entry in manifest.entries:
+                if entry.package_dir != package_dir:
+                    updated.append(entry)
+                    continue
+                next_entry = entry.with_binding(harness, bound=bound)
+                changed = changed or next_entry is not entry
+                updated.append(next_entry)
+            if not changed:
+                return
+            write_skill_store_manifest(
+                self.manifest_path,
+                SkillStoreManifest(entries=tuple(updated)),
+            )
 
     def delete(self, package_dir: str) -> None:
         with file_lock(self.lock_path):

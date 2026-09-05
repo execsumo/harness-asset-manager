@@ -39,6 +39,10 @@ class FileTreeDiscoveryRoot:
     scope: str
     label: str
     path_resolver: PathResolver
+    locator_prefix: str = ""
+
+
+DynamicDiscoveryRootsResolver: TypeAlias = Callable[[ResolutionContext], tuple[FileTreeDiscoveryRoot, ...]]
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,7 @@ class FileTreeBindingProfile:
     app_probe_paths: tuple[PathResolver, ...] = ()
     layout: FileTreeLayout = "flat"
     default_category: str | None = None
+    dynamic_roots_resolver: DynamicDiscoveryRootsResolver | None = None
 
     def resolve_managed_root(self, context: ResolutionContext) -> Path:
         if self.managed_default is None:
@@ -230,6 +235,7 @@ __all__ = [
     "CommandFileBindingProfile",
     "CommandFileRenderFormat",
     "ConfigSubtreeBindingProfile",
+    "DynamicDiscoveryRootsResolver",
     "FamilyKey",
     "FileTreeAvailability",
     "FileTreeLayout",

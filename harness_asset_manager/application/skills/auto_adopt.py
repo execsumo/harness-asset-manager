@@ -121,6 +121,8 @@ class SkillsAutoAdoptService:
         if not sightings:
             return "no harness copy was found"
         for sighting in sightings:
+            if sighting.scope == "plugin":
+                return "plugin skills require explicit adoption"
             if sighting.path is None:
                 return "harness path is unavailable"
             if is_sync_artifact(sighting.path.name):

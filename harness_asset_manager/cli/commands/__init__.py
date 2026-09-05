@@ -12,6 +12,7 @@ import argparse
 
 from . import (
     agents,
+    bootstrap,
     configs,
     hooks,
     mcp,
@@ -28,6 +29,7 @@ from . import (
 GROUP_NAMES = frozenset(
     {
         "agents",
+        "bootstrap",
         "commands",
         "configs",
         "health",
@@ -48,4 +50,4 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
 
 
 __all__ = ["GROUP_NAMES", "register"]
-_MODULES = (skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)
+_MODULES = (bootstrap, skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)

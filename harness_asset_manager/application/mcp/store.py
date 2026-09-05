@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Mapping
 
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
+from harness_asset_manager.application.skills.manifest import normalize_enabled_harnesses
 
 McpTransport = Literal["stdio", "http", "sse"]
 McpSourceKind = Literal["marketplace", "adopted", "manual"]
@@ -64,6 +65,7 @@ class McpServerSpec:
     # Harness entry fields HAM does not model. They are persisted in the canonical
     # manifest and merged back on render so adoption never becomes a lossy rewrite.
     extras: tuple[tuple[str, object], ...] = ()
+    enabled_harnesses: tuple[str, ...] = ()
 
     def env_dict(self) -> dict[str, str]:
         return dict(self.env) if self.env else {}
@@ -76,6 +78,19 @@ class McpServerSpec:
 
     def extras_dict(self) -> dict[str, object]:
         return dict(self.extras)
+
+    def with_binding(self, harness: str, *, bound: bool) -> "McpServerSpec":
+        """Return a copy with ``harness`` added to / removed from recorded intent.
+
+        Returns ``self`` unchanged when the intent already matches, so callers can
+        skip a manifest write on a no-op toggle.
+        """
+        updated = normalize_enabled_harnesses(
+            [h for h in self.enabled_harnesses if h != harness] + ([harness] if bound else [])
+        )
+        if updated == self.enabled_harnesses:
+            return self
+        return replace(self, enabled_harnesses=updated)
 
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -98,6 +113,8 @@ class McpServerSpec:
             payload["headers"] = dict(self.headers)
         if self.extras:
             payload["extras"] = dict(self.extras)
+        if self.enabled_harnesses:
+            payload["enabledHarnesses"] = list(self.enabled_harnesses)
         return payload
 
     @classmethod
@@ -132,6 +149,7 @@ class McpServerSpec:
                 if isinstance(extras_raw, Mapping)
                 else ()
             ),
+            enabled_harnesses=normalize_enabled_harnesses(payload.get("enabledHarnesses")),
         )
 
 
@@ -231,12 +249,41 @@ class McpServerStore:
         return self.upsert_managed(spec)
 
     def upsert_record(self, record: "ManagedMcpRecord") -> "ManagedMcpRecord":
+        existing = self.get_record(record.spec.name)
+        if existing is not None and not record.spec.enabled_harnesses and existing.spec.enabled_harnesses:
+            record = replace(record, spec=replace(record.spec, enabled_harnesses=existing.spec.enabled_harnesses))
         return self._upsert_record(record)
 
     def upsert_managed(self, server: McpServerSpec) -> McpServerSpec:
         existing = self.get_record(server.name)
+        if existing is not None and not server.enabled_harnesses and existing.spec.enabled_harnesses:
+            server = replace(server, enabled_harnesses=existing.spec.enabled_harnesses)
         record = self._record_from_spec(server, install_intent=existing.install_intent if existing else None)
         return self._upsert_record(record).spec
+
+    def record_binding(self, name: str, harness: str, *, bound: bool) -> None:
+        """Record that ``name`` was bound into / unbound from ``harness``.
+
+        Intent only. Never raises on missing or unmanaged servers, and skips the write
+        if the recorded set is unchanged.
+        """
+        with file_lock(self._lock_path):
+            manifest = self._load_manifest_result().manifest
+            updated_entries: list[ManagedMcpRecord] = []
+            changed = False
+            for entry in manifest.entries:
+                if entry.spec.name != name:
+                    updated_entries.append(entry)
+                    continue
+                next_spec = entry.spec.with_binding(harness, bound=bound)
+                if next_spec is not entry.spec:
+                    changed = True
+                    updated_entries.append(replace(entry, spec=next_spec))
+                else:
+                    updated_entries.append(entry)
+            if not changed:
+                return
+            write_mcp_manifest(self.manifest_path, McpManagedManifest(entries=tuple(updated_entries)))
 
     def _upsert_record(self, record: "ManagedMcpRecord") -> "ManagedMcpRecord":
         with file_lock(self._lock_path):

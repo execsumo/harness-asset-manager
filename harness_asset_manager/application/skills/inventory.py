@@ -114,6 +114,7 @@ class SkillInventory:
         shared_path_index: dict[Path, InventoryEntry] = {}
         shared_match_index: dict[str, InventoryEntry] = {}
         hermes_local_match_index: dict[tuple[str, str], InventoryEntry] = {}
+        plugin_match_index: dict[tuple[str, str], InventoryEntry] = {}
         excluded_hermes_names = _excluded_hermes_names(harness_scans)
 
         for store_package in store_scan.packages:
@@ -155,6 +156,7 @@ class SkillInventory:
             entries.append(entry)
             shared_path_index[package.resolved_path] = entry
             shared_match_index[_managed_entry_key(entry)] = entry
+            plugin_match_index[(entry.name.casefold(), (entry.package_dir or "").casefold())] = entry
             if store_package.origin_harness == "hermes":
                 hermes_local_match_index[_hermes_local_match_key(entry)] = entry
 
@@ -183,6 +185,10 @@ class SkillInventory:
                 ):
                     shared_match = hermes_local_match_index.get(
                         _hermes_local_observation_match_key(observation.package)
+                    )
+                if shared_match is None and observation.scope == "plugin":
+                    shared_match = plugin_match_index.get(
+                        (observation.package.declared_name.casefold(), observation.package.root_path.name.casefold())
                     )
                 if shared_match is not None:
                     shared_match.add_sighting(sighting)

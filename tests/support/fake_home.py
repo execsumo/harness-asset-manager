@@ -49,6 +49,14 @@ class FakeHomeSpec:
         return self.home / ".claude" / "skills"
 
     @property
+    def claude_plugins_registry(self) -> Path:
+        return self.home / ".claude" / "plugins" / "installed_plugins.json"
+
+    @property
+    def claude_plugins_cache(self) -> Path:
+        return self.home / ".claude" / "plugins" / "cache"
+
+    @property
     def cursor_root(self) -> Path:
         return self.home / ".cursor" / "skills"
 

@@ -7,7 +7,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from harness_asset_manager.application.container import build_backend_container
+from harness_asset_manager.application.hooks.store import HookSpec
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.application.permissions.store import PermissionSpec
 from harness_asset_manager.application.slash_commands.models import SlashCommand
 from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import (
@@ -95,12 +97,38 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     args=("-y", "exa-mcp-server"),
                 )
             )
+            container_a.mcp_mutations.enable_server("exa", "claude")
+
+            # Hooks
+            container_a.hooks_store.upsert_managed(
+                HookSpec(
+                    id="lint-hook",
+                    event="pre_tool_use",
+                    command="flake8",
+                    match="file_write",
+                )
+            )
+            container_a.hooks_mutations.enable_hook("lint-hook", "claude")
+
+            # Permissions
+            container_a.permissions_store.upsert_managed(
+                PermissionSpec(
+                    id="deny-secrets",
+                    decision="deny",
+                    scope="file_read",
+                    pattern="/secrets/**",
+                )
+            )
+            container_a.permissions_mutations.enable_permission("deny-secrets", "claude")
 
             # Verify Machine A state
             self.assertTrue((spec_a.claude_root / "shared-audit").is_symlink())
             self.assertTrue((spec_a.home / ".claude" / "agents" / "auditor.md").is_symlink())
             self.assertTrue((spec_a.home / ".codex" / "agents" / "auditor.toml").is_file())
             self.assertTrue((spec_a.home / ".codex" / "prompts" / "code-review.md").is_file())
+            self.assertTrue(container_a.mcp_read_models.require_enabled_adapter("claude").has_binding("exa"))
+            self.assertTrue(container_a.hooks_read_models.require_enabled_adapter("claude").has_binding("lint-hook"))
+            self.assertTrue(container_a.permissions_read_models.require_enabled_adapter("claude").has_binding("deny-secrets"))
 
             # === 2. Copy store from Machine A to Machine B ===
             store_a = spec_a.xdg_data_home / APP_NAME
@@ -133,6 +161,12 @@ class CrossDeviceArrivalTests(unittest.TestCase):
             mcp_b = container_b.mcp_store.list_managed()
             self.assertEqual([s.name for s in mcp_b], ["exa"])
 
+            hooks_b = container_b.hooks_store.list_managed()
+            self.assertEqual([h.id for h in hooks_b], ["lint-hook"])
+
+            perms_b = container_b.permissions_store.list_managed()
+            self.assertEqual([p.id for p in perms_b], ["deny-secrets"])
+
             # Assert 2: Bindings on Machine B show up as disabled (links don't exist on B yet), not broken/error
             auditor_entry = next(e for e in agents_b.entries if e.ref == "auditor")
             for binding in auditor_entry.bindings:
@@ -142,8 +176,31 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                     f"Agent binding for {binding.harness} should be disabled on fresh machine, got {binding.state}",
                 )
 
-            # Assert 3: Re-enabling on Machine B creates valid symlinks/renders under Machine B paths
-            container_b.agents_mutations.enable("auditor", "claude")
+            # Assert 3: Bootstrap plan on Machine B identifies all 7 bindings from Machine A
+            plan_b = container_b.bootstrap_planner.plan()
+            self.assertEqual(
+                len(plan_b.linkable),
+                7,
+                f"Expected 7 linkable actions on arrival, got {len(plan_b.linkable)}: {plan_b.linkable}",
+            )
+            self.assertEqual(
+                {(a.family, a.ref, a.harness) for a in plan_b.linkable},
+                {
+                    ("skills", "shared:shared-audit", "claude"),
+                    ("agents", "auditor", "claude"),
+                    ("agents", "auditor", "codex"),
+                    ("slash_commands", "code-review", "codex"),
+                    ("mcp", "exa", "claude"),
+                    ("hooks", "lint-hook", "claude"),
+                    ("permissions", "deny-secrets", "claude"),
+                },
+            )
+
+            # Assert 4: Apply bootstrap on Machine B creates all valid bindings rooted under Bob's home
+            results_b = container_b.bootstrap_applier.apply(plan_b.linkable)
+            self.assertEqual(len(results_b), 7)
+            self.assertTrue(all(r.status == "applied" for r in results_b))
+
             b_claude_link = spec_b.home / ".claude" / "agents" / "auditor.md"
             self.assertTrue(b_claude_link.is_symlink())
             self.assertEqual(
@@ -151,11 +208,9 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 (spec_b.agents_root / "auditor.md").resolve(),
             )
 
-            container_b.agents_mutations.enable("auditor", "codex")
             b_codex_file = spec_b.home / ".codex" / "agents" / "auditor.toml"
             self.assertTrue(b_codex_file.is_file())
 
-            container_b.skills_mutations.enable_managed_package(spec_b.skills_store_root / "shared-audit", "claude")
             b_skill_link = spec_b.claude_root / "shared-audit"
             self.assertTrue(b_skill_link.is_symlink())
             self.assertEqual(
@@ -163,16 +218,33 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 (spec_b.skills_store_root / "shared-audit").resolve(),
             )
 
-            container_b.slash_command_mutations.sync_command("code-review", targets=["codex"])
             b_cmd_file = spec_b.home / ".codex" / "prompts" / "code-review.md"
             self.assertTrue(b_cmd_file.is_file())
 
-            # Assert 4: Reconcile / auto-adopt runs cleanly without crashing or corrupting store
+            # Verify MCP, Hooks, Permissions live on Bob's machine
+            self.assertTrue(container_b.mcp_read_models.require_enabled_adapter("claude").has_binding("exa"))
+            self.assertTrue(container_b.hooks_read_models.require_enabled_adapter("claude").has_binding("lint-hook"))
+            self.assertTrue(container_b.permissions_read_models.require_enabled_adapter("claude").has_binding("deny-secrets"))
+
+            # Assert 5: Idempotence — re-running planner on Machine B yields 0 linkable actions
+            plan_b_second = container_b.bootstrap_planner.plan()
+            self.assertEqual(len(plan_b_second.linkable), 0)
+            self.assertEqual(len(plan_b_second.skipped), 7)
+            self.assertTrue(all(a.reason == "already-linked" for a in plan_b_second.skipped))
+
+            # Re-applying yields status=applied as a no-op
+            reapply_results = container_b.bootstrap_applier.apply(plan_b.actions)
+            self.assertTrue(all(r.status == "applied" for r in reapply_results))
+
+            # Assert 6: Reconcile / auto-adopt runs cleanly without crashing or corrupting store
             container_b.agents_reconcile.reconcile()
             container_b.skills_queries.inventory()
             container_b.slash_command_queries.list_commands()
+            container_b.mcp_read_models.snapshot()
+            container_b.hooks_read_models.snapshot()
+            container_b.permissions_read_models.snapshot()
 
-            # Assert 5: No paths from Machine A leak into Machine B's persisted state files
+            # Assert 7: No paths from Machine A leak into Machine B's persisted state files
             ledger_text = container_b.paths.bindings_ledger_path.read_text(encoding="utf-8")
             self.assertNotIn(str(root_a), ledger_text)
             self.assertIn("~/", ledger_text)
@@ -268,6 +340,113 @@ class CrossDeviceArrivalTests(unittest.TestCase):
                 "~/.local/share/harnessam/agents/reviewer.md",
             )
 
+    def test_cross_device_bootstrap_pressure_invariants(self) -> None:
+        """Pressure-test bootstrap invariants:
+        - Additive-only: local bindings on machine B survive bootstrap of A's assets untouched
+        - Occupied target refusal: foreign occupied files are not clobbered without explicit permission
+        - Harness absent: intent for uninstalled harnesses degrades to skip, never error
+        - Corrupt ledgers: unparseable files degrade to empty plan, never 500 or crash
+        """
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            root_a = tmp_path / "machine-a"
+            root_b = tmp_path / "machine-b"
+            spec_a = FakeHomeSpec(
+                root=root_a,
+                home=root_a / "Users" / "alice",
+                xdg_config_home=root_a / "Users" / "alice" / ".config",
+                xdg_data_home=root_a / "Users" / "alice" / ".local" / "share",
+                xdg_state_home=root_a / "Users" / "alice" / ".local" / "state",
+            )
+            spec_b = FakeHomeSpec(
+                root=root_b,
+                home=root_b / "home" / "bob",
+                xdg_config_home=root_b / "home" / "bob" / ".config",
+                xdg_data_home=root_b / "home" / "bob" / ".local" / "share",
+                xdg_state_home=root_b / "home" / "bob" / ".local" / "state",
+            )
+            for spec in (spec_a, spec_b):
+                for p in (
+                    spec.skills_store_root,
+                    spec.agents_root,
+                    spec.claude_root,
+                    spec.codex_root,
+                    spec.xdg_state_home,
+                    spec.bin_dir,
+                    spec.home / ".claude" / "agents",
+                    spec.home / ".codex" / "agents",
+                    spec.home / ".codex" / "prompts",
+                ):
+                    p.mkdir(parents=True, exist_ok=True)
+            # Machine A has claude and codex
+            for executable in ("codex", "claude"):
+                write_cli_stub(spec_a.bin_dir / executable, executable)
+            # Machine B has ONLY claude (codex is NOT installed on B)
+            write_cli_stub(spec_b.bin_dir / "claude", "claude")
+            if (spec_b.home / ".codex").exists():
+                shutil.rmtree(spec_b.home / ".codex")
+            if spec_b.codex_root.exists():
+                shutil.rmtree(spec_b.codex_root)
+
+            # Machine A creates auditor and syncs to claude AND codex
+            container_a = build_backend_container(spec_a.env())
+            container_a.agents_store.create(name="Auditor", description="audits", prompt="audit prompt")
+            container_a.agents_mutations.enable("auditor", "claude")
+            container_a.agents_mutations.enable("auditor", "codex")
+
+            # Copy store from A to B
+            store_a = spec_a.xdg_data_home / APP_NAME
+            store_b = spec_b.xdg_data_home / APP_NAME
+            if store_b.exists():
+                shutil.rmtree(store_b)
+            shutil.copytree(store_a, store_b)
+
+            container_b = build_backend_container(spec_b.env())
+
+            # 1. Additive-only: B creates a local agent BEFORE bootstrapping A's assets
+            container_b.agents_store.create(name="LocalAgent", description="local", prompt="local prompt")
+            container_b.agents_mutations.enable("localagent", "claude")
+            local_agent_link = spec_b.home / ".claude" / "agents" / "localagent.md"
+            self.assertTrue(local_agent_link.is_symlink())
+
+            # 2. Occupied target refusal: put a foreign file where auditor would be linked on B
+            auditor_claude_target = spec_b.home / ".claude" / "agents" / "auditor.md"
+            auditor_claude_target.write_text("pre-existing foreign file", encoding="utf-8")
+
+            # 3. Plan on B
+            plan = container_b.bootstrap_planner.plan()
+
+            # Verify:
+            # - auditor on codex -> skip (harness-not-installed on B)
+            # - auditor on claude -> conflict (target-occupied on B)
+            codex_action = next(a for a in plan.actions if a.ref == "auditor" and a.harness == "codex")
+            self.assertEqual(codex_action.action, "skip")
+            self.assertEqual(codex_action.reason, "harness-not-installed")
+
+            claude_action = next(a for a in plan.actions if a.ref == "auditor" and a.harness == "claude")
+            self.assertEqual(claude_action.action, "conflict")
+            self.assertEqual(claude_action.reason, "target-occupied")
+
+            # Apply only linkable (none) -> foreign file unchanged
+            container_b.bootstrap_applier.apply(plan.linkable)
+            self.assertEqual(auditor_claude_target.read_text(encoding="utf-8"), "pre-existing foreign file")
+
+            # Try applying conflict action without allow_conflicts -> refuses
+            refused = container_b.bootstrap_applier.apply([claude_action], allow_conflicts=False)
+            self.assertEqual(refused[0].status, "failed")
+            self.assertIn("overwrite", refused[0].error or "")
+            self.assertEqual(auditor_claude_target.read_text(encoding="utf-8"), "pre-existing foreign file")
+
+            # Verify local agent was untouched throughout all of this
+            self.assertTrue(local_agent_link.is_symlink())
+
+            # 4. Corrupt ledger degradation
+            container_b.paths.bindings_ledger_path.write_text("{corrupt-json", encoding="utf-8")
+            degraded_plan = container_b.bootstrap_planner.plan()
+            # Degrades safely without raising; returns whatever else is valid or empty
+            self.assertTrue(isinstance(degraded_plan.actions, tuple))
+
 
 if __name__ == "__main__":
     unittest.main()
+

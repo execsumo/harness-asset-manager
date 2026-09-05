@@ -11,6 +11,11 @@ from harness_asset_manager.harness.resolution import resolve_context
 from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
+from .bootstrap import (
+    BootstrapApplier,
+    BootstrapDismissalStore,
+    BootstrapPlanner,
+)
 from .agents import (
     AgentAuditLog,
     AgentBindingLedger,
@@ -130,6 +135,9 @@ class BackendContainer:
     configs_queries: ConfigsQueryService
     configs_mutations: ConfigsMutationService
     mutation_audit: MutationAuditJournal
+    bootstrap_planner: BootstrapPlanner
+    bootstrap_applier: BootstrapApplier
+    bootstrap_dismissal: BootstrapDismissalStore
     app_home: Path
 
 
@@ -636,6 +644,46 @@ def build_backend_container(
         path_tracker=scaffold_tracker,
     )
 
+    bootstrap_planner = BootstrapPlanner(
+        skills_store=skills_store,
+        skills_read_models=skills_read_models,
+        agents_store=audited_agents_store,
+        agents_ledger=agent_bindings,
+        agents_mutations=audited_agents_mutations,
+        slash_command_store=slash_command_store,
+        slash_command_sync_state=slash_command_sync_state,
+        slash_command_mutations=audited_slash_mutations,
+        harness_kernel=harness_kernel,
+        mcp_store=mcp_store,
+        mcp_read_models=mcp_read_models,
+        hooks_store=hooks_store,
+        hooks_read_models=hooks_read_models,
+        permissions_store=permissions_store,
+        permissions_read_models=permissions_read_models,
+    )
+    bootstrap_applier = BootstrapApplier(
+        skills_store=skills_store,
+        skills_read_models=skills_read_models,
+        skills_mutations=audited_skills_mutations,
+        agents_store=audited_agents_store,
+        agents_mutations=audited_agents_mutations,
+        slash_command_store=slash_command_store,
+        slash_command_sync_state=slash_command_sync_state,
+        slash_command_mutations=audited_slash_mutations,
+        harness_kernel=harness_kernel,
+        mutation_audit=mutation_audit,
+        mcp_store=mcp_store,
+        mcp_read_models=mcp_read_models,
+        mcp_mutations=audited_mcp_mutations,
+        hooks_store=hooks_store,
+        hooks_read_models=hooks_read_models,
+        hooks_mutations=audited_hooks_mutations,
+        permissions_store=permissions_store,
+        permissions_read_models=permissions_read_models,
+        permissions_mutations=audited_permissions_mutations,
+    )
+    bootstrap_dismissal = BootstrapDismissalStore(paths.state_dir)
+
     return BackendContainer(
         paths=paths,
         harness_kernel=harness_kernel,
@@ -682,5 +730,8 @@ def build_backend_container(
         configs_queries=configs_queries,
         configs_mutations=audited_configs_mutations,
         mutation_audit=mutation_audit,
+        bootstrap_planner=bootstrap_planner,
+        bootstrap_applier=bootstrap_applier,
+        bootstrap_dismissal=bootstrap_dismissal,
         app_home=app_home,
     )

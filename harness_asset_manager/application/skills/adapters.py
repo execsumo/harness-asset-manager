@@ -43,6 +43,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         default_category: str | None = None,
         data_dir: Path | None = None,
         package_cache: SkillPackageCache | None = None,
+        dynamic_roots_provider: Callable[[], tuple["_ResolvedRoot", ...]] | None = None,
     ) -> None:
         self.harness = harness
         self.label = label
@@ -57,6 +58,29 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         self._default_category = default_category or DEFAULT_HERMES_MANAGED_CATEGORY
         self._data_dir = data_dir
         self._package_cache = package_cache or SkillPackageCache()
+        if dynamic_roots_provider is None and self.harness == "claude":
+            self._dynamic_roots_provider = self._default_claude_dynamic_roots
+        else:
+            self._dynamic_roots_provider = dynamic_roots_provider
+
+    def _default_claude_dynamic_roots(self) -> tuple["_ResolvedRoot", ...]:
+        claude_dir = self.managed_root.parent
+        home = claude_dir.parent
+        from harness_asset_manager.harness.claude_plugins import resolve_claude_plugin_roots
+        from harness_asset_manager.harness.resolution import resolve_context
+
+        ctx = resolve_context({"HOME": str(home)})
+        return tuple(
+            _ResolvedRoot(
+                kind=root.kind,
+                scope=root.scope,
+                label=root.label,
+                path=root.path_resolver(ctx),
+                layout=self._layout,
+                locator_prefix=root.locator_prefix,
+            )
+            for root in resolve_claude_plugin_roots(ctx)
+        )
 
     def status(self) -> SkillsHarnessStatus:
         return SkillsHarnessStatus(
@@ -73,13 +97,16 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         cache_cycle: int | None = None,
         package_executor: Executor | None = None,
     ) -> SkillsHarnessScan:
+        active_roots = self._discovery_roots
+        if self._dynamic_roots_provider is not None:
+            active_roots = self._dedupe_roots(active_roots + self._dynamic_roots_provider())
         hermes_policy = (
             _hermes_scan_policy(self.managed_root) if self.harness == "hermes" else None
         )
         observations, skipped_skill_names = _scan_skill_roots(
             harness=self.harness,
             label=self.label,
-            roots=self._discovery_roots,
+            roots=active_roots,
             excluded_skill_names=(
                 hermes_policy.excluded_skill_names if hermes_policy is not None else frozenset()
             ),
@@ -255,6 +282,7 @@ class _ResolvedRoot:
     label: str
     path: Path
     layout: FileTreeLayout = "flat"
+    locator_prefix: str = ""
 
 
 @dataclass(frozen=True)
@@ -277,9 +305,13 @@ class _PackageScanCandidate:
 
 
 def _iter_skill_roots(root: _ResolvedRoot):
+    prefix = f"{root.locator_prefix}:" if root.locator_prefix else ""
+    if (root.path / "SKILL.md").is_file():
+        yield root.path, f"{prefix}{root.path.name}"
+        return
     if root.layout == "flat":
         for skill_root in find_skill_roots(root.path):
-            yield skill_root, skill_root.name
+            yield skill_root, f"{prefix}{skill_root.name}"
         return
     if not root.path.is_dir():
         return
@@ -287,7 +319,7 @@ def _iter_skill_roots(root: _ResolvedRoot):
         if not category_dir.is_dir() or category_dir.name.startswith("."):
             continue
         for skill_root in find_skill_roots(category_dir):
-            yield skill_root, f"{category_dir.name}/{skill_root.name}"
+            yield skill_root, f"{prefix}{category_dir.name}/{skill_root.name}"
 
 
 def build_skills_adapters(
@@ -319,9 +351,25 @@ def build_skills_adapters(
                     label=root.label,
                     path=root.path_resolver(kernel.context),
                     layout=profile.layout,
+                    locator_prefix=root.locator_prefix,
                 )
                 for root in profile.discovery_roots
             ),
+        )
+        dynamic_roots_provider = (
+            (lambda resolver=profile.dynamic_roots_resolver, ctx=kernel.context, lay=profile.layout: tuple(
+                _ResolvedRoot(
+                    kind=root.kind,
+                    scope=root.scope,
+                    label=root.label,
+                    path=root.path_resolver(ctx),
+                    layout=lay,
+                    locator_prefix=root.locator_prefix,
+                )
+                for root in resolver(ctx)
+            ))
+            if profile.dynamic_roots_resolver is not None
+            else None
         )
         adapters.append(
             FileTreeSkillsAdapter(
@@ -340,6 +388,7 @@ def build_skills_adapters(
                 default_category=profile.default_category,
                 data_dir=data_dir,
                 package_cache=shared_package_cache,
+                dynamic_roots_provider=dynamic_roots_provider,
             )
         )
     return tuple(adapters)
@@ -488,7 +537,7 @@ def _scan_skill_roots(
         observations.append(
             SkillObservation(
                 harness=harness,
-                label=label,
+                label=root.label if root.scope == "plugin" else label,
                 scope=root.scope,
                 package=package,
             )

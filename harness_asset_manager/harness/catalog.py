@@ -14,6 +14,7 @@ from harness_asset_manager.env_names import (
     env_get,
 )
 
+from .claude_plugins import resolve_claude_plugin_roots
 from .contracts import (
     AgentFileBindingProfile,
     CommandFileBindingProfile,
@@ -88,6 +89,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
             "skills": FileTreeBindingProfile(
                 managed_env=CLAUDE_ROOT_ENV,
                 managed_default=lambda context: context.home / ".claude" / "skills",
+                dynamic_roots_resolver=resolve_claude_plugin_roots,
             ),
             "mcp": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".claude.json",

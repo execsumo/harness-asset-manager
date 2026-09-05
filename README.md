@@ -330,6 +330,8 @@ Harness Asset Manager treats managed Skills as portable by default: once a Skill
 
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
 
+Claude Code plugin skills from installed plugins in `~/.claude/plugins/installed_plugins.json` are discovered directly from active plugin installation roots. Plugin skills are surfaced in the inventory as unmanaged with plugin provenance (`claude:plugin:<id>@<version>:<skill>`) and treated as strictly read-only external sources. Adopting a plugin skill copies the package into Harness Asset Manager's canonical store and links it into `~/.claude/skills/`, leaving the underlying plugin installation cache completely untouched.
+
 Every managed Skill is checked against the [Agent Skills specification](https://agentskills.io/specification)
 — `name` charset and length, `name` matching its package directory, `description` presence and
 length. The results are **advisory and never block anything**: HAM keys Skills on their package
@@ -662,7 +664,8 @@ Every command takes `--json` and `--state-dir`. `--harness` names a harness id (
 | `settings show` | Storage paths, per-harness support and install state, auto-adopt |
 | `settings harness <h> --enable\|--disable` | Turn support for a harness on or off |
 | `settings auto-adopt <agents\|skills\|slash_commands\|mcp\|hooks\|permissions> --enable\|--disable` | Control opt-in automatic adoption and repair |
-| `refresh [--sync-all]` | Run inventory pass; `--sync-all` enforces auto-adoption & drift reconciliation across all asset families |
+| `bootstrap [--dry-run] [-y]` | Bootstrap synced store assets onto this device by creating local bindings |
+| `refresh [--sync-all]` | Run inventory pass; `--sync-all` enables auto-adoption & drift reconciliation across all asset families |
 | `configs list` | Captured portable preferences per harness |
 | `configs enable <harness>` | Enable managing a harness's preferences |
 | `configs disable <harness>` | Disable managing a harness's preferences (does not touch harness config) |
@@ -810,7 +813,7 @@ MCP `env`/`headers` values and hook `command` strings live in the manifests, so 
 When you sync or copy your store to a new machine:
 1. HAM starts immediately and discovers all stored skills, agents, commands, and configs.
 2. Harnesses on the new machine initially show up as **disabled** (since symlinks and rendered target files have not been generated on the new machine yet), not in an error state.
-3. Enabling an asset in the UI or CLI (`harnessam <family> enable ...` or `harnessam refresh --sync-all`) creates fresh, local links and configurations tailored to the new machine.
+3. Run `harnessam bootstrap` in your terminal (or click "Review & Bootstrap" on the workspace banner in the web UI) to inspect and instantiate the bindings recorded in your synced store on the new device.
 4. Auto-adoption and integrity checks tolerate sync conflict files and unreadable artifacts without crashing or corrupting the store.
 
 ### Environment Variable Overrides

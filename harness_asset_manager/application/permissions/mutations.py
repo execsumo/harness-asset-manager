@@ -28,6 +28,19 @@ class PermissionsMutationService:
         self._asset_tags = asset_tags
         self.harness_application = PermissionsHarnessApplication(read_models)
 
+    def _record_binding(self, id: str, harness: str, *, bound: bool) -> None:
+        """Persist binding intent alongside the binding on disk.
+
+        Best-effort by contract: a failed manifest write must never turn a successful
+        adapter mutation into an error.
+        """
+        if not id:
+            return
+        try:
+            self.store.record_binding(id, harness, bound=bound)
+        except OSError:
+            return
+
     def set_tags(self, id: str, tags: Iterable[str]) -> dict[str, object]:
         if self.store.get_managed(id) is None:
             snapshot = self.read_models.snapshot()
@@ -72,8 +85,20 @@ class PermissionsMutationService:
                 f"permission '{id}' is already managed",
                 status=409,
             )
+        snapshot = self.read_models.snapshot()
+        observed_harnesses = {
+            scan.harness
+            for scan in snapshot.harness_scans
+            for entry in scan.entries
+            if entry.id == id and entry.state in ("unmanaged", "managed", "drifted")
+        }
+        if observed_harness:
+            observed_harnesses.add(observed_harness)
+
         spec = self._observed_spec_any(id, observed_harness)
-        stored = self.store.upsert_managed(replace(spec, id=id))
+        stored = self.store.upsert_managed(replace(spec, id=id, enabled_harnesses=tuple(sorted(observed_harnesses))))
+        for h in sorted(observed_harnesses):
+            self._record_binding(id, h, bound=True)
         self.read_models.invalidate()
         return {"ok": True, "permission": stored.to_dict()}
 
@@ -109,6 +134,7 @@ class PermissionsMutationService:
         )
         if result.failed:
             raise MutationError(result.failed[0]["error"], status=400)
+        self._record_binding(id, harness, bound=True)
         return {"ok": True}
 
     def disable_permission(self, id: str, harness: str) -> dict[str, bool]:
@@ -116,6 +142,7 @@ class PermissionsMutationService:
             raise MutationError(f"unknown permission: {id}", status=404)
         adapter = self.read_models.require_enabled_adapter(harness)
         adapter.disable_permission(id)
+        self._record_binding(id, harness, bound=False)
         self.read_models.invalidate()
         return {"ok": True}
 
@@ -130,15 +157,21 @@ class PermissionsMutationService:
         bound_now = self._harnesses_in_states(id, {"managed", "drifted"})
 
         if target == "enabled":
-            return self.harness_application.enable_many(
+            res = self.harness_application.enable_many(
                 spec,
                 self.read_models.enabled_harnesses(),
                 skip_harnesses=bound_now,
-            ).to_dict()
-        return self.harness_application.disable_many(
+            )
+            for h in res.succeeded:
+                self._record_binding(id, h, bound=True)
+            return res.to_dict()
+        res = self.harness_application.disable_many(
             id,
             bound_now,
-        ).to_dict()
+        )
+        for h in res.succeeded:
+            self._record_binding(id, h, bound=False)
+        return res.to_dict()
 
     def reconcile_permission(
         self,
@@ -174,6 +207,8 @@ class PermissionsMutationService:
             source_spec,
             target_harnesses,
         )
+        for h in result.succeeded:
+            self._record_binding(id, h, bound=True)
         stored = self.store.get_managed(id) or source_spec
         return {
             "ok": result.ok,

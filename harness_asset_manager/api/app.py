@@ -15,6 +15,7 @@ from .errors import install_error_handlers
 from .guards import ApiTokenMiddleware, LoopbackOnlyMiddleware
 from .routers import (
     agents,
+    bootstrap,
     configs,
     health,
     hooks,
@@ -106,6 +107,7 @@ def create_app(
     app.include_router(permissions.router)
     app.include_router(scaffold.router)
     app.include_router(agents.router)
+    app.include_router(bootstrap.router)
 
     @app.api_route(
         "/{full_path:path}",
