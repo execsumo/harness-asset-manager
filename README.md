@@ -330,6 +330,8 @@ Harness Asset Manager treats managed Skills as portable by default: once a Skill
 
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
 
+Claude Code plugin skills from installed plugins in `~/.claude/plugins/installed_plugins.json` are discovered directly from active plugin installation roots. Plugin skills are surfaced in the inventory as unmanaged with plugin provenance (`claude:plugin:<id>@<version>:<skill>`) and treated as strictly read-only external sources. Adopting a plugin skill copies the package into Harness Asset Manager's canonical store and links it into `~/.claude/skills/`, leaving the underlying plugin installation cache completely untouched.
+
 Every managed Skill is checked against the [Agent Skills specification](https://agentskills.io/specification)
 — `name` charset and length, `name` matching its package directory, `description` presence and
 length. The results are **advisory and never block anything**: HAM keys Skills on their package

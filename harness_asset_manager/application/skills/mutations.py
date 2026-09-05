@@ -144,6 +144,8 @@ class SkillsMutationService:
         metadata: list[dict[str, str]] | dict[str, str] | None = None,
     ) -> dict[str, bool]:
         entry = self.queries.require_entry(skill_ref)
+        if entry.kind == "unmanaged" and any(s.scope == "plugin" for s in entry.sightings):
+            raise MutationError("plugin skills are read-only until adopted into Harness Asset Manager", status=400)
         package_root = self.queries.resolve_detail_package_root(entry)
         if package_root is None or not package_root.is_dir():
             raise MutationError(f"skill package root not found: {skill_ref}", status=404)
