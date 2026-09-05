@@ -81,6 +81,15 @@ class ClaudePluginSkillsUnitTests(TestCase):
         self._write_registry({"version": 2, "plugins": "invalid"})
         self.assertEqual(resolve_claude_plugin_roots(self.context), ())
 
+    def test_relative_install_path_is_ignored(self) -> None:
+        self._write_registry({
+            "version": 2,
+            "plugins": {
+                "relative-plugin": [{"installPath": "plugins/cache/relative/1.0.0"}],
+            },
+        })
+        self.assertEqual(resolve_claude_plugin_roots(self.context), ())
+
     def test_stale_missing_install_path_ignored(self) -> None:
         self._write_registry({
             "version": 2,
@@ -195,6 +204,20 @@ class ClaudePluginSkillsUnitTests(TestCase):
 
         roots = resolve_claude_plugin_roots(self.context)
         self.assertEqual(roots, ())
+
+    def test_skill_symlink_outside_plugin_tree_is_ignored(self) -> None:
+        install_dir = self._create_plugin("symlink/plugin/1.0.0", skills=())
+        outside = self.home / "outside-skill"
+        seed_skill_package(outside, "escape", "escape")
+        (install_dir / "skills").mkdir(parents=True, exist_ok=True)
+        (install_dir / "skills" / "escape").symlink_to(outside)
+        self._write_registry({
+            "version": 2,
+            "plugins": {
+                "symlink-plugin": [{"installPath": str(install_dir)}],
+            },
+        })
+        self.assertEqual(resolve_claude_plugin_roots(self.context), ())
 
     def test_nested_unrelated_skill_md_not_imported(self) -> None:
         install_dir = self._create_plugin("nested/plugin/1.0.0", skills=("legit-skill",))

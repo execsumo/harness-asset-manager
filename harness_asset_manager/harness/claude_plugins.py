@@ -6,13 +6,18 @@ from typing import Any
 
 from harness_asset_manager.portable_paths import is_sync_artifact
 
-from .contracts import FileTreeDiscoveryRoot, ResolutionContext
+from .contracts import FileTreeDiscoveryRoot
+from .resolution import ResolutionContext
 
 
 def resolve_candidate_install_path(raw_path: str, home: Path) -> Path | None:
     """Resolve an installPath safely and check if it exists as a directory."""
     raw_path = raw_path.strip()
     if not raw_path:
+        return None
+    # Claude records absolute install paths. Reject other relative values instead of
+    # resolving them against the server's working directory.
+    if not raw_path.startswith("~") and not Path(raw_path).is_absolute():
         return None
 
     if raw_path.startswith("~"):
@@ -58,6 +63,7 @@ def _find_plugin_skill_roots(install_path: Path) -> list[Path]:
                 pass
 
     candidate_skill_roots: list[Path] = []
+    resolved_install_path = install_path.resolve(strict=False)
 
     if manifest_data is not None and "skills" in manifest_data:
         declared = manifest_data["skills"]
@@ -112,6 +118,12 @@ def _find_plugin_skill_roots(install_path: Path) -> list[Path]:
     for path in candidate_skill_roots:
         try:
             resolved = path.resolve(strict=False)
+            try:
+                resolved.relative_to(resolved_install_path)
+            except ValueError:
+                # A plugin may contain symlinks, but never follow a skill symlink
+                # outside the installed plugin tree.
+                continue
             if resolved.is_dir() and (resolved / "SKILL.md").is_file() and resolved not in seen:
                 seen.add(resolved)
                 deduped.append(resolved)
