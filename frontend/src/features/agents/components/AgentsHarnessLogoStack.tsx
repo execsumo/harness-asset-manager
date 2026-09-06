@@ -20,7 +20,7 @@ export function AgentsHarnessLogoStack({ bindings, columns }: AgentsHarnessLogoS
       <div className="harness-stack" aria-label={ariaLabel}>
         {enabledBindings.map((binding, index) => {
           const family = harnessFamily(binding.harness);
-          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? family);
+          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? null);
           const label = labelByHarness.get(family) ?? binding.harness;
           return (
             <UiTooltip key={binding.harness} content={label}>

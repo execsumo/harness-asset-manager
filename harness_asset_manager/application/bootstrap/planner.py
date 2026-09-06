@@ -195,7 +195,7 @@ class BootstrapPlanner:
                             harness=harness,
                             binding_target=str(binding),
                             action="skip",
-                            target=self.harness_kernel.context.home / f".{harness}" / "skills" / entry.package_dir,
+                            target="",
                             reason="harness-scope-missing",
                             detail=f"Harness '{harness}' profile '{binding.scope}' is missing on this device; create it to bind this skill",
                         )

@@ -14,7 +14,7 @@ class BootstrapAction:
     display_name: str
     harness: str
     action: Action
-    target: Path  # where the binding would land on THIS device
+    target: Path | str  # where the binding would land on THIS device; empty when unknown
     binding_target: str | None = None
     reason: str | None = None  # machine-readable skip/conflict code
     detail: str | None = None  # human sentence for the UI

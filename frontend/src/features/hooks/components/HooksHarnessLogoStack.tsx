@@ -27,7 +27,7 @@ export function HooksHarnessLogoStack({ bindings, columns }: HooksHarnessLogoSta
       <div className="harness-stack" aria-label={ariaLabel}>
         {visible.map((binding, index) => {
           const family = harnessFamily(binding.harness);
-          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? family);
+          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? null);
           const label = labelByHarness.get(family) ?? binding.harness;
           const title =
             binding.state === "drifted"

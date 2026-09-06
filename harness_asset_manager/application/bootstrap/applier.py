@@ -168,7 +168,7 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
-        if action.action == "skip":
+        if action.reason == "harness-scope-missing":
             return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
