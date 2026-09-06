@@ -168,6 +168,16 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        if action.action == "skip":
+            return BootstrapApplyResult(
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                status="skipped",
+                target=str(action.target),
+                binding_target=action.binding_target,
+                error=action.detail or action.reason,
+            )
         if action.family in ("skills", "agents", "slash_commands"):
             return self._apply_placement_one(action, allow_conflicts=allow_conflicts)
         if action.family in ("mcp", "hooks", "permissions"):

@@ -8,7 +8,10 @@ from harness_asset_manager.atomic_files import atomic_write_text
 
 
 def normalize_enabled_harnesses(value: object) -> tuple[str, ...]:
-    """Coerce recorded binding intent into a sorted, de-duplicated tuple.
+    """Coerce recorded binding-target intent into a sorted, de-duplicated tuple.
+
+    Entries are ``<harness>`` or ``<harness>:<scope>`` targets, not only bare
+    harness ids.
 
     Total by design, matching every other read path in the store: a malformed or
     partially-corrupt value degrades to "no recorded intent" (or to just the usable

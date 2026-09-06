@@ -38,6 +38,7 @@ from harness_asset_manager.application.slash_commands.targets import (
     _is_detected as _is_slash_detected,
 )
 from harness_asset_manager.harness import HarnessKernelService
+from harness_asset_manager.harness.binding_targets import BindingTarget
 from harness_asset_manager.harness.contracts import (
     AgentFileBindingProfile,
     CommandFileBindingProfile,
@@ -179,7 +180,27 @@ class BootstrapPlanner:
             display_name = entry.declared_name or entry.package_dir
             store_pkg = self.skills_store.root / entry.package_dir
 
-            for harness in entry.enabled_harnesses:
+            for binding_value in entry.enabled_harnesses:
+                binding = BindingTarget.parse(binding_value)
+                harness = binding.harness
+
+                # Profile adapters are not available until Hermes profile support
+                # lands. Keep the recorded target visible so the user can create it.
+                if binding.scope is not None:
+                    actions.append(
+                        BootstrapAction(
+                            family="skills",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            binding_target=str(binding),
+                            action="skip",
+                            target=self.harness_kernel.context.home / f".{harness}" / "skills" / entry.package_dir,
+                            reason="harness-scope-missing",
+                            detail=f"Harness '{harness}' profile '{binding.scope}' is missing on this device; create it to bind this skill",
+                        )
+                    )
+                    continue
                 adapter = self.skills_read_models.find_adapter(harness)
 
                 # Fallback target path if adapter cannot resolve
