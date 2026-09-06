@@ -518,6 +518,16 @@ Reproduce by re-running the steps below; the probe left no residue.
    for a linked skill. HAM bindings carry no `.usage.json` provenance record, so the
    curator never considers them.
 
+   **The hub paths cannot reach a link either.** `hermes_cli/skills_hub.py`'s
+   `rmtree` calls at `:500` and `:711` operate on the *quarantine* directory, never
+   on an installed skill. The rmtree-replace inside `install_from_quarantine` is
+   gated by `_resolve_lock_install_path`, which walks the install path
+   component-by-component and **refuses any symlink or junction redirect** —
+   *"Unsafe install path"* — precisely so a lock entry cannot point through a link.
+   `do_update`'s destructive replace applies only to hub-installed skills tracked in
+   the hub lock, which a HAM binding never is. `agent/background_review.py` contains
+   no `rmtree` at all. All three paths the plan listed as UNVERIFIED are closed.
+
    **Residual risk is binding detachment, not data loss.** A foreground
    `hermes skills archive <name>` inside a Bot moves HAM's link into
    `skills/.archive/`. HAM's reconcile must therefore treat "link recorded but
