@@ -336,12 +336,21 @@ profiles — not to design a new opt-in mode.
 ### Binding identity
 
 The current harness-level binding identity (`hermes`) is not sufficient for
-multiple independent Bots. Binding records must distinguish targets, for
-example:
+multiple independent Bots. Binding records must distinguish targets:
 
 ```text
-hermes-profile:<profile-name>
+<harness>            # harness-wide — every value that exists today
+<harness>:<scope>    # a narrower target within it, e.g. hermes:coder
 ```
+
+**Decided:** `<harness>:<scope>`, not the `hermes-profile:<name>` this document
+first floated. The family is then everything before the first `:`, which makes each
+consumer fix a one-line derivation rather than a suffix-stripping special case, and
+it generalises to any future scoped harness. `:` occurs in neither a HAM harness id
+nor a Hermes profile id (`^[a-z0-9][a-z0-9_-]{0,63}$`), so the split is unambiguous,
+and every stored value today parses as scope `None` and round-trips byte-identically
+— no migration. What a scope *means* is the harness's business; for Hermes it is a
+profile name.
 
 A canonical package may therefore be bound to any number of Hermes profiles,
 and disabling one profile cannot affect another. The read model should expose
@@ -350,7 +359,7 @@ both the harness family (`hermes`) and the profile-specific target.
 **This ripples further than the manifest.** Persistence itself is permissive —
 `enabled_harnesses` is a free-form `tuple[str, ...]` normalized only for sort
 and de-duplication (`application/skills/manifest.py:10-20`), so a
-`hermes-profile:<name>` value round-trips without a schema migration. But three
+`hermes:<profile>` value round-trips without a schema migration. But three
 consumers assume a catalog harness id:
 
 1. **Frontend logo mapping.** `getHarnessPresentation` looks up a closed
@@ -362,11 +371,11 @@ consumers assume a catalog harness id:
    a `hermes` column and will render as unbound.
 3. **Cross-device arrival.** `manifest.py:33-41` documents recorded intent as
    the one fact the filesystem cannot carry across machines, so a synced store
-   can *propose rebuilding* bindings on a new device. A `hermes-profile:coder`
+   can *propose rebuilding* bindings on a new device. A `hermes:coder`
    binding has no meaning on a device without that profile. The proposal path
    (`tests/unit/test_cross_device_arrival.py`) needs a defined behavior:
-   preferably surface it as "profile missing — create it?" rather than dropping
-   the intent or erroring.
+   surface it as "profile missing — create it?" rather than dropping the intent
+   or erroring, and never let one unappliable scoped item fail the whole plan.
 
 The same `normalize_enabled_harnesses` helper is imported by the permissions and
 hooks stores (`application/permissions/store.py:11`). Those families are not
@@ -392,10 +401,25 @@ model:
 
 **HAM writes whatever the user selects and hardcodes no model IDs.** The IDs
 above are quoted from Hermes' shipped example purely to fix the *format*
-question; they are not a recommendation and must not be baked into HAM. Phase 4
-must decide and document one thing: whether HAM writes the bare id
-(`claude-opus-4.6`) or the provider-prefixed id, and validate the choice against
-a real launch.
+question; they are not a recommendation and must not be baked into HAM.
+
+**Decided: HAM writes the bare id in `model.default`, with the provider in its own
+`model.provider` key.** The live install's own working default profile is exactly
+that shape:
+
+```yaml
+model:
+  provider: openai-codex
+  base_url: https://chatgpt.com/backend-api/codex
+  default: gpt-5.6-luna
+```
+
+`model.default` is Hermes' canonical key — `hermes_cli/config.py::
+_normalize_root_model_keys` migrates `model.model` and `model.name` onto it at the
+single load/save chokepoint, with precedence `default > model > name`. A slash in the
+id is not a provider prefix Hermes parses; it is simply part of ids that natively
+contain one (OpenRouter). So HAM must never synthesise `<provider>/<id>` — it writes
+the two fields the user chose, separately.
 
 Provider availability and credentials remain Hermes concerns; HAM should report
 configuration failures without rolling back the created HAM agent.
@@ -592,9 +616,9 @@ Add coverage for:
 - broken/stale link detection;
 - profile-specific provider/model persistence, including comment preservation on
   an existing `config.yaml`;
-- a `hermes-profile:<name>` binding rendering the Hermes logo and matrix column
+- a `hermes:<profile>` binding rendering the Hermes logo and matrix column
   correctly in the frontend;
-- cross-device arrival of a `hermes-profile:<name>` binding for a profile that
+- cross-device arrival of a `hermes:<profile>` binding for a profile that
   does not exist locally;
 - non-rollback behavior when a Hermes profile operation fails.
 
@@ -609,13 +633,25 @@ npm run build
 
 ## Open decisions before implementation
 
-1. Exact profile ownership marker and orphan cleanup UX.
-2. The final manifest schema for profile-specific binding targets, preserving
-   compatibility with existing harness-level `enabled_harnesses` data — and the
-   cross-device proposal behavior for a profile that is absent locally.
-3. Whether the Hermes main profile should continue supporting legacy HAM skill
-   links alongside the new per-profile model during migration.
-4. Bare vs. provider-prefixed model ids in `model.default` (Phase 4).
+1. ~~Exact profile ownership marker and orphan cleanup UX~~ — **closed: there is no
+   marker and there is no cleanup.** HAM records the binding in its own agent
+   binding ledger and never destructively deletes a Hermes profile; disabling a Bot
+   *detaches* (removes the HAM-owned links and stops updating `SOUL.md`) and leaves
+   sessions, memory, and the directory intact. Writing an ownership file into
+   someone else's home would buy only a destructive-delete path we have decided not
+   to offer. Deleting a profile stays `hermes profile delete`'s job.
+2. ~~The final manifest schema for profile-specific binding targets~~ —
+   **closed: `<harness>:<scope>`**, see "Binding identity". No migration; existing
+   values round-trip byte-identically.
+3. ~~Whether the Hermes main profile should continue supporting legacy HAM skill
+   links alongside the new per-profile model~~ — **closed: yes, permanently, and it
+   is not a migration.** The default profile is a legitimate Hermes home; its
+   `~/.hermes/skills/harnessam/` links stay exactly as they are and remain
+   addressable as the unscoped `hermes` target. Per-profile targets are purely
+   additive, so nothing has to move and no user's existing bindings change.
+4. ~~Bare vs. provider-prefixed model ids in `model.default`~~ — **closed: bare id
+   plus a separate `model.provider`**, matching the live install. See "Provider and
+   model specification".
 5. ~~Whether HAM-managed profiles should be excluded from Hermes' curator~~ —
    **closed by Phase 0 finding 4:** archiving relocates the symlink, and the
    autonomous curator never sees HAM links at all. No exclusion mechanism is
