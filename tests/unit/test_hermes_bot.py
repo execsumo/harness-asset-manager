@@ -10,6 +10,7 @@ from harness_asset_manager.application.agents.hermes_profile import (
     ensure_profile,
 )
 from harness_asset_manager.application.agents.model import AgentDefinition
+from harness_asset_manager.config_document import load_config_document
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.catalog import _hermes_root
 from harness_asset_manager.harness.hermes_profiles import (
@@ -109,7 +110,13 @@ class HermesRootDerivationTests(unittest.TestCase):
             self.assertEqual(_hermes_root(ctx), profile_dir)
 
 class HermesProvisioningTests(unittest.TestCase):
-    def _create_agent(self, slug: str) -> AgentDefinition:
+    def _create_agent(
+        self,
+        slug: str,
+        *,
+        hermes_provider: str | None = None,
+        hermes_model: str | None = None,
+    ) -> AgentDefinition:
         return AgentDefinition(
             slug=slug,
             name="My Agent",
@@ -117,6 +124,8 @@ class HermesProvisioningTests(unittest.TestCase):
             prompt="You are a test agent.",
             tools=(),
             path=Path("/dummy"),
+            hermes_provider=hermes_provider,
+            hermes_model=hermes_model,
         )
 
     def test_provisioning_seeds_files_and_directories(self) -> None:
@@ -181,6 +190,65 @@ class HermesProvisioningTests(unittest.TestCase):
             self.assertIn("# my comment", content)
             self.assertIn("custom_key: 123", content)
             self.assertIn("_config_version: 42", content)
+
+    def test_model_settings_write_bare_values_and_preserve_existing_config(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True, exist_ok=True)
+            (hermes_root / "config.yaml").write_text("_config_version: 42\n")
+
+            home = hermes_root / "profiles" / "test-agent"
+            home.mkdir(parents=True, exist_ok=True)
+            config_yaml = home / "config.yaml"
+            config_yaml.write_text(
+                "# keep this comment\nmodel:\n  base_url: https://example.invalid\n"
+                "custom_list:\n  - one\n"
+            )
+
+            ensure_profile(
+                self._create_agent(
+                    "test-agent",
+                    hermes_provider="chosen-provider",
+                    hermes_model="chosen/model",
+                ),
+                hermes_root,
+            )
+
+            content = config_yaml.read_text()
+            self.assertIn("# keep this comment", content)
+            self.assertIn("provider: chosen-provider", content)
+            self.assertIn("default: chosen/model", content)
+            self.assertIn("base_url: https://example.invalid", content)
+            self.assertIn("_config_version: 42", content)
+
+    def test_empty_model_settings_clear_only_owned_keys(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            home = hermes_root / "profiles" / "test-agent"
+            home.mkdir(parents=True, exist_ok=True)
+            config_yaml = home / "config.yaml"
+            config_yaml.write_text(
+                "model:\n  provider: old-provider\n  default: old/model\n"
+                "  base_url: https://example.invalid\n"
+            )
+            previous = self._create_agent(
+                "test-agent",
+                hermes_provider="old-provider",
+                hermes_model="old/model",
+            )
+
+            ensure_profile(
+                self._create_agent("test-agent"),
+                hermes_root,
+                hermes_provider="",
+                hermes_model="",
+                previous=previous,
+            )
+
+            document = load_config_document(config_yaml.read_text(), file_format="yaml")
+            self.assertEqual(
+                document["model"], {"base_url": "https://example.invalid"}
+            )
 
     def test_provisioning_is_idempotent(self) -> None:
         with TemporaryDirectory() as temp:

@@ -139,6 +139,8 @@ class CreateAgentRequest(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    hermesProvider: str | None = None
+    hermesModel: str | None = None
     harnesses: list[str] = Field(default_factory=list)
 
 
@@ -163,6 +165,8 @@ class UpdateAgentRequest(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    hermesProvider: str | None = None
+    hermesModel: str | None = None
     metadata: list[AgentConfigEntryResponse] | None = None
 
 
@@ -205,6 +209,8 @@ class AgentDetailResponse(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    hermesProvider: str | None = None
+    hermesModel: str | None = None
     ok: bool = True
     autoEnabled: list[AutoEnabledSkillResponse] = Field(default_factory=list)
     failed: list[AutoEnableFailureResponse] = Field(default_factory=list)

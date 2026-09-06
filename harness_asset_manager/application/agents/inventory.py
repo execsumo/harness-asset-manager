@@ -193,6 +193,8 @@ class AgentInventoryService:
             allowed_subagents=agent.allowed_subagents,
             max_turns=agent.max_turns,
             isolation=agent.isolation,
+            hermes_provider=agent.hermes_provider,
+            hermes_model=agent.hermes_model,
         )
 
     def _unmanaged_detail(self, ref: str) -> AgentDetail | None:
@@ -280,6 +282,8 @@ class AgentInventoryService:
             allowed_subagents=allowed_subagents,
             max_turns=max_turns,
             isolation=isolation,
+            hermes_provider=None,
+            hermes_model=None,
         )
 
     def _harness_rows(

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from harness_asset_manager.application import BackendContainer
 
+from harness_asset_manager.application.agents.hermes_profile import ensure_profile
 from harness_asset_manager.errors import MutationError
 
 from ..output import (
@@ -33,7 +34,13 @@ from ..support import (
 
 
 def register(subparsers, common: argparse.ArgumentParser) -> None:
-    parser = subparsers.add_parser("agents", help="Inspect and bind subagents across harnesses.")
+    parser = subparsers.add_parser(
+        "agents",
+        help=(
+            "Inspect and bind agents across harnesses. Hermes profile settings are native "
+            "only; external CLI backends and Codex app-server skill homes are deferred."
+        ),
+    )
     group = parser.add_subparsers(dest="agents_command", required=True)
 
     listing = group.add_parser("list", parents=[common], help="Show the agents/harness matrix.")
@@ -49,6 +56,8 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     create.add_argument("--prompt", help="Agent prompt body.")
     create.add_argument("--prompt-file", help="Read the prompt from a file ('-' for stdin).")
     create.add_argument("--tool", action="append", dest="tools", default=[], help="Repeatable tool name.")
+    create.add_argument("--hermes-provider", help="Hermes profile provider (passed through as entered).")
+    create.add_argument("--hermes-model", help="Hermes profile model id (passed through as entered).")
     create.set_defaults(handler=create_agent)
 
     update = group.add_parser("update", parents=[common], help="Update an agent in the store.")
@@ -64,6 +73,8 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
         default=None,
         help="Repeatable tool name; passing any replaces the whole list.",
     )
+    update.add_argument("--hermes-provider", help="Hermes profile provider; empty clears it.")
+    update.add_argument("--hermes-model", help="Hermes profile model id; empty clears it.")
     update.set_defaults(handler=update_agent)
 
     delete = group.add_parser("delete", parents=[common], help="Delete an agent and its bindings.")
@@ -168,6 +179,8 @@ def show_agent(container: "BackendContainer", args: argparse.Namespace) -> int:
             ("name", detail.name),
             ("description", detail.description),
             ("tools", ", ".join(detail.tools) or "(inherits all)"),
+            ("Hermes provider", detail.hermes_provider),
+            ("Hermes model", detail.hermes_model),
             ("store path", detail.store_path),
         ]
     )
@@ -192,11 +205,23 @@ def create_agent(container: "BackendContainer", args: argparse.Namespace) -> int
         description=args.description,
         prompt=prompt,
         tools=tuple(args.tools),
+        hermes_provider=getattr(args, "hermes_provider", None),
+        hermes_model=getattr(args, "hermes_model", None),
     )
+    profile_failure = None
+    try:
+        ensure_profile(agent, container.hermes_root)
+    except Exception as error:  # noqa: BLE001 - preserve the created HAM agent
+        profile_failure = {"harness": "hermes", "error": f"Hermes profile configuration failed: {error}"}
     container.invalidation.invalidate_all()
     if args.json_output:
-        print_json(_detail_payload(_require_detail(container, agent.slug)))
-        return 0
+        payload = _detail_payload(_require_detail(container, agent.slug))
+        payload["ok"] = profile_failure is None
+        payload["harnessFailures"] = [profile_failure] if profile_failure else []
+        print_json(payload)
+        return 0 if profile_failure is None else 1
+    if profile_failure:
+        print(f"warning: {profile_failure['error']}")
     print(f"created agent {agent.slug}")
     return 0
 
@@ -205,19 +230,47 @@ def update_agent(container: "BackendContainer", args: argparse.Namespace) -> int
     prompt = None
     if args.prompt is not None or args.prompt_file is not None:
         prompt = read_text_argument(args.prompt, args.prompt_file, label="prompt")
-    if args.name is None and args.description is None and prompt is None and args.tools is None:
+    if (
+        args.name is None
+        and args.description is None
+        and prompt is None
+        and args.tools is None
+        and getattr(args, "hermes_provider", None) is None
+        and getattr(args, "hermes_model", None) is None
+    ):
         raise CliError("nothing to update; pass at least one of --name, --description, --prompt, --tool")
+    current = container.agents_store.get(args.ref)
+    if current is None:
+        raise MutationError(f"agent not found: {args.ref}")
     agent = container.agents_store.update(
         args.ref,
         name=args.name,
         description=args.description,
         prompt=prompt,
         tools=tuple(args.tools) if args.tools is not None else None,
+        hermes_provider=getattr(args, "hermes_provider", None),
+        hermes_model=getattr(args, "hermes_model", None),
     )
+    profile_failure = None
+    try:
+        ensure_profile(
+            agent,
+            container.hermes_root,
+            hermes_provider=getattr(args, "hermes_provider", None),
+            hermes_model=getattr(args, "hermes_model", None),
+            previous=current,
+        )
+    except Exception as error:  # noqa: BLE001 - preserve the updated HAM agent
+        profile_failure = {"harness": "hermes", "error": f"Hermes profile configuration failed: {error}"}
     container.invalidation.invalidate_all()
     if args.json_output:
-        print_json(_detail_payload(_require_detail(container, agent.slug)))
-        return 0
+        payload = _detail_payload(_require_detail(container, agent.slug))
+        payload["ok"] = profile_failure is None
+        payload["harnessFailures"] = [profile_failure] if profile_failure else []
+        print_json(payload)
+        return 0 if profile_failure is None else 1
+    if profile_failure:
+        print(f"warning: {profile_failure['error']}")
     print(f"updated agent {agent.slug}")
     return 0
 
@@ -338,4 +391,8 @@ def _detail_payload(detail) -> dict[str, object]:
         ],
         "configuration": [{"key": key, "value": value} for key, value in detail.configuration],
         "canDelete": detail.can_delete,
+        "hermesProvider": detail.hermes_provider,
+        "hermesModel": detail.hermes_model,
+        "ok": True,
+        "harnessFailures": [],
     }

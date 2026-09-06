@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from harness_asset_manager.application.agents.model import AgentDefinition
@@ -10,6 +11,7 @@ from harness_asset_manager.config_document import (
     dump_config_document,
     empty_config_document,
     load_config_document,
+    new_subtree,
 )
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.hermes_profiles import (
@@ -21,6 +23,7 @@ from harness_asset_manager.harness.hermes_profiles import (
 )
 
 _logger = logging.getLogger(__name__)
+_UNSET = object()
 
 _HERMES_SUBDIRS = (
     "memories",
@@ -35,7 +38,14 @@ _HERMES_SUBDIRS = (
 )
 
 
-def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
+def ensure_profile(
+    agent: AgentDefinition,
+    hermes_root: Path,
+    *,
+    hermes_provider: str | None | object = _UNSET,
+    hermes_model: str | None | object = _UNSET,
+    previous: AgentDefinition | None = None,
+) -> None:
     """Idempotently provision or update a Hermes profile for a HAM agent.
 
     This is best-effort and non-transactional. A failure here should not
@@ -93,7 +103,8 @@ def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
             encoding="utf-8",
         )
 
-    # config.yaml
+    # config.yaml. The profile adapter is the sole writer for this file's model
+    # subtree. In particular, it never synthesizes a provider-prefixed model id.
     config_file = home / "config.yaml"
     root_config_file = hermes_root / "config.yaml"
 
@@ -108,19 +119,70 @@ def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
             pass
 
     if config_file.is_file():
-        try:
-            content = config_file.read_text(encoding="utf-8")
-            config_doc = load_config_document(content, file_format="yaml")
-        except Exception:
-            config_doc = empty_config_document("yaml")
+        content = config_file.read_text(encoding="utf-8")
+        config_doc = load_config_document(content, file_format="yaml")
     else:
         config_doc = empty_config_document("yaml")
 
     if root_version is not None:
         config_doc["_config_version"] = root_version
 
+    provider = agent.hermes_provider if hermes_provider is _UNSET else hermes_provider
+    model = agent.hermes_model if hermes_model is _UNSET else hermes_model
+    provider_requested = (
+        agent.hermes_provider is not None
+        if hermes_provider is _UNSET
+        else hermes_provider is not None
+    )
+    model_requested = (
+        agent.hermes_model is not None if hermes_model is _UNSET else hermes_model is not None
+    )
+    if provider_requested or model_requested:
+        model_config = config_doc.get("model")
+        if model_config is None:
+            model_config = new_subtree("yaml")
+            config_doc["model"] = model_config
+        elif not isinstance(model_config, MutableMapping):
+            raise MutationError(
+                f"Hermes profile config {config_file} has a non-mapping model value",
+                status=409,
+                code="invalid_hermes_model_config",
+            )
+
+        if provider_requested:
+            _set_or_clear_model_key(
+                model_config,
+                "provider",
+                provider,
+                previous.hermes_provider if previous is not None else None,
+            )
+        if model_requested:
+            _set_or_clear_model_key(
+                model_config,
+                "default",
+                model,
+                previous.hermes_model if previous is not None else None,
+            )
+        if not model_config:
+            del config_doc["model"]
+
     rendered_config = dump_config_document(config_doc, file_format="yaml")
     atomic_write_text(config_file, rendered_config, follow_symlinks=False)
+
+
+def _set_or_clear_model_key(
+    model_config: MutableMapping[str, object],
+    key: str,
+    value: str | None | object,
+    previous_value: str | None,
+) -> None:
+    """Apply one explicitly edited HAM key while leaving user model keys alone."""
+    if value is None or value is _UNSET:
+        return
+    if isinstance(value, str) and value.strip():
+        model_config[key] = value.strip()
+    elif previous_value is not None:
+        model_config.pop(key, None)
 
 
 def detach_profile(agent: AgentDefinition, hermes_root: Path) -> None:

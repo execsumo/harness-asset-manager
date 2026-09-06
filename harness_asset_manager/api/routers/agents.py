@@ -43,6 +43,7 @@ from harness_asset_manager.application.agents import (
     validate_isolation,
     validate_max_turns,
 )
+from harness_asset_manager.application.agents.hermes_profile import ensure_profile
 from harness_asset_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
@@ -118,19 +119,30 @@ def create_agent(
         allowed_subagents=validate_allowed_subagents(body.allowedSubagents),
         max_turns=validate_max_turns(body.maxTurns),
         isolation=validate_isolation(body.isolation),
+        hermes_provider=body.hermesProvider,
+        hermes_model=body.hermesModel,
     )
     # Binding happens here rather than in a follow-up request from the client: a second
     # call that fails would leave an agent nobody asked for, bound to nothing, with no undo.
     harness_failures: list[AgentMutationFailureResponse] = []
+    try:
+        ensure_profile(agent, container.hermes_root)
+    except Exception as error:  # noqa: BLE001 - profile failure must not roll back the agent
+        harness_failures.append(
+            AgentMutationFailureResponse(
+                harness="hermes",
+                error=f"Hermes profile configuration failed: {error}",
+            )
+        )
     if body.harnesses:
         supported, rejected = container.agents_mutations.partition_harnesses(body.harnesses)
         if supported:
             _succeeded, failed = container.agents_mutations.set_harnesses(agent.slug, supported)
             rejected.extend(failed)
-        harness_failures = [
+        harness_failures.extend(
             AgentMutationFailureResponse(harness=harness, error=error)
             for harness, error in rejected
-        ]
+        )
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug, harness_failures=harness_failures)
 
@@ -190,6 +202,7 @@ def update_agent(
     validated_allowed_subagents = validate_allowed_subagents(body.allowedSubagents)
     validated_max_turns = validate_max_turns(body.maxTurns)
     validated_isolation = validate_isolation(body.isolation)
+    profile_failures: list[AgentMutationFailureResponse] = []
 
     if "/" in agent_ref:
         # Unmanaged ref (<harness>/<slug>): edit the harness file in place.
@@ -218,6 +231,7 @@ def update_agent(
         current = container.agents_store.get(agent_ref)
         if current is None:
             raise MutationError(f"agent not found: {agent_ref}", status=404)
+        previous = current
         prev_skills = current.skills
         container.agents_store.update(
             agent_ref,
@@ -232,8 +246,27 @@ def update_agent(
             allowed_subagents=validated_allowed_subagents,
             max_turns=validated_max_turns,
             isolation=validated_isolation,
+            hermes_provider=body.hermesProvider,
+            hermes_model=body.hermesModel,
             metadata=extra_metadata,
         )
+        updated = container.agents_store.get(agent_ref)
+        if updated is not None:
+            try:
+                ensure_profile(
+                    updated,
+                    container.hermes_root,
+                    hermes_provider=body.hermesProvider,
+                    hermes_model=body.hermesModel,
+                    previous=previous,
+                )
+            except Exception as error:  # noqa: BLE001 - keep the HAM agent update
+                profile_failures.append(
+                    AgentMutationFailureResponse(
+                        harness="hermes",
+                        error=f"Hermes profile configuration failed: {error}",
+                    )
+                )
 
     skills_changed = validated_skills is not None and validated_skills != prev_skills
     auto_enabled_pairs: list[tuple[str, str]] = []
@@ -255,6 +288,7 @@ def update_agent(
             AutoEnableFailureResponse(skillRef=ref, harness=h, error=err)
             for ref, h, err in failed_pairs
         ],
+        harness_failures=profile_failures,
     )
 
 
@@ -380,6 +414,8 @@ def _detail(
         allowedSubagents=detail.allowed_subagents,
         maxTurns=detail.max_turns,
         isolation=detail.isolation,
+        hermesProvider=detail.hermes_provider,
+        hermesModel=detail.hermes_model,
         ok=len(failed_list) == 0 and len(harness_failures_list) == 0,
         autoEnabled=auto_enabled or [],
         failed=failed_list,
