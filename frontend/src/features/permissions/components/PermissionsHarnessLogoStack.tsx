@@ -1,5 +1,5 @@
 import { UiTooltip } from "../../../components/ui/UiTooltip";
-import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
+import { getHarnessPresentation, harnessFamily } from "../../../components/harness/harnessPresentation";
 import type { PermissionBindingDto, PermissionInventoryColumnDto } from "../../permissions/api/management-types";
 import { isPermissionsHarnessAddressable } from "../model/selectors";
 
@@ -26,8 +26,9 @@ export function PermissionsHarnessLogoStack({ bindings, columns }: PermissionsHa
     <div className="skill-card__harness-row">
       <div className="harness-stack" aria-label={ariaLabel}>
         {visible.map((binding, index) => {
-          const presentation = getHarnessPresentation(logoByHarness.get(binding.harness) ?? null);
-          const label = labelByHarness.get(binding.harness) ?? binding.harness;
+          const family = harnessFamily(binding.harness);
+          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? family);
+          const label = labelByHarness.get(family) ?? binding.harness;
           const title =
             binding.state === "drifted"
               ? `${label} — Different config${binding.driftDetail ? ` (${binding.driftDetail})` : ""}`
