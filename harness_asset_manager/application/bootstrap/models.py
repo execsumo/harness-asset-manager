@@ -14,10 +14,19 @@ class BootstrapAction:
     display_name: str
     harness: str
     action: Action
-    target: Path | str  # where the binding would land on THIS device; empty when unknown
+    # Where the binding would land on THIS device. ``None`` when the device cannot
+    # place it at all — a target scoped to a Hermes profile that does not exist here
+    # has no path until that profile is created, and inventing a plausible one would
+    # be worse than showing none.
+    target: Path | None
     binding_target: str | None = None
     reason: str | None = None  # machine-readable skip/conflict code
     detail: str | None = None  # human sentence for the UI
+
+    @property
+    def target_display(self) -> str:
+        """Path for humans and the API; empty string when there is no path on this device."""
+        return "" if self.target is None else str(self.target)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -28,8 +37,8 @@ class BootstrapAction:
             "harness": self.harness,
             "bindingTarget": self.binding_target or self.harness,
             "action": self.action,
-            "target": str(self.target),
-            "targetPath": str(self.target),
+            "target": self.target_display,
+            "targetPath": self.target_display,
             "reason": self.reason,
             "detail": self.detail,
         }

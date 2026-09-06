@@ -35,7 +35,7 @@ def get_bootstrap_plan(
                 harness=action.harness,
                 binding_target=action.binding_target,
                 action=action.action,
-                targetPath=str(action.target),
+                targetPath=action.target_display,
                 reason=action.reason,
                 detail=action.detail,
             )
@@ -62,7 +62,7 @@ def apply_bootstrap_plan(
             harness=dto.harness,
             binding_target=dto.binding_target,
             action=dto.action,
-            target=Path(dto.target),
+            target=Path(dto.target) if dto.target else None,
             reason=dto.reason,
             detail=dto.detail,
         )

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,6 +17,7 @@ from harness_asset_manager.harness.hermes_profiles import (
     hermes_profile_name,
     validate_slug_collisions,
 )
+
 
 class MockContext:
     def __init__(self, home: Path, env: dict[str, str]) -> None:

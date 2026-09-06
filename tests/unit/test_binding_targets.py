@@ -129,7 +129,8 @@ class ScopedBootstrapTests(unittest.TestCase):
             missing = next(action for action in plan.actions if action.binding_target == "hermes:coder")
             linkable = next(action for action in plan.linkable if action.harness == "claude")
             self.assertEqual(missing.reason, "harness-scope-missing")
-            self.assertEqual(missing.target, "")
+            self.assertIsNone(missing.target)  # no path exists for a profile this device lacks
+            self.assertEqual(missing.target_display, "")
             self.assertIn("coder", missing.detail or "")
 
             results = container.bootstrap_applier.apply([missing, linkable])

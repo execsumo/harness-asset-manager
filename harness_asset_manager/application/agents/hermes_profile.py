@@ -13,11 +13,11 @@ from harness_asset_manager.config_document import (
 )
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.hermes_profiles import (
-    HermesProfileNameError,
     hermes_profile_name,
     profile_home,
     profile_is_tombstoned,
     profile_skills_harnessam_dir,
+    profile_tombstone_path,
 )
 
 _logger = logging.getLogger(__name__)
@@ -59,11 +59,10 @@ def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
                 code="hermes_profile_tombstoned_with_identity",
             )
         else:
-            # Clear the tombstone when we reclaim an empty shell
-            from harness_asset_manager.harness.hermes_profiles import profile_tombstone_path
-            tombstone = profile_tombstone_path(hermes_root, name)
-            if tombstone.exists():
-                tombstone.unlink()
+            # Reclaiming means the profile is live again; Hermes' own create_profile
+            # clears the marker on this path (clear_named_profile_deleted), and leaving
+            # it would make the profile exist while Hermes still reads it as deleted.
+            profile_tombstone_path(hermes_root, name).unlink(missing_ok=True)
 
     # Subdirectories
     for subdir in _HERMES_SUBDIRS:

@@ -168,13 +168,13 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
-        if action.reason == "harness-scope-missing":
+        if action.target is None or action.reason == "harness-scope-missing":
             return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
                 harness=action.harness,
                 status="skipped",
-                target=str(action.target),
+                target=action.target_display,
                 binding_target=action.binding_target,
                 error=action.detail or action.reason,
             )
@@ -190,6 +190,7 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        assert action.target is not None  # _apply_one short-circuits a pathless action
         target = Path(action.target)
 
         # Re-check on disk immediately before acting
@@ -280,6 +281,7 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        assert action.target is not None  # _apply_one short-circuits a pathless action
         target = Path(action.target)
 
         # Re-check on disk immediately before acting at key granularity
