@@ -125,6 +125,9 @@ export interface AgentCreateRequest {
   allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
+  /** Hermes profile routing; values are passed through without a HAM vocabulary. */
+  hermesProvider?: string;
+  hermesModel?: string;
   harnesses?: string[];
 }
 
@@ -141,6 +144,8 @@ export interface AgentUpdateRequest {
   allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
+  hermesProvider?: string;
+  hermesModel?: string;
   metadata?: Array<{ key: string; value: string }>;
 }
 
@@ -176,6 +181,8 @@ export interface AgentDetailDto {
   allowedSubagents?: string | null;
   maxTurns?: string | null;
   isolation?: string | null;
+  hermesProvider?: string | null;
+  hermesModel?: string | null;
   ok?: boolean;
   autoEnabled?: AutoEnabledSkillDto[];
   failed?: AutoEnableFailureDto[];
