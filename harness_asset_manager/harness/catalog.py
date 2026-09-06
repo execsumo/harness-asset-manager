@@ -33,6 +33,29 @@ def _hermes_home(context) -> Path:
     return Path(override) if override else context.home / ".hermes"
 
 
+def _hermes_root(context) -> Path:
+    """Resolve the Hermes root directory, distinguishing a root from a named profile.
+
+    If the targeted Hermes home is a named profile (i.e. <root>/profiles/<name>),
+    we climb two levels up to find the true root. This mirrors Hermes' own heuristic
+    to avoid treating an arbitrary 'profiles' directory segment as a true profiles root.
+    """
+    home = _hermes_home(context)
+
+    if home.parent.name == "profiles":
+        profiles_dir = home.parent
+        root_dir = profiles_dir.parent
+
+        if root_dir.name == ".hermes":
+            return root_dir
+        if (root_dir / "config.yaml").exists() or (root_dir / ".env").exists() or (root_dir / "state.db").exists():
+            return root_dir
+        if (profiles_dir / ".deleted").is_dir():
+            return root_dir
+
+    return home
+
+
 def _hermes_skills_root(context) -> Path:
     return _hermes_home(context) / "skills"
 
