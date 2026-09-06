@@ -7,7 +7,10 @@ export function BootstrapBanner() {
   const dismissMutation = useDismissBootstrapMutation();
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  if (isLoading || !plan || plan.dismissed || plan.linkableCount === 0) {
+  const hasMissingScopedTarget = plan?.actions?.some(
+    (action) => action.reason === "harness-scope-missing",
+  );
+  if (isLoading || !plan || plan.dismissed || (plan.linkableCount === 0 && !hasMissingScopedTarget)) {
     return null;
   }
 

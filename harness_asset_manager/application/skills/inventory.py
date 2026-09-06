@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from harness_asset_manager.harness.binding_targets import harness_of
+
 from .identity import SourceDescriptor, stable_id
 from .observations import SkillsHarnessScan, SkillStoreScan
 
@@ -70,6 +72,14 @@ class InventoryEntry:
         )
 
     def linked_harnesses(self) -> set[str]:
+        return {
+            harness_of(sighting.harness)
+            for sighting in self.sightings
+            if sighting.kind == "harness" and sighting.harness is not None and sighting.scope == "canonical"
+        }
+
+    def linked_targets(self) -> set[str]:
+        """Expose exact binding targets without losing their scope."""
         return {
             sighting.harness
             for sighting in self.sightings

@@ -14,7 +14,8 @@ class BootstrapAction:
     display_name: str
     harness: str
     action: Action
-    target: Path  # where the binding would land on THIS device
+    target: Path | str  # where the binding would land on THIS device; empty when unknown
+    binding_target: str | None = None
     reason: str | None = None  # machine-readable skip/conflict code
     detail: str | None = None  # human sentence for the UI
 
@@ -25,6 +26,7 @@ class BootstrapAction:
             "displayName": self.display_name,
             "display_name": self.display_name,
             "harness": self.harness,
+            "bindingTarget": self.binding_target or self.harness,
             "action": self.action,
             "target": str(self.target),
             "targetPath": str(self.target),
@@ -66,6 +68,7 @@ class BootstrapApplyResult:
     harness: str
     status: Literal["applied", "failed", "skipped"]
     target: str
+    binding_target: str | None = None
     error: str | None = None
 
     def to_dict(self) -> dict[str, object]:
@@ -73,6 +76,7 @@ class BootstrapApplyResult:
             "family": self.family,
             "ref": self.ref,
             "harness": self.harness,
+            "bindingTarget": self.binding_target or self.harness,
             "status": self.status,
             "target": self.target,
             "error": self.error,
