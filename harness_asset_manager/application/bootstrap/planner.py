@@ -37,6 +37,7 @@ from harness_asset_manager.application.slash_commands.sync_state import (
 from harness_asset_manager.application.slash_commands.targets import (
     _is_detected as _is_slash_detected,
 )
+from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService
 from harness_asset_manager.harness.binding_targets import BindingTarget
 from harness_asset_manager.harness.contracts import (
@@ -184,9 +185,13 @@ class BootstrapPlanner:
                 binding = BindingTarget.parse(binding_value)
                 harness = binding.harness
 
-                # Profile adapters are not available until Hermes profile support
-                # lands. Keep the recorded target visible so the user can create it.
-                if binding.scope is not None:
+                adapter = self.skills_read_models.find_adapter(str(binding))
+
+                # A scoped record is actionable when that profile exists locally;
+                # otherwise retain the recorded target as a pathless proposal for
+                # the profile-creation flow. The manifest remains the source of
+                # intent, while the filesystem remains the source of liveness.
+                if binding.scope is not None and adapter is None:
                     actions.append(
                         BootstrapAction(
                             family="skills",
@@ -201,18 +206,42 @@ class BootstrapPlanner:
                         )
                     )
                     continue
-                adapter = self.skills_read_models.find_adapter(harness)
+                if binding.scope is not None:
+                    try:
+                        scoped_root = adapter._scoped_binding_root(binding.scope)  # type: ignore[attr-defined]
+                        if not scoped_root.is_dir():
+                            raise OSError(f"profile root does not exist: {scoped_root}")
+                        target = adapter._binding_path(  # type: ignore[attr-defined]
+                            entry.package_dir, scope=binding.scope
+                        )
+                    except (MutationError, OSError, ValueError) as error:
+                        actions.append(
+                            BootstrapAction(
+                                family="skills",
+                                ref=ref,
+                                display_name=display_name,
+                                harness=harness,
+                                binding_target=str(binding),
+                                action="skip",
+                                target=None,
+                                reason="harness-scope-missing",
+                                detail=f"Harness '{harness}' profile '{binding.scope}' is missing on this device: {error}",
+                            )
+                        )
+                        continue
+                else:
+                    target = None
 
                 # Fallback target path if adapter cannot resolve
                 default_target = (
                     self.harness_kernel.context.home / f".{harness}" / "skills" / entry.package_dir
                 )
-                if adapter is not None:
+                if target is None and adapter is not None:
                     try:
                         target = adapter._binding_path(entry.package_dir)
                     except Exception:
                         target = default_target
-                else:
+                elif target is None:
                     target = default_target
 
                 # 1. Harness not installed on this device
@@ -223,6 +252,7 @@ class BootstrapPlanner:
                             ref=ref,
                             display_name=display_name,
                             harness=harness,
+                            binding_target=str(binding),
                             action="skip",
                             target=target,
                             reason="harness-not-installed",
@@ -239,6 +269,7 @@ class BootstrapPlanner:
                             ref=ref,
                             display_name=display_name,
                             harness=harness,
+                            binding_target=str(binding),
                             action="skip",
                             target=target,
                             reason="harness-support-disabled",
@@ -255,6 +286,7 @@ class BootstrapPlanner:
                             ref=ref,
                             display_name=display_name,
                             harness=harness,
+                            binding_target=str(binding),
                             action="skip",
                             target=target,
                             reason="asset-missing-from-store",
@@ -273,6 +305,7 @@ class BootstrapPlanner:
                                     ref=ref,
                                     display_name=display_name,
                                     harness=harness,
+                                    binding_target=str(binding),
                                     action="skip",
                                     target=target,
                                     reason="already-linked",
@@ -296,6 +329,7 @@ class BootstrapPlanner:
                             ref=ref,
                             display_name=display_name,
                             harness=harness,
+                            binding_target=str(binding),
                             action="conflict",
                             target=target,
                             reason="target-occupied",
@@ -311,6 +345,7 @@ class BootstrapPlanner:
                         ref=ref,
                         display_name=display_name,
                         harness=harness,
+                        binding_target=str(binding),
                         action="link",
                         target=target,
                     )

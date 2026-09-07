@@ -7,7 +7,7 @@ from typing import Literal
 from harness_asset_manager.harness.binding_targets import harness_of
 
 from .identity import SourceDescriptor, stable_id
-from .observations import SkillsHarnessScan, SkillStoreScan
+from .observations import SkillLinkIssue, SkillsHarnessScan, SkillStoreScan
 
 EntryKind = Literal["managed", "unmanaged"]
 
@@ -75,7 +75,10 @@ class InventoryEntry:
         return {
             harness_of(sighting.harness)
             for sighting in self.sightings
-            if sighting.kind == "harness" and sighting.harness is not None and sighting.scope == "canonical"
+            if sighting.kind == "harness"
+            and sighting.harness is not None
+            and sighting.scope == "canonical"
+            and not sighting.detail
         }
 
     def linked_targets(self) -> set[str]:
@@ -83,7 +86,10 @@ class InventoryEntry:
         return {
             sighting.harness
             for sighting in self.sightings
-            if sighting.kind == "harness" and sighting.harness is not None and sighting.scope == "canonical"
+            if sighting.kind == "harness"
+            and sighting.harness is not None
+            and sighting.scope == "canonical"
+            and not sighting.detail
         }
 
 
@@ -122,6 +128,7 @@ class SkillInventory:
         )
         entries: list[InventoryEntry] = []
         shared_path_index: dict[Path, InventoryEntry] = {}
+        shared_dir_index: dict[str, InventoryEntry] = {}
         shared_match_index: dict[str, InventoryEntry] = {}
         hermes_local_match_index: dict[tuple[str, str], InventoryEntry] = {}
         plugin_match_index: dict[tuple[str, str], InventoryEntry] = {}
@@ -165,9 +172,13 @@ class SkillInventory:
             )
             entries.append(entry)
             shared_path_index[package.resolved_path] = entry
+            shared_dir_index[package.root_path.name] = entry
             shared_match_index[_managed_entry_key(entry)] = entry
             plugin_match_index[(entry.name.casefold(), (entry.package_dir or "").casefold())] = entry
-            if store_package.origin_harness == "hermes":
+            if (
+                store_package.origin_harness is not None
+                and harness_of(store_package.origin_harness) == "hermes"
+            ):
                 hermes_local_match_index[_hermes_local_match_key(entry)] = entry
 
         unmanaged_entries: dict[str, InventoryEntry] = {}
@@ -183,11 +194,18 @@ class SkillInventory:
                     path=observation.package.root_path,
                     revision=observation.package.revision,
                     source=observation.package.source,
+                    detail=observation.detail,
                 )
                 if shared_entry is not None:
                     shared_entry.add_sighting(sighting)
                     continue
-                shared_match = shared_match_index.get(_observation_match_key(observation.package))
+                shared_match = (
+                    shared_dir_index.get(observation.package.root_path.name)
+                    if observation.detail == "stale-link"
+                    else None
+                )
+                if shared_match is None:
+                    shared_match = shared_match_index.get(_observation_match_key(observation.package))
                 if (
                     shared_match is None
                     and scan.harness == "hermes"
@@ -224,6 +242,15 @@ class SkillInventory:
                     unmanaged_entries[key] = entry
                 entry.add_sighting(sighting)
 
+        for scan in harness_scans:
+            for issue in scan.link_issues:
+                entry = shared_dir_index.get(issue.package_dir)
+                if entry is not None and not any(
+                    sighting.path == issue.path and sighting.detail == issue.detail
+                    for sighting in entry.sightings
+                ):
+                    entry.add_sighting(_issue_sighting(issue))
+
         entries.extend(unmanaged_entries.values())
         sort_entries(entries)
         return cls(
@@ -232,12 +259,24 @@ class SkillInventory:
             store_issues=store_scan.issues,
             entries=tuple(entries),
         )
-
     def find(self, skill_ref: str) -> InventoryEntry | None:
         return self._by_ref.get(skill_ref)
 
     def entries_by_kind(self, kind: EntryKind) -> tuple[InventoryEntry, ...]:
         return tuple(entry for entry in self.entries if entry.kind == kind)
+
+
+def _issue_sighting(issue: SkillLinkIssue) -> InventorySighting:
+    return InventorySighting(
+        kind="harness",
+        harness=issue.harness,
+        label=issue.label,
+        scope=issue.scope,
+        path=issue.path,
+        revision=None,
+        source=issue.source,
+        detail=issue.detail,
+    )
 
 
 def _excluded_hermes_names(harness_scans: tuple[SkillsHarnessScan, ...]) -> set[str]:
@@ -255,7 +294,7 @@ def _is_excluded_hermes_store_package(
     origin_harness: str | None,
     excluded_hermes_names: set[str],
 ) -> bool:
-    if origin_harness != "hermes":
+    if origin_harness is None or harness_of(origin_harness) != "hermes":
         return False
     # A manifest entry records a package that is already managed by the shared
     # store, even when its originating Hermes installation is remote or absent

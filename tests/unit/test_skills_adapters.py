@@ -4,7 +4,15 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from harness_asset_manager.application.skills.adapters import build_skills_adapters
+from harness_asset_manager.application.container import build_backend_container
+from harness_asset_manager.application.skills.adapters import (
+    FileTreeSkillsAdapter,
+    _ResolvedRoot,
+    build_skills_adapters,
+)
+from harness_asset_manager.application.skills.inventory import SkillInventory
+from harness_asset_manager.application.skills.manifest import load_skill_store_manifest
+from harness_asset_manager.application.skills.store import SkillStore
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
 from harness_asset_manager.paths import APP_NAME
@@ -20,6 +28,261 @@ def _adapter(harness: str, spec, *, data_dir: Path | None = None) :
 
 
 class SkillsAdapterTests(unittest.TestCase):
+    def test_hermes_profile_root_resolution_is_total_when_profiles_are_absent(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            hermes = _adapter("hermes", spec)
+
+            self.assertEqual(hermes._dynamic_roots_provider(), ())
+            self.assertEqual(hermes.scan().skills, ())
+
+    def test_hermes_profile_roots_carry_exact_targets_and_labels(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            for profile_name in ("coder", "reviewer"):
+                (spec.hermes_home / "profiles" / profile_name / "skills").mkdir(
+                    parents=True
+                )
+
+            hermes = _adapter("hermes", spec)
+            roots = hermes._dynamic_roots_provider()
+
+            self.assertEqual(
+                [(root.binding_scope, root.label) for root in roots],
+                [
+                    ("coder", "Hermes profile coder skills"),
+                    ("reviewer", "Hermes profile reviewer skills"),
+                ],
+            )
+
+    def test_hermes_scoped_binding_is_profile_local_and_discovered_with_exact_target(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            for profile_name in ("coder", "reviewer"):
+                (spec.hermes_home / "profiles" / profile_name / "skills").mkdir(
+                    parents=True
+                )
+
+            hermes = _adapter("hermes", spec)
+            hermes.enable_shared_package(package, scope="coder")
+            hermes.enable_shared_package(package, scope="reviewer")
+
+            coder_link = (
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam" / "audit"
+            )
+            reviewer_link = (
+                spec.hermes_home
+                / "profiles"
+                / "reviewer"
+                / "skills"
+                / "harnessam"
+                / "audit"
+            )
+            self.assertTrue(coder_link.is_symlink())
+            self.assertTrue(reviewer_link.is_symlink())
+            self.assertEqual(coder_link.resolve(), package.resolve())
+            self.assertEqual(reviewer_link.resolve(), package.resolve())
+            self.assertFalse((spec.hermes_skills_root / "harnessam" / "audit").exists())
+
+            targets = {observation.harness for observation in hermes.scan().skills}
+            self.assertEqual(targets, {"hermes:coder", "hermes:reviewer"})
+
+    def test_hermes_bot_binding_leaves_default_profile_skills_root_untouched(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            (spec.hermes_home / "profiles" / "coder" / "skills").mkdir(parents=True)
+
+            _adapter("hermes", spec).enable_shared_package(package, scope="coder")
+
+            self.assertFalse((spec.hermes_home / "skills" / "harnessam" / "audit").exists())
+
+    def test_scan_reports_broken_stale_and_detached_links_distinctly(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            for package_name in ("broken", "stale", "detached"):
+                seed_skill_package(spec.skills_store_root, package_name, package_name.title())
+            profile_skills = spec.hermes_home / "profiles" / "coder" / "skills"
+            managed = profile_skills / "harnessam"
+            managed.mkdir(parents=True)
+            (managed / "broken").symlink_to("missing-package")
+            foreign = seed_skill_package(Path(temp_dir) / "foreign", "stale", "Stale")
+            (managed / "stale").symlink_to(foreign.resolve())
+            archive = profile_skills / ".archive"
+            archive.mkdir()
+            (archive / "detached").symlink_to(
+                (spec.skills_store_root / "detached").resolve()
+            )
+
+            scan = _adapter(
+                "hermes",
+                spec,
+                data_dir=spec.xdg_data_home / APP_NAME,
+            ).scan()
+
+            self.assertEqual(
+                {(issue.package_dir, issue.detail) for issue in scan.link_issues},
+                {
+                    ("broken", "broken-link"),
+                    ("stale", "stale-link"),
+                    ("detached", "detached-link"),
+                },
+            )
+            stale = next(observation for observation in scan.skills if observation.package.root_path.name == "stale")
+            self.assertEqual(stale.detail, "stale-link")
+            inventory = SkillInventory.from_snapshot(
+                store_scan=SkillStore(spec.skills_store_root).scan(),
+                harness_scans=(scan,),
+            )
+            self.assertEqual(
+                {
+                    name: {
+                        sighting.detail
+                        for sighting in inventory.find(f"shared:{name}").sightings
+                        if sighting.detail
+                    }
+                    for name in ("broken", "stale", "detached")
+                },
+                {
+                    "broken": {"broken-link"},
+                    "stale": {"stale-link"},
+                    "detached": {"detached-link"},
+                },
+            )
+
+    def test_archived_recorded_binding_relinks_without_harming_canonical_package(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            profile_skills = spec.hermes_home / "profiles" / "coder" / "skills"
+            profile_skills.mkdir(parents=True)
+            source = seed_skill_package(Path(temp_dir) / "source", "audit", "Audit")
+            container = build_backend_container(spec.env())
+            container.skills_store.ingest(
+                source_path=source,
+                declared_name="Audit",
+                source_kind="centralized",
+                source_locator="centralized:audit",
+            )
+
+            container.skills_mutations.enable_skill("shared:audit", "hermes:coder")
+            link = profile_skills / "harnessam" / "audit"
+            package = spec.skills_store_root / "audit"
+            archive = profile_skills / ".archive"
+            archive.mkdir()
+            link.rename(archive / "audit")
+
+            container.skills_read_models.invalidate()
+            self.assertTrue(package.is_dir())
+            self.assertEqual(
+                container.skills_queries.inventory().find("shared:audit").package_path,
+                package,
+            )
+            container.skills_mutations.enable_skill("shared:audit", "hermes:coder")
+
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), package.resolve())
+            self.assertTrue(package.is_dir())
+            manifest = load_skill_store_manifest(container.paths.skills_store_manifest)
+            self.assertEqual(manifest.entries[0].enabled_harnesses, ("hermes:coder",))
+
+    def test_hermes_scoped_disable_preserves_other_profile_and_store(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            for profile_name in ("coder", "reviewer"):
+                (spec.hermes_home / "profiles" / profile_name / "skills").mkdir(
+                    parents=True
+                )
+
+            hermes = _adapter("hermes", spec)
+            hermes.enable_shared_package(package, scope="coder")
+            hermes.enable_shared_package(package, scope="reviewer")
+            hermes.disable_shared_package("audit", scope="coder")
+
+            self.assertFalse(
+                (
+                    spec.hermes_home
+                    / "profiles"
+                    / "coder"
+                    / "skills"
+                    / "harnessam"
+                    / "audit"
+                ).exists()
+            )
+            self.assertTrue(
+                (
+                    spec.hermes_home
+                    / "profiles"
+                    / "reviewer"
+                    / "skills"
+                    / "harnessam"
+                    / "audit"
+                ).is_symlink()
+            )
+            self.assertTrue((package / "SKILL.md").is_file())
+
+    def test_scoped_binding_refuses_foreign_symlink(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            foreign = seed_skill_package(Path(temp_dir) / "foreign", "audit", "Foreign Audit")
+            target = spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam" / "audit"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(foreign)
+
+            hermes = _adapter("hermes", spec)
+
+            with self.assertRaises(MutationError):
+                hermes.enable_shared_package(package, scope="coder")
+            self.assertEqual(target.resolve(), foreign.resolve())
+
+    def test_scoped_binding_heals_known_stale_store_symlink(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            stale = seed_skill_package(spec.legacy_skills_store_root, "audit", "Old Audit")
+            package = seed_skill_package(spec.skills_store_root, "audit", "Audit")
+            target = spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam" / "audit"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.symlink_to(stale)
+
+            hermes = _adapter("hermes", spec, data_dir=spec.xdg_data_home / APP_NAME)
+            hermes.enable_shared_package(package, scope="coder")
+
+            self.assertEqual(target.resolve(), package.resolve())
+
+    def test_scoped_binding_respects_flat_layout_without_category_scan(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package = seed_skill_package(root / "store", "audit", "Audit")
+            managed_root = root / "managed"
+            scoped_root = root / "profiles" / "coder" / "skills"
+            adapter = FileTreeSkillsAdapter(
+                harness="flat",
+                label="Flat",
+                logo_key=None,
+                install_probe="flat",
+                path_env=None,
+                managed_root=managed_root,
+                discovery_roots=(
+                    _ResolvedRoot(
+                        kind="managed-root",
+                        scope="canonical",
+                        label="Managed skills root",
+                        path=managed_root,
+                    ),
+                ),
+                availability="cli",
+                app_probe_paths=(),
+                layout="flat",
+                scoped_root_resolver=lambda _scope: scoped_root,
+            )
+
+            adapter.enable_shared_package(package, scope="coder")
+
+            self.assertTrue((scoped_root / "audit").is_symlink())
+            self.assertFalse((scoped_root / "harnessam" / "audit").exists())
+
     def test_adapter_scans_discovery_roots_and_reports_installation(self) -> None:
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
