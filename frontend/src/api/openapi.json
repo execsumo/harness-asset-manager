@@ -6951,7 +6951,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdoptAgentValidationResponse"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AdoptAgentValidationResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
                 }
               }
             },

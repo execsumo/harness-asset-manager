@@ -3939,7 +3939,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AdoptAgentValidationResponse"];
+                    "application/json": components["schemas"]["AdoptAgentValidationResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal Server Error */

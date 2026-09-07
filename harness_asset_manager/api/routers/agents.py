@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Union
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
@@ -33,7 +35,7 @@ from harness_asset_manager.api.schemas.agents import (
     SetAgentTagsRequest,
     UpdateAgentRequest,
 )
-from harness_asset_manager.api.schemas.common import OkResponse
+from harness_asset_manager.api.schemas.common import ErrorResponse, OkResponse
 from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
@@ -346,7 +348,7 @@ def set_agent_harnesses(
     response_model=AdoptAgentResponse,
     responses={
         409: {"model": AdoptAgentConflictResponse},
-        422: {"model": AdoptAgentValidationResponse},
+        422: {"model": Union[AdoptAgentValidationResponse, ErrorResponse]},
     },
 )
 def adopt_agent(

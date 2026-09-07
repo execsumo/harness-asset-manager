@@ -234,7 +234,7 @@ class AgentMutationService:
             tuple(
                 field
                 for field, value in fields
-                if value is None or not str(value).strip()
+                if not str(value or "").strip()
             ),
         )
 

@@ -598,6 +598,33 @@ class AgentRoutesTests(unittest.TestCase):
             adopted = harness.post_json("/api/agents/claude/incomplete/adopt", None)
             self.assertEqual(adopted, {"ok": True, "ref": "incomplete"})
 
+    def test_adoption_rejects_falsey_frontmatter_fields(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "falsey.md").write_text(
+                "---\nname: false\ndescription: []\n---\n", encoding="utf-8"
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/falsey/adopt", None, expected_status=422
+            )
+
+            self.assertEqual(validation["missingFields"], ["name", "description", "prompt"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "falsey.md").is_file())
+
+    def test_adoption_documents_generic_body_validation_errors(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/stray/adopt",
+                {"onConflict": "discard"},
+                expected_status=422,
+            )
+
+            self.assertEqual(validation["code"], "validation_error")
+            self.assertNotIn("missingFields", validation)
+
     def test_unmanaged_agent_lifecycle_edit_then_adopt_and_manage(self) -> None:
         """Complete lifecycle: unmanaged -> in-place edit -> list -> adopt -> managed edit."""
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
