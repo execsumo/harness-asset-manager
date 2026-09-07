@@ -173,6 +173,36 @@ describe("SkillDetailContent", () => {
     expect(screen.queryByText("Managed")).not.toBeInTheDocument();
   });
 
+  it("warns that editing a Hermes Bot binding changes every Bot on the canonical package", () => {
+    render(
+      <SkillDetailContent
+        detail={{
+          ...unmanagedDetail,
+          skillRef: "shared:trace-lens",
+          displayStatus: "Managed",
+          linkedTargets: ["hermes:coder", "hermes:reviewer"],
+          actions: { ...unmanagedDetail.actions, canManage: false, updateStatus: null },
+        }}
+        actionErrorMessage=""
+        queryErrorMessage=""
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onClose={vi.fn()}
+        onDismissActionError={vi.fn()}
+        onManage={vi.fn()}
+        onToggleHarness={vi.fn()}
+        onUpdate={vi.fn()}
+        onRequestRemove={vi.fn()}
+        onRequestDelete={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Editing this skill through a Hermes Bot edits the canonical HAM package/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/every other Bot bound to it sees the change/)).toBeInTheDocument();
+  });
+
   it("shows the local-changes warning in the body and hides local_changes_detected from the footer rail", () => {
     render(
       <SkillDetailContent

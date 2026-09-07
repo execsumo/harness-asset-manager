@@ -1,5 +1,6 @@
 import { HarnessAvatar } from "../harness/HarnessAvatar";
 import { UiTooltip } from "../ui/UiTooltip";
+import type { ReactNode } from "react";
 
 export type DetailBindingTone = "enabled" | "disabled" | "warning";
 
@@ -11,6 +12,7 @@ interface DetailBindingIdentityProps {
   tone: DetailBindingTone;
   visibleStatus?: string | null;
   detail?: string | null;
+  trailing?: ReactNode;
 }
 
 export function DetailBindingIdentity({
@@ -21,6 +23,7 @@ export function DetailBindingIdentity({
   tone,
   visibleStatus = null,
   detail = null,
+  trailing = null,
 }: DetailBindingIdentityProps) {
   return (
     <>
@@ -57,6 +60,7 @@ export function DetailBindingIdentity({
             </span>
           </UiTooltip>
         ) : null}
+        {trailing}
       </div>
     </>
   );

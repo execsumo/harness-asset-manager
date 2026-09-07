@@ -42,4 +42,39 @@ describe("SkillDetailHarnessMatrix", () => {
     fireEvent.click(enableButton);
     expect(onToggleCell).toHaveBeenCalledWith(cells[0]);
   });
+
+  it("shows each scoped Hermes Bot inside one Hermes binding", () => {
+    const { container } = render(
+      <SkillDetailHarnessMatrix
+        skillName="Shared Audit"
+        cells={[{ harness: "hermes", label: "Hermes Agent", logoKey: "hermes", state: "enabled", interactive: true }]}
+        linkedTargets={["hermes:coder", "hermes:reviewer"]}
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Coder")).toBeInTheDocument();
+    expect(screen.getByText("Reviewer")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hermes Bots: Coder, Reviewer")).toBeInTheDocument();
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("does not add a Bot label for the unscoped Hermes target", () => {
+    const { container } = render(
+      <SkillDetailHarnessMatrix
+        skillName="Default Profile Skill"
+        cells={[{ harness: "hermes", label: "Hermes Agent", logoKey: "hermes", state: "enabled", interactive: true }]}
+        linkedTargets={["hermes"]}
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("group", { name: "Hermes Agent, Enabled" })).toBeInTheDocument();
+    expect(screen.queryByText("Hermes Bots:")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+  });
 });
