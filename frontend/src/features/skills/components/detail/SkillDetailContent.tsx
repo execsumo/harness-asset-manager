@@ -369,6 +369,7 @@ export function SkillDetailContent({
                   skillName={detail.name}
                   cells={detail.harnessCells}
                   linkedTargets={detail.linkedTargets}
+                  locations={detail.locations}
                   pendingToggleHarnesses={pendingToggleHarnesses}
                   pendingStructuralAction={pendingStructuralAction}
                   onToggleCell={onToggleHarness}

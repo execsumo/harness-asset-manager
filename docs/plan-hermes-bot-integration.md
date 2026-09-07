@@ -1,9 +1,18 @@
 # Plan: Hermes Bot Integration
 
-> **Status: PHASE 0 VERIFIED — IMPLEMENTATION IN PROGRESS.** This document records
+> **Status: IMPLEMENTED.** Phases 0-5 are complete and merged. This document records
 > the agreed goal, architecture, and implementation plan for promoting Hermes from a
 > best-effort harness target to a supported Bot/Profile integration. Every question
-> Phase 0 was asked to settle is answered under "Phase 0 findings" below.
+> Phase 0 was asked to settle is answered under "Phase 0 findings" below, and every
+> open decision is closed.
+>
+> User-facing documentation lives in `README.md` under **Hermes Bots (Profiles)**;
+> the internal shape is in `ARCHITECTURE.md`. Deviations from this plan that were
+> decided during implementation are recorded inline, each with its reason.
+>
+> **Support tier is unchanged.** `hermes` remains `best_effort`. Promoting it to
+> `core` is a separate product decision that changes what blocks a release, and this
+> work does not propose it — see "Support tier is a separate decision" below.
 
 > **Grounded against:** Hermes Agent v0.21.0 (2026.8.31), installed at
 > `/usr/local/lib/hermes-agent`, and HAM at commit `33b4e64`. Claims about Hermes

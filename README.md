@@ -110,11 +110,11 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 | **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
 | **Cursor** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
-| **Hermes Agent** | Yes | Best effort¹ | Yes | Yes² (Provisional) | Not Yet | No |
+| **Hermes Agent** | Yes (per-Bot¹) | Yes (Bots/Profiles¹) | Yes | Yes² (Provisional) | Not Yet | No |
 | **Factory Droid** | Yes | Yes | Yes | Yes | Not Yet | No |
 
 <small>
-¹ <strong>Hermes Agent</strong> does not currently document a native static-agent loader, but Harness Asset Manager can adopt, store, and symlink Markdown agent files under <code>$HERMES_HOME/agents/</code> for separate Hermes-side support or other tooling; Hermes will not consume them automatically.<br />
+¹ <strong>Hermes Agent</strong> agents are represented as native Hermes <strong>Bots</strong> — one Hermes Profile per agent, each with its own identity, model routing, sessions and Skill set. Skills bind per Bot (<code>hermes:&lt;profile&gt;</code>) rather than once for the whole harness. Verified against a real Hermes v0.21.0 install. See <a href="#hermes-bots-profiles">Hermes Bots (Profiles)</a>. The older <code>$HERMES_HOME/agents/</code> Markdown convention is still maintained for separate Hermes-side tooling, but Hermes has no native loader for it.<br />
 ² <strong>Hermes slash-command</strong> support is provisional. Its command directory (<code>~/.hermes/commands</code>, frontmatter Markdown) follows common conventions but is not yet verified against a shipping Hermes build.<br />
 Factory Droid hooks and permissions are not currently mapped because its hook scopes and command policy do not match HAM's global hook and denylist contracts.
 </small>
@@ -328,7 +328,7 @@ Before adoption, each harness points at its own local skill folder. After adopti
 
 Harness Asset Manager treats managed Skills as portable by default: once a Skill is adopted into the shared store, it can be enabled for any supported harness. `originHarness` is retained only as provenance.
 
-Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
+Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. Each Hermes **Bot** additionally has its own independent Skill set under `<hermes-root>/profiles/<bot>/skills/harnessam/`, recorded as `hermes:<profile>`; a Skill a Bot created for itself is surfaced as an adoption candidate attributed to that Bot. See [Hermes Bots (Profiles)](#hermes-bots-profiles). The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
 
 Claude Code plugin skills from installed plugins in `~/.claude/plugins/installed_plugins.json` are discovered directly from active plugin installation roots. Plugin skills are surfaced in the inventory as unmanaged with plugin provenance (`claude:plugin:<id>@<version>:<skill>`) and treated as strictly read-only external sources. Adopting a plugin skill copies the package into Harness Asset Manager's canonical store and links it into `~/.claude/skills/`, leaving the underlying plugin installation cache completely untouched.
 
@@ -431,10 +431,10 @@ The agents matrix shows the same harnesses as every other family — whichever y
 | Antigravity | `~/.gemini/antigravity-cli/agents/` | symlink |
 | OpenCode | `$XDG_CONFIG_HOME/opencode/agents/` | symlink |
 | Codex | `~/.codex/agents/` | rendered TOML |
-| Hermes | `$HERMES_HOME/agents/` (normally `~/.hermes/agents/`) | symlink; best effort¹ |
+| Hermes | `<hermes-root>/profiles/<bot>/` (a Bot/Profile) | provisioned profile directory |
 | Factory Droid | `~/.factory/droids/` | symlink |
 
-Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** is best effort: HAM can manage the files in its conventional agents directory, but Hermes does not consume them automatically without separate Hermes-side support.
+Most harnesses read the same Markdown format the store holds, so enabling one symlinks the store file into place — edit the agent once and every harness it is enabled for follows. **Codex** is the exception: it reads TOML with different keys (`name`, `description`, `developer_instructions`), so Harness Asset Manager renders a real file marked `# harness-asset-manager:generated`. Local edits to a rendered file are reported but never adopted — re-enabling overwrites them. **Hermes** is the other exception: an agent becomes a native Hermes **Bot** — a Profile directory HAM writes, with its own `SOUL.md` identity rendered from the store, its own model routing and its own Skill set. See [Hermes Bots (Profiles)](#hermes-bots-profiles).
 
 Harness Asset Manager only ever removes files it owns — a symlink into its store, or a file carrying its generated marker. Anything else in a harness's agents directory is reported as **unmanaged** for review, never overwritten. Adopting one moves it into the store (converting Codex TOML to Markdown) and installs it back. If the name is already taken in the store, Harness Asset Manager refuses to guess and asks which version to keep.
 
@@ -468,6 +468,114 @@ On the next inventory load, each broken binding is classified and handled:
 Newest-file-wins is deliberately **not** a rule here — it silently discards the other harness's work, which is the exact failure this exists to prevent. Codex is excluded from automatic adoption entirely, because converting its TOML back to Markdown drops keys Harness Asset Manager does not model.
 
 Every automatic action is appended to the Activity audit log: repair you cannot see is nearly as bad as breakage you cannot see. Agent-specific repairs are also shown under **Recent automatic repairs** on the agents page's Needs-review view. Each family has its own setting, and turning one off takes effect on the next load, not the next restart.
+
+### Hermes Bots (Profiles)
+
+A Hermes **Profile** is a complete `HERMES_HOME` — its own `config.yaml`, `SOUL.md`,
+`.env`, `skills/`, `sessions/` and memory — which Hermes discovers by scanning
+`<hermes-root>/profiles/`. Harness Asset Manager represents a HAM agent as one such
+profile, so a Bot gets its own identity, model routing, sessions and precisely the
+Skills chosen for it, without touching the default Hermes profile.
+
+**HAM writes the profile directory; it never runs the `hermes` CLI.** Every other
+harness binding is pure filesystem manipulation and this one stays consistent with
+them, which keeps provisioning idempotent, offline and testable. Two effects of
+`hermes profile create` are deliberately **not** reproduced: HAM installs no
+`PATH` wrapper script and registers no gateway service. A HAM-managed Bot is
+addressed as `hermes -p <name>`.
+
+What provisioning does write, and why each matters:
+
+| Written | Why |
+|---|---|
+| `.env`, empty, mode `0o600` | Without it the profile silently inherits shell API keys |
+| `SOUL.md` | The Bot's identity, rendered from the HAM agent. HAM owns and updates this one |
+| `config.yaml` with `_config_version` | A stale version makes Hermes' doctor/desktop report the profile as outdated |
+| `.no-bundled-skills` | The Bot's skill set is intentional rather than inherited |
+| `skills/harnessam/` | The managed category HAM links into |
+
+The `_config_version` value is **mirrored from the local install's own
+`~/.hermes/config.yaml`**, never hardcoded, so a Hermes schema bump does not start
+producing "outdated profile" warnings. A profile carrying a `.deleted` tombstone is
+never silently resurrected: it is reclaimable only when it is an identity-free empty
+shell, and the tombstone is cleared when it is.
+
+#### Slug to profile name
+
+HAM slugs and Hermes profile ids are different alphabets. Hermes requires
+`^[a-z0-9][a-z0-9_-]{0,63}$` — no dots, must start alphanumeric, 64 characters — and
+reserves both a fixed set of names and its own subcommands. HAM slugs allow dots and
+have no length cap. `hermes_profile_name()` maps between them, and **refuses rather
+than rewrites** when the result would be reserved, a subcommand, or empty. Two slugs
+that would map to the same profile are reported as a collision at enable time, never
+silently merged into a shared profile.
+
+#### Per-Bot Skills, one canonical package
+
+Each Bot has an independent enabled-Skill set, but Bots linked to the same Skill share
+one canonical HAM package:
+
+```text
+<hermes-root>/profiles/<bot>/skills/harnessam/<skill> -> $HAM_DATA_DIR/skills/<skill>
+```
+
+Bindings are recorded as `hermes:<profile>` — a binding target is `<harness>` for the
+whole harness or `<harness>:<scope>` for one target within it. Existing harness-wide
+values keep working unchanged and need no migration. The Skills matrix still shows one
+Hermes column; the detail view names each Bot.
+
+Because the content is shared, **editing a Skill through one Bot's symlink edits the
+canonical package, and therefore every Bot bound to it.** The UI says so where you can
+act on it.
+
+Disabling a Bot removes only that Bot's HAM-owned links. The canonical package, the
+other Bots' links, and the default profile's links are untouched. Deleting a HAM agent
+never destroys a Hermes profile's sessions or memory — detachment is orphan-safe, and
+removing a profile stays `hermes profile delete`'s job.
+
+#### What Hermes can and cannot do to a binding
+
+Verified against a real Hermes v0.21.0 install rather than assumed:
+
+- A hand-written profile directory is listed by `hermes profile list`, runs under
+  `hermes -p <name>`, and deletes cleanly. A new symlink under `skills/harnessam/` is
+  picked up on the very next invocation — no restart, no registration.
+- **Hermes cannot destroy a canonical HAM package through a Bot's link.** Archiving
+  relocates the *symlink* (`Path.rename`), leaving the target intact; the autonomous
+  curator only considers skills carrying `created_by: agent` provenance, which a HAM
+  binding never has; and the hub installer refuses any install path that redirects
+  through a symlink.
+- The residual risk is therefore a *detached binding*, not lost work: a foreground
+  `hermes skills archive` inside a Bot moves HAM's link into `skills/.archive/`. HAM
+  reports that as re-bindable, distinctly from a broken link (target gone) or a stale
+  one (target outside the store).
+
+#### Provider and model
+
+A Bot may carry its own Hermes model routing, written into its profile `config.yaml`:
+
+```yaml
+model:
+  provider: openai-codex
+  default: gpt-5.6-luna
+```
+
+HAM writes the **bare** model id in `model.default` with the provider in its own key,
+matching the shape a working install actually uses; it never synthesises a
+`<provider>/<id>` string. No model id or provider name is hardcoded anywhere in HAM —
+these are free-text values you supply, and a test greps the package to keep it that
+way. The choice lives in a `.<slug>.hermes.toml` sidecar beside the agent, so a
+Hermes-only setting never leaks into the shared Markdown that Claude, Cursor and the
+rest read; an agent that sets nothing writes no sidecar at all.
+
+Writes go through the same `config_document` round-trip every other config binding
+uses, so an existing profile config keeps its comments and formatting, and clearing a
+value removes only the keys HAM set. Provider availability and credentials remain
+Hermes' concern: a failed profile write is reported and never rolls back the HAM agent.
+
+Actual execution through an external CLI backend — a Claude Code CLI provider, a
+generic CLI provider, or a separate Codex skill home — is explicitly out of scope. A
+Bot's Hermes profile Skills do **not** become Skills for a Codex app-server subprocess.
 
 ### Permissions
 

@@ -77,4 +77,39 @@ describe("SkillDetailHarnessMatrix", () => {
     expect(screen.queryByText("Hermes Bots:")).not.toBeInTheDocument();
     expect(container.querySelectorAll("img")).toHaveLength(1);
   });
+
+  it("names the originating Bot of an unmanaged adoption candidate", () => {
+    // An unmanaged copy has no binding yet, so the Bot is only knowable from
+    // where it was found.
+    render(
+      <SkillDetailHarnessMatrix
+        skillName="Bot Authored Skill"
+        cells={[{ harness: "hermes", label: "Hermes Agent", logoKey: "hermes", state: "found", interactive: false }]}
+        linkedTargets={[]}
+        locations={[{ harness: "hermes:coder" }]}
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Coder")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hermes Bots: Coder")).toBeInTheDocument();
+  });
+
+  it("distinguishes two same-named candidates from different Bots", () => {
+    render(
+      <SkillDetailHarnessMatrix
+        skillName="Bot Authored Skill"
+        cells={[{ harness: "hermes", label: "Hermes Agent", logoKey: "hermes", state: "found", interactive: false }]}
+        linkedTargets={[]}
+        locations={[{ harness: "hermes:coder" }, { harness: "hermes:reviewer" }]}
+        pendingToggleHarnesses={new Set()}
+        pendingStructuralAction={null}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Hermes Bots: Coder, Reviewer")).toBeInTheDocument();
+  });
 });

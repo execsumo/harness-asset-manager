@@ -6,12 +6,17 @@ import {
 } from "../../../../components/detail/DetailBindingIdentity";
 import type { StructuralSkillAction } from "../../model/pending";
 import type { HarnessCell, HarnessCellState } from "../../model/types";
-import { hermesBotLabel, hermesBotScopes } from "../../model/hermesTargets";
+import {
+  hermesBotLabel,
+  hermesBotScopes,
+  hermesBotScopesFromLocations,
+} from "../../model/hermesTargets";
 
 interface SkillDetailHarnessMatrixProps {
   skillName: string;
   cells: HarnessCell[];
   linkedTargets?: string[];
+  locations?: readonly { harness?: string | null }[];
   pendingToggleHarnesses: ReadonlySet<string>;
   pendingStructuralAction: StructuralSkillAction | null;
   onToggleCell: (cell: HarnessCell) => void;
@@ -39,6 +44,7 @@ export function SkillDetailHarnessMatrix({
   skillName,
   cells,
   linkedTargets,
+  locations,
   pendingToggleHarnesses,
   pendingStructuralAction,
   onToggleCell,
@@ -52,9 +58,15 @@ export function SkillDetailHarnessMatrix({
     <div className="detail-sheet__bindings" aria-label={`Harness access for ${skillName}`}>
       {cells.map((cell) => {
         const pending = pendingToggleHarnesses.has(cell.harness);
-        const hermesBots = cell.harness === "hermes"
-          ? hermesBotScopes(linkedTargets).map(hermesBotLabel)
+        // Bound Bots come from recorded targets; an unmanaged copy a Bot created
+        // for itself has no binding yet, so fall back to where it was found.
+        const hermesBotScopeList = cell.harness === "hermes"
+          ? Array.from(new Set([
+              ...hermesBotScopes(linkedTargets),
+              ...hermesBotScopesFromLocations(locations),
+            ])).sort()
           : [];
+        const hermesBots = hermesBotScopeList.map(hermesBotLabel);
         return (
           <div
             key={cell.harness}

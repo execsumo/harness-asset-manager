@@ -17,3 +17,18 @@ export function hermesBotLabel(scope: string): string {
     .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
     .join(" ");
 }
+
+/** Bots a skill was *seen* in, including unmanaged copies a Bot created itself.
+ *
+ * Binding targets only name Bots HAM has bound. An adoption candidate has no
+ * binding yet, so its originating Bot is only knowable from where it was found.
+ */
+export function hermesBotScopesFromLocations(
+  locations: readonly { harness?: string | null }[] | undefined,
+): string[] {
+  return hermesBotScopes(
+    (locations ?? [])
+      .map((location) => location.harness)
+      .filter((harness): harness is string => typeof harness === "string"),
+  );
+}
