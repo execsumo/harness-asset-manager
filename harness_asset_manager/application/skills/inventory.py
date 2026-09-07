@@ -185,7 +185,11 @@ class SkillInventory:
 
         for scan in harness_scans:
             for observation in scan.skills:
-                shared_entry = shared_path_index.get(observation.package.resolved_path)
+                shared_entry = (
+                    shared_path_index.get(observation.package.resolved_path)
+                    if observation.classification == "managed"
+                    else None
+                )
                 sighting = InventorySighting(
                     kind="harness",
                     harness=observation.harness,

@@ -15,6 +15,9 @@ class SkillObservation:
     scope: str
     package: SkillPackage
     detail: str = ""
+    # Ownership is decided by the adapter from the resolved target and binding
+    # intent, rather than from a directory/category name.
+    classification: Literal["managed", "unmanaged"] = "unmanaged"
 
 
 @dataclass(frozen=True)
