@@ -340,7 +340,11 @@ describe("Agents unified inventory", () => {
               reason:
                 "missing required agent fields: description. Open its details, fill them in, save, and try adoption again.",
             },
-            { ref: "claude/beta", reason: "missing required agent fields: prompt" },
+            {
+              ref: "claude/beta",
+              reason:
+                "missing required agent fields: prompt. Open its details, fill them in, save, and try adoption again.",
+            },
             { ref: "claude/gamma", reason: "an agent with this name already exists in the store" },
           ],
         });
@@ -362,7 +366,13 @@ describe("Agents unified inventory", () => {
     );
     expect(screen.getByText("Adopted 1 agents.")).toBeInTheDocument();
     expect(document.querySelectorAll(".toast")).toHaveLength(2);
-    expect(screen.queryByText(/claude\/beta/)).not.toBeInTheDocument();
+    expect(screen.getByText("claude/beta")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "missing required agent fields: prompt. Open its details, fill them in, save, and try adoption again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("claude/gamma")).toBeInTheDocument();
   });
 
   it("deep-link status=untracked renders only untracked rows", async () => {

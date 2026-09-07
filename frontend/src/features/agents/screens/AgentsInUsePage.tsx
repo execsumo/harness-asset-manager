@@ -25,7 +25,7 @@ import { useAgentsController } from "../model/use-agents-controller";
 import { useSetAgentTagsMutation } from "../api/queries";
 import { useSkillsListQuery } from "../../skills/public";
 import { ApiError } from "../../../api/http";
-import type { AgentAdoptConflict } from "../api/types";
+import type { AdoptAllResponse, AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
 const STATUS_VALUES: AgentsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked"];
@@ -72,6 +72,7 @@ export default function AgentsInUsePage() {
   const [conflictPending, setConflictPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [detailNotice, setDetailNotice] = useState<string | null>(null);
+  const [adoptionSkips, setAdoptionSkips] = useState<AdoptAllResponse["skipped"]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailRef, setDetailRef] = useState<string | null>(null);
   const common = useCommonCopy();
@@ -244,8 +245,10 @@ export default function AgentsInUsePage() {
 
   const handleAdoptAll = useCallback(async () => {
     setAdoptingSelected(true);
+    setAdoptionSkips([]);
     try {
       const result = await adoptAllMutation.mutateAsync();
+      setAdoptionSkips(result.skipped);
       if (result.adopted.length > 0) {
         toast(`Adopted ${result.adopted.length} agents.`);
       }
@@ -369,6 +372,24 @@ export default function AgentsInUsePage() {
       {actionErrorMessage ? <ErrorBanner message={actionErrorMessage} onDismiss={clearActionError} /> : null}
       {errorMessage ? <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} /> : null}
       {!isReviewView && inventoryIssueMessage ? <ErrorBanner message={inventoryIssueMessage} /> : null}
+
+      {adoptionSkips.length > 0 ? (
+        <div className="agent-issues agent-adoption-skips">
+          <details open>
+            <summary className="agent-issues__title">
+              Skipped {adoptionSkips.length} agents; review before retrying
+            </summary>
+            <ul className="agent-issues__list">
+              {adoptionSkips.map((skip) => (
+                <li key={skip.ref} className="agent-issues__item">
+                  <span className="agent-issues__name">{skip.ref}</span>
+                  <p className="agent-issues__reason">{skip.reason}</p>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      ) : null}
 
       {isReviewView && inventory?.issues?.length ? (
         <div className="agent-issues">
