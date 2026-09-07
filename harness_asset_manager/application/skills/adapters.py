@@ -20,6 +20,7 @@ from harness_asset_manager.harness.binding_targets import BindingTarget
 
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
 from .identity import SourceDescriptor
+from .manifest import load_skill_store_manifest
 from .observations import SkillLinkIssue, SkillObservation, SkillsHarnessScan
 from .package import SkillPackageCache, SkillParseError, find_skill_roots
 
@@ -108,8 +109,11 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         if self._dynamic_roots_provider is not None:
             active_roots = self._dedupe_roots(active_roots + self._dynamic_roots_provider())
         hermes_policy = (
-            _hermes_scan_policy(self.managed_root) if self.harness == "hermes" else None
+            _hermes_scan_policy((self.managed_root, *(root.path for root in active_roots)))
+            if self.harness == "hermes"
+            else None
         )
+        recorded_bindings = self._recorded_binding_targets
         observations, skipped_skill_names = _scan_skill_roots(
             harness=self.harness,
             label=self.label,
@@ -123,6 +127,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             cache_cycle=cache_cycle,
             package_executor=package_executor,
             canonical_store_root=self._canonical_store_root,
+            recorded_bindings=recorded_bindings,
         )
         link_issues = _scan_link_issues(
             harness=self.harness,
@@ -149,6 +154,17 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         if self._data_dir is None:
             return None
         return self._data_dir / "skills"
+
+    @property
+    def _recorded_binding_targets(self) -> dict[str, frozenset[str]]:
+        """Read exact binding intent without making it the filesystem truth."""
+        if self._data_dir is None:
+            return {}
+        manifest = load_skill_store_manifest(self._data_dir / "skills-manifest.json")
+        return {
+            entry.package_dir: frozenset(entry.enabled_harnesses)
+            for entry in manifest.entries
+        }
 
     def _self_heal_or_raise(self, existing_link: Path, resolved_target: Path, package_name: str, method: str) -> None:
         """Repoint a symlink if the old target is stale, otherwise raise."""
@@ -192,6 +208,10 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         resolved_target = package_path.resolve()
         if not existing_dir.exists() and not existing_dir.is_symlink():
             raise MutationError(f"directory does not exist: {existing_dir}")
+        if not resolved_target.is_dir() or not (resolved_target / "SKILL.md").is_file():
+            raise MutationError(
+                f"canonical package was not verified on disk: {resolved_target}"
+            )
         if existing_dir.is_symlink():
             self._self_heal_or_raise(existing_dir, resolved_target, existing_dir.name, "adopt_local_copy")
             return
@@ -207,7 +227,16 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
                 existing_dir.unlink()
             backup.rename(existing_dir)
             raise
-        shutil.rmtree(backup)
+        try:
+            # Hermes discovers a new link under skills/harnessam on its next
+            # invocation; no registration or no-op refresh is required.
+            shutil.rmtree(backup)
+        except OSError as error:
+            if existing_dir.is_symlink():
+                existing_dir.unlink()
+            if backup.exists():
+                backup.rename(existing_dir)
+            raise MutationError(f"unable to finish adoption of {existing_dir}: {error}") from error
 
     def has_binding(self, package_dir: str, *, scope: str | None = None) -> bool:
         candidate = self._binding_path(package_dir, scope=scope)
@@ -348,6 +377,7 @@ class _PackageScanCandidate:
     hermes_source: SourceDescriptor | None
     is_harness_asset_manager_binding: bool
     default_source: SourceDescriptor
+    classification: str
 
 
 def _iter_skill_roots(root: _ResolvedRoot):
@@ -492,10 +522,12 @@ def _scan_skill_roots(
     cache_cycle: int | None,
     package_executor: Executor | None,
     canonical_store_root: Path | None,
+    recorded_bindings: dict[str, frozenset[str]] | None = None,
 ) -> tuple[list[SkillObservation], set[str]]:
     observations: list[SkillObservation] = []
     skipped_skill_names: set[str] = set()
     candidates: list[_PackageScanCandidate] = []
+    recorded_bindings = recorded_bindings or {}
     for root in roots:
         for skill_root, locator_name in _iter_skill_roots(root):
             hermes_source = _hermes_external_source(
@@ -505,11 +537,21 @@ def _scan_skill_roots(
                 locator_name=locator_name,
             )
             is_harness_asset_manager_binding = (
-                hermes_policy is not None
-                and _is_harness_asset_manager_hermes_binding(
+                _is_harness_asset_manager_hermes_binding(
                     skill_root=skill_root,
+                    root=root,
                     locator_name=locator_name,
                     managed_category=managed_category,
+                    canonical_store_root=canonical_store_root,
+                    recorded_bindings=recorded_bindings,
+                )
+                if hermes_policy is not None
+                else (
+                    skill_root.is_symlink()
+                    and (
+                        canonical_store_root is None
+                        or _link_target_is_under(skill_root, canonical_store_root)
+                    )
                 )
             )
             if hermes_policy is not None and not is_harness_asset_manager_binding and _is_excluded_skill(
@@ -532,6 +574,14 @@ def _scan_skill_roots(
             )
             if hermes_source is not None:
                 default_source = hermes_source
+            elif harness == "hermes" and root.kind == "profile-root":
+                # Identical physical copies in two Bot profiles need one
+                # fingerprint group.  Their sightings retain exact profile
+                # identity through ``hermes:<profile>`` below.
+                default_source = SourceDescriptor(
+                    kind="harness-local",
+                    locator=f"hermes:profile:{skill_root.name}",
+                )
             candidates.append(
                 _PackageScanCandidate(
                     root=root,
@@ -540,6 +590,9 @@ def _scan_skill_roots(
                     hermes_source=hermes_source,
                     is_harness_asset_manager_binding=is_harness_asset_manager_binding,
                     default_source=default_source,
+                    classification=(
+                        "managed" if is_harness_asset_manager_binding else "unmanaged"
+                    ),
                 )
             )
 
@@ -613,6 +666,7 @@ def _scan_skill_roots(
                     root=root,
                     canonical_store_root=canonical_store_root,
                 ),
+                classification=candidate.classification,  # type: ignore[arg-type]
             )
         )
     return observations, skipped_skill_names
@@ -724,15 +778,21 @@ def _link_target_is_under(path: Path, root: Path | None) -> bool:
     return True
 
 
-def _hermes_scan_policy(skills_root: Path) -> _HermesScanPolicy:
+def _hermes_scan_policy(skills_roots: tuple[Path, ...]) -> _HermesScanPolicy:
     excluded_names: set[str] = set()
     external_sources: dict[str, SourceDescriptor] = {}
-    _read_hermes_bundled_manifest(skills_root / ".bundled_manifest", excluded_names)
-    _read_hermes_hub_lock(
-        skills_root / ".hub" / "lock.json",
-        excluded_names=excluded_names,
-        external_sources=external_sources,
-    )
+    seen: set[Path] = set()
+    for skills_root in skills_roots:
+        resolved_root = skills_root.resolve(strict=False)
+        if resolved_root in seen:
+            continue
+        seen.add(resolved_root)
+        _read_hermes_bundled_manifest(skills_root / ".bundled_manifest", excluded_names)
+        _read_hermes_hub_lock(
+            skills_root / ".hub" / "lock.json",
+            excluded_names=excluded_names,
+            external_sources=external_sources,
+        )
     return _HermesScanPolicy(
         external_sources=external_sources,
         excluded_skill_names=frozenset(name for name in excluded_names if name),
@@ -822,12 +882,26 @@ def _hermes_external_source(
 def _is_harness_asset_manager_hermes_binding(
     *,
     skill_root: Path,
+    root: _ResolvedRoot,
     locator_name: str,
     managed_category: str,
+    canonical_store_root: Path | None,
+    recorded_bindings: dict[str, frozenset[str]],
 ) -> bool:
     if not skill_root.is_symlink():
         return False
-    return any(
+    if canonical_store_root is not None and not _link_target_is_under(
+        skill_root, canonical_store_root
+    ):
+        return False
+    target = str(BindingTarget("hermes", root.binding_scope))
+    if target in recorded_bindings.get(skill_root.name, frozenset()):
+        return True
+    # Direct adapter callers and pre-intent stores have no manifest to consult.
+    # Preserve their legacy categorized links, but only in that no-ledger case;
+    # a category name alone is never ownership evidence once the canonical store
+    # and binding intent are available.
+    return canonical_store_root is None and any(
         locator_name.startswith(f"{category}/")
         for category in {managed_category, LEGACY_HERMES_MANAGED_CATEGORY}
     )

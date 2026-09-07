@@ -393,23 +393,41 @@ class SkillsMutationService:
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
         canonical_bound_harnesses: set[str] = set()
-        for sighting in harness_sightings:
-            adapter = self.read_models.require_enabled_adapter(sighting.harness)
-            target = BindingTarget.parse(sighting.harness)
-            if sighting.scope == "canonical":
-                adapter.adopt_local_copy(
-                    existing_dir=sighting.path,
-                    package_path=ingested,
-                    scope=target.scope,
-                )
+        adopted_copies: list[tuple[SkillsHarnessAdapter, str, str | None]] = []
+        try:
+            for sighting in harness_sightings:
+                adapter = self.read_models.require_enabled_adapter(sighting.harness)
+                target = BindingTarget.parse(sighting.harness)
+                if sighting.scope == "canonical":
+                    adapter.adopt_local_copy(
+                        existing_dir=sighting.path,
+                        package_path=ingested,
+                        scope=target.scope,
+                    )
+                    adopted_copies.append((adapter, ingested.name, target.scope))
+                    canonical_bound_harnesses.add(str(target))
+            for sighting in harness_sightings:
+                target = BindingTarget.parse(sighting.harness)
+                if str(target) in canonical_bound_harnesses:
+                    continue
+                adapter = self.read_models.require_enabled_adapter(sighting.harness)
+                adapter.enable_shared_package(ingested, scope=target.scope)
                 canonical_bound_harnesses.add(str(target))
-        for sighting in harness_sightings:
-            target = BindingTarget.parse(sighting.harness)
-            if str(target) in canonical_bound_harnesses:
-                continue
-            adapter = self.read_models.require_enabled_adapter(sighting.harness)
-            adapter.enable_shared_package(ingested, scope=target.scope)
-            canonical_bound_harnesses.add(str(target))
+        except Exception:
+            # Adoption is one transaction from the user's perspective.  Restore
+            # every physical Bot copy that was already replaced before removing
+            # the newly-ingested canonical package.  The restore is best effort so
+            # the original mutation error remains the useful one to the caller.
+            for adapter, package_dir, scope in reversed(adopted_copies):
+                try:
+                    adapter.materialize_binding(package_dir, ingested, scope=scope)
+                except Exception:
+                    pass
+            try:
+                self.read_models.store.delete(ingested.name)
+            except Exception:
+                pass
+            raise
         # Adoption binds every harness the skill was already sitting in; record that
         # as intent so a synced store can rebuild it, not just the store contents.
         for bound_harness in sorted(canonical_bound_harnesses):
