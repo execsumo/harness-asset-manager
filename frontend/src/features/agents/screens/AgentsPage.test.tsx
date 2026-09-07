@@ -299,7 +299,11 @@ describe("Agents unified inventory", () => {
           ok: true,
           adopted: ["opencode/ok-agent"],
           skipped: [
-            { ref: "claude/conflict-agent", reason: "missing required agent fields: description" },
+            {
+              ref: "claude/conflict-agent",
+              reason:
+                "missing required agent fields: description. Open its details, fill them in, save, and try adoption again.",
+            },
           ]
         });
       }
@@ -316,7 +320,7 @@ describe("Agents unified inventory", () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          "Skipped claude/conflict-agent: missing required agent fields: description",
+          "Skipped claude/conflict-agent: missing required agent fields: description. Open its details, fill them in, save, and try adoption again.",
         ),
       ).toBeInTheDocument(),
     );
@@ -331,7 +335,11 @@ describe("Agents unified inventory", () => {
           ok: true,
           adopted: ["opencode/ok-agent"],
           skipped: [
-            { ref: "claude/alpha", reason: "missing required agent fields: description" },
+            {
+              ref: "claude/alpha",
+              reason:
+                "missing required agent fields: description. Open its details, fill them in, save, and try adoption again.",
+            },
             { ref: "claude/beta", reason: "missing required agent fields: prompt" },
             { ref: "claude/gamma", reason: "an agent with this name already exists in the store" },
           ],
@@ -348,7 +356,7 @@ describe("Agents unified inventory", () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          "Skipped 3 agents. claude/alpha: missing required agent fields: description (+2 more)",
+          "Skipped 3 agents. claude/alpha: missing required agent fields: description. Open its details, fill them in, save, and try adoption again. (+2 more)",
         ),
       ).toBeInTheDocument(),
     );

@@ -368,7 +368,7 @@ def adopt_agent(
             content=AdoptAgentValidationResponse(
                 error=(
                     f"This agent is missing required fields: {fields}. "
-                    "Open its details, fill them in, save, and try adoption again."
+                    + error.guidance
                 ),
                 missingFields=list(error.missing_fields),
             ).model_dump(),

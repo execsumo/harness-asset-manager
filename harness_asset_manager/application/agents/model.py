@@ -324,6 +324,8 @@ class AgentAdoptionValidationError(MutationError):
     def __init__(
         self,
         missing_fields: tuple[Literal["name", "description", "prompt"], ...],
+        *,
+        rendered: bool = False,
     ) -> None:
         fields = ", ".join(missing_fields)
         super().__init__(
@@ -332,6 +334,11 @@ class AgentAdoptionValidationError(MutationError):
             code="missing_required_fields",
         )
         self.missing_fields = missing_fields
+        self.guidance = (
+            "Edit its native harness file, fill in the missing fields, save, and try adoption again."
+            if rendered
+            else "Open its details, fill them in, save, and try adoption again."
+        )
 
 
 __all__ = [
