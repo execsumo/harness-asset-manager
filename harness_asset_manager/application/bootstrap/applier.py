@@ -234,7 +234,7 @@ class BootstrapApplier:
                 package_dir = action.ref.removeprefix("shared:")
                 package_path = self.skills_store.root / package_dir
                 self.skills_mutations.enable_managed_package(
-                    package_path, action.harness
+                    package_path, action.binding_target or action.harness
                 )
             elif action.family == "slash_commands":
                 self._apply_slash_command(action.ref, action.harness)

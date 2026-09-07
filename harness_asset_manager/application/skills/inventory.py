@@ -167,7 +167,10 @@ class SkillInventory:
             shared_path_index[package.resolved_path] = entry
             shared_match_index[_managed_entry_key(entry)] = entry
             plugin_match_index[(entry.name.casefold(), (entry.package_dir or "").casefold())] = entry
-            if store_package.origin_harness == "hermes":
+            if (
+                store_package.origin_harness is not None
+                and harness_of(store_package.origin_harness) == "hermes"
+            ):
                 hermes_local_match_index[_hermes_local_match_key(entry)] = entry
 
         unmanaged_entries: dict[str, InventoryEntry] = {}
@@ -255,7 +258,7 @@ def _is_excluded_hermes_store_package(
     origin_harness: str | None,
     excluded_hermes_names: set[str],
 ) -> bool:
-    if origin_harness != "hermes":
+    if origin_harness is None or harness_of(origin_harness) != "hermes":
         return False
     # A manifest entry records a package that is already managed by the shared
     # store, even when its originating Hermes installation is remote or absent

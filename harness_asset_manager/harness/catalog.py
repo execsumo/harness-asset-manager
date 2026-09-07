@@ -24,6 +24,7 @@ from .contracts import (
     FileTreeDiscoveryRoot,
     HarnessDefinition,
 )
+from .hermes_profiles import profile_home, profiles_root
 
 
 def _hermes_home(context) -> Path:
@@ -40,6 +41,10 @@ def _hermes_root(context) -> Path:
     we climb two levels up to find the true root. This mirrors Hermes' own heuristic
     to avoid treating an arbitrary 'profiles' directory segment as a true profiles root.
     """
+    root_override = env_get(context.env, HERMES_ROOT_ENV)
+    if root_override:
+        return Path(root_override)
+
     home = _hermes_home(context)
 
     if home.parent.name == "profiles":
@@ -62,6 +67,45 @@ def _hermes_skills_root(context) -> Path:
 
 def _hermes_config_path(context) -> Path:
     return _hermes_home(context) / "config.yaml"
+
+
+def _hermes_profile_skills_root(context, profile_name: str) -> Path:
+    """Resolve a Bot's skills directory from the Hermes root, not HERMES_HOME.
+
+    Hermes changes ``HERMES_HOME`` while running a named profile. Keeping this
+    resolver rooted in ``_hermes_root`` avoids nesting a second ``profiles`` tree
+    when the HAM process is itself launched from a Bot.
+    """
+    return profile_home(_hermes_root(context), profile_name) / "skills"
+
+
+def _resolve_hermes_profile_roots(context) -> tuple[FileTreeDiscoveryRoot, ...]:
+    """Discover readable, existing Hermes profile skill roots at scan time."""
+    profiles_dir = profiles_root(_hermes_root(context))
+    try:
+        children = tuple(profiles_dir.iterdir())
+    except OSError:
+        return ()
+    roots: list[FileTreeDiscoveryRoot] = []
+    for child in sorted(children, key=lambda path: path.name):
+        if child.name.startswith("."):
+            continue
+        try:
+            if not child.is_dir():
+                continue
+        except OSError:
+            continue
+        skills_root = child / "skills"
+        roots.append(
+            FileTreeDiscoveryRoot(
+                kind="profile-root",
+                scope="canonical",
+                label=f"Hermes profile {child.name} skills",
+                path_resolver=lambda _context, path=skills_root: path,
+                binding_scope=child.name,
+            )
+        )
+    return tuple(roots)
 
 
 def _factory_home(context) -> Path:
@@ -488,6 +532,8 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 managed_default=_hermes_skills_root,
                 layout="categorized",
                 default_category="harnessam",
+                dynamic_roots_resolver=_resolve_hermes_profile_roots,
+                scoped_root_resolver=_hermes_profile_skills_root,
             ),
             "mcp": ConfigSubtreeBindingProfile(
                 config_path_resolver=_hermes_config_path,

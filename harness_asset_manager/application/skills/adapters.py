@@ -16,6 +16,7 @@ from harness_asset_manager.harness import (
     FileTreeLayout,
     HarnessKernelService,
 )
+from harness_asset_manager.harness.binding_targets import BindingTarget
 
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
 from .identity import SourceDescriptor
@@ -44,6 +45,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         data_dir: Path | None = None,
         package_cache: SkillPackageCache | None = None,
         dynamic_roots_provider: Callable[[], tuple["_ResolvedRoot", ...]] | None = None,
+        scoped_root_resolver: Callable[[str], Path] | None = None,
     ) -> None:
         self.harness = harness
         self.label = label
@@ -62,8 +64,10 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             self._dynamic_roots_provider = self._default_claude_dynamic_roots
         else:
             self._dynamic_roots_provider = dynamic_roots_provider
+        self._scoped_root_resolver = scoped_root_resolver
 
     def _default_claude_dynamic_roots(self) -> tuple["_ResolvedRoot", ...]:
+        """Keep direct adapter construction compatible with Claude plugin discovery."""
         claude_dir = self.managed_root.parent
         home = claude_dir.parent
         from harness_asset_manager.harness.claude_plugins import (
@@ -71,17 +75,18 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         )
         from harness_asset_manager.harness.resolution import resolve_context
 
-        ctx = resolve_context({"HOME": str(home)})
+        context = resolve_context({"HOME": str(home)})
         return tuple(
             _ResolvedRoot(
                 kind=root.kind,
                 scope=root.scope,
                 label=root.label,
-                path=root.path_resolver(ctx),
+                path=root.path_resolver(context),
                 layout=self._layout,
                 locator_prefix=root.locator_prefix,
+                binding_scope=root.binding_scope,
             )
-            for root in resolve_claude_plugin_roots(ctx)
+            for root in resolve_claude_plugin_roots(context)
         )
 
     def status(self) -> SkillsHarnessStatus:
@@ -147,9 +152,9 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             f"symlink already exists but points to {existing_target}, not {resolved_target} (use {method})"
         )
 
-    def enable_shared_package(self, package_path: Path) -> None:
+    def enable_shared_package(self, package_path: Path, *, scope: str | None = None) -> None:
         resolved_target = package_path.resolve()
-        link = self._binding_path(package_path.name)
+        link = self._binding_path(package_path.name, scope=scope)
         if link.is_symlink():
             self._self_heal_or_raise(link, resolved_target, package_path.name, "enable_shared_package")
             return
@@ -158,15 +163,17 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         link.parent.mkdir(parents=True, exist_ok=True)
         link.symlink_to(resolved_target)
 
-    def disable_shared_package(self, package_dir: str) -> None:
-        link = self._binding_path(package_dir)
+    def disable_shared_package(self, package_dir: str, *, scope: str | None = None) -> None:
+        link = self._binding_path(package_dir, scope=scope)
         if not link.exists() and not link.is_symlink():
             return
         if not link.is_symlink():
             raise MutationError(f"not a symlink at {link}; will not delete real directory")
         link.unlink()
 
-    def adopt_local_copy(self, existing_dir: Path, package_path: Path) -> None:
+    def adopt_local_copy(
+        self, existing_dir: Path, package_path: Path, *, scope: str | None = None
+    ) -> None:
         resolved_target = package_path.resolve()
         if not existing_dir.exists() and not existing_dir.is_symlink():
             raise MutationError(f"directory does not exist: {existing_dir}")
@@ -187,12 +194,14 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             raise
         shutil.rmtree(backup)
 
-    def has_binding(self, package_dir: str) -> bool:
-        candidate = self._binding_path(package_dir)
+    def has_binding(self, package_dir: str, *, scope: str | None = None) -> bool:
+        candidate = self._binding_path(package_dir, scope=scope)
         return candidate.exists() or candidate.is_symlink()
 
-    def prepare_materialize(self, package_dir: str, expected_target: Path) -> None:
-        existing_link = self._binding_path(package_dir)
+    def prepare_materialize(
+        self, package_dir: str, expected_target: Path, *, scope: str | None = None
+    ) -> None:
+        existing_link = self._binding_path(package_dir, scope=scope)
         if not existing_link.exists() and not existing_link.is_symlink():
             raise MutationError(f"directory does not exist: {existing_link}")
         if not existing_link.is_symlink():
@@ -200,10 +209,14 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         resolved_target = expected_target.resolve()
         self._self_heal_or_raise(existing_link, resolved_target, package_dir, "prepare_materialize")
 
-    def materialize_binding(self, package_dir: str, source_path: Path) -> None:
-        existing_link = self._binding_path(package_dir)
+    def materialize_binding(
+        self, package_dir: str, source_path: Path, *, scope: str | None = None
+    ) -> None:
+        existing_link = self._binding_path(package_dir, scope=scope)
         resolved_target = source_path.resolve()
-        self.prepare_materialize(package_dir=package_dir, expected_target=resolved_target)
+        self.prepare_materialize(
+            package_dir=package_dir, expected_target=resolved_target, scope=scope
+        )
 
         temp_copy = existing_link.parent / f".{existing_link.name}.materialize-{uuid4().hex}"
         backup_link = existing_link.parent / f".{existing_link.name}.backup-{uuid4().hex}"
@@ -222,19 +235,21 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         if backup_link.exists():
             backup_link.unlink()
 
-    def prepare_remove(self, package_dir: str) -> None:
-        link = self._binding_path(package_dir)
+    def prepare_remove(self, package_dir: str, *, scope: str | None = None) -> None:
+        link = self._binding_path(package_dir, scope=scope)
         if not link.exists() and not link.is_symlink():
             return
         if not link.is_symlink():
             raise MutationError(f"not a symlink at {link}; will not delete real directory")
 
-    def remove_binding(self, package_dir: str) -> None:
-        self.disable_shared_package(package_dir)
+    def remove_binding(self, package_dir: str, *, scope: str | None = None) -> None:
+        self.disable_shared_package(package_dir, scope=scope)
 
-    def _binding_path(self, package_dir: str) -> Path:
-        default = self._default_binding_path(package_dir)
+    def _binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
+        default = self._default_binding_path(package_dir, scope=scope)
         if default.exists() or default.is_symlink():
+            return default
+        if scope is not None:
             return default
         if self._layout != "categorized" or not self.managed_root.is_dir():
             return default
@@ -246,10 +261,23 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
                 return candidate
         return default
 
-    def _default_binding_path(self, package_dir: str) -> Path:
+    def _default_binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
+        root = self.managed_root if scope is None else self._scoped_binding_root(scope)
         if self._layout == "categorized":
-            return self.managed_root / self._default_category / package_dir
-        return self.managed_root / package_dir
+            return root / self._default_category / package_dir
+        return root / package_dir
+
+    def _scoped_binding_root(self, scope: str) -> Path:
+        if self._scoped_root_resolver is None:
+            raise MutationError(
+                f"{self.harness} does not support scoped skill bindings ({scope!r})"
+            )
+        try:
+            return self._scoped_root_resolver(scope)
+        except (OSError, ValueError) as error:
+            raise MutationError(
+                f"unable to resolve scoped skill binding {self.harness}:{scope}: {error}"
+            ) from error
 
     def invalidate(self) -> None:
         return None
@@ -285,6 +313,7 @@ class _ResolvedRoot:
     path: Path
     layout: FileTreeLayout = "flat"
     locator_prefix: str = ""
+    binding_scope: str | None = None
 
 
 @dataclass(frozen=True)
@@ -308,8 +337,11 @@ class _PackageScanCandidate:
 
 def _iter_skill_roots(root: _ResolvedRoot):
     prefix = f"{root.locator_prefix}:" if root.locator_prefix else ""
-    if (root.path / "SKILL.md").is_file():
-        yield root.path, f"{prefix}{root.path.name}"
+    try:
+        if (root.path / "SKILL.md").is_file():
+            yield root.path, f"{prefix}{root.path.name}"
+            return
+    except OSError:
         return
     if root.layout == "flat":
         for skill_root in find_skill_roots(root.path):
@@ -317,7 +349,11 @@ def _iter_skill_roots(root: _ResolvedRoot):
         return
     if not root.path.is_dir():
         return
-    for category_dir in sorted(root.path.iterdir(), key=lambda path: path.name):
+    try:
+        category_dirs = sorted(root.path.iterdir(), key=lambda path: path.name)
+    except OSError:
+        return
+    for category_dir in category_dirs:
         if not category_dir.is_dir() or category_dir.name.startswith("."):
             continue
         for skill_root in find_skill_roots(category_dir):
@@ -345,6 +381,7 @@ def build_skills_adapters(
                 label="Managed skills root",
                 path=managed_root,
                 layout=profile.layout,
+                binding_scope=None,
             ),
             *tuple(
                 _ResolvedRoot(
@@ -354,6 +391,7 @@ def build_skills_adapters(
                     path=root.path_resolver(kernel.context),
                     layout=profile.layout,
                     locator_prefix=root.locator_prefix,
+                    binding_scope=root.binding_scope,
                 )
                 for root in profile.discovery_roots
             ),
@@ -367,6 +405,7 @@ def build_skills_adapters(
                     path=root.path_resolver(ctx),
                     layout=lay,
                     locator_prefix=root.locator_prefix,
+                    binding_scope=root.binding_scope,
                 )
                 for root in resolver(ctx)
             ))
@@ -391,6 +430,13 @@ def build_skills_adapters(
                 data_dir=data_dir,
                 package_cache=shared_package_cache,
                 dynamic_roots_provider=dynamic_roots_provider,
+                scoped_root_resolver=(
+                    lambda scope, profile=profile, ctx=kernel.context: profile.resolve_scoped_root(
+                        ctx, scope
+                    )
+                )
+                if profile.scoped_root_resolver is not None
+                else None,
             )
         )
     return tuple(adapters)
@@ -538,8 +584,12 @@ def _scan_skill_roots(
 
         observations.append(
             SkillObservation(
-                harness=harness,
-                label=root.label if root.scope == "plugin" else label,
+                harness=str(BindingTarget(harness, root.binding_scope)),
+                label=(
+                    root.label
+                    if root.scope == "plugin" or root.binding_scope is not None
+                    else label
+                ),
                 scope=root.scope,
                 package=package,
             )
