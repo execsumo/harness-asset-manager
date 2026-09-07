@@ -8,6 +8,7 @@ from harness_asset_manager.api.schemas.agents import (
     AdoptAgentConflictResponse,
     AdoptAgentRequest,
     AdoptAgentResponse,
+    AdoptAgentValidationResponse,
     AdoptAllAgentsResponse,
     AdoptAllSkippedResponse,
     AgentActionsResponse,
@@ -36,6 +37,7 @@ from harness_asset_manager.api.schemas.common import OkResponse
 from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.agents import (
     AgentAdoptConflict,
+    AgentAdoptionValidationError,
     AgentDetail,
     validate_allowed_subagents,
     validate_color,
@@ -346,11 +348,28 @@ def set_agent_harnesses(
 )
 def adopt_agent(
     agent_ref: str,
-    body: AdoptAgentRequest,
+    body: AdoptAgentRequest | None = None,
     container: BackendContainer = Depends(get_container),
 ):
     try:
-        slug = container.agents_mutations.adopt(agent_ref, body.onConflict)
+        slug = container.agents_mutations.adopt(agent_ref, body.onConflict if body else None)
+    except AgentAdoptionValidationError as error:
+        labels = {
+            "name": "Agent name",
+            "description": "Description",
+            "prompt": "System prompt",
+        }
+        fields = ", ".join(labels[field] for field in error.missing_fields)
+        return JSONResponse(
+            status_code=422,
+            content=AdoptAgentValidationResponse(
+                error=(
+                    f"This agent is missing required fields: {fields}. "
+                    "Open its details, fill them in, save, and try adoption again."
+                ),
+                missingFields=list(error.missing_fields),
+            ).model_dump(),
+        )
     except AgentAdoptConflict as conflict:
         # 409 with both sides: the client asks the user which version wins, then retries
         # with onConflict. Nothing has been mutated at this point.

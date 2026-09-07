@@ -153,6 +153,38 @@
         "title": "AdoptAgentConflictResponse",
         "type": "object"
       },
+      "AdoptAgentValidationResponse": {
+        "properties": {
+          "code": {
+            "const": "missing_required_fields",
+            "default": "missing_required_fields",
+            "title": "Code",
+            "type": "string"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "missingFields": {
+            "items": {
+              "enum": [
+                "name",
+                "description",
+                "prompt"
+              ],
+              "type": "string"
+            },
+            "title": "Missingfields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "missingFields"
+        ],
+        "title": "AdoptAgentValidationResponse",
+        "type": "object"
+      },
       "AdoptAgentRequest": {
         "properties": {
           "onConflict": {
@@ -6871,8 +6903,7 @@
                 "$ref": "#/components/schemas/AdoptAgentRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -6919,7 +6950,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/AdoptAgentValidationResponse"
                 }
               }
             },

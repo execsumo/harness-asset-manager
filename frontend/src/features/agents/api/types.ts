@@ -107,6 +107,12 @@ export interface AgentAdoptConflict {
   harnessPath: string;
 }
 
+export interface AgentAdoptValidation {
+  code: "missing_required_fields";
+  error: string;
+  missingFields: Array<"name" | "description" | "prompt">;
+}
+
 export interface AdoptAllResponse {
   ok: boolean;
   adopted: string[];

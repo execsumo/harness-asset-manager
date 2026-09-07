@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Iterable, Literal, cast
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -11,8 +11,13 @@ from harness_asset_manager.errors import MutationError
 from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
-from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
-from .parser import parse_agent_document, render_agent_document
+from .model import (
+    AgentAdoptConflict,
+    AgentAdoptionValidationError,
+    AgentDefinition,
+    AgentTarget,
+)
+from .parser import parse_agent_document, render_agent_document, split_frontmatter
 from .store import AgentStore
 
 if TYPE_CHECKING:
@@ -157,6 +162,10 @@ class AgentMutationService:
         if not harness_path.is_file() or harness_path.is_symlink():
             raise MutationError(f"no unmanaged agent at {harness_path}")
 
+        missing_fields = self._missing_adoption_fields(adapter, harness_path)
+        if missing_fields:
+            raise AgentAdoptionValidationError(missing_fields)
+
         store_path = self.store.path_for(slug)
         if store_path.exists():
             if on_conflict is None:
@@ -187,6 +196,44 @@ class AgentMutationService:
             if existing_tags:
                 self.asset_tags.set_tags("agents", slug, existing_tags)
         return slug
+
+    def _missing_adoption_fields(
+        self, adapter: AgentHarnessAdapter, harness_path: Path
+    ) -> tuple[Literal["name", "description", "prompt"], ...]:
+        """Return HAM contract fields absent from the donor, without applying fallbacks.
+
+        Parsers intentionally fall back to a filename for display, but adoption must
+        not turn a donor that a harness tolerated into an incomplete HAM agent.
+        """
+        try:
+            document = harness_path.read_text(encoding="utf-8")
+            if adapter.renders:
+                import tomllib
+
+                values = tomllib.loads(document)
+                fields = (
+                    ("name", values.get("name")),
+                    ("description", values.get("description")),
+                    ("prompt", values.get("developer_instructions")),
+                )
+            else:
+                metadata, prompt = split_frontmatter(document)
+                fields = (
+                    ("name", metadata.get("name")),
+                    ("description", metadata.get("description")),
+                    ("prompt", prompt),
+                )
+        except Exception as error:  # noqa: BLE001 - keep adoption refusal user-visible
+            raise MutationError(f"cannot validate {harness_path}: {error}") from error
+
+        return cast(
+            tuple[Literal["name", "description", "prompt"], ...],
+            tuple(
+                field
+                for field, value in fields
+                if value is None or not str(value).strip()
+            ),
+        )
 
     def _write_store_from_harness(self, adapter: AgentHarnessAdapter, harness_path: Path, slug: str) -> None:
         """Whatever the harness holds, expressed in the store's markdown format."""

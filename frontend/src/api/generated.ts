@@ -1396,6 +1396,15 @@ export interface components {
             /** Storepath */
             storePath: string;
         };
+        /** AdoptAgentValidationResponse */
+        AdoptAgentValidationResponse: {
+            /** Code */
+            code: "missing_required_fields";
+            /** Error */
+            error: string;
+            /** Missingfields */
+            missingFields: ("name" | "description" | "prompt")[];
+        };
         /** AdoptAgentRequest */
         AdoptAgentRequest: {
             /** Onconflict */
@@ -3875,7 +3884,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["AdoptAgentRequest"];
             };
@@ -3923,7 +3932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AdoptAgentValidationResponse"];
                 };
             };
             /** @description Internal Server Error */

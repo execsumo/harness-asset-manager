@@ -18,6 +18,7 @@ from .ledger import (
 )
 from .model import (
     AgentAdoptConflict,
+    AgentAdoptionValidationError,
     AgentBinding,
     AgentDefinition,
     AgentDetail,
@@ -46,6 +47,7 @@ from .targets import resolve_agent_targets, target_by_id
 
 __all__ = [
     "AgentAdoptConflict",
+    "AgentAdoptionValidationError",
     "AgentAuditLog",
     "AgentBinding",
     "AgentBindingLedger",

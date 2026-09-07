@@ -24,6 +24,7 @@ import {
 import { useAgentsController } from "../model/use-agents-controller";
 import { useSetAgentTagsMutation } from "../api/queries";
 import { useSkillsListQuery } from "../../skills/public";
+import { AgentAdoptionValidationError } from "../api/client";
 import type { AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
@@ -70,6 +71,7 @@ export default function AgentsInUsePage() {
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
   const [conflictPending, setConflictPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [detailNotice, setDetailNotice] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailRef, setDetailRef] = useState<string | null>(null);
   const common = useCommonCopy();
@@ -203,11 +205,24 @@ export default function AgentsInUsePage() {
   const handleAdopt = useCallback(async (ref: string) => {
     setPendingRef(ref);
     setErrorMessage("");
+    setDetailNotice(null);
     try {
       const result = await adoptMutation.mutateAsync({ ref });
       if (result && "conflict" in result) setConflict(result);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not adopt agent");
+      if (error instanceof AgentAdoptionValidationError) {
+        setDetailRef(ref);
+        const labels = error.missingFields.map((field) =>
+          field === "name" ? "Agent name" : field === "description" ? "Description" : "System prompt",
+        );
+        const guidance =
+          `Cannot adopt this agent yet. Missing required fields: ${labels.join(", ")}. ` +
+          "Open the agent details to fill them in, save, and try Adopt again.";
+        setErrorMessage(guidance);
+        setDetailNotice(guidance);
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : "Could not adopt agent");
+      }
     } finally {
       setPendingRef(null);
     }
@@ -353,7 +368,9 @@ export default function AgentsInUsePage() {
       </div>
 
       {actionErrorMessage ? <ErrorBanner message={actionErrorMessage} onDismiss={clearActionError} /> : null}
-      {errorMessage ? <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} /> : null}
+      {errorMessage && !detailNotice ? (
+        <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} />
+      ) : null}
       {!isReviewView && inventoryIssueMessage ? <ErrorBanner message={inventoryIssueMessage} /> : null}
 
       {isReviewView && inventory?.issues?.length ? (
@@ -441,11 +458,19 @@ export default function AgentsInUsePage() {
       <AgentDetailModal
         open={Boolean(detailRef)}
         agentRef={detailRef}
+        notice={detailNotice}
+        onDismissNotice={() => {
+          setDetailNotice(null);
+          setErrorMessage("");
+        }}
         knownTags={knownTagNames}
         knownSkills={knownSkills}
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
-        onClose={() => setDetailRef(null)}
+        onClose={() => {
+          setDetailRef(null);
+          setDetailNotice(null);
+        }}
       />
 
       {selectedCount > 0 ? (

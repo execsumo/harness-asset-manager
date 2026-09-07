@@ -5,6 +5,7 @@ import type {
   AgentCreateRequest,
   AgentUpdateRequest,
   AgentAdoptConflict,
+  AgentAdoptValidation,
   AdoptAllResponse,
   AgentDetailDto,
 } from "./types";
@@ -33,6 +34,16 @@ export async function updateAgent({
   return putJson<AgentDetailDto>(`/agents/${ref}`, request);
 }
 
+export class AgentAdoptionValidationError extends ApiError {
+  readonly missingFields: AgentAdoptValidation["missingFields"];
+
+  constructor(validation: AgentAdoptValidation, status: number) {
+    super(validation.error, validation.code, status);
+    this.name = "AgentAdoptionValidationError";
+    this.missingFields = validation.missingFields;
+  }
+}
+
 export async function adoptAgent(
   ref: string,
   onConflict?: "keep_store" | "replace_store",
@@ -48,6 +59,15 @@ export async function adoptAgent(
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
+    if (
+      payload &&
+      typeof payload === "object" &&
+      (payload as Record<string, unknown>).code === "missing_required_fields" &&
+      Array.isArray((payload as Record<string, unknown>).missingFields) &&
+      typeof (payload as Record<string, unknown>).error === "string"
+    ) {
+      throw new AgentAdoptionValidationError(payload as AgentAdoptValidation, response.status);
+    }
     const message =
       payload && typeof payload === "object" && typeof payload.error === "string"
         ? payload.error

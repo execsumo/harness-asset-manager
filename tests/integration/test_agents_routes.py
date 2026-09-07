@@ -567,6 +567,37 @@ class AgentRoutesTests(unittest.TestCase):
             harness.get_json("/api/agents/claude/../escape", expected_status=404)
             harness.get_json("/api/agents/claude/missing", expected_status=404)
 
+    def test_adoption_reports_missing_ham_fields_and_succeeds_after_edit(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "incomplete.md").write_text(
+                "---\n---\n\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/incomplete/adopt", None, expected_status=422
+            )
+            self.assertEqual(validation["code"], "missing_required_fields")
+            self.assertEqual(validation["missingFields"], ["name", "description", "prompt"])
+            self.assertIn("Agent name", validation["error"])
+            self.assertIn("Description", validation["error"])
+            self.assertIn("System prompt", validation["error"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "incomplete.md").is_file())
+
+            harness.put_json(
+                "/api/agents/claude/incomplete",
+                {
+                    "name": "Incomplete",
+                    "description": "Now complete",
+                    "prompt": "Follow the task instructions.",
+                },
+            )
+            adopted = harness.post_json("/api/agents/claude/incomplete/adopt", None)
+            self.assertEqual(adopted, {"ok": True, "ref": "incomplete"})
+
     def test_unmanaged_agent_lifecycle_edit_then_adopt_and_manage(self) -> None:
         """Complete lifecycle: unmanaged -> in-place edit -> list -> adopt -> managed edit."""
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
@@ -595,7 +626,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(entry["description"], "edited in harness")
 
             # 4. Adopt the edited unmanaged agent
-            adopt_res = harness.post_json("/api/agents/claude/stray/adopt", {})
+            adopt_res = harness.post_json("/api/agents/claude/stray/adopt", None)
             self.assertTrue(adopt_res["ok"])
             self.assertEqual(adopt_res["ref"], "stray")
 

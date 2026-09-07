@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { AgentDetailView } from "./AgentDetailView";
 import type { AdoptedSkillOption } from "./AgentSkillsFieldEditor";
 
@@ -9,6 +10,8 @@ interface AgentDetailModalProps {
   knownSkills?: AdoptedSkillOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
+  notice?: string | null;
+  onDismissNotice?: () => void;
   onClose: () => void;
 }
 
@@ -19,6 +22,8 @@ export function AgentDetailModal({
   knownSkills,
   pendingPerHarnessKeys,
   onToggleHarness,
+  notice,
+  onDismissNotice,
   onClose,
 }: AgentDetailModalProps) {
   return (
@@ -30,6 +35,7 @@ export function AgentDetailModal({
           <Dialog.Description className="u-visually-hidden">
             Inspect and manage this agent across harnesses.
           </Dialog.Description>
+          {notice ? <ErrorBanner message={notice} onDismiss={onDismissNotice} /> : null}
           {agentRef ? (
             <AgentDetailView
               agentRef={agentRef}

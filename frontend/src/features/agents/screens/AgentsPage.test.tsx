@@ -238,6 +238,56 @@ describe("Agents unified inventory", () => {
     );
   });
 
+  it("explains missing HAM fields and opens the editor after adoption validation fails", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/agents/claude/conflict-agent/adopt")) {
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            code: "missing_required_fields",
+            error: "This agent is missing required fields: Description, System prompt. Open its details, fill them in, save, and try adoption again.",
+            missingFields: ["description", "prompt"],
+          }),
+          { status: 422, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/api/agents/claude/conflict-agent")) {
+        return okJson({
+          ref: "claude/conflict-agent",
+          name: "Conflict Agent",
+          description: "",
+          prompt: "",
+          tools: [],
+          document: "---\nname: Conflict Agent\n---\n",
+          storePath: null,
+          configuration: [],
+          harnesses: [],
+          canDelete: false,
+          canEdit: true,
+          tags: [],
+          skills: [],
+        });
+      }
+      if (url.includes("/api/skills")) return okJson({ rows: [] });
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Conflict Agent")).toBeInTheDocument());
+    const row = screen.getByText("Conflict Agent").closest("tr");
+    fireEvent.click(row!.querySelector("button.action-pill")!);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(/Missing required fields: Description, System prompt/).length,
+      ).toBeGreaterThanOrEqual(1),
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument());
+    expect(screen.getAllByText(/fill them in, save, and try Adopt again/).length).toBeGreaterThanOrEqual(1);
+  });
+
   it("bulk adopt surfaces skipped[]", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
