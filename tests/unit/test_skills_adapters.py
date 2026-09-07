@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from harness_asset_manager.application.container import build_backend_container
 from harness_asset_manager.application.skills.adapters import (
@@ -28,6 +29,196 @@ def _adapter(harness: str, spec, *, data_dir: Path | None = None) :
 
 
 class SkillsAdapterTests(unittest.TestCase):
+    def test_physical_profile_skill_is_unmanaged_and_names_its_bot(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            physical = seed_skill_package(
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Skill",
+            )
+            scan = _adapter(
+                "hermes", spec, data_dir=spec.xdg_data_home / APP_NAME
+            ).scan()
+
+            self.assertEqual(len(scan.skills), 1)
+            self.assertEqual(scan.skills[0].harness, "hermes:coder")
+            self.assertEqual(scan.skills[0].label, "Hermes profile coder skills")
+            self.assertEqual(scan.skills[0].classification, "unmanaged")
+            self.assertEqual(scan.skills[0].package.root_path, physical)
+
+    def test_profile_bundled_skill_is_excluded_by_profile_policy(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            profile_skills = spec.hermes_home / "profiles" / "coder" / "skills"
+            seed_skill_package(profile_skills / "builtin", "official", "Official")
+            (profile_skills / ".bundled_manifest").write_text(
+                "Official:0123456789abcdef\n", encoding="utf-8"
+            )
+
+            scan = _adapter(
+                "hermes", spec, data_dir=spec.xdg_data_home / APP_NAME
+            ).scan()
+
+            self.assertEqual(scan.skills, ())
+            self.assertIn("Official", scan.excluded_skill_names)
+
+    def test_adopting_profile_skill_ingests_links_and_records_exact_bot(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            physical = seed_skill_package(
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Skill",
+            )
+            container = build_backend_container(spec.env())
+            entry = next(
+                item
+                for item in container.skills_queries.inventory().entries
+                if item.kind == "unmanaged"
+            )
+
+            container.skills_mutations.manage_skill(entry.skill_ref)
+
+            canonical = spec.skills_store_root / "bot-skill"
+            link = (
+                spec.hermes_home
+                / "profiles"
+                / "coder"
+                / "skills"
+                / "harnessam"
+                / "bot-skill"
+            )
+            self.assertTrue(link.is_symlink())
+            self.assertTrue(physical.is_symlink())
+            self.assertEqual(link.resolve(), canonical.resolve())
+            self.assertTrue((canonical / "SKILL.md").is_file())
+            manifest = load_skill_store_manifest(container.paths.skills_store_manifest)
+            self.assertEqual(manifest.entries[0].enabled_harnesses, ("hermes:coder",))
+
+    def test_adoption_conflict_keeps_bot_copy_and_canonical_package(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            seed_skill_package(spec.skills_store_root, "bot-skill", "Canonical")
+            physical = seed_skill_package(
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Copy",
+            )
+            container = build_backend_container(spec.env())
+            entry = next(
+                item
+                for item in container.skills_queries.inventory().entries
+                if item.kind == "unmanaged"
+            )
+
+            with self.assertRaises(MutationError):
+                container.skills_mutations.manage_skill(entry.skill_ref)
+
+            self.assertTrue(physical.is_dir())
+            self.assertFalse(physical.is_symlink())
+            self.assertEqual(
+                (spec.skills_store_root / "bot-skill" / "SKILL.md").read_text(
+                    encoding="utf-8"
+                ).splitlines()[1],
+                "name: Canonical",
+            )
+
+    def test_adoption_failure_after_ingest_restores_physical_bot_copy(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            physical = seed_skill_package(
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Skill",
+            )
+            container = build_backend_container(spec.env())
+            entry = next(
+                item
+                for item in container.skills_queries.inventory().entries
+                if item.kind == "unmanaged"
+            )
+            adapter = next(
+                item for item in container.skills_read_models.adapters if item.harness == "hermes"
+            )
+            with mock.patch.object(
+                adapter, "adopt_local_copy", side_effect=OSError("simulated link failure")
+            ), self.assertRaises(OSError):
+                container.skills_mutations.manage_skill(entry.skill_ref)
+
+            self.assertTrue(physical.is_dir())
+            self.assertFalse(physical.is_symlink())
+            self.assertFalse((spec.skills_store_root / "bot-skill").exists())
+
+    def test_auto_adopt_identical_profile_copies_once_and_links_both_bots(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            for profile in ("coder", "reviewer"):
+                seed_skill_package(
+                    spec.hermes_home / "profiles" / profile / "skills" / "harnessam",
+                    "bot-skill",
+                    "Bot Skill",
+                )
+            container = build_backend_container(spec.env())
+            container.settings_mutations.set_auto_adopt_harnesses("skills", ["hermes"])
+
+            inventory = container.skills_queries.inventory()
+
+            managed = [entry for entry in inventory.entries if entry.kind == "managed"]
+            self.assertEqual(len(managed), 1)
+            self.assertEqual(managed[0].package_dir, "bot-skill")
+            self.assertTrue(
+                all(
+                    (
+                        spec.hermes_home
+                        / "profiles"
+                        / profile
+                        / "skills"
+                        / "harnessam"
+                        / "bot-skill"
+                    ).is_symlink()
+                    for profile in ("coder", "reviewer")
+                )
+            )
+            self.assertTrue((spec.skills_store_root / "bot-skill").is_dir())
+
+    def test_auto_adopt_differing_profile_copies_stays_manual(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            seed_skill_package(
+                spec.hermes_home / "profiles" / "coder" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Skill",
+                body="coder version",
+            )
+            seed_skill_package(
+                spec.hermes_home / "profiles" / "reviewer" / "skills" / "harnessam",
+                "bot-skill",
+                "Bot Skill",
+                body="reviewer version",
+            )
+            container = build_backend_container(spec.env())
+            container.settings_mutations.set_auto_adopt_harnesses("skills", ["hermes"])
+
+            inventory = container.skills_queries.inventory()
+
+            self.assertEqual(
+                len([entry for entry in inventory.entries if entry.kind == "unmanaged"]),
+                2,
+            )
+            self.assertFalse((spec.skills_store_root / "bot-skill").exists())
+            for profile in ("coder", "reviewer"):
+                path = (
+                    spec.hermes_home
+                    / "profiles"
+                    / profile
+                    / "skills"
+                    / "harnessam"
+                    / "bot-skill"
+                )
+                self.assertTrue(path.is_dir())
+                self.assertFalse(path.is_symlink())
+
     def test_hermes_profile_root_resolution_is_total_when_profiles_are_absent(self) -> None:
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))
