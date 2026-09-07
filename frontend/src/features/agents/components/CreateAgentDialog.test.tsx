@@ -225,6 +225,42 @@ describe("CreateAgentDialog", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("sends Hermes provider and model as free-text profile settings", () => {
+    mockSettingsData = { autoAdoptHarnesses: { agents: [] } };
+    mockMutateAsync.mockResolvedValueOnce({ name: "Hermes Agent", ok: true, harnessFailures: [] });
+
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+    expect(screen.getByText(/HAM-managed Bots are addressed as hermes -p <name>/i)).toBeInTheDocument();
+    expect(screen.getByText(/do not install PATH wrapper scripts/i)).toBeInTheDocument();
+    expect(screen.getByText(/External CLI backends/i)).toBeInTheDocument();
+    expect(screen.getByText(/Codex app-server subprocess/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("e.g. Code Reviewer"), {
+      target: { value: "Hermes Agent" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("Describe the agent's purpose and functionality..."),
+      { target: { value: "Runs through Hermes" } },
+    );
+    fireEvent.change(screen.getByPlaceholderText("System instructions..."), {
+      target: { value: "Use the configured profile." },
+    });
+    fireEvent.change(screen.getByLabelText("Hermes Provider"), {
+      target: { value: "test-provider" },
+    });
+    fireEvent.change(screen.getByLabelText("Hermes Model"), {
+      target: { value: "test/model" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Agent" }));
+
+    expect(mockMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hermesProvider: "test-provider",
+        hermesModel: "test/model",
+      }),
+    );
+  });
+
   it("surfaces a partial harness failure in the response rather than swallowing it", async () => {
     const onOpenChange = vi.fn();
     mockSettingsData = {

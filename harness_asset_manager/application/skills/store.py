@@ -98,27 +98,34 @@ class SkillStore:
     ) -> Path:
         with file_lock(self.lock_path):
             dest = self.root / source_path.name
-            if dest.exists():
+            if dest.exists() or dest.is_symlink():
                 raise ValueError(f"package already exists in store: {dest}")
             self.root.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(source_path, dest)
-            manifest = load_skill_store_manifest(self.manifest_path)
-            fingerprint, _ = fingerprint_package(dest)
-            entry = SkillStoreEntry(
-                package_dir=source_path.name,
-                declared_name=declared_name,
-                source_kind=source_kind,
-                source_locator=source_locator,
-                revision=fingerprint,
-                source_ref=source_ref,
-                source_path=source_path_hint,
-                origin_harness=origin_harness,
-            )
-            write_skill_store_manifest(
-                self.manifest_path,
-                SkillStoreManifest(entries=manifest.entries + (entry,)),
-            )
-            return dest
+            try:
+                shutil.copytree(source_path, dest)
+                manifest = load_skill_store_manifest(self.manifest_path)
+                fingerprint, _ = fingerprint_package(dest)
+                entry = SkillStoreEntry(
+                    package_dir=source_path.name,
+                    declared_name=declared_name,
+                    source_kind=source_kind,
+                    source_locator=source_locator,
+                    revision=fingerprint,
+                    source_ref=source_ref,
+                    source_path=source_path_hint,
+                    origin_harness=origin_harness,
+                )
+                write_skill_store_manifest(
+                    self.manifest_path,
+                    SkillStoreManifest(entries=manifest.entries + (entry,)),
+                )
+                return dest
+            except BaseException:
+                # A copied package is not canonical until its manifest entry lands.
+                # The Bot's source remains untouched for adoption rollback.
+                if dest.exists() or dest.is_symlink():
+                    shutil.rmtree(dest, ignore_errors=True)
+                raise
 
     def update(
         self,
