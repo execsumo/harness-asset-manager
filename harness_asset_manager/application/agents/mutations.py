@@ -162,18 +162,22 @@ class AgentMutationService:
         if not harness_path.is_file() or harness_path.is_symlink():
             raise MutationError(f"no unmanaged agent at {harness_path}")
 
-        missing_fields = self._missing_adoption_fields(adapter, harness_path)
-        if missing_fields:
-            raise AgentAdoptionValidationError(missing_fields)
-
         store_path = self.store.path_for(slug)
-        if store_path.exists():
+        collides = store_path.exists()
+        if collides:
             if on_conflict is None:
                 raise AgentAdoptConflict(slug, store_path, harness_path)
+            if on_conflict not in ("keep_store", "replace_store"):
+                raise MutationError(f"unknown conflict resolution: {on_conflict}")
+
+        if not (collides and on_conflict == "keep_store"):
+            missing_fields = self._missing_adoption_fields(adapter, harness_path)
+            if missing_fields:
+                raise AgentAdoptionValidationError(missing_fields)
+
+        if collides:
             if on_conflict == "replace_store":
                 self._write_store_from_harness(adapter, harness_path, slug)
-            elif on_conflict != "keep_store":
-                raise MutationError(f"unknown conflict resolution: {on_conflict}")
             # keep_store: the store file stands; the harness copy is simply displaced.
             harness_path.unlink()
         elif adapter.renders:
@@ -224,7 +228,9 @@ class AgentMutationService:
                     ("prompt", prompt),
                 )
         except Exception as error:  # noqa: BLE001 - keep adoption refusal user-visible
-            raise MutationError(f"cannot validate {harness_path}: {error}") from error
+            raise MutationError(
+                f"cannot validate {harness_path}: {error}", status=400
+            ) from error
 
         return cast(
             tuple[Literal["name", "description", "prompt"], ...],

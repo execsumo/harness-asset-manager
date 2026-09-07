@@ -344,7 +344,10 @@ def set_agent_harnesses(
 @router.post(
     "/{agent_ref:path}/adopt",
     response_model=AdoptAgentResponse,
-    responses={409: {"model": AdoptAgentConflictResponse}},
+    responses={
+        409: {"model": AdoptAgentConflictResponse},
+        422: {"model": AdoptAgentValidationResponse},
+    },
 )
 def adopt_agent(
     agent_ref: str,

@@ -281,11 +281,13 @@ describe("Agents unified inventory", () => {
 
     await waitFor(() =>
       expect(
-        screen.getAllByText(/Missing required fields: Description, System prompt/).length,
+        screen.getAllByText(/missing required fields: Description, System prompt/).length,
       ).toBeGreaterThanOrEqual(1),
     );
     await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument());
-    expect(screen.getAllByText(/fill them in, save, and try Adopt again/).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/fill them in, save, and try adoption again/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("bulk adopt surfaces skipped[]", async () => {
@@ -296,7 +298,9 @@ describe("Agents unified inventory", () => {
         return okJson({
           ok: true,
           adopted: ["opencode/ok-agent"],
-          skipped: [{ ref: "claude/conflict-agent", reason: "conflict" }]
+          skipped: [
+            { ref: "claude/conflict-agent", reason: "missing required agent fields: description" },
+          ]
         });
       }
       if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
@@ -309,7 +313,13 @@ describe("Agents unified inventory", () => {
     const adoptAllButton = screen.getByRole("button", { name: /Adopt all eligible/i });
     fireEvent.click(adoptAllButton);
 
-    await waitFor(() => expect(screen.getByText(/Skipped 1 agents due to conflicts/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Skipped claude/conflict-agent: missing required agent fields: description",
+        ),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("deep-link status=untracked renders only untracked rows", async () => {

@@ -1396,15 +1396,6 @@ export interface components {
             /** Storepath */
             storePath: string;
         };
-        /** AdoptAgentValidationResponse */
-        AdoptAgentValidationResponse: {
-            /** Code */
-            code: "missing_required_fields";
-            /** Error */
-            error: string;
-            /** Missingfields */
-            missingFields: ("name" | "description" | "prompt")[];
-        };
         /** AdoptAgentRequest */
         AdoptAgentRequest: {
             /** Onconflict */
@@ -1416,6 +1407,22 @@ export interface components {
             ok: boolean;
             /** Ref */
             ref: string;
+        };
+        /**
+         * AdoptAgentValidationResponse
+         * @description Body of an adoption refused because the donor is incomplete for HAM.
+         */
+        AdoptAgentValidationResponse: {
+            /**
+             * Code
+             * @default missing_required_fields
+             * @constant
+             */
+            code: "missing_required_fields";
+            /** Error */
+            error: string;
+            /** Missingfields */
+            missingFields: ("name" | "description" | "prompt")[];
         };
         /** AdoptAllAgentsResponse */
         AdoptAllAgentsResponse: {

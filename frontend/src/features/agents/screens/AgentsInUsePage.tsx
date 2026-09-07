@@ -212,14 +212,7 @@ export default function AgentsInUsePage() {
     } catch (error) {
       if (error instanceof AgentAdoptionValidationError) {
         setDetailRef(ref);
-        const labels = error.missingFields.map((field) =>
-          field === "name" ? "Agent name" : field === "description" ? "Description" : "System prompt",
-        );
-        const guidance =
-          `Cannot adopt this agent yet. Missing required fields: ${labels.join(", ")}. ` +
-          "Open the agent details to fill them in, save, and try Adopt again.";
-        setErrorMessage(guidance);
-        setDetailNotice(guidance);
+        setDetailNotice(error.message);
       } else {
         setErrorMessage(error instanceof Error ? error.message : "Could not adopt agent");
       }
@@ -239,8 +232,8 @@ export default function AgentsInUsePage() {
         try {
           const result = await adoptMutation.mutateAsync({ ref });
           if (result && "conflict" in result) toast(`Skipped ${ref}: conflict`);
-        } catch {
-          toast(`Skipped ${ref}: adoption failed`);
+        } catch (error) {
+          toast(`Skipped ${ref}: ${error instanceof Error ? error.message : "adoption failed"}`);
         }
       }
       clearSelected();
@@ -254,7 +247,9 @@ export default function AgentsInUsePage() {
     try {
       const result = await adoptAllMutation.mutateAsync();
       if (result.skipped.length > 0) {
-        toast(`Skipped ${result.skipped.length} agents due to conflicts. Resolve them individually.`);
+        for (const skipped of result.skipped) {
+          toast(`Skipped ${skipped.ref}: ${skipped.reason}`);
+        }
       } else {
         toast(`Adopted ${result.adopted.length} agents.`);
       }
@@ -368,9 +363,7 @@ export default function AgentsInUsePage() {
       </div>
 
       {actionErrorMessage ? <ErrorBanner message={actionErrorMessage} onDismiss={clearActionError} /> : null}
-      {errorMessage && !detailNotice ? (
-        <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} />
-      ) : null}
+      {errorMessage ? <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} /> : null}
       {!isReviewView && inventoryIssueMessage ? <ErrorBanner message={inventoryIssueMessage} /> : null}
 
       {isReviewView && inventory?.issues?.length ? (
@@ -459,10 +452,7 @@ export default function AgentsInUsePage() {
         open={Boolean(detailRef)}
         agentRef={detailRef}
         notice={detailNotice}
-        onDismissNotice={() => {
-          setDetailNotice(null);
-          setErrorMessage("");
-        }}
+        onDismissNotice={() => setDetailNotice(null)}
         knownTags={knownTagNames}
         knownSkills={knownSkills}
         pendingPerHarnessKeys={pendingPerHarnessKeys}

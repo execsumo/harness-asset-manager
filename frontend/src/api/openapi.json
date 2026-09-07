@@ -153,38 +153,6 @@
         "title": "AdoptAgentConflictResponse",
         "type": "object"
       },
-      "AdoptAgentValidationResponse": {
-        "properties": {
-          "code": {
-            "const": "missing_required_fields",
-            "default": "missing_required_fields",
-            "title": "Code",
-            "type": "string"
-          },
-          "error": {
-            "title": "Error",
-            "type": "string"
-          },
-          "missingFields": {
-            "items": {
-              "enum": [
-                "name",
-                "description",
-                "prompt"
-              ],
-              "type": "string"
-            },
-            "title": "Missingfields",
-            "type": "array"
-          }
-        },
-        "required": [
-          "error",
-          "missingFields"
-        ],
-        "title": "AdoptAgentValidationResponse",
-        "type": "object"
-      },
       "AdoptAgentRequest": {
         "properties": {
           "onConflict": {
@@ -222,6 +190,39 @@
           "ref"
         ],
         "title": "AdoptAgentResponse",
+        "type": "object"
+      },
+      "AdoptAgentValidationResponse": {
+        "description": "Body of an adoption refused because the donor is incomplete for HAM.",
+        "properties": {
+          "code": {
+            "const": "missing_required_fields",
+            "default": "missing_required_fields",
+            "title": "Code",
+            "type": "string"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "missingFields": {
+            "items": {
+              "enum": [
+                "name",
+                "description",
+                "prompt"
+              ],
+              "type": "string"
+            },
+            "title": "Missingfields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "error",
+          "missingFields"
+        ],
+        "title": "AdoptAgentValidationResponse",
         "type": "object"
       },
       "AdoptAllAgentsResponse": {
