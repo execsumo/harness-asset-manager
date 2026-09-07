@@ -642,8 +642,10 @@ export function AgentDetailContent({
                     </label>
                   </div>
                   <p className="frontmatter-editor__note">
-                    Values are passed through to Hermes. External CLI backends and sharing
-                    this profile's skills with a Codex app-server subprocess are out of scope.
+                    Hermes profile skills and agents are verified supported targets. Values are
+                    passed through to Hermes. HAM-managed Bots are addressed as hermes -p
+                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
+                    sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>
                 </div>
               </>
