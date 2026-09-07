@@ -256,8 +256,6 @@ def update_agent(container: "BackendContainer", args: argparse.Namespace) -> int
         ensure_profile(
             agent,
             container.hermes_root,
-            hermes_provider=getattr(args, "hermes_provider", None),
-            hermes_model=getattr(args, "hermes_model", None),
             previous=current,
         )
     except Exception as error:  # noqa: BLE001 - preserve the updated HAM agent

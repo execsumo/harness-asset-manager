@@ -256,8 +256,6 @@ def update_agent(
                 ensure_profile(
                     updated,
                     container.hermes_root,
-                    hermes_provider=body.hermesProvider,
-                    hermes_model=body.hermesModel,
                     previous=previous,
                 )
             except Exception as error:  # noqa: BLE001 - keep the HAM agent update

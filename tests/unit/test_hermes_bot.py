@@ -240,8 +240,6 @@ class HermesProvisioningTests(unittest.TestCase):
             ensure_profile(
                 self._create_agent("test-agent"),
                 hermes_root,
-                hermes_provider="",
-                hermes_model="",
                 previous=previous,
             )
 
@@ -249,6 +247,28 @@ class HermesProvisioningTests(unittest.TestCase):
             self.assertEqual(
                 document["model"], {"base_url": "https://example.invalid"}
             )
+
+    def test_config_version_survives_a_subsequent_model_write(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True, exist_ok=True)
+            (hermes_root / "config.yaml").write_text("_config_version: 42\n")
+            agent_home = hermes_root / "profiles" / "test-agent"
+
+            ensure_profile(self._create_agent("test-agent"), hermes_root)
+            ensure_profile(
+                self._create_agent(
+                    "test-agent",
+                    hermes_provider="chosen-provider",
+                    hermes_model="chosen/model",
+                ),
+                hermes_root,
+            )
+
+            document = load_config_document(
+                (agent_home / "config.yaml").read_text(), file_format="yaml"
+            )
+            self.assertEqual(document["_config_version"], 42)
 
     def test_provisioning_is_idempotent(self) -> None:
         with TemporaryDirectory() as temp:

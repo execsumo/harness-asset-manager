@@ -23,7 +23,6 @@ from harness_asset_manager.harness.hermes_profiles import (
 )
 
 _logger = logging.getLogger(__name__)
-_UNSET = object()
 
 _HERMES_SUBDIRS = (
     "memories",
@@ -42,8 +41,6 @@ def ensure_profile(
     agent: AgentDefinition,
     hermes_root: Path,
     *,
-    hermes_provider: str | None | object = _UNSET,
-    hermes_model: str | None | object = _UNSET,
     previous: AgentDefinition | None = None,
 ) -> None:
     """Idempotently provision or update a Hermes profile for a HAM agent.
@@ -127,43 +124,29 @@ def ensure_profile(
     if root_version is not None:
         config_doc["_config_version"] = root_version
 
-    provider = agent.hermes_provider if hermes_provider is _UNSET else hermes_provider
-    model = agent.hermes_model if hermes_model is _UNSET else hermes_model
-    provider_requested = (
-        agent.hermes_provider is not None
-        if hermes_provider is _UNSET
-        else hermes_provider is not None
-    )
-    model_requested = (
-        agent.hermes_model is not None if hermes_model is _UNSET else hermes_model is not None
-    )
-    if provider_requested or model_requested:
+    provider = agent.hermes_provider.strip() if agent.hermes_provider else None
+    model = agent.hermes_model.strip() if agent.hermes_model else None
+    provider_owned = bool(previous and previous.hermes_provider and previous.hermes_provider.strip())
+    model_owned = bool(previous and previous.hermes_model and previous.hermes_model.strip())
+    provider_touched = provider is not None or provider_owned
+    model_touched = model is not None or model_owned
+    if provider_touched or model_touched:
         model_config = config_doc.get("model")
-        if model_config is None:
+        if model_config is None and (provider is not None or model is not None):
             model_config = new_subtree("yaml")
             config_doc["model"] = model_config
-        elif not isinstance(model_config, MutableMapping):
+        elif model_config is not None and not isinstance(model_config, MutableMapping):
             raise MutationError(
                 f"Hermes profile config {config_file} has a non-mapping model value",
                 status=409,
                 code="invalid_hermes_model_config",
             )
 
-        if provider_requested:
-            _set_or_clear_model_key(
-                model_config,
-                "provider",
-                provider,
-                previous.hermes_provider if previous is not None else None,
-            )
-        if model_requested:
-            _set_or_clear_model_key(
-                model_config,
-                "default",
-                model,
-                previous.hermes_model if previous is not None else None,
-            )
-        if not model_config:
+        if isinstance(model_config, MutableMapping) and provider_touched:
+            _set_or_clear_model_key(model_config, "provider", provider, provider_owned)
+        if isinstance(model_config, MutableMapping) and model_touched:
+            _set_or_clear_model_key(model_config, "default", model, model_owned)
+        if isinstance(model_config, MutableMapping) and not model_config:
             del config_doc["model"]
 
     rendered_config = dump_config_document(config_doc, file_format="yaml")
@@ -173,15 +156,13 @@ def ensure_profile(
 def _set_or_clear_model_key(
     model_config: MutableMapping[str, object],
     key: str,
-    value: str | None | object,
-    previous_value: str | None,
+    value: str | None,
+    previously_owned: bool,
 ) -> None:
     """Apply one explicitly edited HAM key while leaving user model keys alone."""
-    if value is None or value is _UNSET:
-        return
-    if isinstance(value, str) and value.strip():
+    if value is not None and value.strip():
         model_config[key] = value.strip()
-    elif previous_value is not None:
+    elif previously_owned:
         model_config.pop(key, None)
 
 
