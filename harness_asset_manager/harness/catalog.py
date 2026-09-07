@@ -41,10 +41,6 @@ def _hermes_root(context) -> Path:
     we climb two levels up to find the true root. This mirrors Hermes' own heuristic
     to avoid treating an arbitrary 'profiles' directory segment as a true profiles root.
     """
-    root_override = env_get(context.env, HERMES_ROOT_ENV)
-    if root_override:
-        return Path(root_override)
-
     home = _hermes_home(context)
 
     if home.parent.name == "profiles":

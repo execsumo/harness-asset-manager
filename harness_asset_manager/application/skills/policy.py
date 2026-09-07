@@ -52,6 +52,7 @@ def cell_state(entry: InventoryEntry, harness: str) -> HarnessCellState:
     if entry.kind == "unmanaged":
         return "found" if any(
             s.harness is not None and harness_of(s.harness) == harness for s in entry.sightings
+            if not s.detail
         ) else "empty"
     return (
         "enabled"
@@ -59,6 +60,7 @@ def cell_state(entry: InventoryEntry, harness: str) -> HarnessCellState:
             s.harness is not None
             and harness_of(s.harness) == harness
             and s.scope == "canonical"
+            and not s.detail
             for s in entry.sightings
             if s.kind == "harness"
         )

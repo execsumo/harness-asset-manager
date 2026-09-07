@@ -20,7 +20,7 @@ from harness_asset_manager.harness.binding_targets import BindingTarget
 
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
 from .identity import SourceDescriptor
-from .observations import SkillObservation, SkillsHarnessScan
+from .observations import SkillLinkIssue, SkillObservation, SkillsHarnessScan
 from .package import SkillPackageCache, SkillParseError, find_skill_roots
 
 DEFAULT_HERMES_MANAGED_CATEGORY = "harnessam"
@@ -122,6 +122,14 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             package_cache=self._package_cache,
             cache_cycle=cache_cycle,
             package_executor=package_executor,
+            canonical_store_root=self._canonical_store_root,
+        )
+        link_issues = _scan_link_issues(
+            harness=self.harness,
+            label=self.label,
+            roots=active_roots,
+            managed_category=self._default_category,
+            canonical_store_root=self._canonical_store_root,
         )
         excluded_skill_names = set(skipped_skill_names)
         if hermes_policy is not None:
@@ -133,7 +141,14 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
             installed=self._is_installed(),
             skills=tuple(observations),
             excluded_skill_names=tuple(sorted(excluded_skill_names)),
+            link_issues=tuple(link_issues),
         )
+
+    @property
+    def _canonical_store_root(self) -> Path | None:
+        if self._data_dir is None:
+            return None
+        return self._data_dir / "skills"
 
     def _self_heal_or_raise(self, existing_link: Path, resolved_target: Path, package_name: str, method: str) -> None:
         """Repoint a symlink if the old target is stale, otherwise raise."""
@@ -476,6 +491,7 @@ def _scan_skill_roots(
     package_cache: SkillPackageCache,
     cache_cycle: int | None,
     package_executor: Executor | None,
+    canonical_store_root: Path | None,
 ) -> tuple[list[SkillObservation], set[str]]:
     observations: list[SkillObservation] = []
     skipped_skill_names: set[str] = set()
@@ -592,9 +608,120 @@ def _scan_skill_roots(
                 ),
                 scope=root.scope,
                 package=package,
+                detail=_active_link_detail(
+                    skill_root,
+                    root=root,
+                    canonical_store_root=canonical_store_root,
+                ),
             )
         )
     return observations, skipped_skill_names
+
+
+def _scan_link_issues(
+    *,
+    harness: str,
+    label: str,
+    roots: tuple[_ResolvedRoot, ...],
+    managed_category: str,
+    canonical_store_root: Path | None,
+) -> list[SkillLinkIssue]:
+    issues: list[SkillLinkIssue] = []
+    categories = (managed_category, LEGACY_HERMES_MANAGED_CATEGORY)
+    for root in roots:
+        if root.layout != "categorized":
+            continue
+        for category in categories:
+            category_root = root.path / category
+            try:
+                children = tuple(category_root.iterdir())
+            except OSError:
+                continue
+            for link in children:
+                if not link.is_symlink():
+                    continue
+                detail = _active_link_detail(
+                    link,
+                    root=root,
+                    canonical_store_root=canonical_store_root,
+                )
+                if detail not in {"broken-link", "stale-link"}:
+                    continue
+                issues.append(
+                    _link_issue(
+                        harness=harness,
+                        label=label,
+                        root=root,
+                        path=link,
+                        detail=detail,
+                    )
+                )
+
+        archive_root = root.path / ".archive"
+        try:
+            archived = tuple(archive_root.iterdir())
+        except OSError:
+            continue
+        for link in archived:
+            if not link.is_symlink():
+                continue
+            if _link_target_is_under(link, canonical_store_root):
+                issues.append(
+                    _link_issue(
+                        harness=harness,
+                        label=label,
+                        root=root,
+                        path=link,
+                        detail="detached-link",
+                    )
+                )
+    return issues
+
+
+def _link_issue(
+    *,
+    harness: str,
+    label: str,
+    root: _ResolvedRoot,
+    path: Path,
+    detail: str,
+) -> SkillLinkIssue:
+    return SkillLinkIssue(
+        package_dir=path.name,
+        harness=str(BindingTarget(harness, root.binding_scope)),
+        label=root.label if root.binding_scope is not None else label,
+        scope=root.scope,
+        path=path,
+        detail=detail,  # type: ignore[arg-type]
+        source=SourceDescriptor(kind="shared-store", locator=f"shared-store:{path.name}"),
+    )
+
+
+def _active_link_detail(
+    path: Path,
+    *,
+    root: _ResolvedRoot,
+    canonical_store_root: Path | None,
+) -> str:
+    if not path.is_symlink():
+        return ""
+    if not path.exists():
+        return "broken-link"
+    if root.scope == "canonical" and canonical_store_root is not None and not _link_target_is_under(
+        path, canonical_store_root
+    ):
+        return "stale-link"
+    return ""
+
+
+def _link_target_is_under(path: Path, root: Path | None) -> bool:
+    if root is None:
+        return False
+    try:
+        path.resolve(strict=False).relative_to(root.resolve(strict=False))
+    except (OSError, ValueError):
+        return False
+    return True
 
 
 def _hermes_scan_policy(skills_root: Path) -> _HermesScanPolicy:
