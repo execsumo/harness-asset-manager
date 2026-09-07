@@ -356,11 +356,19 @@ export function SkillDetailContent({
               unsavedLabel={copy.detail.unsavedChanges}
             />
 
+            {detail.linkedTargets?.some((target) => target.startsWith("hermes:")) ? (
+              <DetailNote>
+                Editing this skill through a Hermes Bot edits the canonical HAM package, so every
+                other Bot bound to it sees the change.
+              </DetailNote>
+            ) : null}
+
             {showHarnessSection ? (
               <DetailSection heading={copy.detail.harnesses}>
                 <SkillDetailHarnessMatrix
                   skillName={detail.name}
                   cells={detail.harnessCells}
+                  linkedTargets={detail.linkedTargets}
                   pendingToggleHarnesses={pendingToggleHarnesses}
                   pendingStructuralAction={pendingStructuralAction}
                   onToggleCell={onToggleHarness}

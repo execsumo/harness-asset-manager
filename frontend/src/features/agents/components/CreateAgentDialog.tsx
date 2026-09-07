@@ -426,7 +426,9 @@ export function CreateAgentDialog({
                     </label>
                   </div>
                   <p className="agent-dialog-harness-hint">
-                    Hermes settings are passed through as entered. External CLI backends and
+                    Hermes profile skills and agents are verified supported targets. Hermes settings
+                    are passed through as entered. HAM-managed Bots are addressed as hermes -p
+                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
                     sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>
                 </div>
