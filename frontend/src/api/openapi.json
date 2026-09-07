@@ -504,6 +504,28 @@
             "title": "Harnesses",
             "type": "array"
           },
+          "hermesModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesmodel"
+          },
+          "hermesProvider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesprovider"
+          },
           "isolation": {
             "anyOf": [
               {
@@ -936,6 +958,246 @@
           "harness"
         ],
         "title": "AutoEnabledSkillResponse",
+        "type": "object"
+      },
+      "BootstrapActionDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "link",
+              "skip",
+              "conflict"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "bindingTarget": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bindingtarget"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "targetPath": {
+            "default": "",
+            "title": "Targetpath",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "ref",
+          "displayName",
+          "harness",
+          "action"
+        ],
+        "title": "BootstrapActionDto",
+        "type": "object"
+      },
+      "BootstrapApplyRequest": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/BootstrapActionDto"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "allowConflicts": {
+            "default": false,
+            "title": "Allowconflicts",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "actions"
+        ],
+        "title": "BootstrapApplyRequest",
+        "type": "object"
+      },
+      "BootstrapApplyResponse": {
+        "properties": {
+          "appliedCount": {
+            "title": "Appliedcount",
+            "type": "integer"
+          },
+          "failedCount": {
+            "title": "Failedcount",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BootstrapApplyResultDto"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "appliedCount",
+          "failedCount"
+        ],
+        "title": "BootstrapApplyResponse",
+        "type": "object"
+      },
+      "BootstrapApplyResultDto": {
+        "properties": {
+          "bindingTarget": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bindingtarget"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "applied",
+              "failed",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "family",
+          "ref",
+          "harness",
+          "status",
+          "target"
+        ],
+        "title": "BootstrapApplyResultDto",
+        "type": "object"
+      },
+      "BootstrapDismissResponse": {
+        "properties": {
+          "dismissed": {
+            "default": true,
+            "title": "Dismissed",
+            "type": "boolean"
+          },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "BootstrapDismissResponse",
+        "type": "object"
+      },
+      "BootstrapPlanResponse": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/BootstrapActionDto"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "conflictCount": {
+            "title": "Conflictcount",
+            "type": "integer"
+          },
+          "dismissed": {
+            "default": false,
+            "title": "Dismissed",
+            "type": "boolean"
+          },
+          "linkableCount": {
+            "title": "Linkablecount",
+            "type": "integer"
+          },
+          "skippedCount": {
+            "title": "Skippedcount",
+            "type": "integer"
+          },
+          "totalCount": {
+            "title": "Totalcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "actions",
+          "linkableCount",
+          "conflictCount",
+          "skippedCount",
+          "totalCount"
+        ],
+        "title": "BootstrapPlanResponse",
         "type": "object"
       },
       "BulkManageFailureResponse": {
@@ -1374,6 +1636,28 @@
             },
             "title": "Harnesses",
             "type": "array"
+          },
+          "hermesModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesmodel"
+          },
+          "hermesProvider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesprovider"
           },
           "isolation": {
             "anyOf": [
@@ -6208,6 +6492,28 @@
             ],
             "title": "Effort"
           },
+          "hermesModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesmodel"
+          },
+          "hermesProvider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hermesprovider"
+          },
           "isolation": {
             "anyOf": [
               {
@@ -6901,7 +7207,15 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdoptAgentRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AdoptAgentRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
               }
             }
           }
@@ -6958,7 +7272,8 @@
                     {
                       "$ref": "#/components/schemas/ErrorResponse"
                     }
-                  ]
+                  ],
+                  "title": "Response 422 Adopt Agent Api Agents  Agent Ref  Adopt Post"
                 }
               }
             },
@@ -7396,6 +7711,340 @@
         "summary": "Set Agent Tags",
         "tags": [
           "Agents"
+        ]
+      }
+    },
+    "/api/bootstrap/apply": {
+      "post": {
+        "operationId": "apply_bootstrap_plan_api_bootstrap_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BootstrapApplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapApplyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Apply Bootstrap Plan",
+        "tags": [
+          "Bootstrap"
+        ]
+      }
+    },
+    "/api/bootstrap/dismiss": {
+      "post": {
+        "operationId": "dismiss_bootstrap_banner_api_bootstrap_dismiss_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapDismissResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Dismiss Bootstrap Banner",
+        "tags": [
+          "Bootstrap"
+        ]
+      }
+    },
+    "/api/bootstrap/plan": {
+      "get": {
+        "operationId": "get_bootstrap_plan_api_bootstrap_plan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapPlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Bootstrap Plan",
+        "tags": [
+          "Bootstrap"
+        ]
+      }
+    },
+    "/api/bootstrap/reset-dismiss": {
+      "post": {
+        "operationId": "reset_bootstrap_banner_api_bootstrap_reset_dismiss_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapDismissResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Reset Bootstrap Banner",
+        "tags": [
+          "Bootstrap"
         ]
       }
     },
