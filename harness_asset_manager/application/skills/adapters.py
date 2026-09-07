@@ -66,7 +66,9 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
     def _default_claude_dynamic_roots(self) -> tuple["_ResolvedRoot", ...]:
         claude_dir = self.managed_root.parent
         home = claude_dir.parent
-        from harness_asset_manager.harness.claude_plugins import resolve_claude_plugin_roots
+        from harness_asset_manager.harness.claude_plugins import (
+            resolve_claude_plugin_roots,
+        )
         from harness_asset_manager.harness.resolution import resolve_context
 
         ctx = resolve_context({"HOME": str(home)})

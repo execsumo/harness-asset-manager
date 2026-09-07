@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import MutableMapping
 from pathlib import Path
 
 from harness_asset_manager.application.agents.model import AgentDefinition
@@ -10,6 +11,7 @@ from harness_asset_manager.config_document import (
     dump_config_document,
     empty_config_document,
     load_config_document,
+    new_subtree,
 )
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.hermes_profiles import (
@@ -35,7 +37,12 @@ _HERMES_SUBDIRS = (
 )
 
 
-def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
+def ensure_profile(
+    agent: AgentDefinition,
+    hermes_root: Path,
+    *,
+    previous: AgentDefinition | None = None,
+) -> None:
     """Idempotently provision or update a Hermes profile for a HAM agent.
 
     This is best-effort and non-transactional. A failure here should not
@@ -93,7 +100,8 @@ def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
             encoding="utf-8",
         )
 
-    # config.yaml
+    # config.yaml. The profile adapter is the sole writer for this file's model
+    # subtree. In particular, it never synthesizes a provider-prefixed model id.
     config_file = home / "config.yaml"
     root_config_file = hermes_root / "config.yaml"
 
@@ -108,19 +116,54 @@ def ensure_profile(agent: AgentDefinition, hermes_root: Path) -> None:
             pass
 
     if config_file.is_file():
-        try:
-            content = config_file.read_text(encoding="utf-8")
-            config_doc = load_config_document(content, file_format="yaml")
-        except Exception:
-            config_doc = empty_config_document("yaml")
+        content = config_file.read_text(encoding="utf-8")
+        config_doc = load_config_document(content, file_format="yaml")
     else:
         config_doc = empty_config_document("yaml")
 
     if root_version is not None:
         config_doc["_config_version"] = root_version
 
+    provider = agent.hermes_provider.strip() if agent.hermes_provider else None
+    model = agent.hermes_model.strip() if agent.hermes_model else None
+    provider_owned = bool(previous and previous.hermes_provider and previous.hermes_provider.strip())
+    model_owned = bool(previous and previous.hermes_model and previous.hermes_model.strip())
+    provider_touched = provider is not None or provider_owned
+    model_touched = model is not None or model_owned
+    if provider_touched or model_touched:
+        model_config = config_doc.get("model")
+        if model_config is None and (provider is not None or model is not None):
+            model_config = new_subtree("yaml")
+            config_doc["model"] = model_config
+        elif model_config is not None and not isinstance(model_config, MutableMapping):
+            raise MutationError(
+                f"Hermes profile config {config_file} has a non-mapping model value",
+                status=409,
+                code="invalid_hermes_model_config",
+            )
+
+        if isinstance(model_config, MutableMapping) and provider_touched:
+            _set_or_clear_model_key(model_config, "provider", provider, provider_owned)
+        if isinstance(model_config, MutableMapping) and model_touched:
+            _set_or_clear_model_key(model_config, "default", model, model_owned)
+        if isinstance(model_config, MutableMapping) and not model_config:
+            del config_doc["model"]
+
     rendered_config = dump_config_document(config_doc, file_format="yaml")
     atomic_write_text(config_file, rendered_config, follow_symlinks=False)
+
+
+def _set_or_clear_model_key(
+    model_config: MutableMapping[str, object],
+    key: str,
+    value: str | None,
+    previously_owned: bool,
+) -> None:
+    """Apply one explicitly edited HAM key while leaving user model keys alone."""
+    if value is not None and value.strip():
+        model_config[key] = value.strip()
+    elif previously_owned:
+        model_config.pop(key, None)
 
 
 def detach_profile(agent: AgentDefinition, hermes_root: Path) -> None:

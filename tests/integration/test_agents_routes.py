@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 import unittest
+from pathlib import Path
+from unittest import mock
 
+from harness_asset_manager.atomic_files import atomic_write_text
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import FakeHomeSpec, seed_skill_package
 
@@ -142,6 +146,92 @@ class AgentsListIsReadOnlyTests(unittest.TestCase):
                 for row in harness.get_json("/api/skills")["rows"]
             }
             self.assertEqual(statuses.get("Auto Local"), "Managed")
+
+
+class HermesProfileFailureTests(unittest.TestCase):
+    def test_profile_config_failure_is_reported_without_rolling_back_create(self) -> None:
+        def fail_profile_config(path: Path, text: str, **kwargs) -> None:
+            if path.name == "config.yaml":
+                raise OSError("simulated Hermes config write failure")
+            atomic_write_text(path, text, **kwargs)
+
+        with AppTestHarness() as harness:
+            with mock.patch(
+                "harness_asset_manager.application.agents.hermes_profile.atomic_write_text",
+                side_effect=fail_profile_config,
+            ):
+                result = harness.post_json(
+                    "/api/agents",
+                    {
+                        "name": "Surviving Agent",
+                        "description": "new description",
+                        "prompt": "new prompt",
+                        "hermesProvider": "chosen-provider",
+                        "hermesModel": "chosen/model",
+                    },
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["harnessFailures"][0]["harness"], "hermes")
+            self.assertIn("simulated Hermes config write failure", result["harnessFailures"][0]["error"])
+
+            detail = harness.get_json("/api/agents/surviving-agent")
+            self.assertEqual(detail["name"], "Surviving Agent")
+            self.assertEqual(detail["description"], "new description")
+            self.assertEqual(detail["prompt"], "new prompt")
+
+    def test_profile_config_failure_is_reported_without_rolling_back_update(self) -> None:
+        def fail_profile_config(path: Path, text: str, **kwargs) -> None:
+            if path.name == "config.yaml":
+                raise OSError("simulated Hermes config write failure")
+            atomic_write_text(path, text, **kwargs)
+
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Existing Agent", "description": "old", "prompt": "old"},
+            )
+            with mock.patch(
+                "harness_asset_manager.application.agents.hermes_profile.atomic_write_text",
+                side_effect=fail_profile_config,
+            ):
+                result = harness.put_json(
+                    "/api/agents/existing-agent",
+                    {
+                        "description": "updated description",
+                        "prompt": "updated prompt",
+                        "hermesProvider": "chosen-provider",
+                        "hermesModel": "chosen/model",
+                    },
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["harnessFailures"][0]["harness"], "hermes")
+            detail = harness.get_json("/api/agents/existing-agent")
+            self.assertEqual(detail["description"], "updated description")
+            self.assertEqual(detail["prompt"], "updated prompt")
+            self.assertEqual(detail["hermesProvider"], "chosen-provider")
+            self.assertEqual(detail["hermesModel"], "chosen/model")
+
+
+class ProductCodeModelIdentifierTests(unittest.TestCase):
+    def test_product_code_has_no_hardcoded_model_or_provider_identifiers(self) -> None:
+        forbidden = re.compile(
+            r"gpt-[0-9]|claude-(?:sonnet|opus)|openai-codex|anthropic|openrouter",
+            re.IGNORECASE,
+        )
+        roots = (
+            Path(__file__).resolve().parents[2] / "harness_asset_manager",
+            Path(__file__).resolve().parents[2] / "frontend/src",
+        )
+        matches = []
+        for root in roots:
+            for path in root.rglob("*"):
+                if path.is_file() and forbidden.search(
+                    path.read_bytes().decode("utf-8", errors="ignore")
+                ):
+                    matches.append(str(path))
+        self.assertEqual(matches, [])
 
 
 class AgentRoutesTests(unittest.TestCase):
