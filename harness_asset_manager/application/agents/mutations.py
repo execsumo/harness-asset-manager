@@ -170,8 +170,8 @@ class AgentMutationService:
             if on_conflict not in ("keep_store", "replace_store"):
                 raise MutationError(f"unknown conflict resolution: {on_conflict}")
 
-        if not (collides and on_conflict == "keep_store"):
-            missing_fields = self._missing_adoption_fields(adapter, harness_path)
+        if not adapter.renders and not (collides and on_conflict == "keep_store"):
+            missing_fields = self._missing_adoption_fields(harness_path)
             if missing_fields:
                 raise AgentAdoptionValidationError(missing_fields)
 
@@ -202,31 +202,22 @@ class AgentMutationService:
         return slug
 
     def _missing_adoption_fields(
-        self, adapter: AgentHarnessAdapter, harness_path: Path
+        self, harness_path: Path
     ) -> tuple[Literal["name", "description", "prompt"], ...]:
-        """Return HAM contract fields absent from the donor, without applying fallbacks.
+        """Return HAM contract fields absent from an editable donor, without fallbacks.
 
         Parsers intentionally fall back to a filename for display, but adoption must
         not turn a donor that a harness tolerated into an incomplete HAM agent.
+        Rendered adapters are exempt: their files are not editable in place, and
+        adoption converts them through ``parse_codex_agent``.
         """
         try:
-            document = harness_path.read_text(encoding="utf-8")
-            if adapter.renders:
-                import tomllib
-
-                values = tomllib.loads(document)
-                fields = (
-                    ("name", values.get("name")),
-                    ("description", values.get("description")),
-                    ("prompt", values.get("developer_instructions")),
-                )
-            else:
-                metadata, prompt = split_frontmatter(document)
-                fields = (
-                    ("name", metadata.get("name")),
-                    ("description", metadata.get("description")),
-                    ("prompt", prompt),
-                )
+            metadata, prompt = split_frontmatter(harness_path.read_text(encoding="utf-8"))
+            fields = (
+                ("name", metadata.get("name")),
+                ("description", metadata.get("description")),
+                ("prompt", prompt),
+            )
         except Exception as error:  # noqa: BLE001 - keep adoption refusal user-visible
             raise MutationError(
                 f"cannot validate {harness_path}: {error}", status=400

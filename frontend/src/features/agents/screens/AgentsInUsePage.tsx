@@ -24,7 +24,7 @@ import {
 import { useAgentsController } from "../model/use-agents-controller";
 import { useSetAgentTagsMutation } from "../api/queries";
 import { useSkillsListQuery } from "../../skills/public";
-import { AgentAdoptionValidationError } from "../api/client";
+import { ApiError } from "../../../api/http";
 import type { AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
@@ -210,7 +210,7 @@ export default function AgentsInUsePage() {
       const result = await adoptMutation.mutateAsync({ ref });
       if (result && "conflict" in result) setConflict(result);
     } catch (error) {
-      if (error instanceof AgentAdoptionValidationError) {
+      if (error instanceof ApiError && error.code === "missing_required_fields") {
         setDetailRef(ref);
         setDetailNotice(error.message);
       } else {
@@ -246,12 +246,16 @@ export default function AgentsInUsePage() {
     setAdoptingSelected(true);
     try {
       const result = await adoptAllMutation.mutateAsync();
-      if (result.skipped.length > 0) {
-        for (const skipped of result.skipped) {
-          toast(`Skipped ${skipped.ref}: ${skipped.reason}`);
-        }
-      } else {
+      if (result.adopted.length > 0) {
         toast(`Adopted ${result.adopted.length} agents.`);
+      }
+      const [firstSkipped, ...otherSkipped] = result.skipped;
+      if (firstSkipped) {
+        toast(
+          otherSkipped.length > 0
+            ? `Skipped ${result.skipped.length} agents. ${firstSkipped.ref}: ${firstSkipped.reason} (+${otherSkipped.length} more)`
+            : `Skipped ${firstSkipped.ref}: ${firstSkipped.reason}`,
+        );
       }
       clearSelected();
     } finally {

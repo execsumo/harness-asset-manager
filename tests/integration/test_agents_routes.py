@@ -697,6 +697,23 @@ class AgentRoutesTests(unittest.TestCase):
             )
             self.assertTrue((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
 
+    def test_adopt_rendered_donor_missing_description_still_adopts(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".codex" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "auditor.toml").write_text(
+                'name = "auditor"\ndeveloper_instructions = "codex instructions"\n',
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            adopted = harness.post_json("/api/agents/codex/auditor/adopt", None)
+
+            self.assertEqual(adopted, {"ok": True, "ref": "auditor"})
+            self.assertTrue((harness.spec.agents_root / "auditor.md").is_file())
+            detail = harness.get_json("/api/agents/auditor")
+            self.assertTrue(detail["canEdit"])
+
     def test_adopt_keep_store_resolves_a_conflict_with_an_incomplete_donor(self) -> None:
         def seed(spec: FakeHomeSpec) -> None:
             agents_dir = spec.home / ".claude" / "agents"

@@ -320,6 +320,41 @@ describe("Agents unified inventory", () => {
         ),
       ).toBeInTheDocument(),
     );
+    expect(screen.getByText("Adopted 1 agents.")).toBeInTheDocument();
+  });
+
+  it("bulk adopt reports many skips as one bounded summary", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/adopt-all")) {
+        return okJson({
+          ok: true,
+          adopted: ["opencode/ok-agent"],
+          skipped: [
+            { ref: "claude/alpha", reason: "missing required agent fields: description" },
+            { ref: "claude/beta", reason: "missing required agent fields: prompt" },
+            { ref: "claude/gamma", reason: "an agent with this name already exists in the store" },
+          ],
+        });
+      }
+      if (url.includes("/api/agents")) return okJson(unmanagedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("OK Agent")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /Adopt all eligible/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Skipped 3 agents. claude/alpha: missing required agent fields: description (+2 more)",
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText("Adopted 1 agents.")).toBeInTheDocument();
+    expect(document.querySelectorAll(".toast")).toHaveLength(2);
+    expect(screen.queryByText(/claude\/beta/)).not.toBeInTheDocument();
   });
 
   it("deep-link status=untracked renders only untracked rows", async () => {
