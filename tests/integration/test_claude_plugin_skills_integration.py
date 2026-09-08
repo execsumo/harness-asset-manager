@@ -5,8 +5,6 @@ import json
 from pathlib import Path
 from unittest import TestCase
 
-from harness_asset_manager.application.skills.mutations import SkillsMutationService
-from harness_asset_manager.application.skills.queries import SkillsQueryService
 from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import FakeHomeSpec, seed_skill_package

@@ -30,9 +30,12 @@ export function BootstrapReviewSheet({
   const home = useHomeDir();
   const applyMutation = useApplyBootstrapMutation();
 
-  // Candidates for bootstrap: linkable and conflict actions
+  // Keep missing scoped targets in the review so synced intent is visible even
+  // though it cannot be selected until the profile exists locally.
   const bootstrapableActions = useMemo(
-    () => plan.actions.filter((a) => a.action === "link" || a.action === "conflict"),
+    () => plan.actions.filter(
+      (a) => a.action === "link" || a.action === "conflict" || a.reason === "harness-scope-missing",
+    ),
     [plan.actions],
   );
 
@@ -188,7 +191,7 @@ export function BootstrapReviewSheet({
                           id={`bootstrap-check-${key}`}
                           checked={isChecked}
                           onChange={() => toggleKey(key)}
-                          disabled={applyMutation.isPending || !!result}
+                          disabled={applyMutation.isPending || !!result || item.action === "skip"}
                         />
                         <label
                           htmlFor={`bootstrap-check-${key}`}
@@ -214,6 +217,15 @@ export function BootstrapReviewSheet({
                             title={item.detail ?? "Target occupied"}
                           >
                             Conflict
+                          </span>
+                        )}
+
+                        {item.reason === "harness-scope-missing" && !result && (
+                          <span
+                            className="bootstrap-badge bootstrap-badge--conflict"
+                            title={item.detail ?? "Scoped harness target is missing"}
+                          >
+                            Profile missing
                           </span>
                         )}
 

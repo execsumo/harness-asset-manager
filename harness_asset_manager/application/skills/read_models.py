@@ -9,6 +9,7 @@ from threading import Condition, get_ident, local
 
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness import HarnessKernelService
+from harness_asset_manager.harness.binding_targets import BindingTarget
 
 from .adapters import build_skills_adapters, scan_all_adapters
 from .contracts import SkillsHarnessAdapter, SkillsHarnessStatus
@@ -72,7 +73,8 @@ class SkillsReadModelService:
         )
 
     def find_adapter(self, harness: str) -> SkillsHarnessAdapter | None:
-        return next((adapter for adapter in self.adapters if adapter.harness == harness), None)
+        target = BindingTarget.parse(harness)
+        return next((adapter for adapter in self.adapters if adapter.harness == target.harness), None)
 
     def visible_harnesses(self) -> tuple[str, ...]:
         return self.kernel.enabled_harness_ids_for_family("skills")
@@ -91,11 +93,12 @@ class SkillsReadModelService:
         return self.adapters
 
     def require_enabled_adapter(self, harness: str) -> SkillsHarnessAdapter:
-        adapter = self.find_adapter(harness)
+        target = BindingTarget.parse(harness)
+        adapter = self.find_adapter(target.harness)
         if adapter is None:
-            raise MutationError(f"unknown harness: {harness}", status=400)
-        if harness not in self.enabled_harnesses():
-            raise MutationError(f"harness support is disabled: {harness}", status=400)
+            raise MutationError(f"unknown harness: {target.harness}", status=400)
+        if target.harness not in self.enabled_harnesses():
+            raise MutationError(f"harness support is disabled: {target.harness}", status=400)
         status = adapter.status()
         if not status.installed:
             raise MutationError(f"{adapter.label} is not installed or not available on PATH", status=400)

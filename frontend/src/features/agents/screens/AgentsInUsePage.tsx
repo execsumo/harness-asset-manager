@@ -14,6 +14,7 @@ import { AdoptConflictDialog } from "../components/AdoptConflictDialog";
 import { AgentsMatrixView } from "../components/AgentsMatrixView";
 import { CreateAgentDialog } from "../components/CreateAgentDialog";
 import { AgentDetailModal } from "../components/detail/AgentDetailModal";
+import { deriveSkillTagOptions } from "../components/detail/AgentSkillsFieldEditor";
 import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import {
   agentsStatusCounts,
@@ -24,7 +25,8 @@ import {
 import { useAgentsController } from "../model/use-agents-controller";
 import { useSetAgentTagsMutation } from "../api/queries";
 import { useSkillsListQuery } from "../../skills/public";
-import type { AgentAdoptConflict } from "../api/types";
+import { ApiError } from "../../../api/http";
+import type { AdoptAllResponse, AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
 const STATUS_VALUES: AgentsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked"];
@@ -70,6 +72,8 @@ export default function AgentsInUsePage() {
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
   const [conflictPending, setConflictPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [detailNotice, setDetailNotice] = useState<string | null>(null);
+  const [adoptionSkips, setAdoptionSkips] = useState<AdoptAllResponse["skipped"]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailRef, setDetailRef] = useState<string | null>(null);
   const common = useCommonCopy();
@@ -109,7 +113,13 @@ export default function AgentsInUsePage() {
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
+  }, [skillsQuery.data?.rows]);
+
+  const skillTagOptions = useMemo(() => {
+    if (!skillsQuery.data?.rows) return [];
+    return deriveSkillTagOptions(skillsQuery.data.rows);
   }, [skillsQuery.data?.rows]);
 
   const toggleTagFilter = useCallback(
@@ -203,11 +213,17 @@ export default function AgentsInUsePage() {
   const handleAdopt = useCallback(async (ref: string) => {
     setPendingRef(ref);
     setErrorMessage("");
+    setDetailNotice(null);
     try {
       const result = await adoptMutation.mutateAsync({ ref });
       if (result && "conflict" in result) setConflict(result);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not adopt agent");
+      if (error instanceof ApiError && error.code === "missing_required_fields") {
+        setDetailRef(ref);
+        setDetailNotice(error.message);
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : "Could not adopt agent");
+      }
     } finally {
       setPendingRef(null);
     }
@@ -224,8 +240,8 @@ export default function AgentsInUsePage() {
         try {
           const result = await adoptMutation.mutateAsync({ ref });
           if (result && "conflict" in result) toast(`Skipped ${ref}: conflict`);
-        } catch {
-          toast(`Skipped ${ref}: adoption failed`);
+        } catch (error) {
+          toast(`Skipped ${ref}: ${error instanceof Error ? error.message : "adoption failed"}`);
         }
       }
       clearSelected();
@@ -236,12 +252,20 @@ export default function AgentsInUsePage() {
 
   const handleAdoptAll = useCallback(async () => {
     setAdoptingSelected(true);
+    setAdoptionSkips([]);
     try {
       const result = await adoptAllMutation.mutateAsync();
-      if (result.skipped.length > 0) {
-        toast(`Skipped ${result.skipped.length} agents due to conflicts. Resolve them individually.`);
-      } else {
+      setAdoptionSkips(result.skipped);
+      if (result.adopted.length > 0) {
         toast(`Adopted ${result.adopted.length} agents.`);
+      }
+      const [firstSkipped, ...otherSkipped] = result.skipped;
+      if (firstSkipped) {
+        toast(
+          otherSkipped.length > 0
+            ? `Skipped ${result.skipped.length} agents. ${firstSkipped.ref}: ${firstSkipped.reason} (+${otherSkipped.length} more)`
+            : `Skipped ${firstSkipped.ref}: ${firstSkipped.reason}`,
+        );
       }
       clearSelected();
     } finally {
@@ -356,6 +380,24 @@ export default function AgentsInUsePage() {
       {errorMessage ? <ErrorBanner message={errorMessage} onDismiss={() => setErrorMessage("")} /> : null}
       {!isReviewView && inventoryIssueMessage ? <ErrorBanner message={inventoryIssueMessage} /> : null}
 
+      {adoptionSkips.length > 0 ? (
+        <div className="agent-issues agent-adoption-skips">
+          <details open>
+            <summary className="agent-issues__title">
+              Skipped {adoptionSkips.length} agents; review before retrying
+            </summary>
+            <ul className="agent-issues__list">
+              {adoptionSkips.map((skip) => (
+                <li key={skip.ref} className="agent-issues__item">
+                  <span className="agent-issues__name">{skip.ref}</span>
+                  <p className="agent-issues__reason">{skip.reason}</p>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      ) : null}
+
       {isReviewView && inventory?.issues?.length ? (
         <div className="agent-issues">
           <h3 className="agent-issues__title">Bindings that need attention</h3>
@@ -441,11 +483,17 @@ export default function AgentsInUsePage() {
       <AgentDetailModal
         open={Boolean(detailRef)}
         agentRef={detailRef}
+        notice={detailNotice}
+        onDismissNotice={() => setDetailNotice(null)}
         knownTags={knownTagNames}
         knownSkills={knownSkills}
+        tagOptions={skillTagOptions}
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
-        onClose={() => setDetailRef(null)}
+        onClose={() => {
+          setDetailRef(null);
+          setDetailNotice(null);
+        }}
       />
 
       {selectedCount > 0 ? (

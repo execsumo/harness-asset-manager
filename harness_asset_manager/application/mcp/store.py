@@ -7,8 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Mapping
 
+from harness_asset_manager.application.skills.manifest import (
+    normalize_enabled_harnesses,
+)
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
-from harness_asset_manager.application.skills.manifest import normalize_enabled_harnesses
 
 McpTransport = Literal["stdio", "http", "sse"]
 McpSourceKind = Literal["marketplace", "adopted", "manual"]
