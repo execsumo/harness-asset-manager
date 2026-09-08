@@ -5,8 +5,16 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
-from harness_asset_manager.env_names import HERMES_HOME_ENV, legacy_name
-from harness_asset_manager.harness.catalog import _hermes_home
+from harness_asset_manager.env_names import (
+    HERMES_HOME_ENV,
+    HERMES_ROOT_ENV,
+    legacy_name,
+)
+from harness_asset_manager.harness.catalog import (
+    _hermes_home,
+    _hermes_profile_skills_root,
+    _hermes_root,
+)
 from harness_asset_manager.harness.resolution import resolve_context
 
 
@@ -53,6 +61,23 @@ class HermesHomePrecedenceTests(unittest.TestCase):
                 HERMES_HOME_ENV: new_val,
             })
             self.assertEqual(_hermes_home(ctx_new), Path(new_val))
+
+    def test_skills_root_override_does_not_move_hermes_root_or_profile_paths(self) -> None:
+        with hermetic_env():
+            real_root = Path("/tmp/real-hermes-root")
+            skills_root = Path("/tmp/custom-hermes-skills")
+            ctx = resolve_context(
+                {
+                    "HERMES_HOME": str(real_root),
+                    HERMES_ROOT_ENV: str(skills_root),
+                }
+            )
+
+            self.assertEqual(_hermes_root(ctx), real_root)
+            self.assertEqual(
+                _hermes_profile_skills_root(ctx, "coder"),
+                real_root / "profiles" / "coder" / "skills",
+            )
 
 
 if __name__ == "__main__":

@@ -143,6 +143,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bootstrap/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Bootstrap Plan */
+        post: operations["apply_bootstrap_plan_api_bootstrap_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bootstrap/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss Bootstrap Banner */
+        post: operations["dismiss_bootstrap_banner_api_bootstrap_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bootstrap/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bootstrap Plan */
+        get: operations["get_bootstrap_plan_api_bootstrap_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bootstrap/reset-dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset Bootstrap Banner */
+        post: operations["reset_bootstrap_banner_api_bootstrap_reset_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/configs/": {
         parameters: {
             query?: never;
@@ -1408,6 +1476,22 @@ export interface components {
             /** Ref */
             ref: string;
         };
+        /**
+         * AdoptAgentValidationResponse
+         * @description Body of an adoption refused because the donor is incomplete for HAM.
+         */
+        AdoptAgentValidationResponse: {
+            /**
+             * Code
+             * @default missing_required_fields
+             * @constant
+             */
+            code: "missing_required_fields";
+            /** Error */
+            error: string;
+            /** Missingfields */
+            missingFields: ("name" | "description" | "prompt")[];
+        };
         /** AdoptAllAgentsResponse */
         AdoptAllAgentsResponse: {
             /** Adopted */
@@ -1502,6 +1586,10 @@ export interface components {
             harnessFailures?: components["schemas"]["AgentMutationFailureResponse"][];
             /** Harnesses */
             harnesses: components["schemas"]["AgentHarnessDetailResponse"][];
+            /** Hermesmodel */
+            hermesModel?: string | null;
+            /** Hermesprovider */
+            hermesProvider?: string | null;
             /** Isolation */
             isolation?: string | null;
             /** Maxturns */
@@ -1656,6 +1744,103 @@ export interface components {
             /** Skillref */
             skillRef: string;
         };
+        /** BootstrapActionDto */
+        BootstrapActionDto: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "link" | "skip" | "conflict";
+            /** Bindingtarget */
+            bindingTarget?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Displayname */
+            displayName: string;
+            /** Family */
+            family: string;
+            /** Harness */
+            harness: string;
+            /** Reason */
+            reason?: string | null;
+            /** Ref */
+            ref: string;
+            /**
+             * Targetpath
+             * @default
+             */
+            targetPath: string;
+        };
+        /** BootstrapApplyRequest */
+        BootstrapApplyRequest: {
+            /** Actions */
+            actions: components["schemas"]["BootstrapActionDto"][];
+            /**
+             * Allowconflicts
+             * @default false
+             */
+            allowConflicts: boolean;
+        };
+        /** BootstrapApplyResponse */
+        BootstrapApplyResponse: {
+            /** Appliedcount */
+            appliedCount: number;
+            /** Failedcount */
+            failedCount: number;
+            /** Results */
+            results: components["schemas"]["BootstrapApplyResultDto"][];
+        };
+        /** BootstrapApplyResultDto */
+        BootstrapApplyResultDto: {
+            /** Bindingtarget */
+            bindingTarget?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Family */
+            family: string;
+            /** Harness */
+            harness: string;
+            /** Ref */
+            ref: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "failed" | "skipped";
+            /** Target */
+            target: string;
+        };
+        /** BootstrapDismissResponse */
+        BootstrapDismissResponse: {
+            /**
+             * Dismissed
+             * @default true
+             */
+            dismissed: boolean;
+            /**
+             * Ok
+             * @default true
+             */
+            ok: boolean;
+        };
+        /** BootstrapPlanResponse */
+        BootstrapPlanResponse: {
+            /** Actions */
+            actions: components["schemas"]["BootstrapActionDto"][];
+            /** Conflictcount */
+            conflictCount: number;
+            /**
+             * Dismissed
+             * @default false
+             */
+            dismissed: boolean;
+            /** Linkablecount */
+            linkableCount: number;
+            /** Skippedcount */
+            skippedCount: number;
+            /** Totalcount */
+            totalCount: number;
+        };
         /** BulkManageFailureResponse */
         BulkManageFailureResponse: {
             /** Error */
@@ -1778,6 +1963,10 @@ export interface components {
             effort?: string | null;
             /** Harnesses */
             harnesses?: string[];
+            /** Hermesmodel */
+            hermesModel?: string | null;
+            /** Hermesprovider */
+            hermesProvider?: string | null;
             /** Isolation */
             isolation?: string | null;
             /** Maxturns */
@@ -3373,6 +3562,10 @@ export interface components {
             description?: string | null;
             /** Effort */
             effort?: string | null;
+            /** Hermesmodel */
+            hermesModel?: string | null;
+            /** Hermesprovider */
+            hermesProvider?: string | null;
             /** Isolation */
             isolation?: string | null;
             /** Maxturns */
@@ -3875,9 +4068,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["AdoptAgentRequest"];
+                "application/json": components["schemas"]["AdoptAgentRequest"] | null;
             };
         };
         responses: {
@@ -3923,7 +4116,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["AdoptAgentValidationResponse"] | components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -4208,6 +4401,306 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentTagsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    apply_bootstrap_plan_api_bootstrap_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BootstrapApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BootstrapApplyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dismiss_bootstrap_banner_api_bootstrap_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BootstrapDismissResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_bootstrap_plan_api_bootstrap_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BootstrapPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reset_bootstrap_banner_api_bootstrap_reset_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BootstrapDismissResponse"];
                 };
             };
             /** @description Bad Request */

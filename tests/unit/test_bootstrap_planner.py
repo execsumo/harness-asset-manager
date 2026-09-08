@@ -11,7 +11,6 @@ from harness_asset_manager.application.hooks.store import HookSpec
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
 from harness_asset_manager.application.permissions.store import PermissionSpec
 from harness_asset_manager.application.slash_commands.models import SlashCommand
-from harness_asset_manager.paths import APP_NAME
 from tests.support.fake_home import (
     FakeHomeSpec,
     seed_skill_package,

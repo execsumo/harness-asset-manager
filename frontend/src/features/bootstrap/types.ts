@@ -5,6 +5,7 @@ export interface BootstrapActionDto {
   ref: string;
   displayName: string;
   harness: string;
+  bindingTarget?: string | null;
   action: BootstrapActionType;
   targetPath: string;
   reason?: string | null;
@@ -24,6 +25,7 @@ export interface BootstrapApplyResultDto {
   family: string;
   ref: string;
   harness: string;
+  bindingTarget?: string | null;
   status: "applied" | "failed" | "skipped";
   target: string;
   error?: string | null;
