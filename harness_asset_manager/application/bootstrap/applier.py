@@ -168,6 +168,16 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        if action.target is None or action.reason == "harness-scope-missing":
+            return BootstrapApplyResult(
+                family=action.family,
+                ref=action.ref,
+                harness=action.harness,
+                status="skipped",
+                target=action.target_display,
+                binding_target=action.binding_target,
+                error=action.detail or action.reason,
+            )
         if action.family in ("skills", "agents", "slash_commands"):
             return self._apply_placement_one(action, allow_conflicts=allow_conflicts)
         if action.family in ("mcp", "hooks", "permissions"):
@@ -180,6 +190,7 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        assert action.target is not None  # _apply_one short-circuits a pathless action
         target = Path(action.target)
 
         # Re-check on disk immediately before acting
@@ -223,7 +234,7 @@ class BootstrapApplier:
                 package_dir = action.ref.removeprefix("shared:")
                 package_path = self.skills_store.root / package_dir
                 self.skills_mutations.enable_managed_package(
-                    package_path, action.harness
+                    package_path, action.binding_target or action.harness
                 )
             elif action.family == "slash_commands":
                 self._apply_slash_command(action.ref, action.harness)
@@ -270,6 +281,7 @@ class BootstrapApplier:
         *,
         allow_conflicts: bool,
     ) -> BootstrapApplyResult:
+        assert action.target is not None  # _apply_one short-circuits a pathless action
         target = Path(action.target)
 
         # Re-check on disk immediately before acting at key granularity

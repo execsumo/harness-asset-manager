@@ -10,6 +10,10 @@ export function mapSkillsPage(dto: SkillsPageDto): SkillsWorkspaceData {
 }
 
 export function mapSkillDetail(dto: SkillDetailDto): SkillDetail {
+  const linkedTargets = dto.linkedTargets ?? dto.locations
+    .map((location) => location.harness)
+    .filter((harness): harness is string => harness !== null);
+
   return {
     skillRef: dto.skillRef,
     name: dto.name,
@@ -22,6 +26,7 @@ export function mapSkillDetail(dto: SkillDetailDto): SkillDetail {
       updateStatus: null,
     },
     harnessCells: dto.harnessCells,
+    linkedTargets,
     locations: dto.locations,
     sourceLinks: dto.sourceLinks,
     documentMarkdown: dto.documentMarkdown,
@@ -40,6 +45,7 @@ function mapSkillRow(dto: SkillTableRowDto): SkillListRow {
     tags: dto.tags ?? [],
     actions: dto.actions,
     cells: dto.cells,
+    linkedTargets: dto.linkedTargets,
     conformance: dto.conformance ?? [],
   };
 }

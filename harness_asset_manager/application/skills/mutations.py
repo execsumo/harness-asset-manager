@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Iterable
 
 from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness.binding_targets import BindingTarget
 
 from .contracts import SkillsHarnessAdapter
 from .document_utils import read_skill_document_and_metadata, render_skill_document
@@ -41,7 +42,9 @@ class SkillsMutationService:
         self.source_fetcher = source_fetcher
         self.asset_tags = asset_tags
 
-    def _record_binding(self, package_dir: str | None, harness: str, *, bound: bool) -> None:
+    def _record_binding(
+        self, package_dir: str | None, target: BindingTarget | str, *, bound: bool
+    ) -> None:
         """Persist binding intent alongside the binding we just made on disk.
 
         Swallows failures on purpose. The adapter call has already succeeded by the
@@ -52,7 +55,16 @@ class SkillsMutationService:
         if not package_dir:
             return
         try:
-            self.read_models.store.record_binding(package_dir, harness, bound=bound)
+            binding_target = (
+                target
+                if isinstance(target, BindingTarget)
+                else BindingTarget.parse(target)
+            )
+            self.read_models.store.record_binding(
+                package_dir,
+                str(binding_target),
+                bound=bound,
+            )
         except OSError:
             return
 
@@ -65,26 +77,28 @@ class SkillsMutationService:
         return {"tags": updated_tags}
 
     def enable_skill(self, skill_ref: str, harness: str) -> dict[str, bool]:
+        target = BindingTarget.parse(harness)
         entry = self.queries.require_entry(skill_ref)
         if entry.kind != "managed":
             raise MutationError(f"only managed skills can be toggled; this is {display_status(entry)}", status=400)
         if entry.package_path is None:
             raise MutationError("managed skill is missing its shared package path", status=500)
-        adapter = self.read_models.require_enabled_adapter(harness)
-        adapter.enable_shared_package(entry.package_path)
-        self._record_binding(entry.package_dir, harness, bound=True)
+        adapter = self.read_models.require_enabled_adapter(str(target))
+        adapter.enable_shared_package(entry.package_path, scope=target.scope)
+        self._record_binding(entry.package_dir, target, bound=True)
         self.read_models.invalidate()
         return {"ok": True}
 
     def disable_skill(self, skill_ref: str, harness: str) -> dict[str, bool]:
+        target = BindingTarget.parse(harness)
         entry = self.queries.require_entry(skill_ref)
         if entry.kind != "managed":
             raise MutationError(f"only managed skills can be toggled; this is {display_status(entry)}", status=400)
         if entry.package_dir is None:
             raise MutationError("managed skill is missing its package directory name", status=500)
-        adapter = self.read_models.require_enabled_adapter(harness)
-        adapter.disable_shared_package(entry.package_dir)
-        self._record_binding(entry.package_dir, harness, bound=False)
+        adapter = self.read_models.require_enabled_adapter(str(target))
+        adapter.disable_shared_package(entry.package_dir, scope=target.scope)
+        self._record_binding(entry.package_dir, target, bound=False)
         self.read_models.invalidate()
         return {"ok": True}
 
@@ -193,12 +207,13 @@ class SkillsMutationService:
         inventory there would recursively invoke reconciliation and deadlock on the
         same lock, so this path uses the package path returned by adoption instead.
         """
-        adapter = self.read_models.require_enabled_adapter(harness)
-        adapter.enable_shared_package(package_path)
+        target = BindingTarget.parse(harness)
+        adapter = self.read_models.require_enabled_adapter(str(target))
+        adapter.enable_shared_package(package_path, scope=target.scope)
         # Safe despite the caller's reconciliation lock: that is a different lock from
         # the manifest's, and store.ingest() already takes the manifest lock on this
         # same path during adoption.
-        self._record_binding(package_path.name, harness, bound=True)
+        self._record_binding(package_path.name, target, bound=True)
         self.read_models.invalidate()
 
     def manage_all_skills(self) -> dict[str, object]:
@@ -267,7 +282,7 @@ class SkillsMutationService:
         if entry.package_dir is None or entry.package_path is None:
             raise MutationError("managed skill is missing its shared package metadata", status=500)
 
-        enabled_bindings, disabled_bindings = self._partition_bound_adapters(entry.package_dir)
+        enabled_bindings, disabled_bindings = self._partition_bound_adapters(entry)
         if disabled_bindings:
             raise MutationError(
                 "cannot stop managing while disabled harnesses still have bindings: "
@@ -282,11 +297,11 @@ class SkillsMutationService:
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
 
-        for _harness, adapter in enabled_bindings:
-            adapter.prepare_materialize(entry.package_dir, entry.package_path)
+        for _target, adapter, scope in enabled_bindings:
+            adapter.prepare_materialize(entry.package_dir, entry.package_path, scope=scope)
 
-        for _harness, adapter in enabled_bindings:
-            adapter.materialize_binding(entry.package_dir, entry.package_path)
+        for _target, adapter, scope in enabled_bindings:
+            adapter.materialize_binding(entry.package_dir, entry.package_path, scope=scope)
 
         try:
             self.read_models.store.delete(entry.package_dir)
@@ -305,7 +320,7 @@ class SkillsMutationService:
         if entry.package_dir is None:
             raise MutationError("managed skill is missing its package directory name", status=500)
 
-        enabled_bindings, disabled_bindings = self._partition_bound_adapters(entry.package_dir)
+        enabled_bindings, disabled_bindings = self._partition_bound_adapters(entry)
         if disabled_bindings:
             raise MutationError(
                 "cannot delete while disabled harnesses still have bindings: "
@@ -316,10 +331,10 @@ class SkillsMutationService:
             self.read_models.store.ensure_deletable(entry.package_dir)
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
-        for _harness, adapter in enabled_bindings:
-            adapter.prepare_remove(entry.package_dir)
-        for _harness, adapter in enabled_bindings:
-            adapter.remove_binding(entry.package_dir)
+        for _target, adapter, scope in enabled_bindings:
+            adapter.prepare_remove(entry.package_dir, scope=scope)
+        for _target, adapter, scope in enabled_bindings:
+            adapter.remove_binding(entry.package_dir, scope=scope)
         try:
             self.read_models.store.delete(entry.package_dir)
         except ValueError as error:
@@ -378,17 +393,41 @@ class SkillsMutationService:
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
         canonical_bound_harnesses: set[str] = set()
-        for sighting in harness_sightings:
-            adapter = self.read_models.require_enabled_adapter(sighting.harness)
-            if sighting.scope == "canonical":
-                adapter.adopt_local_copy(existing_dir=sighting.path, package_path=ingested)
-                canonical_bound_harnesses.add(sighting.harness)
-        for sighting in harness_sightings:
-            if sighting.harness in canonical_bound_harnesses:
-                continue
-            adapter = self.read_models.require_enabled_adapter(sighting.harness)
-            adapter.enable_shared_package(ingested)
-            canonical_bound_harnesses.add(sighting.harness)
+        adopted_copies: list[tuple[SkillsHarnessAdapter, str, str | None]] = []
+        try:
+            for sighting in harness_sightings:
+                adapter = self.read_models.require_enabled_adapter(sighting.harness)
+                target = BindingTarget.parse(sighting.harness)
+                if sighting.scope == "canonical":
+                    adapter.adopt_local_copy(
+                        existing_dir=sighting.path,
+                        package_path=ingested,
+                        scope=target.scope,
+                    )
+                    adopted_copies.append((adapter, ingested.name, target.scope))
+                    canonical_bound_harnesses.add(str(target))
+            for sighting in harness_sightings:
+                target = BindingTarget.parse(sighting.harness)
+                if str(target) in canonical_bound_harnesses:
+                    continue
+                adapter = self.read_models.require_enabled_adapter(sighting.harness)
+                adapter.enable_shared_package(ingested, scope=target.scope)
+                canonical_bound_harnesses.add(str(target))
+        except Exception:
+            # Adoption is one transaction from the user's perspective.  Restore
+            # every physical Bot copy that was already replaced before removing
+            # the newly-ingested canonical package.  The restore is best effort so
+            # the original mutation error remains the useful one to the caller.
+            for adapter, package_dir, scope in reversed(adopted_copies):
+                try:
+                    adapter.materialize_binding(package_dir, ingested, scope=scope)
+                except Exception:
+                    pass
+            try:
+                self.read_models.store.delete(ingested.name)
+            except Exception:
+                pass
+            raise
         # Adoption binds every harness the skill was already sitting in; record that
         # as intent so a synced store can rebuild it, not just the store contents.
         for bound_harness in sorted(canonical_bound_harnesses):
@@ -401,22 +440,56 @@ class SkillsMutationService:
 
     def _partition_bound_adapters(
         self,
-        package_dir: str,
-    ) -> tuple[list[tuple[str, SkillsHarnessAdapter]], list[tuple[str, SkillsHarnessAdapter]]]:
+        entry: InventoryEntry,
+    ) -> tuple[
+        list[tuple[str, SkillsHarnessAdapter, str | None]],
+        list[tuple[str, SkillsHarnessAdapter, str | None]],
+    ]:
         enabled = set(self.read_models.enabled_harnesses())
-        enabled_bindings: list[tuple[str, SkillsHarnessAdapter]] = []
-        disabled_bindings: list[tuple[str, SkillsHarnessAdapter]] = []
+        enabled_bindings: list[tuple[str, SkillsHarnessAdapter, str | None]] = []
+        disabled_bindings: list[tuple[str, SkillsHarnessAdapter, str | None]] = []
+        seen: set[tuple[str, str | None]] = set()
+
+        # Harness-wide bindings must be checked independently of the visible
+        # inventory: a harness disabled in Settings is deliberately omitted from
+        # scans, but its existing link still has to block a destructive operation.
         for adapter in self.read_models.all_adapters():
-            if not adapter.has_binding(package_dir):
+            if not adapter.has_binding(entry.package_dir or ""):
                 continue
-            if adapter.harness in enabled:
-                enabled_bindings.append((adapter.harness, adapter))
+            target = BindingTarget(adapter.harness)
+            seen.add((target.harness, target.scope))
+            item = (str(target), adapter, target.scope)
+            (enabled_bindings if target.harness in enabled else disabled_bindings).append(item)
+
+        # Scoped bindings have no adapter-level default path, so their exact target
+        # is carried by the canonical sighting produced by the profile root.
+        for sighting in entry.sightings:
+            if sighting.kind != "harness" or sighting.harness is None:
+                continue
+            target = BindingTarget.parse(sighting.harness)
+            key = (target.harness, target.scope)
+            if key in seen:
+                continue
+            adapter = self.read_models.find_adapter(str(target))
+            if adapter is None or not adapter.has_binding(
+                entry.package_dir or "", scope=target.scope
+            ):
+                continue
+            seen.add(key)
+            item = (str(target), adapter, target.scope)
+            if target.harness in enabled:
+                enabled_bindings.append(item)
             else:
-                disabled_bindings.append((adapter.harness, adapter))
+                disabled_bindings.append(item)
         return enabled_bindings, disabled_bindings
 
-    def _describe_harnesses(self, bindings: list[tuple[str, SkillsHarnessAdapter]]) -> str:
-        return ", ".join(adapter.label for _harness, adapter in bindings)
+    def _describe_harnesses(
+        self, bindings: list[tuple[str, SkillsHarnessAdapter, str | None]]
+    ) -> str:
+        return ", ".join(
+            f"{adapter.label}{f' ({target})' if scope is not None else ''}"
+            for target, adapter, scope in bindings
+        )
 
 
 def _origin_harness_for_entry(harness_sightings) -> str | None:

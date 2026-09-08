@@ -32,15 +32,18 @@ import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
 import {
   AgentSkillsFieldEditor,
+  deriveSkillTagOptions,
   type AdoptedSkillOption,
+  type SkillTagOption,
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
 
-interface AgentDetailContentProps {
+export interface AgentDetailContentProps {
   detail: AgentDetailDto;
   knownTags?: string[];
   knownSkills?: AdoptedSkillOption[];
+  tagOptions?: SkillTagOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   actionErrorMessage: string | null;
@@ -52,6 +55,7 @@ export function AgentDetailContent({
   detail,
   knownTags,
   knownSkills,
+  tagOptions: tagOptionsProp,
   pendingPerHarnessKeys,
   onToggleHarness,
   actionErrorMessage,
@@ -78,8 +82,22 @@ export function AgentDetailContent({
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
   }, [knownSkills, skillsListQuery.data?.rows]);
+
+  const effectiveTagOptions = useMemo<SkillTagOption[]>(() => {
+    if (tagOptionsProp !== undefined) {
+      return tagOptionsProp;
+    }
+    if (skillsListQuery.data?.rows && skillsListQuery.data.rows.length > 0) {
+      return deriveSkillTagOptions(skillsListQuery.data.rows);
+    }
+    if (adoptedSkills.length > 0) {
+      return deriveSkillTagOptions(adoptedSkills);
+    }
+    return [];
+  }, [tagOptionsProp, skillsListQuery.data?.rows, adoptedSkills]);
 
   const [localActionError, setLocalActionError] = useState<string | null>(null);
   const errorMessage = actionErrorMessage || localActionError;
@@ -143,6 +161,8 @@ export function AgentDetailContent({
   const [skills, setSkills] = useState<string[]>(initialSkills);
   const [colorStr, setColorStr] = useState(detail.color ?? "");
   const [modelStr, setModelStr] = useState(detail.model ?? "");
+  const [hermesProviderStr, setHermesProviderStr] = useState(detail.hermesProvider ?? "");
+  const [hermesModelStr, setHermesModelStr] = useState(detail.hermesModel ?? "");
   const [effortStr, setEffortStr] = useState(detail.effort ?? "");
   const [allowedSubagentsStr, setAllowedSubagentsStr] = useState(detail.allowedSubagents ?? "");
   const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
@@ -159,6 +179,8 @@ export function AgentDetailContent({
     setSkills((detail.skills || []).map((s) => s.slug));
     setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
+    setHermesProviderStr(detail.hermesProvider ?? "");
+    setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
     setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
@@ -230,7 +252,7 @@ export function AgentDetailContent({
         label: "Model",
         value: modelStr,
         onChange: setModelStr,
-        placeholder: "e.g. sonnet, opus — empty clears the key",
+        placeholder: "Model identifier — empty clears the key",
       },
       {
         key: "effort",
@@ -269,6 +291,7 @@ export function AgentDetailContent({
       },
       {
         key: "skills",
+        wrapInLabel: false,
         label: "Skills",
         value: skills.join(", "),
         onChange: (val) => setSkills(parseSkillSlugs(val)),
@@ -280,6 +303,7 @@ export function AgentDetailContent({
           <AgentSkillsFieldEditor
             skills={skills}
             knownSkills={adoptedSkills}
+            tagOptions={effectiveTagOptions}
             onChange={setSkills}
             disabled={disabled}
           />
@@ -334,6 +358,7 @@ export function AgentDetailContent({
       toolsStr,
       skills,
       adoptedSkills,
+      effectiveTagOptions,
       allowedSubagentsStr,
       maxTurnsStr,
       isolationStr,
@@ -348,6 +373,8 @@ export function AgentDetailContent({
 
     if (colorStr !== (detail.color ?? "")) return true;
     if (modelStr !== (detail.model ?? "")) return true;
+    if (hermesProviderStr !== (detail.hermesProvider ?? "")) return true;
+    if (hermesModelStr !== (detail.hermesModel ?? "")) return true;
     if (effortStr !== (detail.effort ?? "")) return true;
     if (allowedSubagentsStr !== (detail.allowedSubagents ?? "")) return true;
     if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
@@ -368,7 +395,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -377,6 +404,8 @@ export function AgentDetailContent({
     setSkills(initialSkills);
     setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
+    setHermesProviderStr(detail.hermesProvider ?? "");
+    setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
     setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
@@ -461,6 +490,8 @@ export function AgentDetailContent({
           allowedSubagents: finalAllowedSubagents.trim(),
           maxTurns: finalMaxTurns.trim(),
           isolation: finalIsolation.trim(),
+          hermesProvider: hermesProviderStr.trim(),
+          hermesModel: hermesModelStr.trim(),
           metadata: metadataPayload,
         },
       });
@@ -589,17 +620,56 @@ export function AgentDetailContent({
               </Suspense>
             )}
             editFrontmatter={(
-              <FrontmatterEditor
-                knownFields={knownFields}
-                otherEntries={otherEntries}
-                onChangeOtherEntries={setOtherEntries}
-                rawYaml={rawYaml}
-                onChangeRawYaml={setRawYaml}
-                mode={frontmatterMode}
-                onModeChange={setFrontmatterMode}
-                validationError={null}
-                disabled={updateMutation.isPending}
-              />
+              <>
+                <FrontmatterEditor
+                  knownFields={knownFields}
+                  otherEntries={otherEntries}
+                  onChangeOtherEntries={setOtherEntries}
+                  rawYaml={rawYaml}
+                  onChangeRawYaml={setRawYaml}
+                  mode={frontmatterMode}
+                  onModeChange={setFrontmatterMode}
+                  validationError={null}
+                  disabled={updateMutation.isPending}
+                />
+                <div className="frontmatter-editor hermes-profile-editor">
+                  <div className="frontmatter-editor__header">
+                    <span className="frontmatter-editor__title">Hermes Profile</span>
+                  </div>
+                  <div className="frontmatter-editor__known-fields">
+                    <label className="frontmatter-editor__field">
+                      <span className="hermes-profile-editor__label">Hermes Provider</span>
+                      <input
+                        type="text"
+                        className="frontmatter-editor__input"
+                        value={hermesProviderStr}
+                        onChange={(event) => setHermesProviderStr(event.target.value)}
+                        disabled={updateMutation.isPending}
+                        placeholder="Provider name from your Hermes setup"
+                        aria-label="Hermes Provider"
+                      />
+                    </label>
+                    <label className="frontmatter-editor__field">
+                      <span className="hermes-profile-editor__label">Hermes Model</span>
+                      <input
+                        type="text"
+                        className="frontmatter-editor__input"
+                        value={hermesModelStr}
+                        onChange={(event) => setHermesModelStr(event.target.value)}
+                        disabled={updateMutation.isPending}
+                        placeholder="Model id from your Hermes setup"
+                        aria-label="Hermes Model"
+                      />
+                    </label>
+                  </div>
+                  <p className="frontmatter-editor__note">
+                    Hermes profile skills and agents are verified supported targets. Values are
+                    passed through to Hermes. HAM-managed Bots are addressed as hermes -p
+                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
+                    sharing this profile's skills with a Codex app-server subprocess are out of scope.
+                  </p>
+                </div>
+              </>
             )}
             bodyValue={prompt}
             onBodyChange={setPrompt}

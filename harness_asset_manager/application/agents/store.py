@@ -11,7 +11,7 @@ from harness_asset_manager.errors import MutationError
 from harness_asset_manager.portable_paths import is_sync_artifact
 
 from .model import AgentDefinition, AgentIssue, AgentParseError
-from .parser import parse_agent_file, render_agent_document
+from .parser import parse_agent_file, parse_hermes_extras, render_agent_document
 
 _SLUG_SAFE = re.compile(r"[^a-z0-9._-]+")
 
@@ -45,6 +45,11 @@ class AgentStore:
         """Return the opaque Codex metadata sidecar for a stored agent."""
         self.path_for(slug)  # validate the slug before constructing a second path
         return self.agents_root / f".{slug}.codex.toml"
+
+    def hermes_extras_path(self, slug: str) -> Path:
+        """Return the optional Hermes profile metadata sidecar for a stored agent."""
+        self.path_for(slug)
+        return self.agents_root / f".{slug}.hermes.toml"
 
     def scan(self) -> tuple[tuple[AgentDefinition, ...], tuple[AgentIssue, ...]]:
         agents: list[AgentDefinition] = []
@@ -94,6 +99,8 @@ class AgentStore:
         allowed_subagents: str | None = None,
         max_turns: str | None = None,
         isolation: str | None = None,
+        hermes_provider: str | None = None,
+        hermes_model: str | None = None,
     ) -> AgentDefinition:
         slug = slugify(name)
         path = self.path_for(slug)
@@ -116,6 +123,17 @@ class AgentStore:
                 isolation=isolation,
             ),
         )
+        self.write_hermes_extras(
+            slug,
+            {
+                key: value
+                for key, value in (
+                    ("provider", hermes_provider),
+                    ("model", hermes_model),
+                )
+                if value
+            },
+        )
         self._notify_write(slug)
         return self._load_agent(path)
 
@@ -134,11 +152,25 @@ class AgentStore:
         allowed_subagents: str | None = None,
         max_turns: str | None = None,
         isolation: str | None = None,
+        hermes_provider: str | None = None,
+        hermes_model: str | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
     ) -> AgentDefinition:
         current = self.get(slug)
         if current is None:
             raise MutationError(f"agent not found: {slug}")
+        next_hermes = dict(current.hermes_extras)
+        if hermes_provider is not None:
+            if hermes_provider:
+                next_hermes["provider"] = hermes_provider.strip()
+            else:
+                next_hermes.pop("provider", None)
+        if hermes_model is not None:
+            if hermes_model:
+                next_hermes["model"] = hermes_model.strip()
+            else:
+                next_hermes.pop("model", None)
+
         atomic_write_text(
             current.path,
             render_agent_document(
@@ -163,6 +195,7 @@ class AgentStore:
                 extra_metadata=metadata,
             ),
         )
+        self.write_hermes_extras(slug, next_hermes)
         self._notify_write(slug)
         return self._load_agent(current.path)
 
@@ -175,6 +208,16 @@ class AgentStore:
     def write_codex_extras(self, slug: str, extras: dict[str, object]) -> None:
         """Persist unmodeled Codex TOML fields outside the shared Markdown file."""
         path = self.codex_extras_path(slug)
+        if extras:
+            import tomli_w
+
+            atomic_write_text(path, tomli_w.dumps(extras))
+        elif path.exists():
+            path.unlink()
+
+    def write_hermes_extras(self, slug: str, extras: dict[str, object]) -> None:
+        """Persist optional Hermes provider/model choices outside shared Markdown."""
+        path = self.hermes_extras_path(slug)
         if extras:
             import tomli_w
 
@@ -208,6 +251,9 @@ class AgentStore:
         extras_path = self.codex_extras_path(slug)
         if extras_path.exists():
             extras_path.unlink()
+        hermes_path = self.hermes_extras_path(slug)
+        if hermes_path.exists():
+            hermes_path.unlink()
 
     def _notify_write(self, slug: str) -> None:
         if self._on_store_write is not None:
@@ -215,16 +261,36 @@ class AgentStore:
 
     def _load_agent(self, path: Path) -> AgentDefinition:
         agent = parse_agent_file(path)
+        codex_extras: dict[str, object] = {}
         extras_path = self.codex_extras_path(path.stem)
-        if not extras_path.is_file():
-            return agent
-        try:
-            raw = tomllib.loads(extras_path.read_text(encoding="utf-8"))
-        except (OSError, tomllib.TOMLDecodeError) as error:
-            raise AgentParseError(f"invalid Codex metadata for {path.stem}: {error}") from error
-        if not isinstance(raw, dict):
-            raise AgentParseError(f"Codex metadata for {path.stem} must be a table")
-        return replace(agent, codex_extras=raw)
+        if extras_path.is_file():
+            try:
+                raw = tomllib.loads(extras_path.read_text(encoding="utf-8"))
+            except (OSError, tomllib.TOMLDecodeError) as error:
+                raise AgentParseError(f"invalid Codex metadata for {path.stem}: {error}") from error
+            if not isinstance(raw, dict):
+                raise AgentParseError(f"Codex metadata for {path.stem} must be a table")
+            codex_extras = raw
+
+        hermes_extras: dict[str, object] = {}
+        hermes_path = self.hermes_extras_path(path.stem)
+        if hermes_path.is_file():
+            try:
+                raw = tomllib.loads(hermes_path.read_text(encoding="utf-8"))
+            except (OSError, tomllib.TOMLDecodeError) as error:
+                raise AgentParseError(f"invalid Hermes metadata for {path.stem}: {error}") from error
+            if not isinstance(raw, dict):
+                raise AgentParseError(f"Hermes metadata for {path.stem} must be a table")
+            hermes_extras = raw
+
+        provider, hermes_model = parse_hermes_extras(hermes_extras)
+        return replace(
+            agent,
+            codex_extras=codex_extras,
+            hermes_extras=hermes_extras,
+            hermes_provider=provider,
+            hermes_model=hermes_model,
+        )
 
 
 __all__ = ["AgentStore", "slugify"]

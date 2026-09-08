@@ -791,6 +791,22 @@ class AgentStoreTests(AgentsFixture):
         self.assertEqual(agent.slug, "chief-of-staff")
         self.assertTrue((self.store_root / "chief-of-staff.md").is_file())
 
+    def test_agents_without_hermes_settings_round_trip_without_phase_four_artifacts(self) -> None:
+        agent = self.store.create(name="Plain Agent", description="d", prompt="p")
+        markdown = self.store.path_for(agent.slug)
+        original = markdown.read_bytes()
+
+        reloaded = self.store.get(agent.slug)
+
+        self.assertIsNotNone(reloaded)
+        assert reloaded is not None
+        self.assertIsNone(reloaded.hermes_provider)
+        self.assertIsNone(reloaded.hermes_model)
+        self.assertEqual(markdown.read_bytes(), original)
+        self.assertFalse(self.store.hermes_extras_path(agent.slug).exists())
+        self.assertNotIn("hermes_provider", markdown.read_text(encoding="utf-8"))
+        self.assertNotIn("hermes_model", markdown.read_text(encoding="utf-8"))
+
     def test_create_refuses_a_duplicate(self) -> None:
         self.store.create(name="Dup", description="d", prompt="p")
         with self.assertRaises(MutationError):

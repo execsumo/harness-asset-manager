@@ -48,6 +48,10 @@ export function getHarnessPresentation(logoKey: string | null | undefined): Harn
   if (!logoKey) {
     return null;
   }
-  return HARNESS_LOGO_ASSETS[logoKey as HarnessLogoKey] ?? null;
+  const family = logoKey.split(":", 1)[0] as HarnessLogoKey;
+  return HARNESS_LOGO_ASSETS[family] ?? null;
 }
 
+export function harnessFamily(value: string): string {
+  return value.split(":", 1)[0];
+}
