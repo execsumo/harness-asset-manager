@@ -12,7 +12,9 @@ import { DetailBindingIdentity } from "../../../components/detail/DetailBindingI
 import { FrontmatterSegmentedField } from "../../../components/detail/editing/FrontmatterSegmentedField";
 import {
   AgentSkillsFieldEditor,
+  deriveSkillTagOptions,
   type AdoptedSkillOption,
+  type SkillTagOption,
 } from "./detail/AgentSkillsFieldEditor";
 import {
   ALLOWED_SUBAGENTS_VALUES,
@@ -48,6 +50,8 @@ export function CreateAgentDialog({
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("");
   const [model, setModel] = useState("");
+  const [hermesProvider, setHermesProvider] = useState("");
+  const [hermesModel, setHermesModel] = useState("");
   const [effort, setEffort] = useState("");
   const [toolsStr, setToolsStr] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
@@ -78,6 +82,8 @@ export function CreateAgentDialog({
     setDescription("");
     setColor("");
     setModel("");
+    setHermesProvider("");
+    setHermesModel("");
     setEffort("");
     setToolsStr("");
     setSkills([]);
@@ -111,7 +117,13 @@ export function CreateAgentDialog({
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
+  }, [skillsListQuery.data?.rows]);
+
+  const tagOptions = useMemo<SkillTagOption[]>(() => {
+    if (!skillsListQuery.data?.rows) return [];
+    return deriveSkillTagOptions(skillsListQuery.data.rows);
   }, [skillsListQuery.data?.rows]);
 
   const trimmedName = name.trim();
@@ -158,6 +170,12 @@ export function CreateAgentDialog({
     }
     if (model.trim()) {
       payload.model = model.trim();
+    }
+    if (hermesProvider.trim()) {
+      payload.hermesProvider = hermesProvider.trim();
+    }
+    if (hermesModel.trim()) {
+      payload.hermesModel = hermesModel.trim();
     }
     if (effort) {
       payload.effort = effort;
@@ -307,7 +325,7 @@ export function CreateAgentDialog({
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder="e.g. sonnet, opus"
+                        placeholder="Model identifier"
                         value={model}
                         onChange={(e) => setModel(e.target.value)}
                         disabled={isPending}
@@ -362,6 +380,7 @@ export function CreateAgentDialog({
                       <AgentSkillsFieldEditor
                         skills={skills}
                         knownSkills={adoptedSkills}
+                        tagOptions={tagOptions}
                         onChange={setSkills}
                         disabled={isPending}
                       />
@@ -389,6 +408,38 @@ export function CreateAgentDialog({
                       />
                     </div>
                   </div>
+
+                  <div className="dialog-form-fields dialog-form-fields--split">
+                    <label className="form-field">
+                      <span className="form-field__label">Hermes Provider</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Provider name from your Hermes setup"
+                        value={hermesProvider}
+                        onChange={(e) => setHermesProvider(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="form-field">
+                      <span className="form-field__label">Hermes Model</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Model id from your Hermes setup"
+                        value={hermesModel}
+                        onChange={(e) => setHermesModel(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+                  </div>
+                  <p className="agent-dialog-harness-hint">
+                    Hermes profile skills and agents are verified supported targets. Hermes settings
+                    are passed through as entered. HAM-managed Bots are addressed as hermes -p
+                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
+                    sharing this profile's skills with a Codex app-server subprocess are out of scope.
+                  </p>
                 </div>
               </section>
 

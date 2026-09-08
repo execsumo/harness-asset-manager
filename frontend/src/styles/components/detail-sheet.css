@@ -177,6 +177,20 @@
   font-size: var(--font-size-xs);
 }
 
+.detail-sheet__binding-targets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.detail-sheet__binding-target {
+  padding: 1px var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 .detail-sheet__binding-actions {
   display: flex;
   gap: var(--space-1);

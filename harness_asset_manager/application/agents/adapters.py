@@ -172,7 +172,9 @@ class CodexAgentDocument:
     extras: Mapping[str, object]
 
 
-def parse_codex_agent(path: Path) -> CodexAgentDocument:
+def parse_codex_agent(
+    path: Path, *, fallback_name: str | None = None
+) -> CodexAgentDocument:
     """Read a Codex TOML agent without discarding unmodeled fields.
 
     The inverse of :func:`render_codex_agent`, so a Codex-authored agent can be
@@ -186,7 +188,9 @@ def parse_codex_agent(path: Path) -> CodexAgentDocument:
         raise AgentParseError(f"invalid Codex agent TOML: {error}") from error
     if not isinstance(data, dict):
         raise AgentParseError("Codex agent TOML must be a table")
-    name = str(data.get("name") or path.stem).strip()
+    name = str(
+        data.get("name") or (path.stem if fallback_name is None else fallback_name)
+    ).strip()
     return CodexAgentDocument(
         name,
         str(data.get("description") or "").strip(),

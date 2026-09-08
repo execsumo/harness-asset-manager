@@ -19,6 +19,7 @@ from .contracts import (
     HarnessDefinition,
     HarnessStatus,
     PathResolver,
+    ScopedPathResolver,
     SubtreePath,
     SubtreePathResolver,
 )
@@ -46,6 +47,7 @@ __all__ = [
     "HarnessSupportPreferences",
     "HarnessSupportStore",
     "PathResolver",
+    "ScopedPathResolver",
     "ResolutionContext",
     "SubtreePath",
     "SubtreePathResolver",

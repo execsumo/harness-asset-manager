@@ -16,7 +16,10 @@ export type SkillsSummary = components["schemas"]["SkillsSummaryResponse"];
 export type HarnessColumn = components["schemas"]["HarnessColumnResponse"];
 export type SkillRowActionsDto = components["schemas"]["SkillRowActionsResponse"];
 export type HarnessCell = components["schemas"]["HarnessCellResponse"];
-export type SkillTableRowDto = components["schemas"]["SkillTableRowResponse"];
+/** Scoped Hermes bindings are emitted by the presenter ahead of the schema refresh. */
+export type SkillTableRowDto = components["schemas"]["SkillTableRowResponse"] & {
+  linkedTargets?: string[];
+};
 export type SkillsPageDto = components["schemas"]["SkillsPageResponse"];
 export type SkillDetailActionsDto = components["schemas"]["SkillDetailActionsResponse"];
 export type SkillSourceStatusDto = components["schemas"]["SkillSourceStatusResponse"];
@@ -24,7 +27,9 @@ export type SkillLocation = components["schemas"]["SkillLocationResponse"];
 export type SkillSourceLinks = components["schemas"]["SkillSourceLinksResponse"];
 export type SkillMetadataEntry = components["schemas"]["SkillMetadataEntryResponse"];
 export type SkillConformanceIssue = components["schemas"]["SkillConformanceIssueResponse"];
-export type SkillDetailDto = components["schemas"]["SkillDetailResponse"];
+export type SkillDetailDto = components["schemas"]["SkillDetailResponse"] & {
+  linkedTargets?: string[];
+};
 export type UpdateSkillDocumentRequest = components["schemas"]["UpdateSkillDocumentRequest"];
 export type SetSkillTagsRequest = components["schemas"]["SetSkillTagsRequest"];
 export type SkillTagsResponse = components["schemas"]["SkillTagsResponse"];

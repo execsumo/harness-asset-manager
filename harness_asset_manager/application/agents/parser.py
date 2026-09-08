@@ -19,6 +19,16 @@ _rt_yaml.default_flow_style = False
 RETIRED_KEYS = frozenset({"capabilities", "harnesses"})
 
 
+def parse_hermes_extras(raw: Mapping[str, object]) -> tuple[str | None, str | None]:
+    """Read the optional Hermes sidecar values without imposing a provider vocabulary."""
+    provider = raw.get("provider")
+    model = raw.get("model")
+    return (
+        str(provider).strip() if provider is not None else None,
+        str(model).strip() if model is not None else None,
+    )
+
+
 def parse_agent_file(path: Path) -> AgentDefinition:
     try:
         document = path.read_text(encoding="utf-8")
@@ -249,6 +259,7 @@ def _str_tuple(value: object, label: str, *, dedupe: bool = False) -> tuple[str,
 
 
 __all__ = [
+    "parse_hermes_extras",
     "parse_agent_document",
     "parse_agent_file",
     "render_agent_document",

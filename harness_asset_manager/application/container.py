@@ -7,15 +7,11 @@ from pathlib import Path
 
 from harness_asset_manager.atomic_files import file_lock
 from harness_asset_manager.harness import HarnessKernelService, HarnessSupportStore
+from harness_asset_manager.harness.catalog import _hermes_root
 from harness_asset_manager.harness.resolution import resolve_context
 from harness_asset_manager.hashing import hash_file
 from harness_asset_manager.paths import AppPaths, resolve_app_paths
 
-from .bootstrap import (
-    BootstrapApplier,
-    BootstrapDismissalStore,
-    BootstrapPlanner,
-)
 from .agents import (
     AgentAuditLog,
     AgentBindingLedger,
@@ -27,6 +23,11 @@ from .agents import (
     resolve_agent_targets,
 )
 from .asset_tags import AssetTagService, AssetTagStore
+from .bootstrap import (
+    BootstrapApplier,
+    BootstrapDismissalStore,
+    BootstrapPlanner,
+)
 from .cli_marketplace import CliMarketplaceCatalog
 from .config_auto_adopt import McpAutoAdoptService, ObservedConfigAutoAdoptService
 from .configs.mutations import ConfigsMutationService
@@ -132,6 +133,7 @@ class BackendContainer:
     agents_mutations: AgentMutationService
     agents_audit: AgentAuditLog
     agents_reconcile: AgentReconcileService
+    hermes_root: Path
     configs_queries: ConfigsQueryService
     configs_mutations: ConfigsMutationService
     mutation_audit: MutationAuditJournal
@@ -727,6 +729,7 @@ def build_backend_container(
         agents_mutations=audited_agents_mutations,
         agents_audit=agents_audit,
         agents_reconcile=audited_agents_reconcile,
+        hermes_root=_hermes_root(harness_kernel.context),
         configs_queries=configs_queries,
         configs_mutations=audited_configs_mutations,
         mutation_audit=mutation_audit,

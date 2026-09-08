@@ -13,6 +13,7 @@ import type {
 } from "../../model/types";
 import { SkillMatrixHarnessCell } from "./SkillMatrixHarnessCell";
 import { skillStatusConcept } from "../../../../lib/product-language";
+import { hermesBotLabel, hermesBotScopes } from "../../model/hermesTargets";
 
 interface MatrixRowProps {
   row: SkillListRow;
@@ -69,6 +70,7 @@ export function MatrixRow({
   const pendingStructuralAction = pendingStructuralActions?.get(row.skillRef) ?? null;
   const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
   const displayTags = (row.tags || []).filter((t) => t.toLowerCase() !== "starred");
+  const hermesBots = hermesBotScopes(row.linkedTargets).map(hermesBotLabel);
 
   return (
     <tr
@@ -114,6 +116,14 @@ export function MatrixRow({
           <OverflowTooltipText as="p" className="matrix-table__description">
             {row.description}
           </OverflowTooltipText>
+        ) : null}
+        {hermesBots.length > 0 ? (
+          <div
+            className="matrix-table__description"
+            aria-label={`Hermes Bots: ${hermesBots.join(", ")}`}
+          >
+            Hermes Bots: {hermesBots.join(", ")}
+          </div>
         ) : null}
       </td>
 
