@@ -14,6 +14,7 @@ import { AdoptConflictDialog } from "../components/AdoptConflictDialog";
 import { AgentsMatrixView } from "../components/AgentsMatrixView";
 import { CreateAgentDialog } from "../components/CreateAgentDialog";
 import { AgentDetailModal } from "../components/detail/AgentDetailModal";
+import { deriveSkillTagOptions } from "../components/detail/AgentSkillsFieldEditor";
 import { TagFilterBar } from "../../../components/tags/TagFilterBar";
 import {
   agentsStatusCounts,
@@ -109,7 +110,13 @@ export default function AgentsInUsePage() {
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
+  }, [skillsQuery.data?.rows]);
+
+  const skillTagOptions = useMemo(() => {
+    if (!skillsQuery.data?.rows) return [];
+    return deriveSkillTagOptions(skillsQuery.data.rows);
   }, [skillsQuery.data?.rows]);
 
   const toggleTagFilter = useCallback(
@@ -443,6 +450,7 @@ export default function AgentsInUsePage() {
         agentRef={detailRef}
         knownTags={knownTagNames}
         knownSkills={knownSkills}
+        tagOptions={skillTagOptions}
         pendingPerHarnessKeys={pendingPerHarnessKeys}
         onToggleHarness={handleToggleHarness}
         onClose={() => setDetailRef(null)}

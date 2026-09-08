@@ -12,7 +12,9 @@ import { DetailBindingIdentity } from "../../../components/detail/DetailBindingI
 import { FrontmatterSegmentedField } from "../../../components/detail/editing/FrontmatterSegmentedField";
 import {
   AgentSkillsFieldEditor,
+  deriveSkillTagOptions,
   type AdoptedSkillOption,
+  type SkillTagOption,
 } from "./detail/AgentSkillsFieldEditor";
 import {
   ALLOWED_SUBAGENTS_VALUES,
@@ -115,7 +117,13 @@ export function CreateAgentDialog({
       .map((row) => ({
         slug: row.skillRef.replace(/^shared:/, ""),
         name: row.name,
+        tags: row.tags ?? [],
       }));
+  }, [skillsListQuery.data?.rows]);
+
+  const tagOptions = useMemo<SkillTagOption[]>(() => {
+    if (!skillsListQuery.data?.rows) return [];
+    return deriveSkillTagOptions(skillsListQuery.data.rows);
   }, [skillsListQuery.data?.rows]);
 
   const trimmedName = name.trim();
@@ -372,6 +380,7 @@ export function CreateAgentDialog({
                       <AgentSkillsFieldEditor
                         skills={skills}
                         knownSkills={adoptedSkills}
+                        tagOptions={tagOptions}
                         onChange={setSkills}
                         disabled={isPending}
                       />

@@ -1,12 +1,13 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { AgentDetailView } from "./AgentDetailView";
-import type { AdoptedSkillOption } from "./AgentSkillsFieldEditor";
+import type { AdoptedSkillOption, SkillTagOption } from "./AgentSkillsFieldEditor";
 
 interface AgentDetailModalProps {
   open: boolean;
   agentRef: string | null;
   knownTags?: string[];
   knownSkills?: AdoptedSkillOption[];
+  tagOptions?: SkillTagOption[];
   pendingPerHarnessKeys: ReadonlySet<string>;
   onToggleHarness: (ref: string, harness: string, disable: boolean) => Promise<void>;
   onClose: () => void;
@@ -17,6 +18,7 @@ export function AgentDetailModal({
   agentRef,
   knownTags,
   knownSkills,
+  tagOptions,
   pendingPerHarnessKeys,
   onToggleHarness,
   onClose,
@@ -35,6 +37,7 @@ export function AgentDetailModal({
               agentRef={agentRef}
               knownTags={knownTags}
               knownSkills={knownSkills}
+              tagOptions={tagOptions}
               pendingPerHarnessKeys={pendingPerHarnessKeys}
               onToggleHarness={onToggleHarness}
               onClose={onClose}
