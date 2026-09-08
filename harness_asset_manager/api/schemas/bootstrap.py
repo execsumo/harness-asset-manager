@@ -12,6 +12,7 @@ class BootstrapActionDto(BaseModel):
     ref: str
     display_name: str = Field(alias="displayName")
     harness: str
+    binding_target: str | None = Field(alias="bindingTarget", default=None)
     action: Literal["link", "skip", "conflict"]
     target: str = Field(alias="targetPath", default="")
     reason: str | None = None
@@ -42,6 +43,7 @@ class BootstrapApplyResultDto(BaseModel):
     family: str
     ref: str
     harness: str
+    binding_target: str | None = Field(alias="bindingTarget", default=None)
     status: Literal["applied", "failed", "skipped"]
     target: str
     error: str | None = None

@@ -62,6 +62,7 @@ const mixedData = {
       description: "Untracked description",
       displayStatus: "Unmanaged",
       actions: { canManage: true, canStopManaging: false, canDelete: false },
+      linkedTargets: ["hermes:coder"],
       cells: [
         { harness: "codex", label: "Codex", logoKey: "codex", state: "found", interactive: false },
         { harness: "cursor", label: "Cursor", logoKey: "cursor", state: "empty", interactive: false },
@@ -166,6 +167,7 @@ describe("Skills unified inventory page", () => {
     expect(screen.getByRole("table", { name: "Skills harness matrix" })).toBeInTheDocument();
     expect(screen.getByText("Managed Skill")).toBeInTheDocument();
     expect(screen.getByText("Untracked Skill")).toBeInTheDocument();
+    expect(screen.getByText("Hermes Bots: Coder")).toBeInTheDocument();
     expect(screen.getByLabelText("Search skills in use")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sort by Skill" })).toBeInTheDocument();
 

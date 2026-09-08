@@ -1,5 +1,5 @@
 import { UiTooltip } from "../../../components/ui/UiTooltip";
-import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
+import { getHarnessPresentation, harnessFamily } from "../../../components/harness/harnessPresentation";
 import type { AgentInventoryDto, AgentInventoryEntryDto } from "../api/types";
 
 interface AgentsHarnessLogoStackProps {
@@ -19,8 +19,9 @@ export function AgentsHarnessLogoStack({ bindings, columns }: AgentsHarnessLogoS
     <div className="skill-card__harness-row">
       <div className="harness-stack" aria-label={ariaLabel}>
         {enabledBindings.map((binding, index) => {
-          const presentation = getHarnessPresentation(logoByHarness.get(binding.harness) ?? null);
-          const label = labelByHarness.get(binding.harness) ?? binding.harness;
+          const family = harnessFamily(binding.harness);
+          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? null);
+          const label = labelByHarness.get(family) ?? binding.harness;
           return (
             <UiTooltip key={binding.harness} content={label}>
               <span

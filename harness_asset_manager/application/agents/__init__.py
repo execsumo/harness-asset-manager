@@ -18,6 +18,7 @@ from .ledger import (
 )
 from .model import (
     AgentAdoptConflict,
+    AgentAdoptionValidationError,
     AgentBinding,
     AgentDefinition,
     AgentDetail,
@@ -34,13 +35,19 @@ from .model import (
     validate_max_turns,
 )
 from .mutations import AgentMutationService, BulkAdoptResult, ConflictResolution
-from .parser import parse_agent_document, parse_agent_file, render_agent_document
+from .parser import (
+    parse_agent_document,
+    parse_agent_file,
+    parse_hermes_extras,
+    render_agent_document,
+)
 from .reconcile import AgentReconcileService, ReconcileOutcome
 from .store import AgentStore, slugify
 from .targets import resolve_agent_targets, target_by_id
 
 __all__ = [
     "AgentAdoptConflict",
+    "AgentAdoptionValidationError",
     "AgentAuditLog",
     "AgentBinding",
     "AgentBindingLedger",
@@ -77,6 +84,7 @@ __all__ = [
     "codex_agent_name",
     "parse_agent_document",
     "parse_agent_file",
+    "parse_hermes_extras",
     "parse_codex_agent",
     "render_agent_document",
     "render_codex_agent",
