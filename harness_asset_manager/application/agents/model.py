@@ -318,6 +318,29 @@ class AgentAdoptConflict(MutationError):
         self.harness_path = harness_path
 
 
+class AgentAdoptionValidationError(MutationError):
+    """The donor file is missing fields required by Harness Asset Manager."""
+
+    def __init__(
+        self,
+        missing_fields: tuple[Literal["name", "description", "prompt"], ...],
+        *,
+        rendered: bool = False,
+    ) -> None:
+        fields = ", ".join(missing_fields)
+        super().__init__(
+            f"missing required agent fields: {fields}",
+            status=422,
+            code="missing_required_fields",
+        )
+        self.missing_fields = missing_fields
+        self.guidance = (
+            "Edit its native harness file, fill in the missing fields, save, and try adoption again."
+            if rendered
+            else "Open its details, fill them in, save, and try adoption again."
+        )
+
+
 __all__ = [
     "ALLOWED_SUBAGENTS_VALUES",
     "COLOR_VALUES",
@@ -327,6 +350,7 @@ __all__ = [
     "ISOLATION_VALUES",
     "MAX_TURNS_DEFAULT",
     "AgentAdoptConflict",
+    "AgentAdoptionValidationError",
     "AgentBinding",
     "AgentDefinition",
     "AgentEntry",

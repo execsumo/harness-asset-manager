@@ -111,6 +111,14 @@ class AdoptAgentConflictResponse(BaseModel):
     harnessPath: str
 
 
+class AdoptAgentValidationResponse(BaseModel):
+    """Body of an adoption refused because the donor is incomplete for HAM."""
+
+    code: Literal["missing_required_fields"] = "missing_required_fields"
+    error: str
+    missingFields: list[Literal["name", "description", "prompt"]]
+
+
 class AdoptAgentResponse(BaseModel):
     ok: bool
     ref: str
@@ -220,6 +228,7 @@ class AgentDetailResponse(BaseModel):
 __all__ = [
     "AdoptAgentConflictResponse",
     "AdoptAgentRequest",
+    "AdoptAgentValidationResponse",
     "AdoptAgentResponse",
     "AdoptAllAgentsResponse",
     "AdoptAllSkippedResponse",
