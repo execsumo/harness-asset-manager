@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 import unittest
+from pathlib import Path
+from unittest import mock
 
+from harness_asset_manager.atomic_files import atomic_write_text
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import FakeHomeSpec, seed_skill_package
 
@@ -142,6 +146,92 @@ class AgentsListIsReadOnlyTests(unittest.TestCase):
                 for row in harness.get_json("/api/skills")["rows"]
             }
             self.assertEqual(statuses.get("Auto Local"), "Managed")
+
+
+class HermesProfileFailureTests(unittest.TestCase):
+    def test_profile_config_failure_is_reported_without_rolling_back_create(self) -> None:
+        def fail_profile_config(path: Path, text: str, **kwargs) -> None:
+            if path.name == "config.yaml":
+                raise OSError("simulated Hermes config write failure")
+            atomic_write_text(path, text, **kwargs)
+
+        with AppTestHarness() as harness:
+            with mock.patch(
+                "harness_asset_manager.application.agents.hermes_profile.atomic_write_text",
+                side_effect=fail_profile_config,
+            ):
+                result = harness.post_json(
+                    "/api/agents",
+                    {
+                        "name": "Surviving Agent",
+                        "description": "new description",
+                        "prompt": "new prompt",
+                        "hermesProvider": "chosen-provider",
+                        "hermesModel": "chosen/model",
+                    },
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["harnessFailures"][0]["harness"], "hermes")
+            self.assertIn("simulated Hermes config write failure", result["harnessFailures"][0]["error"])
+
+            detail = harness.get_json("/api/agents/surviving-agent")
+            self.assertEqual(detail["name"], "Surviving Agent")
+            self.assertEqual(detail["description"], "new description")
+            self.assertEqual(detail["prompt"], "new prompt")
+
+    def test_profile_config_failure_is_reported_without_rolling_back_update(self) -> None:
+        def fail_profile_config(path: Path, text: str, **kwargs) -> None:
+            if path.name == "config.yaml":
+                raise OSError("simulated Hermes config write failure")
+            atomic_write_text(path, text, **kwargs)
+
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Existing Agent", "description": "old", "prompt": "old"},
+            )
+            with mock.patch(
+                "harness_asset_manager.application.agents.hermes_profile.atomic_write_text",
+                side_effect=fail_profile_config,
+            ):
+                result = harness.put_json(
+                    "/api/agents/existing-agent",
+                    {
+                        "description": "updated description",
+                        "prompt": "updated prompt",
+                        "hermesProvider": "chosen-provider",
+                        "hermesModel": "chosen/model",
+                    },
+                )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["harnessFailures"][0]["harness"], "hermes")
+            detail = harness.get_json("/api/agents/existing-agent")
+            self.assertEqual(detail["description"], "updated description")
+            self.assertEqual(detail["prompt"], "updated prompt")
+            self.assertEqual(detail["hermesProvider"], "chosen-provider")
+            self.assertEqual(detail["hermesModel"], "chosen/model")
+
+
+class ProductCodeModelIdentifierTests(unittest.TestCase):
+    def test_product_code_has_no_hardcoded_model_or_provider_identifiers(self) -> None:
+        forbidden = re.compile(
+            r"gpt-[0-9]|claude-(?:sonnet|opus)|openai-codex|anthropic|openrouter",
+            re.IGNORECASE,
+        )
+        roots = (
+            Path(__file__).resolve().parents[2] / "harness_asset_manager",
+            Path(__file__).resolve().parents[2] / "frontend/src",
+        )
+        matches = []
+        for root in roots:
+            for path in root.rglob("*"):
+                if path.is_file() and forbidden.search(
+                    path.read_bytes().decode("utf-8", errors="ignore")
+                ):
+                    matches.append(str(path))
+        self.assertEqual(matches, [])
 
 
 class AgentRoutesTests(unittest.TestCase):
@@ -477,6 +567,64 @@ class AgentRoutesTests(unittest.TestCase):
             harness.get_json("/api/agents/claude/../escape", expected_status=404)
             harness.get_json("/api/agents/claude/missing", expected_status=404)
 
+    def test_adoption_reports_missing_ham_fields_and_succeeds_after_edit(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "incomplete.md").write_text(
+                "---\n---\n\n",
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/incomplete/adopt", None, expected_status=422
+            )
+            self.assertEqual(validation["code"], "missing_required_fields")
+            self.assertEqual(validation["missingFields"], ["name", "description", "prompt"])
+            self.assertIn("Agent name", validation["error"])
+            self.assertIn("Description", validation["error"])
+            self.assertIn("System prompt", validation["error"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "incomplete.md").is_file())
+
+            harness.put_json(
+                "/api/agents/claude/incomplete",
+                {
+                    "name": "Incomplete",
+                    "description": "Now complete",
+                    "prompt": "Follow the task instructions.",
+                },
+            )
+            adopted = harness.post_json("/api/agents/claude/incomplete/adopt", None)
+            self.assertEqual(adopted, {"ok": True, "ref": "incomplete"})
+
+    def test_adoption_rejects_falsey_frontmatter_fields(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "falsey.md").write_text(
+                "---\nname: false\ndescription: []\n---\n", encoding="utf-8"
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/falsey/adopt", None, expected_status=422
+            )
+
+            self.assertEqual(validation["missingFields"], ["name", "description", "prompt"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "falsey.md").is_file())
+
+    def test_adoption_documents_generic_body_validation_errors(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            validation = harness.post_json(
+                "/api/agents/claude/stray/adopt",
+                {"onConflict": "discard"},
+                expected_status=422,
+            )
+
+            self.assertEqual(validation["code"], "validation_error")
+            self.assertNotIn("missingFields", validation)
+
     def test_unmanaged_agent_lifecycle_edit_then_adopt_and_manage(self) -> None:
         """Complete lifecycle: unmanaged -> in-place edit -> list -> adopt -> managed edit."""
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
@@ -505,7 +653,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(entry["description"], "edited in harness")
 
             # 4. Adopt the edited unmanaged agent
-            adopt_res = harness.post_json("/api/agents/claude/stray/adopt", {})
+            adopt_res = harness.post_json("/api/agents/claude/stray/adopt", None)
             self.assertTrue(adopt_res["ok"])
             self.assertEqual(adopt_res["ref"], "stray")
 
@@ -576,6 +724,105 @@ class AgentRoutesTests(unittest.TestCase):
             )
             self.assertTrue((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
 
+    def test_adopt_rendered_donor_missing_description_is_rejected(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".codex" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "auditor.toml").write_text(
+                'name = "auditor"\ndeveloper_instructions = "codex instructions"\n',
+                encoding="utf-8",
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            validation = harness.post_json(
+                "/api/agents/codex/auditor/adopt", None, expected_status=422
+            )
+
+            self.assertEqual(validation["code"], "missing_required_fields")
+            self.assertEqual(validation["missingFields"], ["description"])
+            self.assertIn("native harness file", validation["error"])
+            self.assertTrue((harness.spec.home / ".codex" / "agents" / "auditor.toml").is_file())
+
+    def test_adopt_malformed_rendered_donor_returns_a_client_error(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".codex" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "broken.toml").write_text("name = = invalid\n", encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            payload = harness.post_json(
+                "/api/agents/codex/broken/adopt", None, expected_status=400
+            )
+
+            self.assertIn("cannot validate", payload["error"])
+            self.assertTrue((harness.spec.home / ".codex" / "agents" / "broken.toml").is_file())
+
+    def test_adopt_keep_store_resolves_a_conflict_with_an_incomplete_donor(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "stray.md").write_text("---\nname: Stray\n---\n", encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Stray", "description": "ours", "prompt": "ours"},
+            )
+            store_before = (harness.spec.agents_root / "stray.md").read_text(encoding="utf-8")
+
+            harness.post_json("/api/agents/claude/stray/adopt", {}, expected_status=409)
+            result = harness.post_json(
+                "/api/agents/claude/stray/adopt", {"onConflict": "keep_store"}
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(
+                (harness.spec.agents_root / "stray.md").read_text(encoding="utf-8"), store_before
+            )
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
+
+    def test_adopt_replace_store_still_rejects_an_incomplete_donor(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "stray.md").write_text("---\nname: Stray\n---\n", encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Stray", "description": "ours", "prompt": "ours"},
+            )
+            store_before = (harness.spec.agents_root / "stray.md").read_text(encoding="utf-8")
+
+            validation = harness.post_json(
+                "/api/agents/claude/stray/adopt",
+                {"onConflict": "replace_store"},
+                expected_status=422,
+            )
+
+            self.assertEqual(validation["code"], "missing_required_fields")
+            self.assertEqual(validation["missingFields"], ["description", "prompt"])
+            self.assertEqual(
+                (harness.spec.agents_root / "stray.md").read_text(encoding="utf-8"), store_before
+            )
+            self.assertFalse((harness.spec.home / ".claude" / "agents" / "stray.md").is_symlink())
+
+    def test_adopt_unparseable_donor_is_not_reported_as_a_conflict(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "notes.md").write_text("just some notes\n", encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            payload = harness.post_json(
+                "/api/agents/claude/notes/adopt", None, expected_status=400
+            )
+
+            self.assertNotEqual(payload.get("code"), "agent_conflict")
+            self.assertNotIn("conflict", payload)
+            self.assertIn("cannot validate", payload["error"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "notes.md").is_file())
+
     def test_adopt_replace_store_takes_the_harness_version(self) -> None:
         with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
             harness.post_json(
@@ -605,6 +852,23 @@ class AgentRoutesTests(unittest.TestCase):
 
             self.assertEqual(result["adopted"], ["fresh"])
             self.assertEqual([row["ref"] for row in result["skipped"]], ["claude/stray"])
+
+    def test_adopt_all_reports_validation_guidance(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            agents_dir = spec.home / ".claude" / "agents"
+            agents_dir.mkdir(parents=True, exist_ok=True)
+            (agents_dir / "incomplete.md").write_text(
+                "---\nname: Incomplete\n---\n", encoding="utf-8"
+            )
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            result = harness.post_json("/api/agents/adopt-all")
+
+            self.assertEqual(result["adopted"], [])
+            self.assertEqual(result["skipped"][0]["ref"], "claude/incomplete")
+            self.assertIn("Open its details", result["skipped"][0]["reason"])
+            self.assertIn("save, and try adoption again", result["skipped"][0]["reason"])
+            self.assertTrue((harness.spec.home / ".claude" / "agents" / "incomplete.md").is_file())
 
     def test_set_harnesses_and_delete(self) -> None:
         with AppTestHarness() as harness:
