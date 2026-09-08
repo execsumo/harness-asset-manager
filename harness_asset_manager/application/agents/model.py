@@ -166,6 +166,12 @@ class AgentDefinition:
     # outside frontmatter prevents Codex configuration from leaking into the
     # Markdown file symlinked into Claude, Agy, or Cursor.
     codex_extras: Mapping[str, object] = field(default_factory=dict)
+    # Hermes profile settings live in an opaque sidecar, just like Codex-only TOML
+    # fields. Keeping them out of the shared Markdown means a Hermes choice does not
+    # leak into Claude, Cursor, or the other Markdown harnesses.
+    hermes_extras: Mapping[str, object] = field(default_factory=dict)
+    hermes_provider: str | None = None
+    hermes_model: str | None = None
     skills: tuple[str, ...] = ()
     # Contract fields: parsed and rendered as their own frontmatter keys, never
     # treated as custom metadata. Held as strings even where the file spells them as a
@@ -285,6 +291,8 @@ class AgentDetail:
     allowed_subagents: str | None = None
     max_turns: str | None = None
     isolation: str | None = None
+    hermes_provider: str | None = None
+    hermes_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -310,6 +318,29 @@ class AgentAdoptConflict(MutationError):
         self.harness_path = harness_path
 
 
+class AgentAdoptionValidationError(MutationError):
+    """The donor file is missing fields required by Harness Asset Manager."""
+
+    def __init__(
+        self,
+        missing_fields: tuple[Literal["name", "description", "prompt"], ...],
+        *,
+        rendered: bool = False,
+    ) -> None:
+        fields = ", ".join(missing_fields)
+        super().__init__(
+            f"missing required agent fields: {fields}",
+            status=422,
+            code="missing_required_fields",
+        )
+        self.missing_fields = missing_fields
+        self.guidance = (
+            "Edit its native harness file, fill in the missing fields, save, and try adoption again."
+            if rendered
+            else "Open its details, fill them in, save, and try adoption again."
+        )
+
+
 __all__ = [
     "ALLOWED_SUBAGENTS_VALUES",
     "COLOR_VALUES",
@@ -319,6 +350,7 @@ __all__ = [
     "ISOLATION_VALUES",
     "MAX_TURNS_DEFAULT",
     "AgentAdoptConflict",
+    "AgentAdoptionValidationError",
     "AgentBinding",
     "AgentDefinition",
     "AgentEntry",

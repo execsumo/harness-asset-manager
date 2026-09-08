@@ -61,6 +61,7 @@ def skill_detail_payload(
         },
         "harnessCells": [cell_payload(entry, column) for column in columns],
         "locations": [sighting_payload(sighting) for sighting in entry.detail_sightings()],
+        "linkedTargets": sorted(entry.linked_targets()),
         "sourceLinks": source_links,
         "documentMarkdown": document_markdown,
         "metadata": metadata or [],
@@ -101,6 +102,7 @@ def row_payload(
             "canDelete": can_delete(entry),
         },
         "cells": [cell_payload(entry, column) for column in columns],
+        "linkedTargets": sorted(entry.linked_targets()),
         "conformance": conformance_payload(entry),
     }
 

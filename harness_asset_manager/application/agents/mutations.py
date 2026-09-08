@@ -3,7 +3,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Literal
+from typing import TYPE_CHECKING, Iterable, Literal, cast
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
@@ -11,8 +11,13 @@ from harness_asset_manager.errors import MutationError
 from .adapters import AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
-from .model import AgentAdoptConflict, AgentDefinition, AgentTarget
-from .parser import parse_agent_document, render_agent_document
+from .model import (
+    AgentAdoptConflict,
+    AgentAdoptionValidationError,
+    AgentDefinition,
+    AgentTarget,
+)
+from .parser import parse_agent_document, render_agent_document, split_frontmatter
 from .store import AgentStore
 
 if TYPE_CHECKING:
@@ -158,13 +163,21 @@ class AgentMutationService:
             raise MutationError(f"no unmanaged agent at {harness_path}")
 
         store_path = self.store.path_for(slug)
-        if store_path.exists():
+        collides = store_path.exists()
+        if collides:
             if on_conflict is None:
                 raise AgentAdoptConflict(slug, store_path, harness_path)
+            if on_conflict not in ("keep_store", "replace_store"):
+                raise MutationError(f"unknown conflict resolution: {on_conflict}")
+
+        if not (collides and on_conflict == "keep_store"):
+            missing_fields = self._missing_adoption_fields(adapter, harness_path)
+            if missing_fields:
+                raise AgentAdoptionValidationError(missing_fields, rendered=adapter.renders)
+
+        if collides:
             if on_conflict == "replace_store":
                 self._write_store_from_harness(adapter, harness_path, slug)
-            elif on_conflict != "keep_store":
-                raise MutationError(f"unknown conflict resolution: {on_conflict}")
             # keep_store: the store file stands; the harness copy is simply displaced.
             harness_path.unlink()
         elif adapter.renders:
@@ -187,6 +200,43 @@ class AgentMutationService:
             if existing_tags:
                 self.asset_tags.set_tags("agents", slug, existing_tags)
         return slug
+
+    def _missing_adoption_fields(
+        self, adapter: AgentHarnessAdapter, harness_path: Path
+    ) -> tuple[Literal["name", "description", "prompt"], ...]:
+        """Return HAM contract fields absent from a donor, without fallbacks.
+
+        Parsers intentionally fall back to a filename for display, but adoption must
+        not turn a donor that a harness tolerated into an incomplete HAM agent.
+        """
+        try:
+            if adapter.renders:
+                document = parse_codex_agent(harness_path, fallback_name="")
+                fields = (
+                    ("name", document.name),
+                    ("description", document.description),
+                    ("prompt", document.prompt),
+                )
+            else:
+                metadata, prompt = split_frontmatter(harness_path.read_text(encoding="utf-8"))
+                fields = (
+                    ("name", metadata.get("name")),
+                    ("description", metadata.get("description")),
+                    ("prompt", prompt),
+                )
+        except Exception as error:  # noqa: BLE001 - keep adoption refusal user-visible
+            raise MutationError(
+                f"cannot validate {harness_path}: {error}", status=400
+            ) from error
+
+        return cast(
+            tuple[Literal["name", "description", "prompt"], ...],
+            tuple(
+                field
+                for field, value in fields
+                if not str(value or "").strip()
+            ),
+        )
 
     def _write_store_from_harness(self, adapter: AgentHarnessAdapter, harness_path: Path, slug: str) -> None:
         """Whatever the harness holds, expressed in the store's markdown format."""
@@ -215,6 +265,8 @@ class AgentMutationService:
                     adopted.append(self.adopt(ref))
                 except AgentAdoptConflict:
                     skipped.append((ref, "an agent with this name already exists in the store"))
+                except AgentAdoptionValidationError as error:
+                    skipped.append((ref, f"{error}. {error.guidance}"))
                 except MutationError as error:
                     skipped.append((ref, str(error)))
         return BulkAdoptResult(tuple(adopted), tuple(skipped))

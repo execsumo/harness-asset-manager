@@ -1,5 +1,5 @@
 import { UiTooltip } from "../../../components/ui/UiTooltip";
-import { getHarnessPresentation } from "../../../components/harness/harnessPresentation";
+import { getHarnessPresentation, harnessFamily } from "../../../components/harness/harnessPresentation";
 import type { HookBindingDto, HookInventoryColumnDto } from "../../hooks/api/management-types";
 import { isHooksHarnessAddressable } from "../model/selectors";
 
@@ -26,8 +26,9 @@ export function HooksHarnessLogoStack({ bindings, columns }: HooksHarnessLogoSta
     <div className="skill-card__harness-row">
       <div className="harness-stack" aria-label={ariaLabel}>
         {visible.map((binding, index) => {
-          const presentation = getHarnessPresentation(logoByHarness.get(binding.harness) ?? null);
-          const label = labelByHarness.get(binding.harness) ?? binding.harness;
+          const family = harnessFamily(binding.harness);
+          const presentation = getHarnessPresentation(logoByHarness.get(family) ?? null);
+          const label = labelByHarness.get(family) ?? binding.harness;
           const title =
             binding.state === "drifted"
               ? `${label} — Different config${binding.driftDetail ? ` (${binding.driftDetail})` : ""}`
