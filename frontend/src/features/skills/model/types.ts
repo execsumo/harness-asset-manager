@@ -38,6 +38,8 @@ export interface SkillListRow {
   tags: string[];
   actions: SkillRowActions;
   cells: HarnessCell[];
+  /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */
+  linkedTargets?: string[];
   /** Where this skill departs from the Agent Skills spec. Advisory, never blocking. */
   conformance: SkillConformanceIssue[];
 }
@@ -61,6 +63,8 @@ export interface SkillDetail {
   tags: string[];
   actions: SkillActions;
   harnessCells: HarnessCell[];
+  /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */
+  linkedTargets?: string[];
   locations: SkillLocation[];
   sourceLinks: SkillSourceLinks | null;
   documentMarkdown: string | null;

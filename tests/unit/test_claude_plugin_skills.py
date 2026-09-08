@@ -5,20 +5,22 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from harness_asset_manager.application.skills.adapters import FileTreeSkillsAdapter, _ResolvedRoot
+from harness_asset_manager.application.skills.adapters import (
+    FileTreeSkillsAdapter,
+    _ResolvedRoot,
+)
 from harness_asset_manager.application.skills.auto_adopt import SkillsAutoAdoptService
 from harness_asset_manager.application.skills.identity import SourceDescriptor
-from harness_asset_manager.application.skills.inventory import InventoryEntry, InventorySighting
+from harness_asset_manager.application.skills.inventory import (
+    InventoryEntry,
+    InventorySighting,
+)
 from harness_asset_manager.application.skills.package import SkillPackageCache
-from harness_asset_manager.errors import MutationError
-from harness_asset_manager.harness.catalog import supported_harness_definitions
 from harness_asset_manager.harness.claude_plugins import (
-    _find_plugin_skill_roots,
-    resolve_candidate_install_path,
     resolve_claude_plugin_roots,
 )
 from harness_asset_manager.harness.resolution import resolve_context
-from tests.support.fake_home import FakeHomeSpec, seed_skill_package
+from tests.support.fake_home import seed_skill_package
 
 
 class ClaudePluginSkillsUnitTests(TestCase):

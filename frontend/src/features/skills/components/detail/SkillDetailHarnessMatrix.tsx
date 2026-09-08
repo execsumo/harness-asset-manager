@@ -6,10 +6,17 @@ import {
 } from "../../../../components/detail/DetailBindingIdentity";
 import type { StructuralSkillAction } from "../../model/pending";
 import type { HarnessCell, HarnessCellState } from "../../model/types";
+import {
+  hermesBotLabel,
+  hermesBotScopes,
+  hermesBotScopesFromLocations,
+} from "../../model/hermesTargets";
 
 interface SkillDetailHarnessMatrixProps {
   skillName: string;
   cells: HarnessCell[];
+  linkedTargets?: string[];
+  locations?: readonly { harness?: string | null }[];
   pendingToggleHarnesses: ReadonlySet<string>;
   pendingStructuralAction: StructuralSkillAction | null;
   onToggleCell: (cell: HarnessCell) => void;
@@ -36,6 +43,8 @@ function visibleStateLabel(state: HarnessCellState): string | null {
 export function SkillDetailHarnessMatrix({
   skillName,
   cells,
+  linkedTargets,
+  locations,
   pendingToggleHarnesses,
   pendingStructuralAction,
   onToggleCell,
@@ -49,6 +58,15 @@ export function SkillDetailHarnessMatrix({
     <div className="detail-sheet__bindings" aria-label={`Harness access for ${skillName}`}>
       {cells.map((cell) => {
         const pending = pendingToggleHarnesses.has(cell.harness);
+        // Bound Bots come from recorded targets; an unmanaged copy a Bot created
+        // for itself has no binding yet, so fall back to where it was found.
+        const hermesBotScopeList = cell.harness === "hermes"
+          ? Array.from(new Set([
+              ...hermesBotScopes(linkedTargets),
+              ...hermesBotScopesFromLocations(locations),
+            ])).sort()
+          : [];
+        const hermesBots = hermesBotScopeList.map(hermesBotLabel);
         return (
           <div
             key={cell.harness}
@@ -63,6 +81,18 @@ export function SkillDetailHarnessMatrix({
               statusLabel={STATE_LABEL[cell.state]}
               tone={STATE_TONE[cell.state]}
               visibleStatus={visibleStateLabel(cell.state)}
+              trailing={hermesBots.length > 0 ? (
+                <div
+                  className="detail-sheet__binding-targets"
+                  aria-label={`Hermes Bots: ${hermesBots.join(", ")}`}
+                >
+                  {hermesBots.map((bot) => (
+                    <span key={bot} className="detail-sheet__binding-target">
+                      {bot}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             />
             <div className="detail-sheet__binding-actions">
               <HarnessCellAction

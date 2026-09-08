@@ -29,6 +29,7 @@ CommandFileScope = Literal["global", "project"]
 FileTreeAvailability = Literal["cli", "cli_or_app"]
 FileTreeLayout = Literal["flat", "categorized"]
 PathResolver = Callable[[ResolutionContext], Path]
+ScopedPathResolver = Callable[[ResolutionContext, str], Path]
 SubtreePath: TypeAlias = tuple[str, ...]
 SubtreePathResolver = Callable[[ResolutionContext], SubtreePath]
 
@@ -40,6 +41,7 @@ class FileTreeDiscoveryRoot:
     label: str
     path_resolver: PathResolver
     locator_prefix: str = ""
+    binding_scope: str | None = None
 
 
 DynamicDiscoveryRootsResolver: TypeAlias = Callable[[ResolutionContext], tuple[FileTreeDiscoveryRoot, ...]]
@@ -56,6 +58,7 @@ class FileTreeBindingProfile:
     layout: FileTreeLayout = "flat"
     default_category: str | None = None
     dynamic_roots_resolver: DynamicDiscoveryRootsResolver | None = None
+    scoped_root_resolver: ScopedPathResolver | None = None
 
     def resolve_managed_root(self, context: ResolutionContext) -> Path:
         if self.managed_default is None:
@@ -65,6 +68,11 @@ class FileTreeBindingProfile:
             if override:
                 return Path(override)
         return self.managed_default(context)
+
+    def resolve_scoped_root(self, context: ResolutionContext, scope: str) -> Path:
+        if self.scoped_root_resolver is None:
+            raise ValueError("file-tree binding profile does not support scoped bindings")
+        return self.scoped_root_resolver(context, scope)
 
 
 @dataclass(frozen=True)
