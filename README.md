@@ -58,7 +58,7 @@ unadopted alike — with a status filter to narrow the view:
 
 ## Supported Harnesses
 
-Harness Asset Manager supports **7 AI agent harnesses** across **6 asset families**:
+Harness Asset Manager supports **8 AI agent harnesses** across **6 asset families**:
 
 <table align="center">
   <tr>
@@ -71,6 +71,10 @@ Harness Asset Manager supports **7 AI agent harnesses** across **6 asset familie
       <img src="assets/harness-logos/codex-logo.svg" alt="Codex CLI" height="56" /><br />
       <strong>Codex CLI</strong><br />
       <a href="https://developers.openai.com/codex/cli">Docs</a>
+    </td>
+    <td align="center" valign="middle">
+      <strong>Pi</strong><br />
+      <a href="https://pi.dev/docs/latest">Docs</a>
     </td>
     <td align="center" valign="middle">
       <img src="assets/harness-logos/agy-logo.svg" alt="Antigravity CLI" height="56" /><br />
@@ -107,6 +111,7 @@ Harnesses appear in this canonical order everywhere in the app—Settings and ev
 |---|---:|---:|---:|---:|---:|---:|
 | **Claude Code** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **Codex CLI** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
+| **Pi** | Yes | Yes (extension) | Not Yet | Yes | Not Yet | No |
 | **Antigravity (agy)** | Yes | Yes | Yes | Yes | Partial | Yes (Denylist) |
 | **Cursor** | Yes | Yes | Yes | Yes | Yes | Yes (Denylist) |
 | **OpenCode** | Yes | Yes | Yes | Yes | Partial | No |
@@ -122,6 +127,10 @@ Factory Droid hooks and permissions are not currently mapped because its hook sc
 Factory Droid support is currently best-effort and targets the personal/global
 configuration under `~/.factory`. See [Factory Droid support](docs/factory-droid.md)
 for the supported asset paths, project-scope boundaries, and documentation basis.
+
+Pi support is currently best-effort and targets the global agent store under
+`~/.pi/agent`. See [Pi support](docs/pi.md) for the supported resource paths and
+extension boundary.
 
 ---
 
@@ -429,6 +438,7 @@ The agents matrix shows the same harnesses as every other family — whichever y
 | Claude Code | `~/.claude/agents/` | symlink |
 | Cursor | `~/.cursor/agents/` | symlink |
 | Antigravity | `~/.gemini/antigravity-cli/agents/` | symlink |
+| Pi | `~/.pi/agent/agents/` | symlink |
 | OpenCode | `$XDG_CONFIG_HOME/opencode/agents/` | symlink |
 | Codex | `~/.codex/agents/` | rendered TOML |
 | Hermes | `<hermes-root>/profiles/<bot>/` (a Bot/Profile) | provisioned profile directory |

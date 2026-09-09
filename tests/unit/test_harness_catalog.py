@@ -14,6 +14,12 @@ from harness_asset_manager.harness.catalog import (
     _hermes_home,
     _hermes_profile_skills_root,
     _hermes_root,
+    supported_harness_definitions,
+)
+from harness_asset_manager.harness.contracts import (
+    AgentFileBindingProfile,
+    CommandFileBindingProfile,
+    FileTreeBindingProfile,
 )
 from harness_asset_manager.harness.resolution import resolve_context
 
@@ -78,6 +84,36 @@ class HermesHomePrecedenceTests(unittest.TestCase):
                 _hermes_profile_skills_root(ctx, "coder"),
                 real_root / "profiles" / "coder" / "skills",
             )
+
+
+class PiHarnessCatalogTests(unittest.TestCase):
+    def test_pi_uses_the_global_agent_store_for_supported_file_families(self) -> None:
+        with hermetic_env():
+            context = resolve_context({"HOME": "/tmp/pi-home"})
+            definition = next(item for item in supported_harness_definitions() if item.harness == "pi")
+
+            skills = definition.binding_for("skills")
+            self.assertIsInstance(skills, FileTreeBindingProfile)
+            self.assertEqual(
+                skills.resolve_managed_root(context),
+                Path("/tmp/pi-home/.pi/agent/skills"),
+            )
+
+            agents = definition.binding_for("agents")
+            self.assertIsInstance(agents, AgentFileBindingProfile)
+            self.assertEqual(
+                agents.resolve_output_dir(context),
+                Path("/tmp/pi-home/.pi/agent/agents"),
+            )
+
+            commands = definition.binding_for("slash_commands")
+            self.assertIsInstance(commands, CommandFileBindingProfile)
+            self.assertEqual(
+                commands.resolve_output_dir(context),
+                Path("/tmp/pi-home/.pi/agent/prompts"),
+            )
+            self.assertEqual(commands.invocation_prefix, "/")
+            self.assertEqual(commands.render_format, "frontmatter_markdown")
 
 
 if __name__ == "__main__":

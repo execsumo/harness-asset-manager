@@ -32,7 +32,7 @@ class HttpApiTests(unittest.TestCase):
                 settings["storage"]["settingsPath"],
                 str(harness.spec.xdg_data_home / APP_NAME / "settings.json"),
             )
-            self.assertEqual(len(settings["harnesses"]), 7)
+            self.assertEqual(len(settings["harnesses"]), 8)
             opencode = next(item for item in settings["harnesses"] if item["harness"] == "opencode")
             self.assertTrue(opencode["installed"])
             self.assertTrue(opencode["supportEnabled"])
@@ -230,7 +230,7 @@ class HttpApiTests(unittest.TestCase):
 
             self.assertEqual(
                 settings["autoAdoptHarnessOptions"]["agents"],
-                ["claude", "codex", "agy", "cursor", "opencode", "droid", "hermes"],
+                ["claude", "codex", "pi", "agy", "cursor", "opencode", "droid", "hermes"],
             )
 
     def test_skills_inventory_excludes_disabled_and_undetected_harnesses(self) -> None:

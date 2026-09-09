@@ -5888,6 +5888,7 @@
             "enum": [
               "claude",
               "codex",
+              "pi",
               "agy",
               "cursor",
               "opencode",
@@ -5919,6 +5920,7 @@
               "enum": [
                 "claude",
                 "codex",
+                "pi",
                 "agy",
                 "cursor",
                 "opencode",
@@ -5988,6 +5990,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "pi",
                     "agy",
                     "cursor",
                     "opencode",
@@ -6065,6 +6068,7 @@
             "enum": [
               "claude",
               "codex",
+              "pi",
               "agy",
               "cursor",
               "opencode",
@@ -6202,6 +6206,7 @@
             "enum": [
               "claude",
               "codex",
+              "pi",
               "agy",
               "cursor",
               "opencode",
@@ -6278,6 +6283,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "pi",
                     "agy",
                     "cursor",
                     "opencode",
@@ -6373,6 +6379,7 @@
             "enum": [
               "claude",
               "codex",
+              "pi",
               "agy",
               "cursor",
               "opencode",
@@ -6400,6 +6407,7 @@
                   "enum": [
                     "claude",
                     "codex",
+                    "pi",
                     "agy",
                     "cursor",
                     "opencode",
@@ -6446,6 +6454,7 @@
             "enum": [
               "claude",
               "codex",
+              "pi",
               "agy",
               "cursor",
               "opencode",

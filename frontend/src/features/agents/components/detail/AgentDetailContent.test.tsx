@@ -298,6 +298,10 @@ describe("AgentDetailContent", () => {
       "Allowed Subagents",
       "Max Turns",
       "Isolation",
+      "Mode",
+      "Spawning",
+      "Trust Project",
+      "Deny Tools (comma-separated)",
     ]);
     expect(labels).toHaveLength(AGENT_CONTRACT_KEYS.length);
   });
