@@ -984,10 +984,10 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(detail["description"], "Vault librarian.")
             self.assertEqual(detail["model"], "sonnet")
             self.assertEqual(detail["effort"], None)
+            self.assertEqual(detail["maxTurns"], "50")
+            self.assertEqual(detail["disallowedTools"], [])
             self.assertNotIn("model", config)
             self.assertEqual(config["permissionMode"], "acceptEdits")
-            self.assertEqual(config["maxTurns"], "50")
-            self.assertEqual(config["disallowedTools"], "[]")
             self.assertEqual(config["hooks"], "(1 entry)")
             # name/description have their own places in the view.
             self.assertNotIn("name", config)

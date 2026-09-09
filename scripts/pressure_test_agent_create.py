@@ -137,9 +137,10 @@ def run_pressure_test() -> None:
                 "model": "claude-3-7-sonnet",
                 "effort": "high",
                 "tools": ["bash", "read_file"],
-                "allowedSubagents": "true",
+                "disallowedTools": ["Write"],
                 "maxTurns": "45",
                 "isolation": "worktree",
+                "background": "true",
                 "harnesses": ["claude"],
             },
         )
@@ -148,7 +149,7 @@ def run_pressure_test() -> None:
         assert created_full["model"] == "claude-3-7-sonnet"
         assert created_full["effort"] == "high"
         assert created_full["tools"] == ["bash", "read_file"]
-        assert created_full["allowedSubagents"] == "true"
+        assert created_full["disallowedTools"] == ["Write"]
         assert created_full["maxTurns"] == "45"
         assert created_full["isolation"] == "worktree"
 
@@ -157,9 +158,10 @@ def run_pressure_test() -> None:
         assert "color: blue" in full_text
         assert "model: claude-3-7-sonnet" in full_text
         assert "effort: high" in full_text
-        assert "allowed_subagents: true" in full_text
-        assert "max_turns: 45" in full_text
+        assert "disallowedTools:" in full_text
+        assert "maxTurns: 45" in full_text
         assert "isolation: worktree" in full_text
+        assert "background: true" in full_text
         print("✓ Full contract fields correctly serialized and verified on disk")
 
     print("\n==========================================================")

@@ -22,11 +22,7 @@ import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation
 import { useSkillsListQuery } from "../../../skills/public";
 import {
   AGENT_CONTRACT_KEYS,
-  MODE_DEFAULT,
-  MODE_VALUES,
-  SPAWNING_DEFAULT,
-  TRUST_PROJECT_DEFAULT,
-  ALLOWED_SUBAGENTS_VALUES,
+  BACKGROUND_VALUES,
   COLOR_VALUES,
   EFFORT_VALUES,
   ISOLATION_VALUES,
@@ -168,13 +164,10 @@ export function AgentDetailContent({
   const [hermesProviderStr, setHermesProviderStr] = useState(detail.hermesProvider ?? "");
   const [hermesModelStr, setHermesModelStr] = useState(detail.hermesModel ?? "");
   const [effortStr, setEffortStr] = useState(detail.effort ?? "");
-  const [allowedSubagentsStr, setAllowedSubagentsStr] = useState(detail.allowedSubagents ?? "");
   const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
   const [isolationStr, setIsolationStr] = useState(detail.isolation ?? "");
-  const [modeStr, setModeStr] = useState(detail.mode ?? MODE_DEFAULT);
-  const [spawningStr, setSpawningStr] = useState(detail.spawning ?? SPAWNING_DEFAULT);
-  const [trustProjectStr, setTrustProjectStr] = useState(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
-  const [denyToolsStr, setDenyToolsStr] = useState((detail.denyTools ?? []).join(", "));
+  const [backgroundStr, setBackgroundStr] = useState(detail.background ?? "");
+  const [disallowedToolsStr, setDisallowedToolsStr] = useState((detail.disallowedTools ?? []).join(", "));
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -190,13 +183,10 @@ export function AgentDetailContent({
     setHermesProviderStr(detail.hermesProvider ?? "");
     setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
-    setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
-    setModeStr(detail.mode ?? MODE_DEFAULT);
-    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
-    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
-    setDenyToolsStr((detail.denyTools ?? []).join(", "));
+    setBackgroundStr(detail.background ?? "");
+    setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setOtherEntries(
       (detail.configuration || [])
         .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
@@ -302,6 +292,13 @@ export function AgentDetailContent({
         placeholder: "e.g. bash, edit, grep",
       },
       {
+        key: "disallowedTools",
+        label: "Disallowed Tools (comma-separated)",
+        value: disallowedToolsStr,
+        onChange: setDisallowedToolsStr,
+        placeholder: "e.g. Write, Edit, Agent(Explore)",
+      },
+      {
         key: "skills",
         wrapInLabel: false,
         label: "Skills",
@@ -322,23 +319,7 @@ export function AgentDetailContent({
         ),
       },
       {
-        key: "allowed_subagents",
-        wrapInLabel: false,
-        label: "Allowed Subagents",
-        value: allowedSubagentsStr,
-        onChange: setAllowedSubagentsStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterSegmentedField
-            label="Allowed Subagents"
-            value={allowedSubagentsStr}
-            options={ALLOWED_SUBAGENTS_VALUES}
-            onChange={setAllowedSubagentsStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "max_turns",
+        key: "maxTurns",
         label: "Max Turns",
         value: maxTurnsStr,
         onChange: setMaxTurnsStr,
@@ -361,38 +342,20 @@ export function AgentDetailContent({
         ),
       },
       {
-        key: "mode",
-        label: "Mode",
-        value: modeStr,
-        onChange: setModeStr,
+        key: "background",
+        wrapInLabel: false,
+        label: "Background",
+        value: backgroundStr,
+        onChange: setBackgroundStr,
         renderInput: ({ disabled }) => (
-          <select className="frontmatter-editor__input" value={modeStr} onChange={(event) => setModeStr(event.target.value)} disabled={disabled} aria-label="Mode">
-            {MODE_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
+          <FrontmatterSegmentedField
+            label="Background"
+            value={backgroundStr}
+            options={BACKGROUND_VALUES}
+            onChange={setBackgroundStr}
+            disabled={disabled}
+          />
         ),
-      },
-      {
-        key: "spawning",
-        wrapInLabel: false,
-        label: "Spawning",
-        value: spawningStr,
-        onChange: setSpawningStr,
-        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Spawning" value={spawningStr} options={["true", "false"]} onChange={setSpawningStr} disabled={disabled} />,
-      },
-      {
-        key: "trust-project",
-        wrapInLabel: false,
-        label: "Trust Project",
-        value: trustProjectStr,
-        onChange: setTrustProjectStr,
-        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Trust Project" value={trustProjectStr} options={["true", "false"]} onChange={setTrustProjectStr} disabled={disabled} />,
-      },
-      {
-        key: "deny-tools",
-        label: "Deny Tools (comma-separated)",
-        value: denyToolsStr,
-        onChange: setDenyToolsStr,
-        placeholder: "e.g. web_search, shell",
       },
     ],
     [
@@ -405,13 +368,10 @@ export function AgentDetailContent({
       skills,
       adoptedSkills,
       effectiveTagOptions,
-      allowedSubagentsStr,
       maxTurnsStr,
       isolationStr,
-      modeStr,
-      spawningStr,
-      trustProjectStr,
-      denyToolsStr,
+      backgroundStr,
+      disallowedToolsStr,
     ],
   );
 
@@ -426,13 +386,10 @@ export function AgentDetailContent({
     if (hermesProviderStr !== (detail.hermesProvider ?? "")) return true;
     if (hermesModelStr !== (detail.hermesModel ?? "")) return true;
     if (effortStr !== (detail.effort ?? "")) return true;
-    if (allowedSubagentsStr !== (detail.allowedSubagents ?? "")) return true;
     if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
     if (isolationStr !== (detail.isolation ?? "")) return true;
-    if (modeStr !== (detail.mode ?? MODE_DEFAULT)) return true;
-    if (spawningStr !== (detail.spawning ?? SPAWNING_DEFAULT)) return true;
-    if (trustProjectStr !== (detail.trustProject ?? TRUST_PROJECT_DEFAULT)) return true;
-    if (denyToolsStr !== (detail.denyTools ?? []).join(", ")) return true;
+    if (backgroundStr !== (detail.background ?? "")) return true;
+    if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -449,7 +406,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr, modeStr, spawningStr, trustProjectStr, denyToolsStr]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, disallowedToolsStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -461,13 +418,10 @@ export function AgentDetailContent({
     setHermesProviderStr(detail.hermesProvider ?? "");
     setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
-    setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
-    setModeStr(detail.mode ?? MODE_DEFAULT);
-    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
-    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
-    setDenyToolsStr((detail.denyTools ?? []).join(", "));
+    setBackgroundStr(detail.background ?? "");
+    setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -484,13 +438,10 @@ export function AgentDetailContent({
     let finalColor = colorStr;
     let finalModel = modelStr;
     let finalEffort = effortStr;
-    let finalAllowedSubagents = allowedSubagentsStr;
     let finalMaxTurns = maxTurnsStr;
     let finalIsolation = isolationStr;
-    let finalMode = modeStr;
-    let finalSpawning = spawningStr;
-    let finalTrustProject = trustProjectStr;
-    let finalDenyToolsStr = denyToolsStr;
+    let finalBackground = backgroundStr;
+    let finalDisallowedToolsStr = disallowedToolsStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
@@ -506,13 +457,10 @@ export function AgentDetailContent({
       finalColor = parsed.known.color ?? "";
       finalModel = parsed.known.model ?? "";
       finalEffort = parsed.known.effort ?? "";
-      finalAllowedSubagents = parsed.known.allowed_subagents ?? "";
-      finalMaxTurns = parsed.known.max_turns ?? "";
+      finalMaxTurns = parsed.known.maxTurns ?? "";
       finalIsolation = parsed.known.isolation ?? "";
-      finalMode = parsed.known.mode ?? MODE_DEFAULT;
-      finalSpawning = parsed.known.spawning ?? SPAWNING_DEFAULT;
-      finalTrustProject = parsed.known["trust-project"] ?? TRUST_PROJECT_DEFAULT;
-      finalDenyToolsStr = parsed.known["deny-tools"] ?? "";
+      finalBackground = parsed.known.background ?? "";
+      finalDisallowedToolsStr = parsed.known.disallowedTools ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
@@ -521,13 +469,10 @@ export function AgentDetailContent({
       setColorStr(finalColor);
       setModelStr(finalModel);
       setEffortStr(finalEffort);
-      setAllowedSubagentsStr(finalAllowedSubagents);
       setMaxTurnsStr(finalMaxTurns);
       setIsolationStr(finalIsolation);
-      setModeStr(finalMode);
-      setSpawningStr(finalSpawning);
-      setTrustProjectStr(finalTrustProject);
-      setDenyToolsStr(finalDenyToolsStr);
+      setBackgroundStr(finalBackground);
+      setDisallowedToolsStr(finalDisallowedToolsStr);
       setOtherEntries(finalOther);
     }
 
@@ -557,13 +502,10 @@ export function AgentDetailContent({
           color: finalColor.trim(),
           model: finalModel.trim(),
           effort: finalEffort.trim(),
-          allowedSubagents: finalAllowedSubagents.trim(),
           maxTurns: finalMaxTurns.trim(),
           isolation: finalIsolation.trim(),
-          mode: finalMode.trim(),
-          spawning: finalSpawning.trim(),
-          trustProject: finalTrustProject.trim(),
-          denyTools: finalDenyToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
+          background: finalBackground.trim(),
+          disallowedTools: finalDisallowedToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
           hermesProvider: hermesProviderStr.trim(),
           hermesModel: hermesModelStr.trim(),
           metadata: metadataPayload,

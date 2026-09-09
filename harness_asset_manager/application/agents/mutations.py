@@ -367,13 +367,10 @@ class AgentMutationService:
         color: str | None = None,
         model: str | None = None,
         effort: str | None = None,
-        allowed_subagents: str | None = None,
         max_turns: str | None = None,
         isolation: str | None = None,
-        mode: str | None = None,
-        spawning: str | None = None,
-        trust_project: str | None = None,
-        deny_tools: tuple[str, ...] | None = None,
+        disallowed_tools: tuple[str, ...] | None = None,
+        background: str | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -414,17 +411,14 @@ class AgentMutationService:
             color=color if color is not None else current.color,
             model=model if model is not None else current.model,
             effort=effort if effort is not None else current.effort,
-            allowed_subagents=(
-                allowed_subagents
-                if allowed_subagents is not None
-                else current.allowed_subagents
-            ),
             max_turns=max_turns if max_turns is not None else current.max_turns,
             isolation=isolation if isolation is not None else current.isolation,
-            mode=mode if mode is not None else current.mode,
-            spawning=spawning if spawning is not None else current.spawning,
-            trust_project=trust_project if trust_project is not None else current.trust_project,
-            deny_tools=deny_tools if deny_tools is not None else current.deny_tools,
+            disallowed_tools=(
+                disallowed_tools
+                if disallowed_tools is not None
+                else current.disallowed_tools
+            ),
+            background=background if background is not None else current.background,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )

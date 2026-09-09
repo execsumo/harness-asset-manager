@@ -419,7 +419,14 @@
       },
       "AgentDetailResponse": {
         "properties": {
-          "allowedSubagents": {
+          "autoEnabled": {
+            "items": {
+              "$ref": "#/components/schemas/AutoEnabledSkillResponse"
+            },
+            "title": "Autoenabled",
+            "type": "array"
+          },
+          "background": {
             "anyOf": [
               {
                 "type": "string"
@@ -428,14 +435,7 @@
                 "type": "null"
               }
             ],
-            "title": "Allowedsubagents"
-          },
-          "autoEnabled": {
-            "items": {
-              "$ref": "#/components/schemas/AutoEnabledSkillResponse"
-            },
-            "title": "Autoenabled",
-            "type": "array"
+            "title": "Background"
           },
           "canDelete": {
             "title": "Candelete",
@@ -464,16 +464,16 @@
             "title": "Configuration",
             "type": "array"
           },
-          "denyTools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Denytools",
-            "type": "array"
-          },
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "disallowedTools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disallowedtools",
+            "type": "array"
           },
           "document": {
             "title": "Document",
@@ -555,17 +555,6 @@
             ],
             "title": "Maxturns"
           },
-          "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
-          },
           "model": {
             "anyOf": [
               {
@@ -601,17 +590,6 @@
             "title": "Skills",
             "type": "array"
           },
-          "spawning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spawning"
-          },
           "storePath": {
             "anyOf": [
               {
@@ -636,17 +614,6 @@
             },
             "title": "Tools",
             "type": "array"
-          },
-          "trustProject": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trustproject"
           }
         },
         "required": [
@@ -1632,7 +1599,7 @@
       },
       "CreateAgentRequest": {
         "properties": {
-          "allowedSubagents": {
+          "background": {
             "anyOf": [
               {
                 "type": "string"
@@ -1641,7 +1608,7 @@
                 "type": "null"
               }
             ],
-            "title": "Allowedsubagents"
+            "title": "Background"
           },
           "color": {
             "anyOf": [
@@ -1654,17 +1621,17 @@
             ],
             "title": "Color"
           },
-          "denyTools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Denytools",
-            "type": "array"
-          },
           "description": {
             "default": "",
             "title": "Description",
             "type": "string"
+          },
+          "disallowedTools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disallowedtools",
+            "type": "array"
           },
           "effort": {
             "anyOf": [
@@ -1728,17 +1695,6 @@
             ],
             "title": "Maxturns"
           },
-          "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
-          },
           "model": {
             "anyOf": [
               {
@@ -1766,34 +1722,12 @@
             "title": "Skills",
             "type": "array"
           },
-          "spawning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spawning"
-          },
           "tools": {
             "items": {
               "type": "string"
             },
             "title": "Tools",
             "type": "array"
-          },
-          "trustProject": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trustproject"
           }
         },
         "required": [
@@ -6537,7 +6471,7 @@
       },
       "UpdateAgentRequest": {
         "properties": {
-          "allowedSubagents": {
+          "background": {
             "anyOf": [
               {
                 "type": "string"
@@ -6546,7 +6480,7 @@
                 "type": "null"
               }
             ],
-            "title": "Allowedsubagents"
+            "title": "Background"
           },
           "color": {
             "anyOf": [
@@ -6559,7 +6493,18 @@
             ],
             "title": "Color"
           },
-          "denyTools": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "disallowedTools": {
             "anyOf": [
               {
                 "items": {
@@ -6571,18 +6516,7 @@
                 "type": "null"
               }
             ],
-            "title": "Denytools"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "title": "Disallowedtools"
           },
           "effort": {
             "anyOf": [
@@ -6653,17 +6587,6 @@
             ],
             "title": "Metadata"
           },
-          "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mode"
-          },
           "model": {
             "anyOf": [
               {
@@ -6711,17 +6634,6 @@
             ],
             "title": "Skills"
           },
-          "spawning": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Spawning"
-          },
           "tools": {
             "anyOf": [
               {
@@ -6735,17 +6647,6 @@
               }
             ],
             "title": "Tools"
-          },
-          "trustProject": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trustproject"
           }
         },
         "title": "UpdateAgentRequest",

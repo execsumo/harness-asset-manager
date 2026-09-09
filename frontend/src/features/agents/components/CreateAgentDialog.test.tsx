@@ -189,7 +189,7 @@ describe("CreateAgentDialog", () => {
     expect(payload).not.toHaveProperty("model");
     expect(payload).not.toHaveProperty("tools");
     expect(payload).not.toHaveProperty("skills");
-    expect(payload).not.toHaveProperty("allowedSubagents");
+    expect(payload).not.toHaveProperty("disallowedTools");
     expect(payload).not.toHaveProperty("maxTurns");
     expect(payload).not.toHaveProperty("isolation");
   });

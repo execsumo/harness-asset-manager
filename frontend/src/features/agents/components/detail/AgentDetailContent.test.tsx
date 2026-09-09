@@ -251,7 +251,7 @@ describe("AgentDetailContent", () => {
     expect(effort).toHaveValue("medium");
     expect(
       Array.from((effort as HTMLSelectElement).options).map((option) => option.value),
-    ).toEqual(["", "low", "medium", "high"]);
+    ).toEqual(["", "low", "medium", "high", "xhigh", "max"]);
   });
 
   it("keeps an out-of-contract effort visible instead of silently rewriting it", () => {
@@ -294,14 +294,11 @@ describe("AgentDetailContent", () => {
       "Model",
       "Effort",
       "Tools (comma-separated)",
+      "Disallowed Tools (comma-separated)",
       "Skills",
-      "Allowed Subagents",
       "Max Turns",
       "Isolation",
-      "Mode",
-      "Spawning",
-      "Trust Project",
-      "Deny Tools (comma-separated)",
+      "Background",
     ]);
     expect(labels).toHaveLength(AGENT_CONTRACT_KEYS.length);
   });
@@ -319,17 +316,17 @@ describe("AgentDetailContent", () => {
     ).toEqual(["", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"]);
   });
 
-  it("renders the boolean-ish contract fields as toggles that can also unset the key", () => {
+  it("renders Claude boolean contract fields as toggles that can also unset the key", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
-    renderDetail(agentDetailFixture({ allowedSubagents: "true", isolation: "worktree" }));
+    renderDetail(agentDetailFixture({ background: "true", isolation: "worktree" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
-    const subagents = screen.getByRole("group", { name: "Allowed Subagents" });
+    const background = screen.getByRole("group", { name: "Background" });
     expect(
-      within(subagents).getAllByRole("button").map((button) => button.textContent),
+      within(background).getAllByRole("button").map((button) => button.textContent),
     ).toEqual(["Unset", "true", "false"]);
-    expect(within(subagents).getByRole("button", { name: "true" })).toHaveAttribute(
+    expect(within(background).getByRole("button", { name: "true" })).toHaveAttribute(
       "data-active",
       "true",
     );
@@ -337,7 +334,7 @@ describe("AgentDetailContent", () => {
     const isolation = screen.getByRole("group", { name: "Isolation" });
     expect(
       within(isolation).getAllByRole("button").map((button) => button.textContent),
-    ).toEqual(["Unset", "worktree", "none"]);
+    ).toEqual(["Unset", "worktree"]);
     expect(within(isolation).getByRole("button", { name: "worktree" })).toHaveAttribute(
       "data-active",
       "true",
@@ -368,15 +365,15 @@ describe("AgentDetailContent", () => {
     });
 
     renderDetail(
-      agentDetailFixture({ color: "cyan", allowedSubagents: "true", maxTurns: "30" }),
+      agentDetailFixture({ color: "cyan", background: "true", maxTurns: "30" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const isolation = screen.getByRole("group", { name: "Isolation" });
     fireEvent.click(within(isolation).getByRole("button", { name: "worktree" }));
 
-    const subagents = screen.getByRole("group", { name: "Allowed Subagents" });
-    fireEvent.click(within(subagents).getByRole("button", { name: "Unset" }));
+    const background = screen.getByRole("group", { name: "Background" });
+    fireEvent.click(within(background).getByRole("button", { name: "Unset" }));
 
     fireEvent.change(screen.getByRole("textbox", { name: "Max Turns" }), {
       target: { value: "12" },
@@ -395,7 +392,7 @@ describe("AgentDetailContent", () => {
         maxTurns: "12",
         // An explicit empty string is what clears the key; omitting it would carry
         // the file's current value forward instead.
-        allowedSubagents: "",
+        background: "",
       });
     });
   });

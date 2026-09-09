@@ -52,8 +52,8 @@ were already disabled.
 The contract fields reuse the structured editor's controls and constants rather than a second
 set that would drift: `AGENT_CONTRACT_KEYS` order, `FrontmatterSegmentedField`,
 `AgentSkillsFieldEditor`, and `COLOR_VALUES` / `EFFORT_VALUES` / `ISOLATION_VALUES` /
-`ALLOWED_SUBAGENTS_VALUES` / `MAX_TURNS_DEFAULT` from `features/agents/api/types.ts`.
-`max_turns` remains a placeholder and is never prefilled, and every key the user leaves unset
+`BACKGROUND_VALUES` / `MAX_TURNS_DEFAULT` from `features/agents/api/types.ts`.
+`maxTurns` remains a placeholder and is never prefilled, and every key the user leaves unset
 is omitted from the request rather than sent as `""`.
 
 `EditAgentDialog.tsx` is deleted (`30a7fd9`, its own commit). It was exported and referenced
@@ -81,15 +81,15 @@ on response bodies.
 
 ## Shipped: four new agent contract fields
 
-`color`, `max_turns`, `allowed_subagents`, and `isolation` are now real agent contract
+`color`, `maxTurns`, `disallowedTools`, `background`, and `isolation` are now real Claude Code agent contract
 fields, threaded parser → store → mutations → inventory → API → structured editor, rather
 than free-form rows in the "other frontmatter" channel.
 
 `CONTRACT_KEYS` (`application/agents/model.py`) is the single source of truth for both the
 render order and the editor's field order, and it now reads as a progression: identity
 (`name`, `description`, `color`) → which model runs it (`model`, `effort`) → what it may
-reach for (`tools`, `skills`, `allowed_subagents`) → the envelope it runs in (`max_turns`,
-`isolation`). `ContractKeyParityTests` pins the TypeScript mirror, and its vocabulary check
+reach for (`tools`, `disallowedTools`, `skills`) → the envelope it runs in (`maxTurns`,
+`isolation`, `background`). `ContractKeyParityTests` pins the TypeScript mirror, and its vocabulary check
 was generalized to cover every mirrored tuple rather than just `EFFORT_VALUES`.
 
 Three decisions worth not re-litigating:
@@ -98,15 +98,14 @@ Three decisions worth not re-litigating:
   renders `Unset · true · false`, not a two-state switch. A key that is absent from the file
   is a third state; a plain toggle would have to invent a value for it and write that value on
   the next save.
-- **`max_turns: 30` is a placeholder, never prefilled.** Writing 30 into every agent file that
+- **`maxTurns: 30` is a placeholder, never prefilled.** Writing 30 into every agent file that
   never asked for it converts an implicit harness default into an explicit, now-frozen setting.
-- **`allowed_subagents` and `max_turns` round-trip as a real YAML bool and int.**
-  `parser._optional_bool_str` exists because `str(True)` is `"True"` — a value neither the file
-  nor the picker ever produces.
+- **`background` and `maxTurns` round-trip as a real YAML bool and int.**
+  `parser._optional_bool_str` keeps Python's `True` from leaking into the YAML spelling.
 
 Fixed along the way: `FrontmatterEditor` wrapped every field in a `<label>`, which handed all
-three buttons of a segmented group the same accessible name (`"Allowed Subagents Allowed
-Subagents"`). Fields rendering a group now opt out via `wrapInLabel: false` and name themselves.
+buttons of a segmented group the same accessible name. Fields rendering a group now opt out
+via `wrapInLabel: false` and name themselves.
 
 Suite green: typecheck, backend 740 + 257, frontend 435, build. `npm run codegen:openapi` was
 re-run. The two `eslint` errors in `frontend/src/api/http.test.ts` are pre-existing and unrelated.

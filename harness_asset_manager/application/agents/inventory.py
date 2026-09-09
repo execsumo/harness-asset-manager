@@ -190,13 +190,10 @@ class AgentInventoryService:
             color=agent.color,
             model=agent.model,
             effort=agent.effort,
-            allowed_subagents=agent.allowed_subagents,
             max_turns=agent.max_turns,
             isolation=agent.isolation,
-            mode=agent.mode,
-            spawning=agent.spawning,
-            trust_project=agent.trust_project,
-            deny_tools=agent.deny_tools,
+            disallowed_tools=agent.disallowed_tools,
+            background=agent.background,
             hermes_provider=agent.hermes_provider,
             hermes_model=agent.hermes_model,
         )
@@ -235,13 +232,10 @@ class AgentInventoryService:
             color: str | None = None
             model: str | None = None
             effort: str | None = None
-            allowed_subagents: str | None = None
             max_turns: str | None = None
             isolation: str | None = None
-            mode = "background"
-            spawning = "false"
-            trust_project = "true"
-            deny_tools: tuple[str, ...] = ()
+            disallowed_tools: tuple[str, ...] = ()
+            background: str | None = None
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -256,13 +250,10 @@ class AgentInventoryService:
             color = agent.color
             model = agent.model
             effort = agent.effort
-            allowed_subagents = agent.allowed_subagents
             max_turns = agent.max_turns
             isolation = agent.isolation
-            mode = agent.mode
-            spawning = agent.spawning
-            trust_project = agent.trust_project
-            deny_tools = agent.deny_tools
+            disallowed_tools = agent.disallowed_tools
+            background = agent.background
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -291,13 +282,10 @@ class AgentInventoryService:
             color=color,
             model=model,
             effort=effort,
-            allowed_subagents=allowed_subagents,
             max_turns=max_turns,
             isolation=isolation,
-            mode=mode,
-            spawning=spawning,
-            trust_project=trust_project,
-            deny_tools=deny_tools,
+            disallowed_tools=disallowed_tools,
+            background=background,
             hermes_provider=None,
             hermes_model=None,
         )

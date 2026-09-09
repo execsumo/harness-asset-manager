@@ -21,13 +21,13 @@ from harness_asset_manager.application.agents import (
     render_agent_document,
 )
 from harness_asset_manager.application.agents.model import (
-    ALLOWED_SUBAGENTS_VALUES,
+    BACKGROUND_VALUES,
     COLOR_VALUES,
     CONTRACT_KEYS,
     EFFORT_VALUES,
     ISOLATION_VALUES,
     MAX_TURNS_DEFAULT,
-    validate_allowed_subagents,
+    validate_background,
     validate_color,
     validate_effort,
     validate_isolation,
@@ -166,7 +166,7 @@ class AgentParserTests(unittest.TestCase):
         self.assertEqual(reparsed.prompt, "Index the vault.")
         self.assertEqual(
             [key for key, _ in reparsed.extra_metadata],
-            ["permissionMode", "maxTurns", "disallowedTools", "hooks"],
+            ["permissionMode", "hooks"],
         )
         self.assertEqual(reparsed.metadata["model"], "sonnet")
         self.assertEqual(reparsed.metadata["maxTurns"], 50)
@@ -874,7 +874,7 @@ class ContractKeyParityTests(unittest.TestCase):
         "EFFORT_VALUES": EFFORT_VALUES,
         "COLOR_VALUES": COLOR_VALUES,
         "ISOLATION_VALUES": ISOLATION_VALUES,
-        "ALLOWED_SUBAGENTS_VALUES": ALLOWED_SUBAGENTS_VALUES,
+        "BACKGROUND_VALUES": BACKGROUND_VALUES,
     }
 
     TYPES_TS = (
@@ -957,9 +957,9 @@ class ContractFieldValidationTests(unittest.TestCase):
         (validate_color, COLOR_VALUES, "invalid_color", "chartreuse"),
         (validate_isolation, ISOLATION_VALUES, "invalid_isolation", "sandbox"),
         (
-            validate_allowed_subagents,
-            ALLOWED_SUBAGENTS_VALUES,
-            "invalid_allowed_subagents",
+            validate_background,
+            BACKGROUND_VALUES,
+            "invalid_background",
             "yes",
         ),
     )
@@ -1014,9 +1014,10 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             color=agent.color,
             model=agent.model,
             effort=agent.effort,
-            allowed_subagents=agent.allowed_subagents,
             max_turns=agent.max_turns,
             isolation=agent.isolation,
+            disallowed_tools=agent.disallowed_tools,
+            background=agent.background,
             base_metadata=agent.metadata,
         )
         return agent, rendered
@@ -1027,25 +1028,25 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             "---\n"
             "name: A\n"
             "description: d\n"
-            "allowed_subagents: true\n"
-            "max_turns: 30\n"
+            "background: true\n"
+            "maxTurns: 30\n"
             "---\n\nbody\n"
         )
-        self.assertEqual(agent.allowed_subagents, "true")
         self.assertEqual(agent.max_turns, "30")
-        self.assertIn("allowed_subagents: true", rendered)
-        self.assertIn("max_turns: 30", rendered)
+        self.assertEqual(agent.background, "true")
+        self.assertIn("background: true", rendered)
+        self.assertIn("maxTurns: 30", rendered)
         reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
-        self.assertEqual(reparsed.allowed_subagents, "true")
+        self.assertEqual(reparsed.background, "true")
         self.assertEqual(reparsed.max_turns, "30")
         self.assertEqual(reparsed.extra_metadata, ())
 
     def test_isolation_none_is_the_literal_string_not_a_null(self) -> None:
         agent, rendered = self._round_trip(
-            "---\nname: A\ndescription: d\nisolation: none\n---\n\nbody\n"
+            "---\nname: A\ndescription: d\nisolation: worktree\n---\n\nbody\n"
         )
-        self.assertEqual(agent.isolation, "none")
-        self.assertIn("isolation: none", rendered)
+        self.assertEqual(agent.isolation, "worktree")
+        self.assertIn("isolation: worktree", rendered)
 
     def test_contract_fields_render_in_declared_order(self) -> None:
         rendered = render_agent_document(
@@ -1057,9 +1058,10 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             color="cyan",
             model="opus",
             effort="high",
-            allowed_subagents="false",
             max_turns="12",
             isolation="worktree",
+            disallowed_tools=("Write", "Edit"),
+            background="true",
             extra_metadata=[{"key": "permissionMode", "value": "ask"}],
         )
         keys = [
@@ -1076,19 +1078,20 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             description="d",
             prompt="body",
             color="",
-            allowed_subagents="",
             max_turns="",
             isolation="",
+            background="",
             base_metadata={
                 "name": "A",
                 "description": "d",
                 "color": "cyan",
-                "allowed_subagents": True,
                 "max_turns": 30,
                 "isolation": "worktree",
+                "disallowedTools": ["Write"],
+                "background": True,
             },
         )
-        for cleared in ("color", "allowed_subagents", "max_turns", "isolation"):
+        for cleared in ("color", "maxTurns", "isolation", "background", "disallowedTools"):
             self.assertNotIn(f"{cleared}:", rendered)
 
 
