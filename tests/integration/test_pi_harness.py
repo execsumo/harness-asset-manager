@@ -27,6 +27,7 @@ class PiHarnessIntegrationTests(unittest.TestCase):
             skills = harness.get_json("/api/skills")
             pi_column = next(column for column in skills["harnessColumns"] if column["harness"] == "pi")
             self.assertTrue(pi_column["installed"])
+            self.assertEqual(pi_column["logoKey"], "pi")
             self.assertTrue(
                 any(
                     cell["harness"] == "pi" and cell["state"] == "found"
