@@ -1300,6 +1300,17 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertNotIn("droid", detail_harnesses)
             self.assertIn("codex", detail_harnesses)
 
+    def test_asset_family_columns_only_show_enabled_detected_harnesses(self) -> None:
+        with AppTestHarness(omit_clis=("agy", "opencode", "droid", "hermes")) as harness:
+            agents = harness.get_json("/api/agents")
+            slash_commands = harness.get_json("/api/slash-commands")
+            mcp = harness.get_json("/api/mcp/servers")
+
+            expected = {"claude", "codex", "cursor"}
+            self.assertEqual({column["harness"] for column in agents["columns"]}, expected)
+            self.assertEqual({target["id"] for target in slash_commands["targets"]}, expected)
+            self.assertEqual({column["harness"] for column in mcp["columns"]}, expected)
+
     def test_agent_skills_creation_validation_and_resolution(self) -> None:
         with AppTestHarness(mixed=True) as harness:
             # 1. Unknown skill fails with 400
