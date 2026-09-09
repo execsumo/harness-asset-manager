@@ -38,19 +38,14 @@ from harness_asset_manager.api.schemas.agents import (
 from harness_asset_manager.api.schemas.common import ErrorResponse, OkResponse
 from harness_asset_manager.application import BackendContainer
 from harness_asset_manager.application.agents import (
-    MODE_DEFAULT,
-    SPAWNING_DEFAULT,
-    TRUST_PROJECT_DEFAULT,
     AgentAdoptConflict,
     AgentAdoptionValidationError,
     AgentDetail,
-    validate_allowed_subagents,
-    validate_bool_setting,
+    validate_background,
     validate_color,
     validate_effort,
     validate_isolation,
     validate_max_turns,
-    validate_mode,
 )
 from harness_asset_manager.application.agents.hermes_profile import ensure_profile
 from harness_asset_manager.errors import MutationError
@@ -125,13 +120,10 @@ def create_agent(
         color=validate_color(body.color),
         model=body.model,
         effort=validate_effort(body.effort),
-        allowed_subagents=validate_allowed_subagents(body.allowedSubagents),
         max_turns=validate_max_turns(body.maxTurns),
         isolation=validate_isolation(body.isolation),
-        mode=validate_mode(body.mode) or MODE_DEFAULT,
-        spawning=validate_bool_setting(body.spawning, label="spawning", code="invalid_spawning") or SPAWNING_DEFAULT,
-        trust_project=validate_bool_setting(body.trustProject, label="trust-project", code="invalid_trust_project") or TRUST_PROJECT_DEFAULT,
-        deny_tools=tuple(body.denyTools),
+        disallowed_tools=tuple(body.disallowedTools),
+        background=validate_background(body.background),
         hermes_provider=body.hermesProvider,
         hermes_model=body.hermesModel,
     )
@@ -212,12 +204,9 @@ def update_agent(
     )
     validated_color = validate_color(body.color)
     validated_effort = validate_effort(body.effort)
-    validated_allowed_subagents = validate_allowed_subagents(body.allowedSubagents)
     validated_max_turns = validate_max_turns(body.maxTurns)
     validated_isolation = validate_isolation(body.isolation)
-    validated_mode = validate_mode(body.mode)
-    validated_spawning = validate_bool_setting(body.spawning, label="spawning", code="invalid_spawning")
-    validated_trust_project = validate_bool_setting(body.trustProject, label="trust-project", code="invalid_trust_project")
+    validated_background = validate_background(body.background)
     profile_failures: list[AgentMutationFailureResponse] = []
 
     if "/" in agent_ref:
@@ -238,13 +227,10 @@ def update_agent(
             color=validated_color,
             model=body.model,
             effort=validated_effort,
-            allowed_subagents=validated_allowed_subagents,
             max_turns=validated_max_turns,
             isolation=validated_isolation,
-            mode=validated_mode,
-            spawning=validated_spawning,
-            trust_project=validated_trust_project,
-            deny_tools=tuple(body.denyTools) if body.denyTools is not None else None,
+            disallowed_tools=tuple(body.disallowedTools) if body.disallowedTools is not None else None,
+            background=validated_background,
             metadata=extra_metadata,
         )
     else:
@@ -263,13 +249,10 @@ def update_agent(
             color=validated_color,
             model=body.model,
             effort=validated_effort,
-            allowed_subagents=validated_allowed_subagents,
             max_turns=validated_max_turns,
             isolation=validated_isolation,
-            mode=validated_mode,
-            spawning=validated_spawning,
-            trust_project=validated_trust_project,
-            deny_tools=tuple(body.denyTools) if body.denyTools is not None else None,
+            disallowed_tools=tuple(body.disallowedTools) if body.disallowedTools is not None else None,
+            background=validated_background,
             hermes_provider=body.hermesProvider,
             hermes_model=body.hermesModel,
             metadata=extra_metadata,
@@ -453,13 +436,10 @@ def _detail(
         color=detail.color,
         model=detail.model,
         effort=detail.effort,
-        allowedSubagents=detail.allowed_subagents,
         maxTurns=detail.max_turns,
         isolation=detail.isolation,
-        mode=detail.mode,
-        spawning=detail.spawning,
-        trustProject=detail.trust_project,
-        denyTools=list(detail.deny_tools),
+        disallowedTools=list(detail.disallowed_tools),
+        background=detail.background,
         hermesProvider=detail.hermes_provider,
         hermesModel=detail.hermes_model,
         ok=len(failed_list) == 0 and len(harness_failures_list) == 0,

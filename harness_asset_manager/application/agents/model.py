@@ -26,16 +26,28 @@ CONTRACT_KEYS: tuple[str, ...] = (
     "model",
     "effort",
     "tools",
+    "disallowedTools",
     "skills",
-    "allowed_subagents",
-    "max_turns",
+    "maxTurns",
     "isolation",
-    "mode",
-    "spawning",
-    "trust-project",
-    "deny-tools",
+    "background",
 )
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
+
+# Invalid or retired keys are intentionally not exposed as custom metadata and are
+# omitted when an agent is next written.
+RETIRED_KEYS = frozenset(
+    {
+        "capabilities",
+        "harnesses",
+        "allowed_subagents",
+        "max_turns",
+        "mode",
+        "spawning",
+        "trust-project",
+        "deny-tools",
+    }
+)
 
 # Fixed, global vocabularies — not per-harness, unlike ``model``, whose value set is
 # genuinely open-ended and therefore stays free text. Each picker offers exactly these
@@ -43,7 +55,7 @@ CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 # so a hand-edited file or a raw-YAML edit cannot smuggle in a value the picker could
 # not have produced. Mirrored one-for-one in frontend/src/features/agents/api/types.ts
 # and pinned by ``ContractKeyParityTests``.
-EFFORT_VALUES: tuple[str, ...] = ("low", "medium", "high")
+EFFORT_VALUES: tuple[str, ...] = ("low", "medium", "high", "xhigh", "max")
 COLOR_VALUES: tuple[str, ...] = (
     "red",
     "blue",
@@ -54,15 +66,11 @@ COLOR_VALUES: tuple[str, ...] = (
     "pink",
     "cyan",
 )
-ISOLATION_VALUES: tuple[str, ...] = ("worktree", "none")
+ISOLATION_VALUES: tuple[str, ...] = ("worktree",)
 # Written as a bare YAML boolean, so the two literals are lowercase on the way in and
 # on the way out; ``parser._optional_bool_str`` is what keeps Python's ``True`` from
 # leaking back into the file as ``True``.
-ALLOWED_SUBAGENTS_VALUES: tuple[str, ...] = ("true", "false")
-MODE_VALUES: tuple[str, ...] = ("background", "interactive")
-MODE_DEFAULT = "background"
-SPAWNING_DEFAULT = "false"
-TRUST_PROJECT_DEFAULT = "true"
+BACKGROUND_VALUES: tuple[str, ...] = ("true", "false")
 
 # What a harness assumes when ``max_turns`` is absent. The editor shows it as the
 # placeholder rather than writing it: filling every agent file with a value nobody
@@ -107,21 +115,13 @@ def validate_isolation(isolation: str | None) -> str | None:
     )
 
 
-def validate_allowed_subagents(allowed_subagents: str | None) -> str | None:
+def validate_background(background: str | None) -> str | None:
     return _validate_choice(
-        allowed_subagents,
-        ALLOWED_SUBAGENTS_VALUES,
-        label="allowed_subagents",
-        code="invalid_allowed_subagents",
+        background,
+        BACKGROUND_VALUES,
+        label="background",
+        code="invalid_background",
     )
-
-
-def validate_mode(mode: str | None) -> str | None:
-    return _validate_choice(mode, MODE_VALUES, label="mode", code="invalid_mode")
-
-
-def validate_bool_setting(value: str | None, *, label: str, code: str) -> str | None:
-    return _validate_choice(value, ("true", "false"), label=label, code=code)
 
 
 def validate_max_turns(max_turns: str | None) -> str | None:
@@ -189,20 +189,16 @@ class AgentDefinition:
     hermes_provider: str | None = None
     hermes_model: str | None = None
     skills: tuple[str, ...] = ()
-    # Contract fields: parsed and rendered as their own frontmatter keys, never
-    # treated as custom metadata. Held as strings even where the file spells them as a
-    # YAML scalar (``max_turns`` an int, ``allowed_subagents`` a bool) so that "" can
-    # mean "clear the key" the whole way through the edit path.
+    # Contract fields: parsed and rendered as their own Claude Code frontmatter keys,
+    # never treated as custom metadata. Held as strings even where the file spells
+    # them as YAML scalars so that "" can mean "clear the key" through the edit path.
     color: str | None = None
     model: str | None = None
     effort: str | None = None
-    allowed_subagents: str | None = None
     max_turns: str | None = None
     isolation: str | None = None
-    mode: str = MODE_DEFAULT
-    spawning: str = SPAWNING_DEFAULT
-    trust_project: str = TRUST_PROJECT_DEFAULT
-    deny_tools: tuple[str, ...] = ()
+    disallowed_tools: tuple[str, ...] = ()
+    background: str | None = None
 
     @property
     def ref(self) -> str:
@@ -214,7 +210,7 @@ class AgentDefinition:
         return tuple(
             (key, value)
             for key, value in self.metadata.items()
-            if key not in CONTRACT_KEY_SET
+            if key not in CONTRACT_KEY_SET and key not in RETIRED_KEYS
         )
 
 
@@ -308,13 +304,10 @@ class AgentDetail:
     color: str | None = None
     model: str | None = None
     effort: str | None = None
-    allowed_subagents: str | None = None
     max_turns: str | None = None
     isolation: str | None = None
-    mode: str = MODE_DEFAULT
-    spawning: str = SPAWNING_DEFAULT
-    trust_project: str = TRUST_PROJECT_DEFAULT
-    deny_tools: tuple[str, ...] = ()
+    disallowed_tools: tuple[str, ...] = ()
+    background: str | None = None
     hermes_provider: str | None = None
     hermes_model: str | None = None
 
@@ -366,17 +359,14 @@ class AgentAdoptionValidationError(MutationError):
 
 
 __all__ = [
-    "ALLOWED_SUBAGENTS_VALUES",
+    "BACKGROUND_VALUES",
     "COLOR_VALUES",
     "CONTRACT_KEYS",
     "CONTRACT_KEY_SET",
+    "RETIRED_KEYS",
     "EFFORT_VALUES",
     "ISOLATION_VALUES",
     "MAX_TURNS_DEFAULT",
-    "MODE_DEFAULT",
-    "MODE_VALUES",
-    "SPAWNING_DEFAULT",
-    "TRUST_PROJECT_DEFAULT",
     "AgentAdoptConflict",
     "AgentAdoptionValidationError",
     "AgentBinding",
@@ -388,11 +378,9 @@ __all__ = [
     "AgentSkill",
     "AgentTarget",
     "BindingState",
-    "validate_allowed_subagents",
+    "validate_background",
     "validate_color",
     "validate_effort",
     "validate_isolation",
     "validate_max_turns",
-    "validate_mode",
-    "validate_bool_setting",
 ]

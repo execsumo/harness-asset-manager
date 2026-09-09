@@ -1559,10 +1559,10 @@ export interface components {
         };
         /** AgentDetailResponse */
         AgentDetailResponse: {
-            /** Allowedsubagents */
-            allowedSubagents?: string | null;
             /** Autoenabled */
             autoEnabled?: components["schemas"]["AutoEnabledSkillResponse"][];
+            /** Background */
+            background?: string | null;
             /** Candelete */
             canDelete: boolean;
             /**
@@ -1574,10 +1574,10 @@ export interface components {
             color?: string | null;
             /** Configuration */
             configuration?: components["schemas"]["AgentConfigEntryResponse"][];
-            /** Denytools */
-            denyTools?: string[];
             /** Description */
             description: string;
+            /** Disallowedtools */
+            disallowedTools?: string[];
             /** Document */
             document: string;
             /** Effort */
@@ -1596,8 +1596,6 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
-            /** Mode */
-            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1613,16 +1611,12 @@ export interface components {
             ref: string;
             /** Skills */
             skills?: components["schemas"]["AgentSkillResponse"][];
-            /** Spawning */
-            spawning?: string | null;
             /** Storepath */
             storePath?: string | null;
             /** Tags */
             tags?: string[];
             /** Tools */
             tools: string[];
-            /** Trustproject */
-            trustProject?: string | null;
         };
         /** AgentEntryResponse */
         AgentEntryResponse: {
@@ -1958,17 +1952,17 @@ export interface components {
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
-            /** Allowedsubagents */
-            allowedSubagents?: string | null;
+            /** Background */
+            background?: string | null;
             /** Color */
             color?: string | null;
-            /** Denytools */
-            denyTools?: string[];
             /**
              * Description
              * @default
              */
             description: string;
+            /** Disallowedtools */
+            disallowedTools?: string[];
             /** Effort */
             effort?: string | null;
             /** Harnesses */
@@ -1981,8 +1975,6 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
-            /** Mode */
-            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1994,12 +1986,8 @@ export interface components {
             prompt: string;
             /** Skills */
             skills?: string[];
-            /** Spawning */
-            spawning?: string | null;
             /** Tools */
             tools?: string[];
-            /** Trustproject */
-            trustProject?: string | null;
         };
         /** DisableHookRequest */
         DisableHookRequest: {
@@ -3570,14 +3558,14 @@ export interface components {
         };
         /** UpdateAgentRequest */
         UpdateAgentRequest: {
-            /** Allowedsubagents */
-            allowedSubagents?: string | null;
+            /** Background */
+            background?: string | null;
             /** Color */
             color?: string | null;
-            /** Denytools */
-            denyTools?: string[] | null;
             /** Description */
             description?: string | null;
+            /** Disallowedtools */
+            disallowedTools?: string[] | null;
             /** Effort */
             effort?: string | null;
             /** Hermesmodel */
@@ -3590,8 +3578,6 @@ export interface components {
             maxTurns?: string | null;
             /** Metadata */
             metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
-            /** Mode */
-            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -3600,12 +3586,8 @@ export interface components {
             prompt?: string | null;
             /** Skills */
             skills?: string[] | null;
-            /** Spawning */
-            spawning?: string | null;
             /** Tools */
             tools?: string[] | null;
-            /** Trustproject */
-            trustProject?: string | null;
         };
         /** UpdateSkillDocumentRequest */
         UpdateSkillDocumentRequest: {

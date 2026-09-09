@@ -17,7 +17,7 @@ import {
   type SkillTagOption,
 } from "./detail/AgentSkillsFieldEditor";
 import {
-  ALLOWED_SUBAGENTS_VALUES,
+  BACKGROUND_VALUES,
   COLOR_VALUES,
   EFFORT_VALUES,
   ISOLATION_VALUES,
@@ -55,7 +55,8 @@ export function CreateAgentDialog({
   const [effort, setEffort] = useState("");
   const [toolsStr, setToolsStr] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
-  const [allowedSubagents, setAllowedSubagents] = useState("");
+  const [disallowedTools, setDisallowedTools] = useState("");
+  const [background, setBackground] = useState("");
   const [maxTurns, setMaxTurns] = useState("");
   const [isolation, setIsolation] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -87,7 +88,8 @@ export function CreateAgentDialog({
     setEffort("");
     setToolsStr("");
     setSkills([]);
-    setAllowedSubagents("");
+    setDisallowedTools("");
+    setBackground("");
     setMaxTurns("");
     setIsolation("");
     setPrompt("");
@@ -190,14 +192,21 @@ export function CreateAgentDialog({
     if (skills.length > 0) {
       payload.skills = skills;
     }
-    if (allowedSubagents) {
-      payload.allowedSubagents = allowedSubagents;
-    }
     if (maxTurns.trim()) {
       payload.maxTurns = maxTurns.trim();
     }
     if (isolation) {
       payload.isolation = isolation;
+    }
+    const disallowed = disallowedTools
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (disallowed.length > 0) {
+      payload.disallowedTools = disallowed;
+    }
+    if (background) {
+      payload.background = background;
     }
     if (selectedHarnesses.length > 0) {
       payload.harnesses = selectedHarnesses;
@@ -387,23 +396,35 @@ export function CreateAgentDialog({
                     </div>
 
                     <div className="form-field">
-                      <span className="form-field__label">Allowed Subagents</span>
-                      <FrontmatterSegmentedField
-                        label="Allowed Subagents"
-                        value={allowedSubagents}
-                        options={ALLOWED_SUBAGENTS_VALUES}
-                        onChange={setAllowedSubagents}
-                        disabled={isPending}
-                      />
-                    </div>
-
-                    <div className="form-field">
                       <span className="form-field__label">Isolation</span>
                       <FrontmatterSegmentedField
                         label="Isolation"
                         value={isolation}
                         options={ISOLATION_VALUES}
                         onChange={setIsolation}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <label className="form-field">
+                      <span className="form-field__label">Disallowed Tools (comma-separated)</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="e.g. Write, Edit, Agent(Explore)"
+                        value={disallowedTools}
+                        onChange={(e) => setDisallowedTools(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <div className="form-field">
+                      <span className="form-field__label">Background</span>
+                      <FrontmatterSegmentedField
+                        label="Background"
+                        value={background}
+                        options={BACKGROUND_VALUES}
+                        onChange={setBackground}
                         disabled={isPending}
                       />
                     </div>

@@ -109,7 +109,7 @@
   cursor: not-allowed;
 }
 
-/* Fixed-vocabulary contract fields (allowed_subagents, isolation): a segmented toggle
+/* Fixed-vocabulary contract fields (background, isolation): a segmented toggle
    whose first segment clears the key, so "absent" stays a state the user can pick.
    The toggle spans its field like the inputs around it, and the segments share that
    width evenly so the control reads as one balanced unit instead of three chips

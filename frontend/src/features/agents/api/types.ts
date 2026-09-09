@@ -14,15 +14,12 @@ export const AGENT_CONTRACT_KEYS = [
   "effort",
   // What it may reach for
   "tools",
+  "disallowedTools",
   "skills",
-  "allowed_subagents",
   // The envelope it runs in
-  "max_turns",
+  "maxTurns",
   "isolation",
-  "mode",
-  "spawning",
-  "trust-project",
-  "deny-tools",
+  "background",
 ] as const;
 
 /**
@@ -31,7 +28,7 @@ export const AGENT_CONTRACT_KEYS = [
  * which reject anything else with a 400; keep the two sides in step or a picker offers
  * a value the API refuses. `model` is deliberately absent: its value set is open.
  */
-export const EFFORT_VALUES = ["low", "medium", "high"] as const;
+export const EFFORT_VALUES = ["low", "medium", "high", "xhigh", "max"] as const;
 export const COLOR_VALUES = [
   "red",
   "blue",
@@ -42,15 +39,11 @@ export const COLOR_VALUES = [
   "pink",
   "cyan",
 ] as const;
-export const ISOLATION_VALUES = ["worktree", "none"] as const;
-export const ALLOWED_SUBAGENTS_VALUES = ["true", "false"] as const;
-export const MODE_VALUES = ["background", "interactive"] as const;
-export const MODE_DEFAULT = "background";
-export const SPAWNING_DEFAULT = "false";
-export const TRUST_PROJECT_DEFAULT = "true";
+export const ISOLATION_VALUES = ["worktree"] as const;
+export const BACKGROUND_VALUES = ["true", "false"] as const;
 
 /**
- * What a harness assumes when `max_turns` is absent. Shown as the field's placeholder
+ * What a harness assumes when `maxTurns` is absent. Shown as the field's placeholder
  * rather than written on save — filling every agent file with a value nobody asked for
  * would freeze an implicit default into an explicit setting.
  */
@@ -130,13 +123,10 @@ export interface AgentCreateRequest {
   color?: string;
   model?: string;
   effort?: string;
-  allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
-  mode?: string;
-  spawning?: string;
-  trustProject?: string;
-  denyTools?: string[];
+  disallowedTools?: string[];
+  background?: string;
   /** Hermes profile routing; values are passed through without a HAM vocabulary. */
   hermesProvider?: string;
   hermesModel?: string;
@@ -153,13 +143,10 @@ export interface AgentUpdateRequest {
   color?: string;
   model?: string;
   effort?: string;
-  allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
-  mode?: string;
-  spawning?: string;
-  trustProject?: string;
-  denyTools?: string[];
+  disallowedTools?: string[];
+  background?: string;
   hermesProvider?: string;
   hermesModel?: string;
   metadata?: Array<{ key: string; value: string }>;
@@ -194,13 +181,10 @@ export interface AgentDetailDto {
   color?: string | null;
   model?: string | null;
   effort?: string | null;
-  allowedSubagents?: string | null;
   maxTurns?: string | null;
   isolation?: string | null;
-  mode?: string | null;
-  spawning?: string | null;
-  trustProject?: string | null;
-  denyTools?: string[];
+  disallowedTools?: string[];
+  background?: string | null;
   hermesProvider?: string | null;
   hermesModel?: string | null;
   ok?: boolean;

@@ -10,9 +10,7 @@ from ruamel.yaml.error import YAMLError
 from .model import (
     CONTRACT_KEY_SET,
     CONTRACT_KEYS,
-    MODE_DEFAULT,
-    SPAWNING_DEFAULT,
-    TRUST_PROJECT_DEFAULT,
+    RETIRED_KEYS,
     AgentDefinition,
     AgentParseError,
 )
@@ -21,11 +19,9 @@ _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
 _rt_yaml.default_flow_style = False
 
-# Written by the retired compile model and read by nothing. Unknown *harness* keys are
-# preserved on write; these two are ours, dead, and dropped so they stop showing up as
-# configuration. Everything else survives untouched.
-RETIRED_KEYS = frozenset({"capabilities", "harnesses"})
-
+# Unknown *harness* keys are preserved on write. These keys are not unknown metadata:
+# they were invalid HAM contract fields and are intentionally removed rather than
+# carried into Claude Code agent files.
 
 def parse_hermes_extras(raw: Mapping[str, object]) -> tuple[str | None, str | None]:
     """Read the optional Hermes sidecar values without imposing a provider vocabulary."""
@@ -68,13 +64,10 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         color=_optional_str(metadata, "color"),
         model=_optional_str(metadata, "model"),
         effort=_optional_str(metadata, "effort"),
-        allowed_subagents=_optional_bool_str(metadata, "allowed_subagents"),
-        max_turns=_optional_str(metadata, "max_turns"),
+        max_turns=_optional_str(metadata, "maxTurns"),
         isolation=_optional_str(metadata, "isolation"),
-        mode=_optional_str(metadata, "mode") or MODE_DEFAULT,
-        spawning=_optional_bool_str(metadata, "spawning") or SPAWNING_DEFAULT,
-        trust_project=_optional_bool_str(metadata, "trust-project") or TRUST_PROJECT_DEFAULT,
-        deny_tools=_str_tuple(metadata.get("deny-tools"), "deny-tools"),
+        disallowed_tools=_str_tuple(metadata.get("disallowedTools"), "disallowedTools"),
+        background=_optional_bool_str(metadata, "background"),
     )
 
 
@@ -88,13 +81,10 @@ def render_agent_document(
     color: str | None = None,
     model: str | None = None,
     effort: str | None = None,
-    allowed_subagents: str | None = None,
     max_turns: str | None = None,
     isolation: str | None = None,
-    mode: str = MODE_DEFAULT,
-    spawning: str = SPAWNING_DEFAULT,
-    trust_project: str = TRUST_PROJECT_DEFAULT,
-    deny_tools: tuple[str, ...] = (),
+    disallowed_tools: tuple[str, ...] = (),
+    background: str | None = None,
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -114,25 +104,20 @@ def render_agent_document(
             metadata["tools"] = ", ".join(tools)
         if skills:
             metadata["skills"] = list(skills)
-        # Written unquoted, so `max_turns: 30` and `allowed_subagents: true` come back
-        # out of YAML as the int and bool the harness expects rather than as strings.
+        # Written unquoted, so `maxTurns: 30` and `background: true` come back out of
+        # YAML as the int and bool Claude Code expects rather than as strings.
         for scalar_key, scalar_value in (
             ("color", color),
             ("model", model),
             ("effort", effort),
-            ("allowed_subagents", allowed_subagents),
-            ("max_turns", max_turns),
+            ("maxTurns", max_turns),
             ("isolation", isolation),
-            ("mode", mode),
-            ("spawning", spawning),
-            ("trust-project", trust_project),
+            ("background", background),
         ):
             if scalar_value:
                 metadata[scalar_key] = scalar_value
-        # Keep the optional list in the canonical contract position when an edit is
-        # rendered with an explicit metadata payload. An empty list is still an
-        # explicit, harmless value and preserves the contract's stable field order.
-        metadata["deny-tools"] = list(deny_tools)
+        if disallowed_tools:
+            metadata["disallowedTools"] = list(disallowed_tools)
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -173,12 +158,9 @@ def render_agent_document(
             ("color", color),
             ("model", model),
             ("effort", effort),
-            ("allowed_subagents", allowed_subagents),
-            ("max_turns", max_turns),
+            ("maxTurns", max_turns),
             ("isolation", isolation),
-            ("mode", mode),
-            ("spawning", spawning),
-            ("trust-project", trust_project),
+            ("background", background),
         ):
             if contract_value is None:
                 continue
@@ -187,10 +169,10 @@ def render_agent_document(
             elif contract_key in metadata:
                 del metadata[contract_key]
 
-        if deny_tools:
-            metadata["deny-tools"] = list(deny_tools)
-        elif "deny-tools" in metadata:
-            del metadata["deny-tools"]
+        if disallowed_tools:
+            metadata["disallowedTools"] = list(disallowed_tools)
+        else:
+            metadata.pop("disallowedTools", None)
 
         # Contract fields lead in canonical order, then everything else in its original order.
         lead = [k for k in CONTRACT_KEYS if k in metadata]
