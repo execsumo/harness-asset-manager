@@ -22,6 +22,10 @@ import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation
 import { useSkillsListQuery } from "../../../skills/public";
 import {
   AGENT_CONTRACT_KEYS,
+  MODE_DEFAULT,
+  MODE_VALUES,
+  SPAWNING_DEFAULT,
+  TRUST_PROJECT_DEFAULT,
   ALLOWED_SUBAGENTS_VALUES,
   COLOR_VALUES,
   EFFORT_VALUES,
@@ -167,6 +171,10 @@ export function AgentDetailContent({
   const [allowedSubagentsStr, setAllowedSubagentsStr] = useState(detail.allowedSubagents ?? "");
   const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
   const [isolationStr, setIsolationStr] = useState(detail.isolation ?? "");
+  const [modeStr, setModeStr] = useState(detail.mode ?? MODE_DEFAULT);
+  const [spawningStr, setSpawningStr] = useState(detail.spawning ?? SPAWNING_DEFAULT);
+  const [trustProjectStr, setTrustProjectStr] = useState(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
+  const [denyToolsStr, setDenyToolsStr] = useState((detail.denyTools ?? []).join(", "));
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -185,6 +193,10 @@ export function AgentDetailContent({
     setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
+    setModeStr(detail.mode ?? MODE_DEFAULT);
+    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
+    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
+    setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(
       (detail.configuration || [])
         .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
@@ -348,6 +360,40 @@ export function AgentDetailContent({
           />
         ),
       },
+      {
+        key: "mode",
+        label: "Mode",
+        value: modeStr,
+        onChange: setModeStr,
+        renderInput: ({ disabled }) => (
+          <select className="frontmatter-editor__input" value={modeStr} onChange={(event) => setModeStr(event.target.value)} disabled={disabled} aria-label="Mode">
+            {MODE_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
+        ),
+      },
+      {
+        key: "spawning",
+        wrapInLabel: false,
+        label: "Spawning",
+        value: spawningStr,
+        onChange: setSpawningStr,
+        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Spawning" value={spawningStr} options={["true", "false"]} onChange={setSpawningStr} disabled={disabled} />,
+      },
+      {
+        key: "trust-project",
+        wrapInLabel: false,
+        label: "Trust Project",
+        value: trustProjectStr,
+        onChange: setTrustProjectStr,
+        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Trust Project" value={trustProjectStr} options={["true", "false"]} onChange={setTrustProjectStr} disabled={disabled} />,
+      },
+      {
+        key: "deny-tools",
+        label: "Deny Tools (comma-separated)",
+        value: denyToolsStr,
+        onChange: setDenyToolsStr,
+        placeholder: "e.g. web_search, shell",
+      },
     ],
     [
       name,
@@ -362,6 +408,10 @@ export function AgentDetailContent({
       allowedSubagentsStr,
       maxTurnsStr,
       isolationStr,
+      modeStr,
+      spawningStr,
+      trustProjectStr,
+      denyToolsStr,
     ],
   );
 
@@ -379,6 +429,10 @@ export function AgentDetailContent({
     if (allowedSubagentsStr !== (detail.allowedSubagents ?? "")) return true;
     if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
     if (isolationStr !== (detail.isolation ?? "")) return true;
+    if (modeStr !== (detail.mode ?? MODE_DEFAULT)) return true;
+    if (spawningStr !== (detail.spawning ?? SPAWNING_DEFAULT)) return true;
+    if (trustProjectStr !== (detail.trustProject ?? TRUST_PROJECT_DEFAULT)) return true;
+    if (denyToolsStr !== (detail.denyTools ?? []).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -395,7 +449,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr]);
+  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, allowedSubagentsStr, maxTurnsStr, isolationStr, modeStr, spawningStr, trustProjectStr, denyToolsStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -410,6 +464,10 @@ export function AgentDetailContent({
     setAllowedSubagentsStr(detail.allowedSubagents ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
+    setModeStr(detail.mode ?? MODE_DEFAULT);
+    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
+    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
+    setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -429,6 +487,10 @@ export function AgentDetailContent({
     let finalAllowedSubagents = allowedSubagentsStr;
     let finalMaxTurns = maxTurnsStr;
     let finalIsolation = isolationStr;
+    let finalMode = modeStr;
+    let finalSpawning = spawningStr;
+    let finalTrustProject = trustProjectStr;
+    let finalDenyToolsStr = denyToolsStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
@@ -447,6 +509,10 @@ export function AgentDetailContent({
       finalAllowedSubagents = parsed.known.allowed_subagents ?? "";
       finalMaxTurns = parsed.known.max_turns ?? "";
       finalIsolation = parsed.known.isolation ?? "";
+      finalMode = parsed.known.mode ?? MODE_DEFAULT;
+      finalSpawning = parsed.known.spawning ?? SPAWNING_DEFAULT;
+      finalTrustProject = parsed.known["trust-project"] ?? TRUST_PROJECT_DEFAULT;
+      finalDenyToolsStr = parsed.known["deny-tools"] ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
@@ -458,6 +524,10 @@ export function AgentDetailContent({
       setAllowedSubagentsStr(finalAllowedSubagents);
       setMaxTurnsStr(finalMaxTurns);
       setIsolationStr(finalIsolation);
+      setModeStr(finalMode);
+      setSpawningStr(finalSpawning);
+      setTrustProjectStr(finalTrustProject);
+      setDenyToolsStr(finalDenyToolsStr);
       setOtherEntries(finalOther);
     }
 
@@ -490,6 +560,10 @@ export function AgentDetailContent({
           allowedSubagents: finalAllowedSubagents.trim(),
           maxTurns: finalMaxTurns.trim(),
           isolation: finalIsolation.trim(),
+          mode: finalMode.trim(),
+          spawning: finalSpawning.trim(),
+          trustProject: finalTrustProject.trim(),
+          denyTools: finalDenyToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
           hermesProvider: hermesProviderStr.trim(),
           hermesModel: hermesModelStr.trim(),
           metadata: metadataPayload,

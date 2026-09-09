@@ -370,6 +370,10 @@ class AgentMutationService:
         allowed_subagents: str | None = None,
         max_turns: str | None = None,
         isolation: str | None = None,
+        mode: str | None = None,
+        spawning: str | None = None,
+        trust_project: str | None = None,
+        deny_tools: tuple[str, ...] | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -417,6 +421,10 @@ class AgentMutationService:
             ),
             max_turns=max_turns if max_turns is not None else current.max_turns,
             isolation=isolation if isolation is not None else current.isolation,
+            mode=mode if mode is not None else current.mode,
+            spawning=spawning if spawning is not None else current.spawning,
+            trust_project=trust_project if trust_project is not None else current.trust_project,
+            deny_tools=deny_tools if deny_tools is not None else current.deny_tools,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )

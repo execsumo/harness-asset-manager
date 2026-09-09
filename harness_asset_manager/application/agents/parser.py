@@ -7,7 +7,15 @@ from typing import Mapping
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from .model import CONTRACT_KEY_SET, CONTRACT_KEYS, AgentDefinition, AgentParseError
+from .model import (
+    CONTRACT_KEY_SET,
+    CONTRACT_KEYS,
+    MODE_DEFAULT,
+    SPAWNING_DEFAULT,
+    TRUST_PROJECT_DEFAULT,
+    AgentDefinition,
+    AgentParseError,
+)
 
 _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
@@ -63,6 +71,10 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         allowed_subagents=_optional_bool_str(metadata, "allowed_subagents"),
         max_turns=_optional_str(metadata, "max_turns"),
         isolation=_optional_str(metadata, "isolation"),
+        mode=_optional_str(metadata, "mode") or MODE_DEFAULT,
+        spawning=_optional_bool_str(metadata, "spawning") or SPAWNING_DEFAULT,
+        trust_project=_optional_bool_str(metadata, "trust-project") or TRUST_PROJECT_DEFAULT,
+        deny_tools=_str_tuple(metadata.get("deny-tools"), "deny-tools"),
     )
 
 
@@ -79,6 +91,10 @@ def render_agent_document(
     allowed_subagents: str | None = None,
     max_turns: str | None = None,
     isolation: str | None = None,
+    mode: str = MODE_DEFAULT,
+    spawning: str = SPAWNING_DEFAULT,
+    trust_project: str = TRUST_PROJECT_DEFAULT,
+    deny_tools: tuple[str, ...] = (),
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -107,9 +123,16 @@ def render_agent_document(
             ("allowed_subagents", allowed_subagents),
             ("max_turns", max_turns),
             ("isolation", isolation),
+            ("mode", mode),
+            ("spawning", spawning),
+            ("trust-project", trust_project),
         ):
             if scalar_value:
                 metadata[scalar_key] = scalar_value
+        # Keep the optional list in the canonical contract position when an edit is
+        # rendered with an explicit metadata payload. An empty list is still an
+        # explicit, harmless value and preserves the contract's stable field order.
+        metadata["deny-tools"] = list(deny_tools)
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -153,6 +176,9 @@ def render_agent_document(
             ("allowed_subagents", allowed_subagents),
             ("max_turns", max_turns),
             ("isolation", isolation),
+            ("mode", mode),
+            ("spawning", spawning),
+            ("trust-project", trust_project),
         ):
             if contract_value is None:
                 continue
@@ -160,6 +186,11 @@ def render_agent_document(
                 metadata[contract_key] = contract_value
             elif contract_key in metadata:
                 del metadata[contract_key]
+
+        if deny_tools:
+            metadata["deny-tools"] = list(deny_tools)
+        elif "deny-tools" in metadata:
+            del metadata["deny-tools"]
 
         # Contract fields lead in canonical order, then everything else in its original order.
         lead = [k for k in CONTRACT_KEYS if k in metadata]

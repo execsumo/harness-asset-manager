@@ -17,6 +17,10 @@ from .ledger import (
     classify_drift,
 )
 from .model import (
+    MODE_DEFAULT,
+    MODE_VALUES,
+    SPAWNING_DEFAULT,
+    TRUST_PROJECT_DEFAULT,
     AgentAdoptConflict,
     AgentAdoptionValidationError,
     AgentBinding,
@@ -29,10 +33,12 @@ from .model import (
     AgentParseError,
     AgentTarget,
     validate_allowed_subagents,
+    validate_bool_setting,
     validate_color,
     validate_effort,
     validate_isolation,
     validate_max_turns,
+    validate_mode,
 )
 from .mutations import AgentMutationService, BulkAdoptResult, ConflictResolution
 from .parser import (
@@ -66,6 +72,10 @@ __all__ = [
     "AgentReconcileService",
     "AgentStore",
     "AgentTarget",
+    "MODE_DEFAULT",
+    "MODE_VALUES",
+    "SPAWNING_DEFAULT",
+    "TRUST_PROJECT_DEFAULT",
     "CodexAgentDocument",
     "AuditAction",
     "AuditEntry",
@@ -75,6 +85,8 @@ __all__ = [
     "validate_effort",
     "validate_isolation",
     "validate_max_turns",
+    "validate_mode",
+    "validate_bool_setting",
     "ConflictResolution",
     "DriftKind",
     "LEDGER_VERSION",
