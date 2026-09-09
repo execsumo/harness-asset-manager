@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
+from harness_asset_manager.cli.main import runtime_executable_changed
 from harness_asset_manager.runtime import process as runtime_process
 from harness_asset_manager.runtime import server as server_module
 from harness_asset_manager.runtime.assets import resolve_frontend_dist
@@ -29,6 +30,28 @@ from harness_asset_manager.runtime.state import (
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_runtime_executable_change_is_detected_for_upgrades(self) -> None:
+        state = RuntimeState(
+            pid=1234,
+            host="127.0.0.1",
+            port=8123,
+            base_url="http://127.0.0.1:8123",
+            version="0.1.0",
+            executable="/opt/homebrew/Cellar/harness-asset-manager/0.5.0/libexec/harness-asset-manager",
+            started_at=1.23,
+        )
+
+        self.assertTrue(runtime_executable_changed(state))
+        self.assertFalse(runtime_executable_changed(state.__class__(
+            pid=state.pid,
+            host=state.host,
+            port=state.port,
+            base_url=state.base_url,
+            version=state.version,
+            executable=os.sys.executable,
+            started_at=state.started_at,
+        )))
+
     def test_startup_timeout_uses_source_timeout_by_default(self) -> None:
         self.assertEqual(startup_timeout_seconds(packaged=False), SOURCE_STARTUP_TIMEOUT_SECONDS)
 

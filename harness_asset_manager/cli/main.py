@@ -249,9 +249,16 @@ def start_command(args: argparse.Namespace) -> int:
     env = runtime_env(args.state_dir)
     existing = load_runtime_state(env)
     if existing is not None and is_owned_runtime_process(existing):
-        print(f"harness-asset-manager is already running at {existing.base_url} (pid {existing.pid})")
-        maybe_open_browser(existing.base_url, enabled=args.open_browser)
-        return 0
+        if not runtime_executable_changed(existing):
+            print(f"harness-asset-manager is already running at {existing.base_url} (pid {existing.pid})")
+            maybe_open_browser(existing.base_url, enabled=args.open_browser)
+            return 0
+        print(
+            "Detected an older harness-asset-manager process; restarting it to use the installed version.",
+            flush=True,
+        )
+        terminate_process(existing.pid)
+        clear_runtime_state(env)
     if existing is not None:
         clear_runtime_state(env)
 
@@ -313,6 +320,23 @@ def start_command(args: argparse.Namespace) -> int:
     print(f"harness-asset-manager started at {url} (pid {process.pid})")
     maybe_open_browser(url, enabled=args.open_browser)
     return 0
+
+
+def runtime_executable_changed(state: RuntimeState) -> bool:
+    """Return whether this launcher differs from the process recorded in runtime state.
+
+    Homebrew installs each version in a versioned Cellar directory. An upgrade can
+    therefore replace the launcher while an older daemon keeps running from the old
+    directory. Comparing resolved paths lets ``start`` hand off to the new bundle
+    without requiring a manual ``stop`` first. For source runs, both versions use
+    the same interpreter path, so normal repeated starts remain no-ops.
+    """
+    if not state.executable:
+        return False
+    try:
+        return os.path.realpath(state.executable) != os.path.realpath(sys.executable)
+    except OSError:
+        return state.executable != sys.executable
 
 
 def stop_command(args: argparse.Namespace) -> int:
