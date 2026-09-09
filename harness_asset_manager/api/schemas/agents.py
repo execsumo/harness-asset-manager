@@ -147,6 +147,10 @@ class CreateAgentRequest(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    mode: str | None = None
+    spawning: str | None = None
+    trustProject: str | None = None
+    denyTools: list[str] = Field(default_factory=list)
     hermesProvider: str | None = None
     hermesModel: str | None = None
     harnesses: list[str] = Field(default_factory=list)
@@ -173,6 +177,10 @@ class UpdateAgentRequest(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    mode: str | None = None
+    spawning: str | None = None
+    trustProject: str | None = None
+    denyTools: list[str] | None = None
     hermesProvider: str | None = None
     hermesModel: str | None = None
     metadata: list[AgentConfigEntryResponse] | None = None
@@ -217,6 +225,10 @@ class AgentDetailResponse(BaseModel):
     allowedSubagents: str | None = None
     maxTurns: str | None = None
     isolation: str | None = None
+    mode: str | None = None
+    spawning: str | None = None
+    trustProject: str | None = None
+    denyTools: list[str] = Field(default_factory=list)
     hermesProvider: str | None = None
     hermesModel: str | None = None
     ok: bool = True

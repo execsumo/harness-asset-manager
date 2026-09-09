@@ -30,6 +30,10 @@ CONTRACT_KEYS: tuple[str, ...] = (
     "allowed_subagents",
     "max_turns",
     "isolation",
+    "mode",
+    "spawning",
+    "trust-project",
+    "deny-tools",
 )
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
@@ -55,6 +59,10 @@ ISOLATION_VALUES: tuple[str, ...] = ("worktree", "none")
 # on the way out; ``parser._optional_bool_str`` is what keeps Python's ``True`` from
 # leaking back into the file as ``True``.
 ALLOWED_SUBAGENTS_VALUES: tuple[str, ...] = ("true", "false")
+MODE_VALUES: tuple[str, ...] = ("background", "interactive")
+MODE_DEFAULT = "background"
+SPAWNING_DEFAULT = "false"
+TRUST_PROJECT_DEFAULT = "true"
 
 # What a harness assumes when ``max_turns`` is absent. The editor shows it as the
 # placeholder rather than writing it: filling every agent file with a value nobody
@@ -106,6 +114,14 @@ def validate_allowed_subagents(allowed_subagents: str | None) -> str | None:
         label="allowed_subagents",
         code="invalid_allowed_subagents",
     )
+
+
+def validate_mode(mode: str | None) -> str | None:
+    return _validate_choice(mode, MODE_VALUES, label="mode", code="invalid_mode")
+
+
+def validate_bool_setting(value: str | None, *, label: str, code: str) -> str | None:
+    return _validate_choice(value, ("true", "false"), label=label, code=code)
 
 
 def validate_max_turns(max_turns: str | None) -> str | None:
@@ -183,6 +199,10 @@ class AgentDefinition:
     allowed_subagents: str | None = None
     max_turns: str | None = None
     isolation: str | None = None
+    mode: str = MODE_DEFAULT
+    spawning: str = SPAWNING_DEFAULT
+    trust_project: str = TRUST_PROJECT_DEFAULT
+    deny_tools: tuple[str, ...] = ()
 
     @property
     def ref(self) -> str:
@@ -291,6 +311,10 @@ class AgentDetail:
     allowed_subagents: str | None = None
     max_turns: str | None = None
     isolation: str | None = None
+    mode: str = MODE_DEFAULT
+    spawning: str = SPAWNING_DEFAULT
+    trust_project: str = TRUST_PROJECT_DEFAULT
+    deny_tools: tuple[str, ...] = ()
     hermes_provider: str | None = None
     hermes_model: str | None = None
 
@@ -349,6 +373,10 @@ __all__ = [
     "EFFORT_VALUES",
     "ISOLATION_VALUES",
     "MAX_TURNS_DEFAULT",
+    "MODE_DEFAULT",
+    "MODE_VALUES",
+    "SPAWNING_DEFAULT",
+    "TRUST_PROJECT_DEFAULT",
     "AgentAdoptConflict",
     "AgentAdoptionValidationError",
     "AgentBinding",
@@ -365,4 +393,6 @@ __all__ = [
     "validate_effort",
     "validate_isolation",
     "validate_max_turns",
+    "validate_mode",
+    "validate_bool_setting",
 ]

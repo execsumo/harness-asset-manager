@@ -19,6 +19,10 @@ export const AGENT_CONTRACT_KEYS = [
   // The envelope it runs in
   "max_turns",
   "isolation",
+  "mode",
+  "spawning",
+  "trust-project",
+  "deny-tools",
 ] as const;
 
 /**
@@ -40,6 +44,10 @@ export const COLOR_VALUES = [
 ] as const;
 export const ISOLATION_VALUES = ["worktree", "none"] as const;
 export const ALLOWED_SUBAGENTS_VALUES = ["true", "false"] as const;
+export const MODE_VALUES = ["background", "interactive"] as const;
+export const MODE_DEFAULT = "background";
+export const SPAWNING_DEFAULT = "false";
+export const TRUST_PROJECT_DEFAULT = "true";
 
 /**
  * What a harness assumes when `max_turns` is absent. Shown as the field's placeholder
@@ -125,6 +133,10 @@ export interface AgentCreateRequest {
   allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
+  mode?: string;
+  spawning?: string;
+  trustProject?: string;
+  denyTools?: string[];
   /** Hermes profile routing; values are passed through without a HAM vocabulary. */
   hermesProvider?: string;
   hermesModel?: string;
@@ -144,6 +156,10 @@ export interface AgentUpdateRequest {
   allowedSubagents?: string;
   maxTurns?: string;
   isolation?: string;
+  mode?: string;
+  spawning?: string;
+  trustProject?: string;
+  denyTools?: string[];
   hermesProvider?: string;
   hermesModel?: string;
   metadata?: Array<{ key: string; value: string }>;
@@ -181,6 +197,10 @@ export interface AgentDetailDto {
   allowedSubagents?: string | null;
   maxTurns?: string | null;
   isolation?: string | null;
+  mode?: string | null;
+  spawning?: string | null;
+  trustProject?: string | null;
+  denyTools?: string[];
   hermesProvider?: string | null;
   hermesModel?: string | null;
   ok?: boolean;
