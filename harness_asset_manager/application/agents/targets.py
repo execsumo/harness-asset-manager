@@ -55,8 +55,14 @@ def _is_installed(
         app_probes = getattr(skills_binding, "app_probe_paths", ())
         if any(resolver(kernel.context).exists() for resolver in app_probes):
             return True
-    # A populated config root is proof enough that the harness is present.
-    return profile.resolve_root_path(kernel.context).is_dir()
+    # HAM creates harness roots while managing other asset families. An empty root
+    # therefore does not prove that the harness is installed. A real agent file does:
+    # it is the agent-family equivalent of a discovered config file.
+    output_dir = profile.resolve_output_dir(kernel.context)
+    return any(
+        path.is_file() or path.is_symlink()
+        for path in output_dir.glob(profile.file_glob)
+    )
 
 
 __all__ = ["resolve_agent_targets", "target_by_id"]
