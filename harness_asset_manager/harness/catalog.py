@@ -266,7 +266,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
     HarnessDefinition(
         harness="pi",
         label="Pi",
-        logo_key=None,
+        logo_key="pi",
         install_probe="pi",
         support_tier="best_effort",
         bindings={

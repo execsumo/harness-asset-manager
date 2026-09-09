@@ -91,6 +91,7 @@ class PiHarnessCatalogTests(unittest.TestCase):
         with hermetic_env():
             context = resolve_context({"HOME": "/tmp/pi-home"})
             definition = next(item for item in supported_harness_definitions() if item.harness == "pi")
+            self.assertEqual(definition.logo_key, "pi")
 
             skills = definition.binding_for("skills")
             self.assertIsInstance(skills, FileTreeBindingProfile)

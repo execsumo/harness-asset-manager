@@ -5,8 +5,9 @@ import opencodeLogo from "../../assets/harness-logos/opencode-logo.svg";
 import agyLogo from "../../assets/harness-logos/agy-logo.svg";
 import droidLogo from "../../assets/harness-logos/droid-logo.png";
 import hermesLogo from "../../assets/harness-logos/hermes-logo.png";
+import piLogo from "../../assets/harness-logos/pi-logo.svg";
 
-export type HarnessLogoKey = "claude" | "codex" | "cursor" | "hermes" | "opencode" | "agy" | "droid";
+export type HarnessLogoKey = "claude" | "codex" | "cursor" | "hermes" | "opencode" | "agy" | "droid" | "pi";
 
 interface HarnessPresentation {
   logoSrc: string;
@@ -41,6 +42,10 @@ const HARNESS_LOGO_ASSETS: Record<HarnessLogoKey, HarnessPresentation> = {
   droid: {
     logoSrc: droidLogo,
     variant: "droid",
+  },
+  pi: {
+    logoSrc: piLogo,
+    variant: "pi",
   },
 };
 

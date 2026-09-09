@@ -7,6 +7,11 @@ describe("getHarnessPresentation", () => {
     expect(getHarnessPresentation("hermes:coder")?.variant).toBe("hermes");
   });
 
+  it("resolves Pi Agent to its logo", () => {
+    expect(getHarnessPresentation("pi")?.variant).toBe("pi");
+    expect(getHarnessPresentation("pi:default")?.variant).toBe("pi");
+  });
+
   it("keeps unknown families absent", () => {
     expect(getHarnessPresentation("nope:x")).toBeNull();
   });
