@@ -197,6 +197,10 @@ class AgentInventoryService:
             role=agent.role,
             harness=agent.harness,
             memory=agent.memory,
+            mode=agent.mode,
+            spawning=agent.spawning,
+            trust_project=agent.trust_project,
+            deny_tools=agent.deny_tools,
             hermes_provider=agent.hermes_provider,
             hermes_model=agent.hermes_model,
         )
@@ -242,6 +246,10 @@ class AgentInventoryService:
             role: str | None = None
             harness: str | None = None
             memory: str | None = None
+            mode = "background"
+            spawning = "false"
+            trust_project = "true"
+            deny_tools: tuple[str, ...] = ()
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -263,6 +271,10 @@ class AgentInventoryService:
             role = agent.role
             harness = agent.harness
             memory = agent.memory
+            mode = agent.mode
+            spawning = agent.spawning
+            trust_project = agent.trust_project
+            deny_tools = agent.deny_tools
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -298,6 +310,10 @@ class AgentInventoryService:
             role=role,
             harness=harness,
             memory=memory,
+            mode=mode,
+            spawning=spawning,
+            trust_project=trust_project,
+            deny_tools=deny_tools,
             hermes_provider=None,
             hermes_model=None,
         )

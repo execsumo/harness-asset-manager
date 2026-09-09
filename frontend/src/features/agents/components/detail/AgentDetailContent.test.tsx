@@ -337,6 +337,10 @@ describe("AgentDetailContent", () => {
       "Isolation",
       "Background",
       "Skills",
+      "Mode",
+      "Spawning",
+      "Trust Project",
+      "Deny Tools (comma-separated)",
     ]);
     expect(labels).not.toContain("Tools (comma-separated)");
   });

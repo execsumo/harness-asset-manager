@@ -1648,6 +1648,8 @@ export interface components {
             color?: string | null;
             /** Configuration */
             configuration?: components["schemas"]["AgentConfigEntryResponse"][];
+            /** Denytools */
+            denyTools?: string[];
             /** Description */
             description: string;
             /** Disallowedtools */
@@ -1674,6 +1676,8 @@ export interface components {
             maxTurns?: string | null;
             /** Memory */
             memory?: string | null;
+            /** Mode */
+            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1691,12 +1695,16 @@ export interface components {
             role?: string | null;
             /** Skills */
             skills?: components["schemas"]["AgentSkillResponse"][];
+            /** Spawning */
+            spawning?: string | null;
             /** Storepath */
             storePath?: string | null;
             /** Tags */
             tags?: string[];
             /** Tools */
             tools: string[];
+            /** Trustproject */
+            trustProject?: string | null;
         };
         /** AgentEntryResponse */
         AgentEntryResponse: {
@@ -2036,6 +2044,8 @@ export interface components {
             background?: string | null;
             /** Color */
             color?: string | null;
+            /** Denytools */
+            denyTools?: string[];
             /**
              * Description
              * @default
@@ -2061,6 +2071,8 @@ export interface components {
             mcpServers?: string[];
             /** Memory */
             memory?: string | null;
+            /** Mode */
+            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -2074,8 +2086,12 @@ export interface components {
             role?: string | null;
             /** Skills */
             skills?: string[];
+            /** Spawning */
+            spawning?: string | null;
             /** Tools */
             tools?: string[];
+            /** Trustproject */
+            trustProject?: string | null;
         };
         /** DisableHookRequest */
         DisableHookRequest: {
@@ -3650,6 +3666,8 @@ export interface components {
             background?: string | null;
             /** Color */
             color?: string | null;
+            /** Denytools */
+            denyTools?: string[] | null;
             /** Description */
             description?: string | null;
             /** Disallowedtools */
@@ -3670,6 +3688,8 @@ export interface components {
             memory?: string | null;
             /** Metadata */
             metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
+            /** Mode */
+            mode?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -3680,8 +3700,12 @@ export interface components {
             role?: string | null;
             /** Skills */
             skills?: string[] | null;
+            /** Spawning */
+            spawning?: string | null;
             /** Tools */
             tools?: string[] | null;
+            /** Trustproject */
+            trustProject?: string | null;
         };
         /** UpdateSkillDocumentRequest */
         UpdateSkillDocumentRequest: {

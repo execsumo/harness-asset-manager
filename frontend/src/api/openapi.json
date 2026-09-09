@@ -473,6 +473,13 @@
             "title": "Configuration",
             "type": "array"
           },
+          "denyTools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Denytools",
+            "type": "array"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -586,6 +593,17 @@
             ],
             "title": "Memory"
           },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
           "model": {
             "anyOf": [
               {
@@ -632,6 +650,17 @@
             "title": "Skills",
             "type": "array"
           },
+          "spawning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spawning"
+          },
           "storePath": {
             "anyOf": [
               {
@@ -656,6 +685,17 @@
             },
             "title": "Tools",
             "type": "array"
+          },
+          "trustProject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trustproject"
           }
         },
         "required": [
@@ -1663,6 +1703,13 @@
             ],
             "title": "Color"
           },
+          "denyTools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Denytools",
+            "type": "array"
+          },
           "description": {
             "default": "",
             "title": "Description",
@@ -1766,6 +1813,17 @@
             ],
             "title": "Memory"
           },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
           "model": {
             "anyOf": [
               {
@@ -1804,12 +1862,34 @@
             "title": "Skills",
             "type": "array"
           },
+          "spawning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spawning"
+          },
           "tools": {
             "items": {
               "type": "string"
             },
             "title": "Tools",
             "type": "array"
+          },
+          "trustProject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trustproject"
           }
         },
         "required": [
@@ -6575,6 +6655,20 @@
             ],
             "title": "Color"
           },
+          "denyTools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Denytools"
+          },
           "description": {
             "anyOf": [
               {
@@ -6691,6 +6785,17 @@
             ],
             "title": "Metadata"
           },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
           "model": {
             "anyOf": [
               {
@@ -6749,6 +6854,17 @@
             ],
             "title": "Skills"
           },
+          "spawning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spawning"
+          },
           "tools": {
             "anyOf": [
               {
@@ -6762,6 +6878,17 @@
               }
             ],
             "title": "Tools"
+          },
+          "trustProject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trustproject"
           }
         },
         "title": "UpdateAgentRequest",
