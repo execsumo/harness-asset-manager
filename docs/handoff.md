@@ -128,7 +128,7 @@ Why:
   engine, and **YAML not at all** — Yams/libyaml discards comments at tokenization and no
   `ruamel.yaml` equivalent exists. That is one subsystem out of roughly ten, already failing a
   third of the way through, for something Python gets from two dependencies.
-- **The value is in the adapter matrix, not the UI.** Six families × seven harnesses, and the
+- **The value is in the adapter matrix, not the UI.** Six families × eight harnesses, and the
   product is the accumulated edge cases — Cursor's single-token `Shell()`, Codex's TOML profiles
   having no command-prefix concept, verbatim-block YAML round-tripping, "reads must not write"
   in `SkillsQueryService`, `flock` coexistence with the CLI, drift auto-repair. ~20k LOC of

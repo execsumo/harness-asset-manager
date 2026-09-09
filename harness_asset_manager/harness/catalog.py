@@ -264,6 +264,37 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         },
     ),
     HarnessDefinition(
+        harness="pi",
+        label="Pi",
+        logo_key=None,
+        install_probe="pi",
+        support_tier="best_effort",
+        bindings={
+            # Pi's global resource directory is ~/.pi/agent. Skills are loaded
+            # from its skills subdirectory using the Agent Skills format.
+            "skills": FileTreeBindingProfile(
+                managed_default=lambda context: context.home / ".pi" / "agent" / "skills",
+            ),
+            # Pi's subagent extension discovers user agents from this directory.
+            "agents": AgentFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".pi" / "agent",
+                output_dir_resolver=lambda context: context.home / ".pi" / "agent" / "agents",
+                docs_url="https://pi.dev/docs/extensions",
+            ),
+            # Pi calls these prompt templates; they are invoked as /<name>.
+            "slash_commands": CommandFileBindingProfile(
+                root_path_resolver=lambda context: context.home / ".pi" / "agent",
+                output_dir_resolver=lambda context: context.home / ".pi" / "agent" / "prompts",
+                invocation_prefix="/",
+                render_format="frontmatter_markdown",
+                scope="global",
+                docs_url="https://pi.dev/docs/prompt-templates",
+                file_glob="*.md",
+                supports_frontmatter=True,
+            ),
+        },
+    ),
+    HarnessDefinition(
         harness="agy",
         label="Antigravity",
         logo_key="agy",

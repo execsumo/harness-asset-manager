@@ -52,7 +52,7 @@ Harness Asset Manager manages six core extension families:
 
 ### 1. Skills
 - **Storage**: Portable Markdown skill folders (`SKILL.md` + scripts/resources) under `skills/<package>/`, with source and revision tracked in `skills-manifest.json`.
-- **Harness Integration**: Installed via local filesystem links (`symlink`) into each harness's skills directory (`~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, etc.).
+- **Harness Integration**: Installed via local filesystem links (`symlink`) into each harness's skills directory (`~/.claude/skills`, `~/.agents/skills`, `~/.gemini/antigravity-cli/skills`, `~/.pi/agent/skills`, etc.).
 - **Hermes Support**: Categorized under `~/.hermes/skills/harnessam/`. Hub provenance is retained when available; bundled/official skills remain excluded, while other valid local or self-learned skills are discoverable and adoptable. The legacy `harness-asset-manager` category remains readable for migration.
 - **Hermes Bots**: Each Hermes Profile under `<hermes-root>/profiles/<bot>/skills/` is an additional discovery root, resolved at scan time by `catalog._resolve_hermes_profile_roots`. A root carries a `binding_scope`, which becomes the sighting's exact binding target (`hermes:<bot>`); the scoped link path itself comes from the binding profile's `scoped_root_resolver`, so no harness name appears in the generic file-tree adapter. `_hermes_root()` derives the Hermes root separately from `_hermes_home()`, mirroring Hermes' own marker heuristic — `HERMES_HOME` names the *profile* home, so reading it straight through would nest a second `profiles/` tree whenever HAM runs under `hermes -p <name>`.
 - **Package contents**: The parser enumerates every file in a package to fingerprint it, so the relative-path list rides on the inventory entry and reaches the detail payload as `packageFiles` — no second walk. Adoption is `copytree` over the package directory and harness bindings are *directory* symlinks, so supporting material (`scripts/`, `references/`, `assets/`) round-trips intact.
@@ -81,6 +81,7 @@ Harness Asset Manager manages six core extension families:
   - **Cursor**: Plaintext prompt files in `commands/`.
   - **Factory Droid**: Frontmatter Markdown files in `~/.factory/commands/`.
     Project `.factory/commands/` and plugin commands are not managed.
+  - **Pi**: Prompt templates in `~/.pi/agent/prompts/`, invoked as `/name`.
 
 ### 4. Hooks
 - **Storage**: Event-driven hook records (`hooks/manifest.json`).
@@ -97,6 +98,7 @@ Harness Asset Manager manages six core extension families:
   - **Claude, Cursor, AGY, OpenCode**: Installed via direct symlinks. Standard and custom frontmatter are preserved on write.
   - **Factory Droid**: Installed via direct symlinks into `~/.factory/droids/`; Droid frontmatter keys are preserved.
   - **Codex**: Rendered into TOML agent files (`.codex/agents/*.toml`) carrying a `# harness-asset-manager:generated` header.
+  - **Pi**: Installed via direct symlinks into `~/.pi/agent/agents/` for Pi's subagent extension.
 
 ### 6. Permissions (Denylist-ONLY Model)
 - **Storage**: Deny rules in `permissions/manifest.json`.
@@ -121,11 +123,12 @@ Harness definitions are declared centrally in `harness_asset_manager/harness/cat
 |---|---|---|---|
 | 1 | Claude Code | `claude` | core |
 | 2 | Codex CLI | `codex` | core |
-| 3 | Antigravity | `agy` | core |
-| 4 | Cursor | `cursor` | core |
-| 5 | OpenCode | `opencode` | best effort |
-| 6 | Hermes Agent | `hermes` | best effort |
-| 7 | Factory Droid | `droid` | best effort |
+| 3 | Pi | `pi` | best effort |
+| 4 | Antigravity | `agy` | core |
+| 5 | Cursor | `cursor` | core |
+| 6 | OpenCode | `opencode` | best effort |
+| 7 | Hermes Agent | `hermes` | best effort |
+| 8 | Factory Droid | `droid` | best effort |
 
 Every resource family resolves enabled harnesses dynamically from `catalog.py` and `settings.json`. Disabling a harness in Settings drops its column across all family matrices without requiring an app restart.
 
