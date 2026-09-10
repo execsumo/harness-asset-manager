@@ -193,6 +193,64 @@ class AgentParserTests(unittest.TestCase):
             parse_agent_document(rewritten, slug="a", path=Path("a.md")).metadata["effort"], ""
         )
 
+    def test_unset_background_and_hooks_are_omitted(self) -> None:
+        document = (
+            "---\n"
+            "name: A\n"
+            "description: d\n"
+            "background:\n"
+            "skills: []\n"
+            "hooks: {}\n"
+            "---\n\nbody\n"
+        )
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rewritten = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            skills=agent.skills,
+            background=agent.background,
+            base_metadata=agent.metadata,
+        )
+
+        self.assertNotIn("background:", rewritten)
+        self.assertNotIn("skills:", rewritten)
+        self.assertNotIn("hooks:", rewritten)
+
+    def test_empty_hooks_in_extra_metadata_are_omitted(self) -> None:
+        rendered = render_agent_document(
+            name="A",
+            description="d",
+            prompt="body",
+            extra_metadata=[
+                ("hooks", None),
+                ("customFlag", ""),
+            ],
+        )
+
+        self.assertNotIn("hooks:", rendered)
+        self.assertIn('customFlag: ""', rendered)
+
+    def test_nonempty_hooks_are_preserved_as_a_mapping(self) -> None:
+        document = (
+            "---\n"
+            "name: A\n"
+            "description: d\n"
+            "hooks:\n"
+            "  PreToolUse:\n"
+            "    - matcher: Bash\n"
+            "---\n\nbody\n"
+        )
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rendered = render_agent_document(
+            name=agent.name,
+            description=agent.description,
+            prompt=agent.prompt,
+            base_metadata=agent.metadata,
+        )
+
+        self.assertIn("hooks:\n  PreToolUse:\n  - matcher: Bash", rendered)
+
     def test_extra_metadata_excludes_the_fields_shown_on_their_own(self) -> None:
         agent = parse_agent_document(AGENT_DOC, slug="chief", path=Path("chief.md"))
         keys = [key for key, _ in agent.extra_metadata]
@@ -303,6 +361,17 @@ class AgentsFixture(unittest.TestCase):
 
     def entry(self, ref: str):
         return next(e for e in self.inventory.build().entries if e.ref == ref)
+
+    def test_create_writes_mcp_server_refs_to_frontmatter(self) -> None:
+        agent = self.store.create(
+            name="MCP Agent",
+            description="uses MCP",
+            prompt="Use the configured server.",
+            mcp_servers=("context7", "github"),
+        )
+
+        self.assertIn("mcpServers:\n  - context7\n  - github", agent.path.read_text(encoding="utf-8"))
+        self.assertEqual(agent.metadata["mcpServers"], ["context7", "github"])
 
 
 class CodexAgentTests(unittest.TestCase):

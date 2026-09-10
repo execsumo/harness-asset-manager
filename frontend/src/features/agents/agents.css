@@ -67,6 +67,56 @@
   opacity: 0.5;
 }
 
+/* The structured agent frontmatter mirrors the six-row contract shown in the
+   create dialog. Tools stays available to raw YAML serialization but is hidden
+   from this structured surface. */
+.agent-frontmatter-editor .frontmatter-editor__known-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    "name role color"
+    "description description description"
+    "harness model effort"
+    "disallowed-tools max-turns mcp-servers"
+    "memory isolation background"
+    "skills skills skills";
+}
+
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="name"] { grid-area: name; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="role"] { grid-area: role; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="color"] { grid-area: color; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="description"] { grid-area: description; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="harness"] { grid-area: harness; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="model"] { grid-area: model; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="effort"] { grid-area: effort; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="disallowedTools"] { grid-area: disallowed-tools; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="maxTurns"] { grid-area: max-turns; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="mcpServers"] { grid-area: mcp-servers; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="memory"] { grid-area: memory; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="isolation"] { grid-area: isolation; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="background"] { grid-area: background; }
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="skills"] { grid-area: skills; }
+
+@media (max-width: 560px) {
+  .agent-frontmatter-editor .frontmatter-editor__known-fields {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "name"
+      "role"
+      "color"
+      "description"
+      "harness"
+      "model"
+      "effort"
+      "disallowed-tools"
+      "max-turns"
+      "mcp-servers"
+      "memory"
+      "isolation"
+      "background"
+      "skills";
+  }
+}
+
 /* Create dialog — fixed chrome, scrolling body, pinned footer, so a long
    contract form never scrolls its own actions out of reach. */
 .agent-dialog-content {
@@ -347,4 +397,3 @@
   font-size: var(--font-size-xs);
   color: var(--color-danger, #ef4444);
 }
-

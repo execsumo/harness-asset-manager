@@ -1983,6 +1983,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Mcpservers */
+            mcpServers?: string[];
             /** Memory */
             memory?: string | null;
             /** Model */

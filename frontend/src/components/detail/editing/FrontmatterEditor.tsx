@@ -11,6 +11,8 @@ export interface KnownFieldConfig {
   helpText?: string;
   serialize?: (value: string) => string | null;
   renderInput?: (props: { disabled?: boolean }) => ReactNode;
+  /** Keep a field available to raw-YAML serialization without showing it in structured mode. */
+  hidden?: boolean;
   /**
    * Set false when `renderInput` renders a group rather than one labelable control.
    * A `<label>` wrapping several buttons hands every one of them the label's text as
@@ -242,10 +244,14 @@ export function FrontmatterEditor({
       ) : (
         <>
           <div className="frontmatter-editor__known-fields">
-            {knownFields.map((field) => {
+            {knownFields.filter((field) => !field.hidden).map((field) => {
               const Field = field.wrapInLabel === false ? "div" : "label";
               return (
-                <Field key={field.key} className="frontmatter-editor__field">
+                <Field
+                  key={field.key}
+                  className="frontmatter-editor__field"
+                  data-frontmatter-key={field.key}
+                >
                   <span className="frontmatter-editor__label">{field.label}</span>
                   {field.renderInput ? (
                     field.renderInput({ disabled: disabled || field.disabled })

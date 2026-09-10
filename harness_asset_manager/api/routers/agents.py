@@ -118,6 +118,7 @@ def create_agent(
         prompt=body.prompt,
         tools=tuple(body.tools),
         skills=validated_skills,
+        mcp_servers=tuple(body.mcpServers),
         color=validate_color(body.color),
         model=body.model,
         effort=validate_effort(body.effort),

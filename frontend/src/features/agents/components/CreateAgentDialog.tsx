@@ -56,9 +56,9 @@ export function CreateAgentDialog({
   const [hermesProvider, setHermesProvider] = useState("");
   const [hermesModel, setHermesModel] = useState("");
   const [effort, setEffort] = useState("");
-  const [toolsStr, setToolsStr] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [disallowedTools, setDisallowedTools] = useState("");
+  const [mcpServers, setMcpServers] = useState("");
   const [background, setBackground] = useState("");
   const [memory, setMemory] = useState("");
   const [maxTurns, setMaxTurns] = useState("");
@@ -92,9 +92,9 @@ export function CreateAgentDialog({
     setHermesProvider("");
     setHermesModel("");
     setEffort("");
-    setToolsStr("");
     setSkills([]);
     setDisallowedTools("");
+    setMcpServers("");
     setBackground("");
     setMemory("");
     setMaxTurns("");
@@ -196,13 +196,6 @@ export function CreateAgentDialog({
     if (effort) {
       payload.effort = effort;
     }
-    const tools = toolsStr
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (tools.length > 0) {
-      payload.tools = tools;
-    }
     if (skills.length > 0) {
       payload.skills = skills;
     }
@@ -218,6 +211,13 @@ export function CreateAgentDialog({
       .filter(Boolean);
     if (disallowed.length > 0) {
       payload.disallowedTools = disallowed;
+    }
+    const mcpServerRefs = mcpServers
+      .split(",")
+      .map((server) => server.trim())
+      .filter(Boolean);
+    if (mcpServerRefs.length > 0) {
+      payload.mcpServers = mcpServerRefs;
     }
     if (background) {
       payload.background = background;
@@ -277,59 +277,34 @@ export function CreateAgentDialog({
                 <ErrorBanner message={error} onDismiss={() => setError(null)} />
               )}
 
-              {/* Sections mirror the detail view: identity, then the frontmatter
-                  contract in AGENT_CONTRACT_KEYS order, then the document body,
-                  then harness bindings — so the dialog and the detail view
-                  present the same agent the same way round. */}
-              <section className="detail-sheet__section">
-                <h3 className="detail-sheet__section-heading">Identity</h3>
-                <div className="dialog-form-fields">
-                  <label className="form-field">
-                    <span className="form-field__label">
-                      Agent Name
-                      <span className="form-field__required">Required</span>
-                    </span>
-                    <input
-                      type="text"
-                      className="form-field__input"
-                      placeholder="e.g. Code Reviewer"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      disabled={isPending}
-                      required
-                      aria-invalid={Boolean(nameError)}
-                      aria-describedby={nameError ? "agent-name-error" : undefined}
-                    />
-                    {nameError ? (
-                      <small id="agent-name-error" className="form-field__error" role="alert">
-                        {nameError}
-                      </small>
-                    ) : null}
-                  </label>
-
-                  <label className="form-field">
-                    <span className="form-field__label">
-                      Description
-                      <span className="form-field__required">Required</span>
-                    </span>
-                    <textarea
-                      className="form-field__textarea"
-                      placeholder="Describe the agent's purpose and functionality..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      disabled={isPending}
-                      rows={2}
-                      required
-                    />
-                  </label>
-                </div>
-              </section>
-
               <section className="detail-sheet__section">
                 <h3 className="detail-sheet__section-heading">Frontmatter</h3>
                 <div className="dialog-fieldset">
-                  <div className="dialog-form-fields dialog-form-fields--split">
-                    <label className="form-field">
+                  <div className="dialog-form-fields agent-frontmatter-grid">
+                    <label className="form-field agent-frontmatter-grid__name">
+                      <span className="form-field__label">
+                        Agent Name
+                        <span className="form-field__required">Required</span>
+                      </span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="e.g. Code Reviewer"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        disabled={isPending}
+                        required
+                        aria-invalid={Boolean(nameError)}
+                        aria-describedby={nameError ? "agent-name-error" : undefined}
+                      />
+                      {nameError ? (
+                        <small id="agent-name-error" className="form-field__error" role="alert">
+                          {nameError}
+                        </small>
+                      ) : null}
+                    </label>
+
+                    <label className="form-field agent-frontmatter-grid__role">
                       <span className="form-field__label">Role</span>
                       <input
                         type="text"
@@ -341,19 +316,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field">
-                      <span className="form-field__label">Harness</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="Target harness identifier"
-                        value={harness}
-                        onChange={(e) => setHarness(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
-
-                    <label className="form-field">
+                    <label className="form-field agent-frontmatter-grid__color">
                       <span className="form-field__label">Color</span>
                       <select
                         className="form-field__input"
@@ -370,7 +333,35 @@ export function CreateAgentDialog({
                       </select>
                     </label>
 
-                    <label className="form-field">
+                    <label className="form-field agent-frontmatter-grid__description">
+                      <span className="form-field__label">
+                        Description
+                        <span className="form-field__required">Required</span>
+                      </span>
+                      <textarea
+                        className="form-field__textarea"
+                        placeholder="Describe the agent's purpose and functionality..."
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        disabled={isPending}
+                        rows={2}
+                        required
+                      />
+                    </label>
+
+                    <label className="form-field agent-frontmatter-grid__harness">
+                      <span className="form-field__label">Harness</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Target harness identifier"
+                        value={harness}
+                        onChange={(e) => setHarness(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="form-field agent-frontmatter-grid__model">
                       <span className="form-field__label">Model</span>
                       <input
                         type="text"
@@ -382,7 +373,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field">
+                    <label className="form-field agent-frontmatter-grid__effort">
                       <span className="form-field__label">Effort</span>
                       <select
                         className="form-field__input"
@@ -399,55 +390,10 @@ export function CreateAgentDialog({
                       </select>
                     </label>
 
-                    <label className="form-field">
-                      <span className="form-field__label">Max Turns</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
-                        value={maxTurns}
-                        onChange={(e) => setMaxTurns(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
                   </div>
 
-                  <div className="dialog-form-fields">
-                    <label className="form-field">
-                      <span className="form-field__label">Tools (comma-separated)</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="e.g. bash, edit, grep"
-                        value={toolsStr}
-                        onChange={(e) => setToolsStr(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
-
-                    <div className="form-field">
-                      <span className="form-field__label">Skills</span>
-                      <AgentSkillsFieldEditor
-                        skills={skills}
-                        knownSkills={adoptedSkills}
-                        tagOptions={tagOptions}
-                        onChange={setSkills}
-                        disabled={isPending}
-                      />
-                    </div>
-
-                    <div className="form-field">
-                      <span className="form-field__label">Isolation</span>
-                      <FrontmatterSegmentedField
-                        label="Isolation"
-                        value={isolation}
-                        options={ISOLATION_VALUES}
-                        onChange={setIsolation}
-                        disabled={isPending}
-                      />
-                    </div>
-
-                    <label className="form-field">
+                  <div className="dialog-form-fields agent-frontmatter-grid__additional">
+                    <label className="form-field agent-frontmatter-grid__disallowed-tools">
                       <span className="form-field__label">Disallowed Tools (comma-separated)</span>
                       <input
                         type="text"
@@ -459,7 +405,53 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <div className="form-field">
+                    <label className="form-field agent-frontmatter-grid__max-turns">
+                      <span className="form-field__label">Max Turns</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
+                        value={maxTurns}
+                        onChange={(e) => setMaxTurns(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="form-field agent-frontmatter-grid__mcp-servers">
+                      <span className="form-field__label">MCP Servers</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Comma-separated server references"
+                        value={mcpServers}
+                        onChange={(e) => setMcpServers(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <div className="form-field agent-frontmatter-grid__skills">
+                      <span className="form-field__label">Skills</span>
+                      <AgentSkillsFieldEditor
+                        skills={skills}
+                        knownSkills={adoptedSkills}
+                        tagOptions={tagOptions}
+                        onChange={setSkills}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div className="form-field agent-frontmatter-grid__isolation">
+                      <span className="form-field__label">Isolation</span>
+                      <FrontmatterSegmentedField
+                        label="Isolation"
+                        value={isolation}
+                        options={ISOLATION_VALUES}
+                        onChange={setIsolation}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div className="form-field agent-frontmatter-grid__background">
                       <span className="form-field__label">Background</span>
                       <FrontmatterSegmentedField
                         label="Background"
@@ -470,7 +462,7 @@ export function CreateAgentDialog({
                       />
                     </div>
 
-                    <div className="form-field">
+                    <div className="form-field agent-frontmatter-grid__memory">
                       <span className="form-field__label">Memory</span>
                       <FrontmatterSegmentedField
                         label="Memory"

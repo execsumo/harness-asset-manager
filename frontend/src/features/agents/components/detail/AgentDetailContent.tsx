@@ -40,6 +40,20 @@ import {
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
 
+function parseMcpServerRefs(value: string): string[] {
+  return value
+    .split(",")
+    .map((server) => server.trim())
+    .filter(Boolean);
+}
+
+function serializeMcpServerRefs(value: string): string | null {
+  const servers = parseMcpServerRefs(value);
+  return servers.length > 0
+    ? `mcpServers:\n${servers.map((server) => `  - ${server}`).join("\n")}`
+    : null;
+}
+
 export interface AgentDetailContentProps {
   detail: AgentDetailDto;
   knownTags?: string[];
@@ -144,7 +158,11 @@ export function AgentDetailContent({
   // Frontmatter & Document editing state
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
     return (detail.configuration || [])
-      .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
+      .filter(
+        (c) =>
+          !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
+          c.key !== "mcpServers",
+      )
       .map((c, idx) => ({
         id: `entry-${idx}-${c.key}`,
         key: c.key,
@@ -172,6 +190,9 @@ export function AgentDetailContent({
   const [backgroundStr, setBackgroundStr] = useState(detail.background ?? "");
   const [memoryStr, setMemoryStr] = useState(detail.memory ?? "");
   const [disallowedToolsStr, setDisallowedToolsStr] = useState((detail.disallowedTools ?? []).join(", "));
+  const [mcpServersStr, setMcpServersStr] = useState(
+    detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
+  );
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -194,9 +215,16 @@ export function AgentDetailContent({
     setBackgroundStr(detail.background ?? "");
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
+    setMcpServersStr(
+      detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
+    );
     setOtherEntries(
       (detail.configuration || [])
-        .filter((c) => !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key))
+        .filter(
+          (c) =>
+            !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
+            c.key !== "mcpServers",
+        )
         .map((c, idx) => ({
           id: `entry-${idx}-${c.key}`,
           key: c.key,
@@ -224,24 +252,11 @@ export function AgentDetailContent({
         onChange: setName,
       },
       {
-        key: "description",
-        label: "Description",
-        value: description,
-        onChange: setDescription,
-      },
-      {
         key: "role",
         label: "Role",
         value: roleStr,
         onChange: setRoleStr,
         placeholder: "Describe this agent's role",
-      },
-      {
-        key: "harness",
-        label: "Harness",
-        value: harnessStr,
-        onChange: setHarnessStr,
-        placeholder: "Target harness identifier",
       },
       {
         key: "color",
@@ -271,6 +286,20 @@ export function AgentDetailContent({
         ),
       },
       {
+        key: "description",
+        label: "Description",
+        value: description,
+        onChange: setDescription,
+        placeholder: "Describe the agent's purpose and functionality",
+      },
+      {
+        key: "harness",
+        label: "Harness",
+        value: harnessStr,
+        onChange: setHarnessStr,
+        placeholder: "Target harness identifier",
+      },
+      {
         key: "model",
         label: "Model",
         value: modelStr,
@@ -296,21 +325,11 @@ export function AgentDetailContent({
                 {value}
               </option>
             ))}
-            {/* An agent authored elsewhere can carry a value the contract does not
-                allow. Offering it keeps a save from silently rewriting it, and
-                shows the user exactly what the API will reject. */}
             {effortStr && !(EFFORT_VALUES as readonly string[]).includes(effortStr) ? (
               <option value={effortStr}>{effortStr} — not a valid effort</option>
             ) : null}
           </select>
         ),
-      },
-      {
-        key: "tools",
-        label: "Tools (comma-separated)",
-        value: toolsStr,
-        onChange: setToolsStr,
-        placeholder: "e.g. bash, edit, grep",
       },
       {
         key: "disallowedTools",
@@ -320,24 +339,19 @@ export function AgentDetailContent({
         placeholder: "e.g. Write, Edit, Agent(Explore)",
       },
       {
-        key: "skills",
-        wrapInLabel: false,
-        label: "Skills",
-        value: skills.join(", "),
-        onChange: (val) => setSkills(parseSkillSlugs(val)),
-        serialize: () => {
-          if (skills.length === 0) return null;
-          return `skills:\n${skills.map((s) => `  - ${s}`).join("\n")}`;
-        },
-        renderInput: ({ disabled }) => (
-          <AgentSkillsFieldEditor
-            skills={skills}
-            knownSkills={adoptedSkills}
-            tagOptions={effectiveTagOptions}
-            onChange={setSkills}
-            disabled={disabled}
-          />
-        ),
+        key: "maxTurns",
+        label: "Max Turns",
+        value: maxTurnsStr,
+        onChange: setMaxTurnsStr,
+        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
+      },
+      {
+        key: "mcpServers",
+        label: "MCP Servers",
+        value: mcpServersStr,
+        onChange: setMcpServersStr,
+        placeholder: "Comma-separated server references",
+        serialize: serializeMcpServerRefs,
       },
       {
         key: "memory",
@@ -354,13 +368,6 @@ export function AgentDetailContent({
             disabled={disabled}
           />
         ),
-      },
-      {
-        key: "maxTurns",
-        label: "Max Turns",
-        value: maxTurnsStr,
-        onChange: setMaxTurnsStr,
-        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
       },
       {
         key: "isolation",
@@ -394,6 +401,36 @@ export function AgentDetailContent({
           />
         ),
       },
+      {
+        key: "skills",
+        wrapInLabel: false,
+        label: "Skills",
+        value: skills.join(", "),
+        onChange: (val) => setSkills(parseSkillSlugs(val)),
+        serialize: () => {
+          if (skills.length === 0) return null;
+          return `skills:\n${skills.map((s) => `  - ${s}`).join("\n")}`;
+        },
+        renderInput: ({ disabled }) => (
+          <AgentSkillsFieldEditor
+            skills={skills}
+            knownSkills={adoptedSkills}
+            tagOptions={effectiveTagOptions}
+            onChange={setSkills}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        // Keep tools available when switching to raw YAML, but do not expose it in
+        // the structured editor per the Claude-facing layout.
+        key: "tools",
+        hidden: true,
+        label: "Tools (comma-separated)",
+        value: toolsStr,
+        onChange: setToolsStr,
+        placeholder: "e.g. bash, edit, grep",
+      },
     ],
     [
       name,
@@ -403,7 +440,6 @@ export function AgentDetailContent({
       colorStr,
       modelStr,
       effortStr,
-      toolsStr,
       skills,
       adoptedSkills,
       effectiveTagOptions,
@@ -412,6 +448,8 @@ export function AgentDetailContent({
       backgroundStr,
       memoryStr,
       disallowedToolsStr,
+      mcpServersStr,
+      toolsStr,
     ],
   );
 
@@ -433,6 +471,10 @@ export function AgentDetailContent({
     if (backgroundStr !== (detail.background ?? "")) return true;
     if (memoryStr !== (detail.memory ?? "")) return true;
     if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
+    if (
+      mcpServersStr !==
+      (detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "")
+    ) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -449,7 +491,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, memoryStr, disallowedToolsStr]);
+  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, memoryStr, disallowedToolsStr, mcpServersStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -468,6 +510,9 @@ export function AgentDetailContent({
     setBackgroundStr(detail.background ?? "");
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
+    setMcpServersStr(
+      detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
+    );
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -491,10 +536,11 @@ export function AgentDetailContent({
     let finalBackground = backgroundStr;
     let finalMemory = memoryStr;
     let finalDisallowedToolsStr = disallowedToolsStr;
+    let finalMcpServersStr = mcpServersStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, "mcpServers"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;
@@ -513,6 +559,7 @@ export function AgentDetailContent({
       finalBackground = parsed.known.background ?? "";
       finalMemory = parsed.known.memory ?? "";
       finalDisallowedToolsStr = parsed.known.disallowedTools ?? "";
+      finalMcpServersStr = parsed.known.mcpServers ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
@@ -528,6 +575,7 @@ export function AgentDetailContent({
       setBackgroundStr(finalBackground);
       setMemoryStr(finalMemory);
       setDisallowedToolsStr(finalDisallowedToolsStr);
+      setMcpServersStr(finalMcpServersStr);
       setOtherEntries(finalOther);
     }
 
@@ -536,14 +584,21 @@ export function AgentDetailContent({
       return;
     }
 
-    const toolsList = finalToolsStr
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const toolsList = frontmatterMode === "raw"
+      ? finalToolsStr.split(",").map((t) => t.trim()).filter(Boolean)
+      : undefined;
 
-    const metadataPayload = finalOther
+    const metadataPayload = [
+      ...finalOther
       .filter((e) => e.key.trim().length > 0)
-      .map((e) => ({ key: e.key.trim(), value: e.value }));
+      .map((e) => ({ key: e.key.trim(), value: e.value })),
+      ...(parseMcpServerRefs(finalMcpServersStr).length > 0
+        ? [{
+            key: "mcpServers",
+            value: JSON.stringify(parseMcpServerRefs(finalMcpServersStr)),
+          }]
+        : []),
+    ];
 
     try {
       const result = await updateMutation.mutateAsync({
@@ -554,7 +609,7 @@ export function AgentDetailContent({
           prompt: prompt,
           role: finalRole.trim(),
           harness: finalHarness.trim(),
-          tools: toolsList,
+          ...(toolsList ? { tools: toolsList } : {}),
           skills: finalSkills,
           color: finalColor.trim(),
           model: finalModel.trim(),
@@ -696,17 +751,19 @@ export function AgentDetailContent({
             )}
             editFrontmatter={(
               <>
-                <FrontmatterEditor
-                  knownFields={knownFields}
-                  otherEntries={otherEntries}
-                  onChangeOtherEntries={setOtherEntries}
-                  rawYaml={rawYaml}
-                  onChangeRawYaml={setRawYaml}
-                  mode={frontmatterMode}
-                  onModeChange={setFrontmatterMode}
-                  validationError={null}
-                  disabled={updateMutation.isPending}
-                />
+                <div className="agent-frontmatter-editor">
+                  <FrontmatterEditor
+                    knownFields={knownFields}
+                    otherEntries={otherEntries}
+                    onChangeOtherEntries={setOtherEntries}
+                    rawYaml={rawYaml}
+                    onChangeRawYaml={setRawYaml}
+                    mode={frontmatterMode}
+                    onModeChange={setFrontmatterMode}
+                    validationError={null}
+                    disabled={updateMutation.isPending}
+                  />
+                </div>
                 <div className="frontmatter-editor hermes-profile-editor">
                   <div className="frontmatter-editor__header">
                     <span className="frontmatter-editor__title">Hermes Profile</span>

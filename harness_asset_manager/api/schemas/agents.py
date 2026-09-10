@@ -141,6 +141,7 @@ class CreateAgentRequest(BaseModel):
     prompt: str = ""
     tools: list[str] = Field(default_factory=list)
     skills: list[str] = Field(default_factory=list)
+    mcpServers: list[str] = Field(default_factory=list)
     color: str | None = None
     model: str | None = None
     effort: str | None = None

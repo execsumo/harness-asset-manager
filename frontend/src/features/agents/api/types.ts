@@ -126,6 +126,7 @@ export interface AgentCreateRequest {
   harness?: string;
   tools?: string[];
   skills?: string[];
+  mcpServers?: string[];
   color?: string;
   model?: string;
   effort?: string;

@@ -225,7 +225,7 @@ describe("AgentsInUsePage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Edit" }));
       expect(screen.getByLabelText("Agent Name")).toHaveValue("Test Agent Real Name");
       expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
-      expect(screen.getByLabelText("Tools (comma-separated)")).toHaveValue("tool1, tool2");
+      expect(screen.queryByLabelText("Tools (comma-separated)")).not.toBeInTheDocument();
       expect(screen.getByLabelText("Model")).toHaveValue("sonnet");
       expect(screen.getByLabelText("Effort")).toHaveValue("high");
       expect(screen.getByLabelText("System Prompt")).toHaveValue("Test prompt");

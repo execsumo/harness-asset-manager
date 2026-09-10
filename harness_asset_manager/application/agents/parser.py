@@ -19,6 +19,10 @@ _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
 _rt_yaml.default_flow_style = False
 
+# Claude Code treats hooks as an optional collection. An empty/null value means
+# the feature is unset, so do not emit a misleading frontmatter key for it.
+_OPTIONAL_COLLECTION_KEYS = frozenset({"hooks"})
+
 # Unknown *harness* keys are preserved on write. These keys are not unknown metadata:
 # they were invalid HAM contract fields and are intentionally removed rather than
 # carried into Claude Code agent files.
@@ -81,6 +85,7 @@ def render_agent_document(
     prompt: str,
     tools: tuple[str, ...] = (),
     skills: tuple[str, ...] = (),
+    mcp_servers: tuple[str, ...] = (),
     color: str | None = None,
     model: str | None = None,
     effort: str | None = None,
@@ -110,6 +115,8 @@ def render_agent_document(
             metadata["tools"] = ", ".join(tools)
         if skills:
             metadata["skills"] = list(skills)
+        if mcp_servers:
+            metadata["mcpServers"] = list(mcp_servers)
         # Written unquoted, so `maxTurns: 30` and `background: true` come back out of
         # YAML as the int and bool Claude Code expects rather than as strings.
         for scalar_key, scalar_value in (
@@ -138,9 +145,17 @@ def render_agent_document(
                 v = item[1]
             else:
                 continue
-            if k and k not in CONTRACT_KEY_SET and k not in RETIRED_KEYS:
+            if (
+                k
+                and k not in CONTRACT_KEY_SET
+                and k not in RETIRED_KEYS
+                and not _is_unset_optional_collection(k, v)
+            ):
                 metadata[k] = v
                 custom_keys.append(k)
+
+        if mcp_servers and "mcpServers" not in custom_keys:
+            custom_keys.append("mcpServers")
 
         ordered = [k for k in CONTRACT_KEYS if k in metadata]
         ordered.extend(custom_keys)
@@ -148,6 +163,9 @@ def render_agent_document(
         metadata = {
             key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
         }
+        for key in _OPTIONAL_COLLECTION_KEYS:
+            if _is_unset_optional_collection(key, metadata.get(key)):
+                metadata.pop(key, None)
         metadata["name"] = name
         metadata["description"] = description
         if tools:
@@ -161,8 +179,11 @@ def render_agent_document(
         elif "skills" in metadata:
             del metadata["skills"]
 
-        # Contract fields: an explicit empty string clears the key; None leaves
-        # whatever base_metadata carries untouched.
+        if mcp_servers:
+            metadata["mcpServers"] = list(mcp_servers)
+
+        # Contract fields: an explicit empty string clears the key; None leaves a
+        # configured base value untouched, but drops a base YAML null as unset.
         for contract_key, contract_value in (
             ("role", role),
             ("harness", harness),
@@ -175,6 +196,11 @@ def render_agent_document(
             ("memory", memory),
         ):
             if contract_value is None:
+                # YAML ``null`` is the parsed form of an empty optional field. It
+                # carries no Claude Code configuration and should not be rendered
+                # back as ``key:``.
+                if metadata.get(contract_key) is None:
+                    metadata.pop(contract_key, None)
                 continue
             if contract_value:
                 metadata[contract_key] = contract_value
@@ -195,6 +221,11 @@ def render_agent_document(
         lines.extend(_render_entry(key, metadata[key]))
     lines.append("---")
     return "\n".join(lines) + "\n\n" + prompt.strip() + "\n"
+
+
+def _is_unset_optional_collection(key: str, value: object) -> bool:
+    """Whether an optional Claude collection has no configured entries."""
+    return key in _OPTIONAL_COLLECTION_KEYS and value in (None, "", [], {}, ())
 
 
 def _render_entry(key: str, value: object) -> list[str]:

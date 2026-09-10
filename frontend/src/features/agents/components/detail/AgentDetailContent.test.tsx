@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { okJson } from "../../../../test/fetch";
 import { renderWithAppProviders } from "../../../../test/render";
 import { AgentDetailContent } from "./AgentDetailContent";
-import { AGENT_CONTRACT_KEYS, MAX_TURNS_DEFAULT } from "../../api/types";
+import { MAX_TURNS_DEFAULT } from "../../api/types";
 import type { AgentDetailDto } from "../../api/types";
 
 function renderDetail(detail: AgentDetailDto) {
@@ -289,21 +289,21 @@ describe("AgentDetailContent", () => {
     // never appears in one place before the key it follows in the file.
     expect(labels).toEqual([
       "Agent Name",
-      "Description",
       "Role",
-      "Harness",
       "Color",
+      "Description",
+      "Harness",
       "Model",
       "Effort",
-      "Tools (comma-separated)",
       "Disallowed Tools (comma-separated)",
-      "Skills",
-      "Memory",
       "Max Turns",
+      "MCP Servers",
+      "Memory",
       "Isolation",
       "Background",
+      "Skills",
     ]);
-    expect(labels).toHaveLength(AGENT_CONTRACT_KEYS.length);
+    expect(labels).not.toContain("Tools (comma-separated)");
   });
 
   it("offers color as a dropdown with an empty option that clears the key", () => {

@@ -395,6 +395,42 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* Agent frontmatter follows the same six-row contract in both create and edit
+   surfaces. The description and skills intentionally span the full row. */
+.agent-frontmatter-grid,
+.agent-frontmatter-grid__additional {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.agent-frontmatter-grid__name { grid-area: name; }
+.agent-frontmatter-grid__role { grid-area: role; }
+.agent-frontmatter-grid__color { grid-area: color; }
+.agent-frontmatter-grid__description { grid-area: description; }
+.agent-frontmatter-grid__harness { grid-area: harness; }
+.agent-frontmatter-grid__model { grid-area: model; }
+.agent-frontmatter-grid__effort { grid-area: effort; }
+.agent-frontmatter-grid__disallowed-tools { grid-area: disallowed-tools; }
+.agent-frontmatter-grid__max-turns { grid-area: max-turns; }
+.agent-frontmatter-grid__mcp-servers { grid-area: mcp-servers; }
+.agent-frontmatter-grid__memory { grid-area: memory; }
+.agent-frontmatter-grid__isolation { grid-area: isolation; }
+.agent-frontmatter-grid__background { grid-area: background; }
+.agent-frontmatter-grid__skills { grid-area: skills; }
+
+.agent-frontmatter-grid {
+  grid-template-areas:
+    "name role color"
+    "description description description"
+    "harness model effort";
+}
+
+.agent-frontmatter-grid__additional {
+  grid-template-areas:
+    "disallowed-tools max-turns mcp-servers"
+    "memory isolation background"
+    "skills skills skills";
+}
+
 /* Card around a group of related fields — same surface as .frontmatter-editor. */
 .dialog-fieldset {
   display: grid;
@@ -519,6 +555,33 @@ select.form-field__input,
 @media (max-width: 560px) {
   .dialog-form-fields--split {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-frontmatter-grid,
+  .agent-frontmatter-grid__additional {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .agent-frontmatter-grid {
+    grid-template-areas:
+      "name"
+      "role"
+      "color"
+      "description"
+      "harness"
+      "model"
+      "effort";
+  }
+
+  .agent-frontmatter-grid__additional {
+    grid-template-areas:
+      "disallowed-tools"
+      "max-turns"
+      "mcp-servers"
+      "memory"
+      "isolation"
+      "background"
+      "skills";
   }
 }
 

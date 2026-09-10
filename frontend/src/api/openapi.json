@@ -1739,6 +1739,13 @@
             ],
             "title": "Maxturns"
           },
+          "mcpServers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Mcpservers",
+            "type": "array"
+          },
           "memory": {
             "anyOf": [
               {
