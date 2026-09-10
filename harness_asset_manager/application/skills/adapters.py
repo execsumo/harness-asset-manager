@@ -289,6 +289,20 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
     def remove_binding(self, package_dir: str, *, scope: str | None = None) -> None:
         self.disable_shared_package(package_dir, scope=scope)
 
+    def prepare_remove_local_copy(self, path: Path) -> None:
+        """Validate a discovered unmanaged package before deleting it."""
+        if not path.exists() and not path.is_symlink():
+            return
+        if not path.is_dir() and not path.is_symlink():
+            raise MutationError(f"skill path is not a directory: {path}")
+
+    def remove_local_copy(self, path: Path) -> None:
+        self.prepare_remove_local_copy(path)
+        if path.is_symlink():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
+
     def _binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
         default = self._default_binding_path(package_dir, scope=scope)
         if default.exists() or default.is_symlink():

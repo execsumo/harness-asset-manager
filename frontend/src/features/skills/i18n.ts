@@ -37,6 +37,10 @@ const englishSkillsCopy = {
     adoptingAllSkills: "Adopting all skills",
     adoptSelected: "Adopt",
     adoptingSelected: "Adopting selected skills",
+    deleteSelected: "Delete",
+    deleteConfirmTitle: (count: number) => `Delete ${count} local skill${count === 1 ? "" : "s"}?`,
+    deleteConfirmDescription: "This removes the selected skill folders from their harnesses.",
+    deleteConfirmNote: "Adopted skills and plugin-owned copies are not affected.",
     searchPlaceholder: "Search skills to review...",
     searchLabel: "Search skills to review",
     loading: "Loading skills to review",
@@ -66,6 +70,9 @@ const englishSkillsCopy = {
     deleteTitle: "Delete skill from Harness Asset Manager?",
     deleteDescription: (skillName: string) =>
       `This will remove ${skillName} from the shared store and delete its links from all harnesses.`,
+    deleteLocalTitle: "Delete local skill folders?",
+    deleteLocalDescription: (skillName: string) =>
+      `This will permanently remove ${skillName} from the harness folders where it was found.`,
     cannotUndo: "This action cannot be undone.",
     affectedHarnesses: (labels: readonly string[]) => `Affected harnesses: ${labels.join(", ")}`,
     delete: "Delete",

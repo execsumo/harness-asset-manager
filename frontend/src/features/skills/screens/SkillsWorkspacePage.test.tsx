@@ -17,6 +17,7 @@ const hooks = vi.hoisted(() => ({
   onMultiSelectEnableAll: vi.fn(async () => undefined),
   onMultiSelectDisableAll: vi.fn(async () => undefined),
   onMultiSelectDelete: vi.fn(async () => undefined),
+  onDeleteSkill: vi.fn(async () => undefined),
   handleManageSkill: vi.fn(async () => undefined),
   handleToggleSkill: vi.fn(async () => undefined),
   handleUpdateSkill: vi.fn(async () => undefined),
@@ -61,7 +62,7 @@ const mixedData = {
       name: "Untracked Skill",
       description: "Untracked description",
       displayStatus: "Unmanaged",
-      actions: { canManage: true, canStopManaging: false, canDelete: false },
+      actions: { canManage: true, canStopManaging: false, canDelete: true },
       linkedTargets: ["hermes:coder"],
       cells: [
         { harness: "codex", label: "Codex", logoKey: "codex", state: "found", interactive: false },
@@ -212,6 +213,19 @@ describe("Skills unified inventory page", () => {
 
     fireEvent.click(within(toolbar).getByRole("button", { name: "Adopt" }));
     await waitFor(() => expect(hooks.onManageSkill).toHaveBeenCalledWith("local:untracked-skill"));
+  });
+
+  it("deletes a selected untracked skill after confirmation", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Untracked Skill" }));
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Delete 1 selected" }));
+
+    expect(screen.getByRole("heading", { name: "Delete 1 local skill?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Delete$/ }));
+
+    await waitFor(() => expect(hooks.handleDeleteSkill).toHaveBeenCalledWith("local:untracked-skill"));
   });
 
   it("toggles tag=starred filter when clicking the header star button", async () => {

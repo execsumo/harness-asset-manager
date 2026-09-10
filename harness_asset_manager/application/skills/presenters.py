@@ -57,7 +57,7 @@ def skill_detail_payload(
             "stopManagingStatus": stop_managing_status_payload(entry),
             "stopManagingHarnessLabels": linked_harness_labels(entry, columns),
             "canDelete": can_delete(entry),
-            "deleteHarnessLabels": linked_harness_labels(entry, columns),
+            "deleteHarnessLabels": deletable_harness_labels(entry, columns),
         },
         "harnessCells": [cell_payload(entry, column) for column in columns],
         "locations": [sighting_payload(sighting) for sighting in entry.detail_sightings()],
@@ -158,6 +158,21 @@ def sighting_payload(sighting: InventorySighting) -> dict[str, str | None]:
 
 def linked_harness_labels(entry: InventoryEntry, columns: tuple[InventoryColumn, ...]) -> list[str]:
     linked_harnesses = entry.linked_harnesses()
+    return [column.label for column in columns if column.harness in linked_harnesses]
+
+
+def deletable_harness_labels(entry: InventoryEntry, columns: tuple[InventoryColumn, ...]) -> list[str]:
+    if entry.kind == "managed":
+        return linked_harness_labels(entry, columns)
+    linked_harnesses = {
+        sighting.harness.split(":", 1)[0]
+        for sighting in entry.sightings
+        if sighting.kind == "harness"
+        and sighting.harness is not None
+        and sighting.scope != "plugin"
+        and not sighting.detail
+        and sighting.path is not None
+    }
     return [column.label for column in columns if column.harness in linked_harnesses]
 
 

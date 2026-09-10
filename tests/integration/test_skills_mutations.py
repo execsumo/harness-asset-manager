@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import unittest
+from pathlib import Path
 
 from harness_asset_manager.application.skills.inventory import SkillInventory
 from harness_asset_manager.application.skills.manifest import SkillStoreEntry
@@ -645,14 +646,21 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertFalse((harness.spec.skills_store_root / "audit-skill").exists())
 
-    def test_delete_rejects_unmanaged_skills(self) -> None:
+    def test_delete_unmanaged_skill_removes_harness_copies(self) -> None:
         with AppTestHarness(mixed=True) as harness:
             skills = harness.get_json("/api/skills")
             unmanaged = next(row for row in skills["rows"] if row["name"] == "Trace Lens")
+            detail = harness.get_json(f"/api/skills/{unmanaged['skillRef']}")
 
-            unmanaged_result = harness.post_json(f"/api/skills/{unmanaged['skillRef']}/delete", expected_status=400)
+            self.assertTrue(unmanaged["actions"]["canDelete"])
+            result = harness.post_json(f"/api/skills/{unmanaged['skillRef']}/delete")
 
-            self.assertIn("only managed shared-store skills can be deleted", unmanaged_result["error"])
+            self.assertTrue(result["ok"])
+            for location in detail["locations"]:
+                if location["kind"] == "harness" and location["scope"] != "plugin" and location["path"]:
+                    self.assertFalse(Path(location["path"]).exists())
+            refreshed = harness.get_json("/api/skills")
+            self.assertNotIn(unmanaged["skillRef"], [row["skillRef"] for row in refreshed["rows"]])
 
     def test_delete_refuses_to_touch_disabled_harness_bindings(self) -> None:
         with AppTestHarness(fixture_factory=seed_delete_fixture) as harness:

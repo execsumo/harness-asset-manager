@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
+import { skillStatusConcept } from "../../../../lib/product-language";
 import { useSkillsCopy } from "../../i18n";
 import type { StructuralSkillAction } from "../../model/pending";
 import type { HarnessCellState } from "../../model/types";
@@ -126,6 +127,7 @@ export function SkillDetailView({
         <SkillActionConfirmDialog
           open={isDeleteDialogOpen}
           action="delete"
+          managed={skillStatusConcept(detail.displayStatus) === "inUse"}
           skillName={detail.name}
           harnessLabels={detail.actions.deleteHarnessLabels}
           isPending={pendingStructuralAction === "delete"}
