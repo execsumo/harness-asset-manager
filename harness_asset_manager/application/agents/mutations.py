@@ -425,6 +425,11 @@ class AgentMutationService:
         atomic_write_text(path, rendered)
 
     def delete(self, slug: str) -> None:
+        if "/" in slug:
+            harness, unmanaged_slug = self._split_ref(slug)
+            self._adapter(harness).remove_unmanaged(unmanaged_slug)
+            self.ledger.forget(unmanaged_slug, harness)
+            return
         self._require_agent(slug)
         for target in self.targets:
             if target.supports_agents:

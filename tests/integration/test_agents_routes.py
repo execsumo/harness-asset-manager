@@ -350,7 +350,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(detail["description"], "found in claude")
             self.assertIn("harness body", detail["document"])
             self.assertTrue(detail["canEdit"])
-            self.assertFalse(detail["canDelete"])
+            self.assertTrue(detail["canDelete"])
             self.assertIsNone(detail["storePath"])
             owner = next(h for h in detail["harnesses"] if h["harness"] == "claude")
             self.assertTrue(owner["path"].endswith("/.claude/agents/stray.md"))
@@ -360,7 +360,7 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(codex_detail["ref"], "codex/auditor")
             self.assertEqual(codex_detail["name"], "auditor")
             self.assertFalse(codex_detail["canEdit"])
-            self.assertFalse(codex_detail["canDelete"])
+            self.assertTrue(codex_detail["canDelete"])
             self.assertIsNone(codex_detail["storePath"])
 
     def test_unmanaged_edit_succeeds_and_preserves_custom_frontmatter_in_order(self) -> None:
@@ -885,6 +885,31 @@ class AgentRoutesTests(unittest.TestCase):
             harness.delete_json("/api/agents/red-team")
             self.assertFalse((harness.spec.home / ".claude" / "agents" / "red-team.md").exists())
             self.assertFalse((harness.spec.agents_root / "red-team.md").exists())
+
+    def test_delete_unmanaged_agent_removes_harness_file(self) -> None:
+        def seed(spec: FakeHomeSpec) -> None:
+            _seed_unmanaged_claude_agent(spec)
+            _seed_unmanaged_codex_agent(spec)
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            for ref, path in (
+                ("claude/stray", harness.spec.home / ".claude" / "agents" / "stray.md"),
+                ("codex/auditor", harness.spec.home / ".codex" / "agents" / "auditor.toml"),
+            ):
+                entry = next(
+                    item for item in harness.get_json("/api/agents")["entries"]
+                    if item["ref"] == ref
+                )
+                self.assertTrue(entry["actions"]["canDelete"])
+
+                result = harness.delete_json(f"/api/agents/{ref}")
+
+                self.assertTrue(result["ok"])
+                self.assertFalse(path.exists())
+                self.assertNotIn(
+                    ref,
+                    [item["ref"] for item in harness.get_json("/api/agents")["entries"]],
+                )
 
     def test_update_agent_drops_legacy_frontmatter(self) -> None:
         def seed(spec: FakeHomeSpec) -> None:

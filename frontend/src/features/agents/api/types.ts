@@ -174,7 +174,7 @@ export interface AgentDetailDto {
   /** Frontmatter beyond name/description, verbatim and in file order. */
   configuration: Array<{ key: string; value: string }>;
   canDelete: boolean;
-  /** False for unmanaged agents: read-only until adopted. */
+  /** False for unmanaged agents that cannot be edited in place. */
   canEdit: boolean;
   tags?: string[];
   skills?: AgentSkillDto[];

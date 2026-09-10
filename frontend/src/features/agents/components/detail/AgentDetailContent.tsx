@@ -571,6 +571,7 @@ export function AgentDetailContent({
   };
 
   const isDeleting = deleteMutation.isPending;
+  const isUnmanaged = detail.storePath === null;
 
   return (
     <>
@@ -774,9 +775,11 @@ export function AgentDetailContent({
       {detail.canDelete ? (
         <ConfirmActionDialog
           open={deleteDialogOpen}
-          title="Delete Agent"
-          description={<>Are you sure you want to delete <strong>{detail.name}</strong>? This action cannot be undone.</>}
-          confirmLabel="Delete Agent"
+          title={isUnmanaged ? "Delete local agent" : "Delete Agent"}
+          description={isUnmanaged
+            ? <>Are you sure you want to remove <strong>{detail.name}</strong> from this harness? This action cannot be undone.</>
+            : <>Are you sure you want to delete <strong>{detail.name}</strong>? This action cannot be undone.</>}
+          confirmLabel={isUnmanaged ? "Delete local agent" : "Delete Agent"}
           pendingLabel="Deleting"
           isPending={isDeleting}
           onOpenChange={setDeleteDialogOpen}

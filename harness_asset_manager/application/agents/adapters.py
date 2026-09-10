@@ -108,6 +108,16 @@ class AgentHarnessAdapter:
             raise MutationError(f"not a symlink at {path}; will not delete a real file")
         path.unlink()
 
+    def remove_unmanaged(self, slug: str) -> None:
+        """Remove a real harness file that HAM does not own."""
+        self._require_supported()
+        path = self.binding_path(slug)
+        if not path.is_file() or path.is_symlink():
+            raise MutationError(f"no unmanaged agent at {path}", status=404)
+        if self.owns(path):
+            raise MutationError(f"refusing to delete an agent managed by Harness Asset Manager: {path}")
+        path.unlink()
+
     def unmanaged_paths(self) -> tuple[Path, ...]:
         """Files in this harness's agents dir that we do not own."""
         if not self.target.supports_agents or not self.target.output_dir.is_dir():

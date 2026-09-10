@@ -1,8 +1,9 @@
 import "../agents.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { BulkActionBar } from "../../../components/BulkActionBar";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -63,11 +64,13 @@ export default function AgentsInUsePage() {
     handleToggleHarness,
     adoptMutation,
     adoptAllMutation,
+    deleteMutation,
   } = useAgentsController();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [selectedRefs, setSelectedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const [pendingSelectedAction, setPendingSelectedAction] = useState<"adopt" | "delete" | null>(null);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
   const [conflictPending, setConflictPending] = useState(false);
@@ -234,7 +237,7 @@ export default function AgentsInUsePage() {
       .filter((entry) => entry.kind === "unmanaged" && selectedRefs.has(entry.ref))
       .map((entry) => entry.ref);
     if (refs.length === 0) return;
-    setAdoptingSelected(true);
+    setPendingSelectedAction("adopt");
     try {
       for (const ref of refs) {
         try {
@@ -246,9 +249,31 @@ export default function AgentsInUsePage() {
       }
       clearSelected();
     } finally {
-      setAdoptingSelected(false);
+      setPendingSelectedAction(null);
     }
   }, [adoptMutation, clearSelected, entries, selectedRefs, toast]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    const refs = entries
+      .filter((entry) => selectedRefs.has(entry.ref) && entry.actions.canDelete)
+      .map((entry) => entry.ref);
+    if (refs.length === 0) return;
+    setPendingSelectedAction("delete");
+    const failed = new Set<string>();
+    try {
+      for (const ref of refs) {
+        try {
+          await deleteMutation.mutateAsync(ref);
+        } catch (error) {
+          failed.add(ref);
+          toast(`Skipped ${ref}: ${error instanceof Error ? error.message : "deletion failed"}`);
+        }
+      }
+      setSelectedRefs((current) => new Set([...current].filter((ref) => failed.has(ref))));
+    } finally {
+      setPendingSelectedAction(null);
+    }
+  }, [deleteMutation, entries, selectedRefs, toast]);
 
   const handleAdoptAll = useCallback(async () => {
     setAdoptingSelected(true);
@@ -302,6 +327,9 @@ export default function AgentsInUsePage() {
     : "";
   const selectedCount = selectedRefs.size;
   const adoptableCount = entries.filter((entry) => entry.kind === "unmanaged" && entry.actions.canAdopt).length;
+  const deletableSelectedCount = entries.filter(
+    (entry) => selectedRefs.has(entry.ref) && entry.actions.canDelete,
+  ).length;
 
   return (
     <>
@@ -497,33 +525,31 @@ export default function AgentsInUsePage() {
       />
 
       {selectedCount > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div className="bulk-bar" data-state="open" role="toolbar" aria-label={common.bulk.ariaLabel}>
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{common.bulk.selected(selectedCount)}</span>
-              <button
-                type="button"
-                className="bulk-bar__clear"
-                onClick={clearSelected}
-                disabled={adoptingSelected}
-                aria-label={common.actions.clearSelection}
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <span className="bulk-bar__divider" aria-hidden="true" />
+        <BulkActionBar
+          selectedCount={selectedCount}
+          pending={pendingSelectedAction}
+          onClear={clearSelected}
+          onDelete={handleDeleteSelected}
+          showHarnessActions={false}
+          showDestructiveAction={deletableSelectedCount > 0}
+          extraActions={(
             <button
               type="button"
               className="bulk-bar__action"
               onClick={() => void handleAdoptSelected()}
-              disabled={adoptingSelected}
+              disabled={pendingSelectedAction !== null}
             >
-              {adoptingSelected ? <LoadingSpinner size="sm" label="Adopting selected agents..." /> : <Plus size={15} />}
+              {pendingSelectedAction === "adopt" ? <LoadingSpinner size="sm" label="Adopting selected agents..." /> : <Plus size={15} />}
               Adopt selected
             </button>
-          </div>
-        </div>
+          )}
+          destructive={{
+            actionLabel: "Delete",
+            confirmTitle: `Delete ${deletableSelectedCount} local agent${deletableSelectedCount === 1 ? "" : "s"}?`,
+            confirmDescription: "This permanently removes the selected agent files from their harnesses.",
+            confirmNote: "Adopted agents are not affected.",
+          }}
+        />
       ) : null}
 
       <AdoptConflictDialog

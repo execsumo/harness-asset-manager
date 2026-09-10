@@ -202,8 +202,8 @@ class AgentInventoryService:
         """Read-only inspection of a harness file that Harness Asset Manager does not own.
 
         ``ref`` is ``<harness>/<slug>`` as the inventory lists it. Nothing here writes:
-        an unmanaged agent has no store copy, so there is nothing to edit or delete
-        until it is adopted.
+        an unmanaged agent has no store copy to edit until it is adopted, but its
+        harness file may be deleted directly.
         """
         harness_id, separator, slug = ref.partition("/")
         if not separator or not harness_id or not slug or slug != Path(slug).name:
@@ -271,7 +271,7 @@ class AgentInventoryService:
             document=document,
             store_path=None,
             harnesses=tuple(harnesses),
-            can_delete=False,
+            can_delete=True,
             # Rendered adapters (Codex TOML) have no Markdown frontmatter to edit.
             can_edit=not adapter.renders,
             tags=tags,
@@ -558,7 +558,7 @@ class AgentInventoryService:
                 for column in targets
             ),
             can_adopt=True,
-            can_delete=False,
+            can_delete=True,
             tags=tags,
             skills=skills,
         )
