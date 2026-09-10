@@ -9,7 +9,12 @@ from unittest import mock
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from tests.support.app_harness import AppTestHarness
-from tests.support.fake_home import FakeHomeSpec, seed_skill_package
+from tests.support.fake_home import (
+    FakeHomeSpec,
+    seed_shared_only_fixture,
+    seed_skill_package,
+    write_cli_stub,
+)
 
 
 def _seed_unmanaged_claude_agent(spec: FakeHomeSpec, slug: str = "stray") -> None:
@@ -28,6 +33,11 @@ def _seed_unmanaged_codex_agent(spec: FakeHomeSpec, slug: str = "auditor") -> No
         f'name = "{slug}"\ndescription = "found in codex"\ndeveloper_instructions = "codex instructions"\n',
         encoding="utf-8",
     )
+
+
+def _seed_pi_shared_fixture(spec: FakeHomeSpec) -> None:
+    seed_shared_only_fixture(spec)
+    write_cli_stub(spec.bin_dir / "pi", "pi")
 
 
 class AgentEffortContractTests(unittest.TestCase):
@@ -280,6 +290,61 @@ class AgentRoutesTests(unittest.TestCase):
             link = harness.spec.home / ".hermes" / "agents" / "red-team.md"
             self.assertTrue(link.is_symlink())
             self.assertEqual(self._state(self._entry(harness, "red-team"), "hermes"), "enabled")
+
+    def test_enabling_agent_enables_its_declared_skills_for_that_harness(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Skilled Agent",
+                    "description": "uses a shared skill",
+                    "prompt": "use the skill",
+                    "skills": ["shared-audit"],
+                },
+            )
+
+            harness.post_json("/api/agents/skilled-agent/enable", {"harness": "claude"})
+
+            self.assertTrue((harness.spec.claude_root / "shared-audit").is_symlink())
+
+    def test_adding_skills_to_an_enabled_agent_enables_them_for_existing_harnesses(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Skilled Agent", "description": "d", "prompt": "p"},
+            )
+            harness.post_json("/api/agents/skilled-agent/enable", {"harness": "claude"})
+
+            result = harness.put_json(
+                "/api/agents/skilled-agent",
+                {"skills": ["shared-audit"]},
+            )
+
+            self.assertEqual(
+                result["autoEnabled"],
+                [{"skillRef": "shared:shared-audit", "harness": "claude"}],
+            )
+            self.assertTrue((harness.spec.claude_root / "shared-audit").is_symlink())
+
+    def test_pi_agent_enablement_syncs_declared_skills(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_pi_shared_fixture) as harness:
+            columns = [column["harness"] for column in harness.get_json("/api/agents")["columns"]]
+            self.assertIn("pi", columns)
+
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Pi Skilled Agent",
+                    "description": "uses a shared skill",
+                    "prompt": "use the skill",
+                    "skills": ["shared-audit"],
+                },
+            )
+            harness.post_json("/api/agents/pi-skilled-agent/enable", {"harness": "pi"})
+
+            self.assertTrue(
+                (harness.spec.home / ".pi" / "agent" / "skills" / "shared-audit").is_symlink()
+            )
 
     def test_codex_gets_a_rendered_toml_not_a_symlink(self) -> None:
         with AppTestHarness() as harness:

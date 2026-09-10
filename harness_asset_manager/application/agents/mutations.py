@@ -451,6 +451,12 @@ class AgentMutationService:
                 rendered_path=adapter.binding_path(agent.slug) if adapter.renders else None,
             ),
         )
+        # Agent skills are harness-local bindings too. Keep them in sync at the
+        # same write funnel as the agent binding so direct enablement, bulk
+        # harness assignment, adoption, and bootstrap all behave consistently.
+        # Skill failures are intentionally non-fatal; the helper catches them
+        # rather than rolling back a successfully-created agent binding.
+        self.auto_enable_skills_for_agent(agent.slug, agent.skills)
 
     def _disable(self, adapter: AgentHarnessAdapter, harness: str, slug: str) -> None:
         adapter.disable(slug)
