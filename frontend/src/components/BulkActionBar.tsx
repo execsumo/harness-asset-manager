@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Check, CircleSlash2, Star, Trash2, X } from "lucide-react";
 
 import { BulkTagPopover } from "./BulkTagPopover";
@@ -6,15 +7,18 @@ import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
 
-export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag";
+export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag" | "adopt";
 
 interface BulkActionBarProps {
   selectedCount: number;
   pending: MultiSelectAction | null;
   onClear: () => void;
-  onEnableAll: () => Promise<void>;
-  onDisableAll: () => Promise<void>;
+  onEnableAll?: () => Promise<void>;
+  onDisableAll?: () => Promise<void>;
   onDelete: () => Promise<void>;
+  extraActions?: ReactNode;
+  showHarnessActions?: boolean;
+  showDestructiveAction?: boolean;
   onStarSelected?: () => Promise<void>;
   starLabel?: string;
   onTagSelected?: (tags: string[]) => Promise<void>;
@@ -38,6 +42,9 @@ export function BulkActionBar({
   onEnableAll,
   onDisableAll,
   onDelete,
+  extraActions,
+  showHarnessActions = true,
+  showDestructiveAction = true,
   onStarSelected,
   starLabel,
   onTagSelected,
@@ -93,6 +100,7 @@ export function BulkActionBar({
           <span className="bulk-bar__divider" aria-hidden="true" />
 
           <div className="bulk-bar__group">
+            {extraActions}
             {onStarSelected ? (
               <button
                 type="button"
@@ -116,49 +124,57 @@ export function BulkActionBar({
                 pending={pending === "tag"}
               />
             ) : null}
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void onEnableAll()}
-              disabled={disabled}
-            >
-              {pending === "enable-all" ? (
-                <LoadingSpinner size="sm" label={common.actions.enabling} />
-              ) : (
-                <Check size={15} />
-              )}
-              {common.actions.enableAll}
-            </button>
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void onDisableAll()}
-              disabled={disabled}
-            >
-              {pending === "disable-all" ? (
-                <LoadingSpinner size="sm" label={common.actions.disabling} />
-              ) : (
-                <CircleSlash2 size={15} />
-              )}
-              {common.actions.disableAll}
-            </button>
+            {showHarnessActions && onEnableAll && onDisableAll ? (
+              <>
+                <button
+                  type="button"
+                  className="bulk-bar__action"
+                  onClick={() => void onEnableAll()}
+                  disabled={disabled}
+                >
+                  {pending === "enable-all" ? (
+                    <LoadingSpinner size="sm" label={common.actions.enabling} />
+                  ) : (
+                    <Check size={15} />
+                  )}
+                  {common.actions.enableAll}
+                </button>
+                <button
+                  type="button"
+                  className="bulk-bar__action"
+                  onClick={() => void onDisableAll()}
+                  disabled={disabled}
+                >
+                  {pending === "disable-all" ? (
+                    <LoadingSpinner size="sm" label={common.actions.disabling} />
+                  ) : (
+                    <CircleSlash2 size={15} />
+                  )}
+                  {common.actions.disableAll}
+                </button>
+              </>
+            ) : null}
           </div>
 
-          <span className="bulk-bar__divider" aria-hidden="true" />
+          {showDestructiveAction ? (
+            <>
+              <span className="bulk-bar__divider" aria-hidden="true" />
 
-          <button
-            type="button"
-            className="bulk-bar__danger"
-            onClick={() => setConfirmOpen(true)}
-            disabled={disabled}
-            aria-label={common.bulk.selectedAction(destructive.actionLabel, selectedCount)}
-          >
-            {pending === "delete" ? (
-              <LoadingSpinner size="sm" label={destructive.actionLabel} />
-            ) : (
-              <Trash2 size={15} />
-            )}
-          </button>
+              <button
+                type="button"
+                className="bulk-bar__danger"
+                onClick={() => setConfirmOpen(true)}
+                disabled={disabled}
+                aria-label={common.bulk.selectedAction(destructive.actionLabel, selectedCount)}
+              >
+                {pending === "delete" ? (
+                  <LoadingSpinner size="sm" label={destructive.actionLabel} />
+                ) : (
+                  <Trash2 size={15} />
+                )}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -169,7 +185,7 @@ export function BulkActionBar({
         note={destructive.confirmNote}
         confirmLabel={destructive.actionLabel}
         pendingLabel={destructive.actionLabel}
-        isPending={false}
+        isPending={pending === "delete"}
         onOpenChange={setConfirmOpen}
         onConfirm={async () => {
           setConfirmOpen(false);

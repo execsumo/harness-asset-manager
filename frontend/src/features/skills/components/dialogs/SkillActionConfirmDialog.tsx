@@ -6,6 +6,7 @@ type SkillActionConfirmKind = "unmanage" | "delete";
 interface SkillActionConfirmDialogProps {
   open: boolean;
   action: SkillActionConfirmKind;
+  managed?: boolean;
   skillName: string;
   harnessLabels: readonly string[];
   isPending: boolean;
@@ -16,6 +17,7 @@ interface SkillActionConfirmDialogProps {
 export function SkillActionConfirmDialog({
   open,
   action,
+  managed = true,
   skillName,
   harnessLabels,
   isPending,
@@ -35,9 +37,25 @@ export function SkillActionConfirmDialog({
         pendingLabel: copy.confirm.removing,
         confirmTone: "primary" as const,
       }
-    : {
+    : managed
+      ? {
         title: copy.confirm.deleteTitle,
         description: copy.confirm.deleteDescription(skillName),
+        note: (
+          <>
+            <p>{copy.confirm.cannotUndo}</p>
+            {harnessLabels.length > 0 ? (
+              <p>{copy.confirm.affectedHarnesses(harnessLabels)}</p>
+            ) : null}
+          </>
+        ),
+        confirmLabel: copy.confirm.delete,
+        pendingLabel: copy.confirm.deletingSkill,
+        confirmTone: "danger" as const,
+      }
+      : {
+        title: copy.confirm.deleteLocalTitle,
+        description: copy.confirm.deleteLocalDescription(skillName),
         note: (
           <>
             <p>{copy.confirm.cannotUndo}</p>

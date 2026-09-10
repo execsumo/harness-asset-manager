@@ -71,7 +71,7 @@ class BackendContainerServiceTests(unittest.TestCase):
             self.assertEqual(trace_lens["displayStatus"], "Unmanaged")
             self.assertEqual(
                 trace_lens["actions"],
-                {"canManage": True, "canStopManaging": False, "canDelete": False},
+                {"canManage": True, "canStopManaging": False, "canDelete": True},
             )
             self.assertEqual(
                 {cell["harness"] for cell in trace_lens["cells"] if cell["state"] == "found"},
@@ -176,7 +176,10 @@ class BackendContainerServiceTests(unittest.TestCase):
             self.assertEqual(shared_detail["actions"]["stopManagingHarnessLabels"], [])
             self.assertIsNone(found_detail["actions"]["stopManagingStatus"])
             self.assertEqual(found_detail["actions"]["stopManagingHarnessLabels"], ["Claude"])
-            self.assertEqual(found_detail["actions"]["deleteHarnessLabels"], ["Claude"])
+            self.assertEqual(
+                found_detail["actions"]["deleteHarnessLabels"],
+                ["Claude", "Codex", "OpenCode"],
+            )
             self.assertIsNone(found_detail["sourceLinks"])
 
     def test_skill_detail_orders_managed_locations_with_shared_store_first(self) -> None:

@@ -41,7 +41,16 @@ def can_update(entry: InventoryEntry) -> bool:
 
 
 def can_delete(entry: InventoryEntry) -> bool:
-    return entry.kind == "managed" and entry.package_dir is not None and entry.package_path is not None
+    if entry.kind == "managed":
+        return entry.package_dir is not None and entry.package_path is not None
+    return any(
+        sighting.kind == "harness"
+        and sighting.scope != "plugin"
+        and not sighting.detail
+        and sighting.path is not None
+        and (sighting.path.is_dir() or sighting.path.is_symlink())
+        for sighting in entry.sightings
+    )
 
 
 def can_stop_managing(entry: InventoryEntry) -> bool:

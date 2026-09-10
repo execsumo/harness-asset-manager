@@ -66,7 +66,7 @@ export function MatrixRow({
   const isUntracked = skillStatusConcept(row.displayStatus) === "needsReview";
   // Skills keeps managed selection for its enable/disable/delete bar while
   // limiting the adopt selection to eligible untracked rows.
-  const selectable = untrackedSelectionOnly ? (!isUntracked || row.actions.canManage) : true;
+  const selectable = untrackedSelectionOnly ? (!isUntracked || row.actions.canManage || row.actions.canDelete) : true;
   const pendingStructuralAction = pendingStructuralActions?.get(row.skillRef) ?? null;
   const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
   const displayTags = (row.tags || []).filter((t) => t.toLowerCase() !== "starred");

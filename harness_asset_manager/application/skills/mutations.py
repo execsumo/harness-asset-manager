@@ -314,9 +314,46 @@ class SkillsMutationService:
         entry = self.queries.require_entry(skill_ref)
         if not can_delete(entry):
             raise MutationError(
-                f"only managed shared-store skills can be deleted; this is {display_status(entry)}",
+                f"skill has no deletable harness copy; this is {display_status(entry)}",
                 status=400,
             )
+
+        if entry.kind == "unmanaged":
+            targets: list[tuple[SkillsHarnessAdapter, Path]] = []
+            seen_paths: set[Path] = set()
+            for sighting in entry.sightings:
+                if (
+                    sighting.kind != "harness"
+                    or sighting.harness is None
+                    or sighting.scope == "plugin"
+                    or sighting.detail
+                    or sighting.path is None
+                ):
+                    continue
+                adapter = self.read_models.find_adapter(sighting.harness)
+                if adapter is None:
+                    raise MutationError(
+                        f"harness adapter is unavailable for {sighting.harness}",
+                        status=409,
+                    )
+                path = sighting.path
+                if path in seen_paths:
+                    continue
+                seen_paths.add(path)
+                targets.append((adapter, path))
+
+            if not targets:
+                raise MutationError("skill has no deletable harness copy", status=400)
+
+            # Validate every copy before removing any of them, so a conflict in one
+            # harness never leaves the same unmanaged skill half-deleted elsewhere.
+            for adapter, path in targets:
+                adapter.prepare_remove_local_copy(path)
+            for adapter, path in targets:
+                adapter.remove_local_copy(path)
+            self.read_models.invalidate()
+            return {"ok": True}
+
         if entry.package_dir is None:
             raise MutationError("managed skill is missing its package directory name", status=500)
 

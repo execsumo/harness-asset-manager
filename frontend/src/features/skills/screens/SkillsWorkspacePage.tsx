@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FolderPlus, Plus, X } from "lucide-react";
+import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar } from "../../../components/BulkActionBar";
@@ -68,6 +68,7 @@ export default function SkillsWorkspacePage() {
     onMultiSelectDelete,
     onMultiSelectStar,
     onMultiSelectTag,
+    onDeleteSkill,
     onToggleStar,
     onManageAll,
     onManageSkill,
@@ -75,7 +76,7 @@ export default function SkillsWorkspacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { filters, updateFilters } = useSkillsInUseSession();
   const [selectedUntrackedRefs, setSelectedUntrackedRefs] = useState<ReadonlySet<string>>(() => new Set());
-  const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const [pendingUntrackedAction, setPendingUntrackedAction] = useState<"adopt" | "delete" | null>(null);
   const copy = useSkillsCopy();
   const common = useCommonCopy();
   const { toast } = useToast();
@@ -148,7 +149,7 @@ export default function SkillsWorkspacePage() {
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
   const untrackedRefs = useMemo(
-    () => new Set(sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview" && row.actions.canManage).map((row) => row.skillRef)),
+    () => new Set(sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview" && (row.actions.canManage || row.actions.canDelete)).map((row) => row.skillRef)),
     [sortedRows],
   );
   const managedCount = data?.summary.managed ?? 0;
@@ -197,7 +198,7 @@ export default function SkillsWorkspacePage() {
       .filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canManage)
       .map((row) => row.skillRef);
     if (refs.length === 0) return;
-    setAdoptingSelected(true);
+    setPendingUntrackedAction("adopt");
     try {
       for (const ref of refs) {
         try {
@@ -206,11 +207,37 @@ export default function SkillsWorkspacePage() {
           // The workspace error banner already surfaces the failure; continue with the rest.
         }
       }
-      setSelectedUntrackedRefs(new Set());
+      setSelectedUntrackedRefs((current) => new Set([...current].filter((ref) => !refs.includes(ref))));
     } finally {
-      setAdoptingSelected(false);
+      setPendingUntrackedAction(null);
     }
   }, [onManageSkill, selectedUntrackedRefs, sortedRows]);
+
+  const handleDeleteSelectedUntracked = useCallback(async () => {
+    const refs = sortedRows
+      .filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete)
+      .map((row) => row.skillRef);
+    if (refs.length === 0) return;
+    setPendingUntrackedAction("delete");
+    const failed = new Set<string>();
+    try {
+      for (const ref of refs) {
+        try {
+          await onDeleteSkill(ref);
+        } catch {
+          failed.add(ref);
+        }
+      }
+      setSelectedUntrackedRefs((current) => new Set([...current].filter((ref) => failed.has(ref))));
+    } finally {
+      setPendingUntrackedAction(null);
+    }
+  }, [onDeleteSkill, selectedUntrackedRefs, sortedRows]);
+
+  const hasDeletableUntrackedSelection = useMemo(
+    () => sortedRows.some((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete),
+    [selectedUntrackedRefs, sortedRows],
+  );
 
   const clearFilters = useCallback(() => {
     updateFilters({ search: "" });
@@ -359,33 +386,31 @@ export default function SkillsWorkspacePage() {
       ) : null}
 
       {selectedUntrackedRefs.size > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div className="bulk-bar" data-state="open" role="toolbar" aria-label={common.bulk.ariaLabel}>
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{common.bulk.selected(selectedUntrackedRefs.size)}</span>
-              <button
-                type="button"
-                className="bulk-bar__clear"
-                onClick={() => setSelectedUntrackedRefs(new Set())}
-                disabled={adoptingSelected}
-                aria-label={common.actions.clearSelection}
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <span className="bulk-bar__divider" aria-hidden="true" />
+        <BulkActionBar
+          selectedCount={selectedUntrackedRefs.size}
+          pending={pendingUntrackedAction}
+          onClear={() => setSelectedUntrackedRefs(new Set())}
+          onDelete={handleDeleteSelectedUntracked}
+          showHarnessActions={false}
+          showDestructiveAction={hasDeletableUntrackedSelection}
+          extraActions={
             <button
               type="button"
               className="bulk-bar__action"
               onClick={() => void handleAdoptSelected()}
-              disabled={adoptingSelected}
+              disabled={pendingUntrackedAction !== null}
             >
-              {adoptingSelected ? <LoadingSpinner size="sm" label={copy.review.adoptingSelected} /> : <Plus size={15} />}
+              {pendingUntrackedAction === "adopt" ? <LoadingSpinner size="sm" label={copy.review.adoptingSelected} /> : <Plus size={15} />}
               {copy.review.adoptSelected}
             </button>
-          </div>
-        </div>
+          }
+          destructive={{
+            actionLabel: copy.review.deleteSelected,
+            confirmTitle: copy.review.deleteConfirmTitle(selectedUntrackedRefs.size),
+            confirmDescription: copy.review.deleteConfirmDescription,
+            confirmNote: copy.review.deleteConfirmNote,
+          }}
+        />
       ) : null}
 
       <SkillDetailModal
