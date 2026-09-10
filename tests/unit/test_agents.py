@@ -544,6 +544,11 @@ class AgentBindingTests(AgentsFixture):
             self.mutations.disable("red-team", "claude")
         self.assertTrue((self.harness_dir / "red-team.md").is_file())
 
+    def test_delete_removes_an_unmanaged_harness_file(self) -> None:
+        _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: d\n---\nbody\n")
+        self.mutations.delete("claude/stray")
+        self.assertFalse((self.harness_dir / "stray.md").exists())
+
     def test_enable_refuses_to_overwrite_a_real_file(self) -> None:
         self.store.create(name="Red Team", description="probe", prompt="p")
         _write(self.harness_dir / "red-team.md", "---\nname: theirs\ndescription: d\n---\nbody\n")
@@ -577,6 +582,7 @@ class AgentInventoryTests(AgentsFixture):
         entry = self.entry("claude/stray")
         self.assertEqual(entry.kind, "unmanaged")
         self.assertTrue(entry.can_adopt)
+        self.assertTrue(entry.can_delete)
         self.assertEqual(entry.harness_path, self.harness_dir / "stray.md")
 
     def test_dangling_symlink_is_disabled_with_a_detail(self) -> None:

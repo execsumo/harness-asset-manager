@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
@@ -69,6 +69,23 @@ function agentsInUseFixture(): AgentInventoryDto {
           { harness: "cursor", state: "disabled", detail: null }
         ],
         actions: { canAdopt: false, canDelete: true },
+      },
+    ],
+  };
+}
+
+function unmanagedAgentsFixture(): AgentInventoryDto {
+  return {
+    ...agentsInUseFixture(),
+    entries: [
+      {
+        ref: "claude/stray",
+        name: "Stray Agent",
+        description: "An unmanaged local agent",
+        kind: "unmanaged",
+        harnessPath: "/home/.claude/agents/stray.md",
+        bindings: [{ harness: "claude", state: "enabled", detail: null }],
+        actions: { canAdopt: true, canDelete: true },
       },
     ],
   };
@@ -157,6 +174,30 @@ describe("AgentsInUsePage", () => {
         fetchMock.mock.calls.some((call) => String(call[0]).includes("/enable")),
       ).toBe(true),
     );
+  });
+
+  it("deletes a selected unmanaged agent after confirmation", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/agents/claude/stray" && init?.method === "DELETE") return okJson({});
+      if (url === "/api/agents") return okJson(unmanagedAgentsFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Stray Agent")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Stray Agent" }));
+
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Delete 1 selected" }));
+    expect(screen.getByRole("heading", { name: "Delete 1 local agent?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Delete$/ }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(
+        (call) => String(call[0]) === "/api/agents/claude/stray" && call[1]?.method === "DELETE",
+      )).toBe(true);
+    });
   });
 
   describe("Agent Detail View", () => {

@@ -27,7 +27,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
         bindings: [
           { harness: "cursor", state: "enabled", detail: null }
         ],
-        actions: { canAdopt: true, canDelete: false },
+        actions: { canAdopt: true, canDelete: true },
       },
       {
         ref: "opencode/ok-agent",
@@ -38,7 +38,7 @@ function unmanagedAgentsFixture(): AgentInventoryDto {
         bindings: [
           { harness: "cursor", state: "enabled", detail: null }
         ],
-        actions: { canAdopt: true, canDelete: false },
+        actions: { canAdopt: true, canDelete: true },
       },
     ],
   };
@@ -263,7 +263,7 @@ describe("Agents unified inventory", () => {
           storePath: null,
           configuration: [],
           harnesses: [],
-          canDelete: false,
+          canDelete: true,
           canEdit: true,
           tags: [],
           skills: [],
