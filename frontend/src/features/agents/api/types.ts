@@ -8,6 +8,8 @@ export const AGENT_CONTRACT_KEYS = [
   // Identity
   "name",
   "description",
+  "role",
+  "harness",
   "color",
   // Which model runs it
   "model",
@@ -16,6 +18,7 @@ export const AGENT_CONTRACT_KEYS = [
   "tools",
   "disallowedTools",
   "skills",
+  "memory",
   // The envelope it runs in
   "maxTurns",
   "isolation",
@@ -41,6 +44,7 @@ export const COLOR_VALUES = [
 ] as const;
 export const ISOLATION_VALUES = ["worktree"] as const;
 export const BACKGROUND_VALUES = ["true", "false"] as const;
+export const MEMORY_VALUES = ["user", "project", "local"] as const;
 
 /**
  * What a harness assumes when `maxTurns` is absent. Shown as the field's placeholder
@@ -118,6 +122,8 @@ export interface AgentCreateRequest {
   name: string;
   description: string;
   prompt: string;
+  role?: string;
+  harness?: string;
   tools?: string[];
   skills?: string[];
   color?: string;
@@ -127,6 +133,7 @@ export interface AgentCreateRequest {
   isolation?: string;
   disallowedTools?: string[];
   background?: string;
+  memory?: string;
   /** Hermes profile routing; values are passed through without a HAM vocabulary. */
   hermesProvider?: string;
   hermesModel?: string;
@@ -137,6 +144,8 @@ export interface AgentUpdateRequest {
   name?: string;
   description?: string;
   prompt?: string;
+  role?: string;
+  harness?: string;
   tools?: string[];
   skills?: string[];
   /** Omitted carries the current value forward; an explicit empty string clears the key. */
@@ -147,6 +156,7 @@ export interface AgentUpdateRequest {
   isolation?: string;
   disallowedTools?: string[];
   background?: string;
+  memory?: string;
   hermesProvider?: string;
   hermesModel?: string;
   metadata?: Array<{ key: string; value: string }>;
@@ -157,6 +167,8 @@ export interface AgentDetailDto {
   name: string;
   description: string;
   prompt: string;
+  role?: string | null;
+  harness?: string | null;
   tools: string[];
   document: string;
   /** Null for unmanaged inspections — there is no store copy until adoption. */
@@ -185,6 +197,7 @@ export interface AgentDetailDto {
   isolation?: string | null;
   disallowedTools?: string[];
   background?: string | null;
+  memory?: string | null;
   hermesProvider?: string | null;
   hermesModel?: string | null;
   ok?: boolean;

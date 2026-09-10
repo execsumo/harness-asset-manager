@@ -16,18 +16,22 @@ class AgentParseError(ValueError):
 # never surfaced or accepted as custom configuration. Single source of truth --
 # the parser, the renderer, and ``extra_metadata`` all derive from it, so adding a
 # contract field is a one-line change here.
-# Grouped so the rendered frontmatter reads top to bottom as identity -> which model
-# runs it -> what it may reach for -> the envelope it runs in. The detail editor lists
-# its fields in this same order, so the two never disagree about what comes next.
+# Grouped so the rendered frontmatter reads top to bottom as identity -> execution
+# target -> which model runs it -> what it may reach for -> persistence and runtime
+# behavior. The detail editor lists its fields in this same order, so the two never
+# disagree about what comes next.
 CONTRACT_KEYS: tuple[str, ...] = (
     "name",
     "description",
+    "role",
+    "harness",
     "color",
     "model",
     "effort",
     "tools",
     "disallowedTools",
     "skills",
+    "memory",
     "maxTurns",
     "isolation",
     "background",
@@ -71,6 +75,7 @@ ISOLATION_VALUES: tuple[str, ...] = ("worktree",)
 # on the way out; ``parser._optional_bool_str`` is what keeps Python's ``True`` from
 # leaking back into the file as ``True``.
 BACKGROUND_VALUES: tuple[str, ...] = ("true", "false")
+MEMORY_VALUES: tuple[str, ...] = ("user", "project", "local")
 
 # What a harness assumes when ``max_turns`` is absent. The editor shows it as the
 # placeholder rather than writing it: filling every agent file with a value nobody
@@ -121,6 +126,15 @@ def validate_background(background: str | None) -> str | None:
         BACKGROUND_VALUES,
         label="background",
         code="invalid_background",
+    )
+
+
+def validate_memory(memory: str | None) -> str | None:
+    return _validate_choice(
+        memory,
+        MEMORY_VALUES,
+        label="memory",
+        code="invalid_memory",
     )
 
 
@@ -199,6 +213,9 @@ class AgentDefinition:
     isolation: str | None = None
     disallowed_tools: tuple[str, ...] = ()
     background: str | None = None
+    role: str | None = None
+    harness: str | None = None
+    memory: str | None = None
 
     @property
     def ref(self) -> str:
@@ -308,6 +325,9 @@ class AgentDetail:
     isolation: str | None = None
     disallowed_tools: tuple[str, ...] = ()
     background: str | None = None
+    role: str | None = None
+    harness: str | None = None
+    memory: str | None = None
     hermes_provider: str | None = None
     hermes_model: str | None = None
 

@@ -100,6 +100,9 @@ class AgentStore:
         isolation: str | None = None,
         disallowed_tools: tuple[str, ...] = (),
         background: str | None = None,
+        role: str | None = None,
+        harness: str | None = None,
+        memory: str | None = None,
         hermes_provider: str | None = None,
         hermes_model: str | None = None,
     ) -> AgentDefinition:
@@ -123,6 +126,9 @@ class AgentStore:
                 isolation=isolation,
                 disallowed_tools=disallowed_tools,
                 background=background,
+                role=role,
+                harness=harness,
+                memory=memory,
             ),
         )
         self.write_hermes_extras(
@@ -155,6 +161,9 @@ class AgentStore:
         isolation: str | None = None,
         disallowed_tools: tuple[str, ...] | None = None,
         background: str | None = None,
+        role: str | None = None,
+        harness: str | None = None,
+        memory: str | None = None,
         hermes_provider: str | None = None,
         hermes_model: str | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
@@ -195,6 +204,9 @@ class AgentStore:
                     else current.disallowed_tools
                 ),
                 background=background if background is not None else current.background,
+                role=role if role is not None else current.role,
+                harness=harness if harness is not None else current.harness,
+                memory=memory if memory is not None else current.memory,
                 base_metadata=current.metadata if metadata is None else None,
                 extra_metadata=metadata,
             ),

@@ -56,6 +56,8 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         slug=slug,
         name=_required_str(metadata, "name", slug),
         description=str(metadata.get("description", "") or "").strip(),
+        role=_optional_str(metadata, "role"),
+        harness=_optional_str(metadata, "harness"),
         prompt=prompt.strip(),
         tools=_str_tuple(metadata.get("tools"), "tools"),
         path=path,
@@ -68,6 +70,7 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         isolation=_optional_str(metadata, "isolation"),
         disallowed_tools=_str_tuple(metadata.get("disallowedTools"), "disallowedTools"),
         background=_optional_bool_str(metadata, "background"),
+        memory=_optional_str(metadata, "memory"),
     )
 
 
@@ -85,6 +88,9 @@ def render_agent_document(
     isolation: str | None = None,
     disallowed_tools: tuple[str, ...] = (),
     background: str | None = None,
+    role: str | None = None,
+    harness: str | None = None,
+    memory: str | None = None,
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -108,11 +114,14 @@ def render_agent_document(
         # YAML as the int and bool Claude Code expects rather than as strings.
         for scalar_key, scalar_value in (
             ("color", color),
+            ("role", role),
+            ("harness", harness),
             ("model", model),
             ("effort", effort),
             ("maxTurns", max_turns),
             ("isolation", isolation),
             ("background", background),
+            ("memory", memory),
         ):
             if scalar_value:
                 metadata[scalar_key] = scalar_value
@@ -155,12 +164,15 @@ def render_agent_document(
         # Contract fields: an explicit empty string clears the key; None leaves
         # whatever base_metadata carries untouched.
         for contract_key, contract_value in (
+            ("role", role),
+            ("harness", harness),
             ("color", color),
             ("model", model),
             ("effort", effort),
             ("maxTurns", max_turns),
             ("isolation", isolation),
             ("background", background),
+            ("memory", memory),
         ):
             if contract_value is None:
                 continue

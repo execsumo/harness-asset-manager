@@ -73,12 +73,15 @@
 
 .frontmatter-editor__known-fields {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: var(--space-3);
+  min-width: 0;
 }
 
 .frontmatter-editor__field {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .frontmatter-editor__label {
@@ -109,7 +112,7 @@
   cursor: not-allowed;
 }
 
-/* Fixed-vocabulary contract fields (background, isolation): a segmented toggle
+/* Fixed-vocabulary contract fields (background, isolation, memory): a segmented toggle
    whose first segment clears the key, so "absent" stays a state the user can pick.
    The toggle spans its field like the inputs around it, and the segments share that
    width evenly so the control reads as one balanced unit instead of three chips
@@ -323,7 +326,7 @@
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-surface);
+  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);

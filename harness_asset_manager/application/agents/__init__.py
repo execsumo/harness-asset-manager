@@ -33,6 +33,7 @@ from .model import (
     validate_effort,
     validate_isolation,
     validate_max_turns,
+    validate_memory,
 )
 from .mutations import AgentMutationService, BulkAdoptResult, ConflictResolution
 from .parser import (
@@ -75,6 +76,7 @@ __all__ = [
     "validate_effort",
     "validate_isolation",
     "validate_max_turns",
+    "validate_memory",
     "ConflictResolution",
     "DriftKind",
     "LEDGER_VERSION",

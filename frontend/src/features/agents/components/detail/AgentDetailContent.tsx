@@ -27,6 +27,7 @@ import {
   EFFORT_VALUES,
   ISOLATION_VALUES,
   MAX_TURNS_DEFAULT,
+  MEMORY_VALUES,
 } from "../../api/types";
 import { stripFrontmatter } from "../../model/document";
 import type { AgentDetailDto } from "../../api/types";
@@ -157,6 +158,8 @@ export function AgentDetailContent({
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
   const [description, setDescription] = useState(detail.description);
+  const [roleStr, setRoleStr] = useState(detail.role ?? "");
+  const [harnessStr, setHarnessStr] = useState(detail.harness ?? "");
   const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
   const [skills, setSkills] = useState<string[]>(initialSkills);
   const [colorStr, setColorStr] = useState(detail.color ?? "");
@@ -167,6 +170,7 @@ export function AgentDetailContent({
   const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
   const [isolationStr, setIsolationStr] = useState(detail.isolation ?? "");
   const [backgroundStr, setBackgroundStr] = useState(detail.background ?? "");
+  const [memoryStr, setMemoryStr] = useState(detail.memory ?? "");
   const [disallowedToolsStr, setDisallowedToolsStr] = useState((detail.disallowedTools ?? []).join(", "));
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
@@ -176,6 +180,8 @@ export function AgentDetailContent({
   useEffect(() => {
     setName(detail.name);
     setDescription(detail.description);
+    setRoleStr(detail.role ?? "");
+    setHarnessStr(detail.harness ?? "");
     setToolsStr(detail.tools.join(", "));
     setSkills((detail.skills || []).map((s) => s.slug));
     setColorStr(detail.color ?? "");
@@ -186,6 +192,7 @@ export function AgentDetailContent({
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
     setBackgroundStr(detail.background ?? "");
+    setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setOtherEntries(
       (detail.configuration || [])
@@ -221,6 +228,20 @@ export function AgentDetailContent({
         label: "Description",
         value: description,
         onChange: setDescription,
+      },
+      {
+        key: "role",
+        label: "Role",
+        value: roleStr,
+        onChange: setRoleStr,
+        placeholder: "Describe this agent's role",
+      },
+      {
+        key: "harness",
+        label: "Harness",
+        value: harnessStr,
+        onChange: setHarnessStr,
+        placeholder: "Target harness identifier",
       },
       {
         key: "color",
@@ -319,6 +340,22 @@ export function AgentDetailContent({
         ),
       },
       {
+        key: "memory",
+        wrapInLabel: false,
+        label: "Memory",
+        value: memoryStr,
+        onChange: setMemoryStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterSegmentedField
+            label="Memory"
+            value={memoryStr}
+            options={MEMORY_VALUES}
+            onChange={setMemoryStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
         key: "maxTurns",
         label: "Max Turns",
         value: maxTurnsStr,
@@ -361,6 +398,8 @@ export function AgentDetailContent({
     [
       name,
       description,
+      roleStr,
+      harnessStr,
       colorStr,
       modelStr,
       effortStr,
@@ -371,6 +410,7 @@ export function AgentDetailContent({
       maxTurnsStr,
       isolationStr,
       backgroundStr,
+      memoryStr,
       disallowedToolsStr,
     ],
   );
@@ -378,6 +418,8 @@ export function AgentDetailContent({
   const isDirty = useMemo(() => {
     if (name !== detail.name) return true;
     if (description !== detail.description) return true;
+    if (roleStr !== (detail.role ?? "")) return true;
+    if (harnessStr !== (detail.harness ?? "")) return true;
     if (toolsStr !== detail.tools.join(", ")) return true;
     if (prompt !== detail.prompt) return true;
 
@@ -389,6 +431,7 @@ export function AgentDetailContent({
     if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
     if (isolationStr !== (detail.isolation ?? "")) return true;
     if (backgroundStr !== (detail.background ?? "")) return true;
+    if (memoryStr !== (detail.memory ?? "")) return true;
     if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
@@ -406,11 +449,13 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, disallowedToolsStr]);
+  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, memoryStr, disallowedToolsStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
     setDescription(detail.description);
+    setRoleStr(detail.role ?? "");
+    setHarnessStr(detail.harness ?? "");
     setToolsStr(detail.tools.join(", "));
     setSkills(initialSkills);
     setColorStr(detail.color ?? "");
@@ -421,6 +466,7 @@ export function AgentDetailContent({
     setMaxTurnsStr(detail.maxTurns ?? "");
     setIsolationStr(detail.isolation ?? "");
     setBackgroundStr(detail.background ?? "");
+    setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
@@ -433,6 +479,8 @@ export function AgentDetailContent({
 
     let finalName = name;
     let finalDesc = description;
+    let finalRole = roleStr;
+    let finalHarness = harnessStr;
     let finalToolsStr = toolsStr;
     let finalSkills = skills;
     let finalColor = colorStr;
@@ -441,6 +489,7 @@ export function AgentDetailContent({
     let finalMaxTurns = maxTurnsStr;
     let finalIsolation = isolationStr;
     let finalBackground = backgroundStr;
+    let finalMemory = memoryStr;
     let finalDisallowedToolsStr = disallowedToolsStr;
     let finalOther = otherEntries;
 
@@ -452,6 +501,8 @@ export function AgentDetailContent({
       }
       finalName = parsed.known.name ?? name;
       finalDesc = parsed.known.description ?? description;
+      finalRole = parsed.known.role ?? roleStr;
+      finalHarness = parsed.known.harness ?? harnessStr;
       finalToolsStr = parsed.known.tools ?? toolsStr;
       finalSkills = parseSkillSlugs(parsed.known.skills ?? "");
       finalColor = parsed.known.color ?? "";
@@ -460,10 +511,13 @@ export function AgentDetailContent({
       finalMaxTurns = parsed.known.maxTurns ?? "";
       finalIsolation = parsed.known.isolation ?? "";
       finalBackground = parsed.known.background ?? "";
+      finalMemory = parsed.known.memory ?? "";
       finalDisallowedToolsStr = parsed.known.disallowedTools ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
+      setRoleStr(finalRole);
+      setHarnessStr(finalHarness);
       setToolsStr(finalToolsStr);
       setSkills(finalSkills);
       setColorStr(finalColor);
@@ -472,6 +526,7 @@ export function AgentDetailContent({
       setMaxTurnsStr(finalMaxTurns);
       setIsolationStr(finalIsolation);
       setBackgroundStr(finalBackground);
+      setMemoryStr(finalMemory);
       setDisallowedToolsStr(finalDisallowedToolsStr);
       setOtherEntries(finalOther);
     }
@@ -497,6 +552,8 @@ export function AgentDetailContent({
           name: finalName.trim(),
           description: finalDesc.trim(),
           prompt: prompt,
+          role: finalRole.trim(),
+          harness: finalHarness.trim(),
           tools: toolsList,
           skills: finalSkills,
           color: finalColor.trim(),
@@ -505,6 +562,7 @@ export function AgentDetailContent({
           maxTurns: finalMaxTurns.trim(),
           isolation: finalIsolation.trim(),
           background: finalBackground.trim(),
+          memory: finalMemory.trim(),
           disallowedTools: finalDisallowedToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
           hermesProvider: hermesProviderStr.trim(),
           hermesModel: hermesModelStr.trim(),

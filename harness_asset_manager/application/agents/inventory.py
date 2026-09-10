@@ -194,6 +194,9 @@ class AgentInventoryService:
             isolation=agent.isolation,
             disallowed_tools=agent.disallowed_tools,
             background=agent.background,
+            role=agent.role,
+            harness=agent.harness,
+            memory=agent.memory,
             hermes_provider=agent.hermes_provider,
             hermes_model=agent.hermes_model,
         )
@@ -236,6 +239,9 @@ class AgentInventoryService:
             isolation: str | None = None
             disallowed_tools: tuple[str, ...] = ()
             background: str | None = None
+            role: str | None = None
+            harness: str | None = None
+            memory: str | None = None
         else:
             try:
                 agent = parse_agent_document(document, slug=slug, path=harness_path)
@@ -254,6 +260,9 @@ class AgentInventoryService:
             isolation = agent.isolation
             disallowed_tools = agent.disallowed_tools
             background = agent.background
+            role = agent.role
+            harness = agent.harness
+            memory = agent.memory
 
         targets = tuple(target for target in all_targets if target.installed)
         harnesses = self._harness_rows(targets, adapters, slug, {})
@@ -286,6 +295,9 @@ class AgentInventoryService:
             isolation=isolation,
             disallowed_tools=disallowed_tools,
             background=background,
+            role=role,
+            harness=harness,
+            memory=memory,
             hermes_provider=None,
             hermes_model=None,
         )

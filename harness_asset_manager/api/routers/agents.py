@@ -46,6 +46,7 @@ from harness_asset_manager.application.agents import (
     validate_effort,
     validate_isolation,
     validate_max_turns,
+    validate_memory,
 )
 from harness_asset_manager.application.agents.hermes_profile import ensure_profile
 from harness_asset_manager.errors import MutationError
@@ -124,6 +125,9 @@ def create_agent(
         isolation=validate_isolation(body.isolation),
         disallowed_tools=tuple(body.disallowedTools),
         background=validate_background(body.background),
+        role=body.role,
+        harness=body.harness,
+        memory=validate_memory(body.memory),
         hermes_provider=body.hermesProvider,
         hermes_model=body.hermesModel,
     )
@@ -207,6 +211,7 @@ def update_agent(
     validated_max_turns = validate_max_turns(body.maxTurns)
     validated_isolation = validate_isolation(body.isolation)
     validated_background = validate_background(body.background)
+    validated_memory = validate_memory(body.memory)
     profile_failures: list[AgentMutationFailureResponse] = []
 
     if "/" in agent_ref:
@@ -231,6 +236,9 @@ def update_agent(
             isolation=validated_isolation,
             disallowed_tools=tuple(body.disallowedTools) if body.disallowedTools is not None else None,
             background=validated_background,
+            role=body.role,
+            harness=body.harness,
+            memory=validated_memory,
             metadata=extra_metadata,
         )
     else:
@@ -253,6 +261,9 @@ def update_agent(
             isolation=validated_isolation,
             disallowed_tools=tuple(body.disallowedTools) if body.disallowedTools is not None else None,
             background=validated_background,
+            role=body.role,
+            harness=body.harness,
+            memory=validated_memory,
             hermes_provider=body.hermesProvider,
             hermes_model=body.hermesModel,
             metadata=extra_metadata,
@@ -408,6 +419,8 @@ def _detail(
         name=detail.name,
         description=detail.description,
         prompt=detail.prompt,
+        role=detail.role,
+        harness=detail.harness,
         tools=list(detail.tools),
         document=detail.document,
         storePath=str(detail.store_path) if detail.store_path is not None else None,
@@ -440,6 +453,7 @@ def _detail(
         isolation=detail.isolation,
         disallowedTools=list(detail.disallowed_tools),
         background=detail.background,
+        memory=detail.memory,
         hermesProvider=detail.hermes_provider,
         hermesModel=detail.hermes_model,
         ok=len(failed_list) == 0 and len(harness_failures_list) == 0,

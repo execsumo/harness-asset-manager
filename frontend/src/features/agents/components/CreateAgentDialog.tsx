@@ -22,6 +22,7 @@ import {
   EFFORT_VALUES,
   ISOLATION_VALUES,
   MAX_TURNS_DEFAULT,
+  MEMORY_VALUES,
   type AgentCreateRequest,
 } from "../api/types";
 
@@ -48,6 +49,8 @@ export function CreateAgentDialog({
 }: CreateAgentDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [role, setRole] = useState("");
+  const [harness, setHarness] = useState("");
   const [color, setColor] = useState("");
   const [model, setModel] = useState("");
   const [hermesProvider, setHermesProvider] = useState("");
@@ -57,6 +60,7 @@ export function CreateAgentDialog({
   const [skills, setSkills] = useState<string[]>([]);
   const [disallowedTools, setDisallowedTools] = useState("");
   const [background, setBackground] = useState("");
+  const [memory, setMemory] = useState("");
   const [maxTurns, setMaxTurns] = useState("");
   const [isolation, setIsolation] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -81,6 +85,8 @@ export function CreateAgentDialog({
     }
     setName("");
     setDescription("");
+    setRole("");
+    setHarness("");
     setColor("");
     setModel("");
     setHermesProvider("");
@@ -90,6 +96,7 @@ export function CreateAgentDialog({
     setSkills([]);
     setDisallowedTools("");
     setBackground("");
+    setMemory("");
     setMaxTurns("");
     setIsolation("");
     setPrompt("");
@@ -167,6 +174,13 @@ export function CreateAgentDialog({
       prompt: prompt.trim(),
     };
 
+    if (role.trim()) {
+      payload.role = role.trim();
+    }
+    if (harness.trim()) {
+      payload.harness = harness.trim();
+    }
+
     if (color) {
       payload.color = color;
     }
@@ -207,6 +221,9 @@ export function CreateAgentDialog({
     }
     if (background) {
       payload.background = background;
+    }
+    if (memory) {
+      payload.memory = memory;
     }
     if (selectedHarnesses.length > 0) {
       payload.harnesses = selectedHarnesses;
@@ -312,6 +329,30 @@ export function CreateAgentDialog({
                 <h3 className="detail-sheet__section-heading">Frontmatter</h3>
                 <div className="dialog-fieldset">
                   <div className="dialog-form-fields dialog-form-fields--split">
+                    <label className="form-field">
+                      <span className="form-field__label">Role</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Describe this agent's role"
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="form-field">
+                      <span className="form-field__label">Harness</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="Target harness identifier"
+                        value={harness}
+                        onChange={(e) => setHarness(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
                     <label className="form-field">
                       <span className="form-field__label">Color</span>
                       <select
@@ -425,6 +466,17 @@ export function CreateAgentDialog({
                         value={background}
                         options={BACKGROUND_VALUES}
                         onChange={setBackground}
+                        disabled={isPending}
+                      />
+                    </div>
+
+                    <div className="form-field">
+                      <span className="form-field__label">Memory</span>
+                      <FrontmatterSegmentedField
+                        label="Memory"
+                        value={memory}
+                        options={MEMORY_VALUES}
+                        onChange={setMemory}
                         disabled={isPending}
                       />
                     </div>
