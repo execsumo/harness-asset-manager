@@ -155,6 +155,12 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("e.g. Code Reviewer"), {
       target: { value: "Architect" },
     });
+    fireEvent.change(screen.getByPlaceholderText("Describe this agent's role"), {
+      target: { value: "Systems designer" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Target harness identifier"), {
+      target: { value: "claude" },
+    });
     fireEvent.change(
       screen.getByPlaceholderText("Describe the agent's purpose and functionality..."),
       { target: { value: "Designs systems" } },
@@ -168,6 +174,7 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByLabelText("Effort"), {
       target: { value: "high" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "project" }));
 
     // Submit the form
     const submitBtn = screen.getByRole("button", { name: "Create Agent" });
@@ -180,8 +187,11 @@ describe("CreateAgentDialog", () => {
       name: "Architect",
       description: "Designs systems",
       prompt: "Think deeply about architectures.",
+      role: "Systems designer",
+      harness: "claude",
       color: "purple",
       effort: "high",
+      memory: "project",
       harnesses: ["claude"],
     });
 

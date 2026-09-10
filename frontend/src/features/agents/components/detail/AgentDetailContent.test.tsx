@@ -290,12 +290,15 @@ describe("AgentDetailContent", () => {
     expect(labels).toEqual([
       "Agent Name",
       "Description",
+      "Role",
+      "Harness",
       "Color",
       "Model",
       "Effort",
       "Tools (comma-separated)",
       "Disallowed Tools (comma-separated)",
       "Skills",
+      "Memory",
       "Max Turns",
       "Isolation",
       "Background",
@@ -339,6 +342,11 @@ describe("AgentDetailContent", () => {
       "data-active",
       "true",
     );
+
+    const memory = screen.getByRole("group", { name: "Memory" });
+    expect(
+      within(memory).getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["Unset", "user", "project", "local"]);
   });
 
   it("shows the max_turns default as a placeholder instead of prefilling the field", () => {

@@ -1584,6 +1584,8 @@ export interface components {
             effort?: string | null;
             /** Failed */
             failed?: components["schemas"]["AutoEnableFailureResponse"][];
+            /** Harness */
+            harness?: string | null;
             /** Harnessfailures */
             harnessFailures?: components["schemas"]["AgentMutationFailureResponse"][];
             /** Harnesses */
@@ -1596,6 +1598,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Memory */
+            memory?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1609,6 +1613,8 @@ export interface components {
             prompt: string;
             /** Ref */
             ref: string;
+            /** Role */
+            role?: string | null;
             /** Skills */
             skills?: components["schemas"]["AgentSkillResponse"][];
             /** Storepath */
@@ -1965,6 +1971,8 @@ export interface components {
             disallowedTools?: string[];
             /** Effort */
             effort?: string | null;
+            /** Harness */
+            harness?: string | null;
             /** Harnesses */
             harnesses?: string[];
             /** Hermesmodel */
@@ -1975,6 +1983,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Memory */
+            memory?: string | null;
             /** Model */
             model?: string | null;
             /** Name */
@@ -1984,6 +1994,8 @@ export interface components {
              * @default
              */
             prompt: string;
+            /** Role */
+            role?: string | null;
             /** Skills */
             skills?: string[];
             /** Tools */
@@ -3568,6 +3580,8 @@ export interface components {
             disallowedTools?: string[] | null;
             /** Effort */
             effort?: string | null;
+            /** Harness */
+            harness?: string | null;
             /** Hermesmodel */
             hermesModel?: string | null;
             /** Hermesprovider */
@@ -3576,6 +3590,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Memory */
+            memory?: string | null;
             /** Metadata */
             metadata?: components["schemas"]["AgentConfigEntryResponse"][] | null;
             /** Model */
@@ -3584,6 +3600,8 @@ export interface components {
             name?: string | null;
             /** Prompt */
             prompt?: string | null;
+            /** Role */
+            role?: string | null;
             /** Skills */
             skills?: string[] | null;
             /** Tools */

@@ -497,6 +497,17 @@
             "title": "Failed",
             "type": "array"
           },
+          "harness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harness"
+          },
           "harnessFailures": {
             "items": {
               "$ref": "#/components/schemas/AgentMutationFailureResponse"
@@ -555,6 +566,17 @@
             ],
             "title": "Maxturns"
           },
+          "memory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory"
+          },
           "model": {
             "anyOf": [
               {
@@ -582,6 +604,17 @@
           "ref": {
             "title": "Ref",
             "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "skills": {
             "items": {
@@ -1644,6 +1677,17 @@
             ],
             "title": "Effort"
           },
+          "harness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harness"
+          },
           "harnesses": {
             "items": {
               "type": "string"
@@ -1695,6 +1739,17 @@
             ],
             "title": "Maxturns"
           },
+          "memory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory"
+          },
           "model": {
             "anyOf": [
               {
@@ -1714,6 +1769,17 @@
             "default": "",
             "title": "Prompt",
             "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "skills": {
             "items": {
@@ -6529,6 +6595,17 @@
             ],
             "title": "Effort"
           },
+          "harness": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Harness"
+          },
           "hermesModel": {
             "anyOf": [
               {
@@ -6572,6 +6649,17 @@
               }
             ],
             "title": "Maxturns"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory"
           },
           "metadata": {
             "anyOf": [
@@ -6619,6 +6707,17 @@
               }
             ],
             "title": "Prompt"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "skills": {
             "anyOf": [

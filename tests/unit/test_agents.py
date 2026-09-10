@@ -27,11 +27,13 @@ from harness_asset_manager.application.agents.model import (
     EFFORT_VALUES,
     ISOLATION_VALUES,
     MAX_TURNS_DEFAULT,
+    MEMORY_VALUES,
     validate_background,
     validate_color,
     validate_effort,
     validate_isolation,
     validate_max_turns,
+    validate_memory,
 )
 from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
@@ -881,6 +883,7 @@ class ContractKeyParityTests(unittest.TestCase):
         "COLOR_VALUES": COLOR_VALUES,
         "ISOLATION_VALUES": ISOLATION_VALUES,
         "BACKGROUND_VALUES": BACKGROUND_VALUES,
+        "MEMORY_VALUES": MEMORY_VALUES,
     }
 
     TYPES_TS = (
@@ -968,6 +971,7 @@ class ContractFieldValidationTests(unittest.TestCase):
             "invalid_background",
             "yes",
         ),
+        (validate_memory, MEMORY_VALUES, "invalid_memory", "shared"),
     )
 
     def test_every_declared_value_is_accepted(self) -> None:
@@ -1017,6 +1021,8 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             prompt=agent.prompt,
             tools=agent.tools,
             skills=agent.skills,
+            role=agent.role,
+            harness=agent.harness,
             color=agent.color,
             model=agent.model,
             effort=agent.effort,
@@ -1024,6 +1030,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             isolation=agent.isolation,
             disallowed_tools=agent.disallowed_tools,
             background=agent.background,
+            memory=agent.memory,
             base_metadata=agent.metadata,
         )
         return agent, rendered
@@ -1054,11 +1061,29 @@ class ContractFieldRoundTripTests(unittest.TestCase):
         self.assertEqual(agent.isolation, "worktree")
         self.assertIn("isolation: worktree", rendered)
 
+    def test_role_harness_and_memory_round_trip(self) -> None:
+        agent, rendered = self._round_trip(
+            "---\n"
+            "name: A\n"
+            "description: d\n"
+            "role: reviewer\n"
+            "harness: claude\n"
+            "memory: project\n"
+            "---\n\nbody\n"
+        )
+        self.assertEqual(agent.role, "reviewer")
+        self.assertEqual(agent.harness, "claude")
+        self.assertEqual(agent.memory, "project")
+        self.assertIn("role: reviewer\nharness: claude", rendered)
+        self.assertIn("memory: project", rendered)
+
     def test_contract_fields_render_in_declared_order(self) -> None:
         rendered = render_agent_document(
             name="A",
             description="d",
             prompt="body",
+            role="reviewer",
+            harness="claude",
             tools=("Read",),
             skills=("code-review",),
             color="cyan",
@@ -1068,6 +1093,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             isolation="worktree",
             disallowed_tools=("Write", "Edit"),
             background="true",
+            memory="project",
             extra_metadata=[{"key": "permissionMode", "value": "ask"}],
         )
         keys = [

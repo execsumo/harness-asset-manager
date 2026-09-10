@@ -148,6 +148,9 @@ class CreateAgentRequest(BaseModel):
     isolation: str | None = None
     disallowedTools: list[str] = Field(default_factory=list)
     background: str | None = None
+    role: str | None = None
+    harness: str | None = None
+    memory: str | None = None
     hermesProvider: str | None = None
     hermesModel: str | None = None
     harnesses: list[str] = Field(default_factory=list)
@@ -175,6 +178,9 @@ class UpdateAgentRequest(BaseModel):
     isolation: str | None = None
     disallowedTools: list[str] | None = None
     background: str | None = None
+    role: str | None = None
+    harness: str | None = None
+    memory: str | None = None
     hermesProvider: str | None = None
     hermesModel: str | None = None
     metadata: list[AgentConfigEntryResponse] | None = None
@@ -220,6 +226,9 @@ class AgentDetailResponse(BaseModel):
     isolation: str | None = None
     disallowedTools: list[str] = Field(default_factory=list)
     background: str | None = None
+    role: str | None = None
+    harness: str | None = None
+    memory: str | None = None
     hermesProvider: str | None = None
     hermesModel: str | None = None
     ok: bool = True

@@ -371,6 +371,9 @@ class AgentMutationService:
         isolation: str | None = None,
         disallowed_tools: tuple[str, ...] | None = None,
         background: str | None = None,
+        role: str | None = None,
+        harness: str | None = None,
+        memory: str | None = None,
         metadata: list[tuple[str, object]] | list[dict[str, str]] | None = None,
     ) -> None:
         """Edit an unmanaged agent's file in place (``<harness>/<slug>`` ref).
@@ -419,6 +422,9 @@ class AgentMutationService:
                 else current.disallowed_tools
             ),
             background=background if background is not None else current.background,
+            role=role if role is not None else current.role,
+            harness=harness if harness is not None else current.harness,
+            memory=memory if memory is not None else current.memory,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )
