@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Star } from "lucide-react";
 
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { CardSelectCheckbox, SelectAllCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessIcon,
@@ -56,6 +56,17 @@ export function AgentsMatrixView({
 }: AgentsMatrixViewProps) {
   const [sort, setSort] = useState<AgentSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortAgentsRows(entries, columns, sort), [entries, columns, sort]);
+  const selectableEntries = sortedEntries.filter(
+    (entry) => entry.kind === "unmanaged" && !pendingAgentKeys.has(entry.ref),
+  );
+  const selectedSelectableCount = selectableEntries.filter((entry) => checkedRefs.has(entry.ref)).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableEntries.length;
+    for (const entry of selectableEntries) {
+      if (checkedRefs.has(entry.ref) !== shouldSelect) onToggleChecked(entry.ref);
+    }
+  };
 
   const requestSort = (key: AgentSortKey) => {
     setSort((current) => {
@@ -75,7 +86,14 @@ export function AgentsMatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableEntries.length}
+              onToggle={toggleAll}
+              label="visible agents"
+            />
+          </th>
           <MatrixSortableHeader
             label="Agent"
             align="identity"

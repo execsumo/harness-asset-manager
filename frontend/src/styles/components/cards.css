@@ -88,6 +88,18 @@
   color: var(--color-text-inverted);
 }
 
+.card-select-checkbox[data-state="mixed"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  opacity: 1;
+  color: var(--color-text-inverted);
+}
+
+.card-select-checkbox[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
 .skill-card__name {
   margin: 0;
   font-size: 0.95rem;

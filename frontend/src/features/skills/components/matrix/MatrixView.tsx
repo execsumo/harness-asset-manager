@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Star } from "lucide-react";
 
+import { SelectAllCheckbox } from "../../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessIcon,
   MatrixSortableHeader,
   MatrixTable,
 } from "../../../../components/matrix";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
+import { skillStatusConcept } from "../../../../lib/product-language";
 import { MatrixRow } from "./MatrixRow";
 import { sortRows, sortKeysEqual, type SortKey, type SortState } from "../../model/sortRows";
 import type { CellActionKey } from "../../model/pending";
@@ -51,6 +53,21 @@ export function MatrixView({
   const [sort, setSort] = useState<SortState>(INITIAL_SORT);
 
   const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
+  const selectableRows = sortedRows.filter((row) => {
+    const isUntracked = skillStatusConcept(row.displayStatus) === "needsReview";
+    const selectable = untrackedSelectionOnly
+      ? (!isUntracked || row.actions.canManage || row.actions.canDelete)
+      : true;
+    return selectable && !pendingStructuralActions?.has(row.skillRef);
+  });
+  const selectedSelectableCount = selectableRows.filter((row) => checkedRefs.has(row.skillRef)).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableRows.length;
+    for (const row of selectableRows) {
+      if (checkedRefs.has(row.skillRef) !== shouldSelect) onToggleChecked(row.skillRef);
+    }
+  };
 
   const requestSort = (key: SortKey) => {
     setSort((current) => {
@@ -70,7 +87,14 @@ export function MatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableRows.length}
+              onToggle={toggleAll}
+              label="visible skills"
+            />
+          </th>
           <MatrixSortableHeader
             label="Skill"
             align="identity"

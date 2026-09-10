@@ -138,7 +138,7 @@ describe("PermissionsMatrixView", () => {
     const props = renderMatrix();
 
     const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes).toHaveLength(entries.length);
+    expect(checkboxes).toHaveLength(entries.length + 1);
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Alpha Rule" }));
     expect(props.onToggleChecked).toHaveBeenCalledWith("alpha-rule");

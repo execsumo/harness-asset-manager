@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Star } from "lucide-react";
 
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { CardSelectCheckbox, SelectAllCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessIcon,
@@ -64,6 +64,17 @@ export function HooksMatrixView({
     () => sortHooksRows(entries, columns, sort, copy),
     [entries, columns, sort, copy],
   );
+  const selectableEntries = sortedEntries.filter(
+    (entry) => entry.kind === "unmanaged" && !pendingHookKeys.has(entry.id),
+  );
+  const selectedSelectableCount = selectableEntries.filter((entry) => checkedIds.has(entry.id)).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableEntries.length;
+    for (const entry of selectableEntries) {
+      if (checkedIds.has(entry.id) !== shouldSelect) onToggleChecked(entry.id);
+    }
+  };
 
   const requestSort = (key: HooksSortKey) => {
     setSort((current) => {
@@ -83,7 +94,14 @@ export function HooksMatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableEntries.length}
+              onToggle={toggleAll}
+              label="visible hooks"
+            />
+          </th>
           <MatrixSortableHeader
             label="Hook"
             align="identity"

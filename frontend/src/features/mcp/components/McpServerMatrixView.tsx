@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Star } from "lucide-react";
 
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { CardSelectCheckbox, SelectAllCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessIcon,
@@ -78,6 +78,44 @@ export function McpServerMatrixView({
     [entries, columns, sort, copy],
   );
 
+  const isAdoptPending = (name: string) =>
+    Boolean(
+      pendingAdoptKeys &&
+        (pendingAdoptKeys.has(name) ||
+          Array.from(pendingAdoptKeys).some((key) => key.startsWith(`${name}:`))),
+    );
+
+  const selectableEntries = sortedEntries.filter((entry) => {
+    const isUntracked = entry.kind === "unmanaged";
+    const group = groupsByName?.get(entry.name);
+    return (
+      !pendingServerKeys.has(entry.name) &&
+      !isAdoptPending(entry.name) &&
+      (!isUntracked || (group ? group.identical : true))
+    );
+  });
+  const selectedSelectableCount = selectableEntries.filter((entry) =>
+    entry.kind === "unmanaged"
+      ? Boolean(checkedUntrackedNames?.has(entry.name))
+      : checkedNames.has(entry.name),
+  ).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableEntries.length;
+    for (const entry of selectableEntries) {
+      const isSelected = entry.kind === "unmanaged"
+        ? Boolean(checkedUntrackedNames?.has(entry.name))
+        : checkedNames.has(entry.name);
+      if (isSelected !== shouldSelect) {
+        if (entry.kind === "unmanaged" && onToggleCheckedUntracked) {
+          onToggleCheckedUntracked(entry.name);
+        } else {
+          onToggleChecked(entry.name);
+        }
+      }
+    }
+  };
+
   const requestSort = (key: McpSortKey) => {
     setSort((current) => {
       if (mcpSortKeysEqual(current.key, key)) {
@@ -86,13 +124,6 @@ export function McpServerMatrixView({
       return { key, direction: "asc" };
     });
   };
-
-  const isAdoptPending = (name: string) =>
-    Boolean(
-      pendingAdoptKeys &&
-        (pendingAdoptKeys.has(name) ||
-          Array.from(pendingAdoptKeys).some((key) => key.startsWith(`${name}:`))),
-    );
 
   return (
     <MatrixTable
@@ -103,7 +134,14 @@ export function McpServerMatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label={copy.detail.matrix.selectColumn} />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableEntries.length}
+              onToggle={toggleAll}
+              label="visible MCP servers"
+            />
+          </th>
           <MatrixSortableHeader
             label={copy.detail.matrix.serverColumn}
             align="identity"

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Loader2, Star } from "lucide-react";
 
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { CardSelectCheckbox, SelectAllCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import {
   MatrixHarnessCellTarget,
   MatrixHarnessIcon,
@@ -61,6 +61,19 @@ export function SlashCommandMatrix({
 }: SlashCommandMatrixProps) {
   const [sort, setSort] = useState<SlashMatrixSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortEntries(entries, sort), [entries, sort]);
+  const selectableEntries = sortedEntries.filter((entry) => {
+    if (entry.kind === "managed") return false;
+    const action = primaryReviewAction(entry.review);
+    return action !== null && pendingReviewKey !== reviewKey(entry.review.target, entry.review.name, action);
+  });
+  const selectedSelectableCount = selectableEntries.filter((entry) => checkedRefs.has(entry.id)).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableEntries.length;
+    for (const entry of selectableEntries) {
+      if (checkedRefs.has(entry.id) !== shouldSelect) onToggleChecked(entry.id);
+    }
+  };
 
   function requestSort(key: SlashMatrixSortKey): void {
     setSort((current) => {
@@ -80,7 +93,14 @@ export function SlashCommandMatrix({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select" />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableEntries.length}
+              onToggle={toggleAll}
+              label="visible slash commands"
+            />
+          </th>
           <MatrixSortableHeader
             label="Slash Command"
             align="identity"

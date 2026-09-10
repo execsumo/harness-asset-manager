@@ -7,7 +7,7 @@ import {
   MatrixSortableHeader,
   MatrixTable,
 } from "../../../components/matrix";
-import { CardSelectCheckbox } from "../../../components/cards/CardSelectCheckbox";
+import { CardSelectCheckbox, SelectAllCheckbox } from "../../../components/cards/CardSelectCheckbox";
 import { UiTooltip } from "../../../components/ui/UiTooltip";
 import type { PermissionInventoryColumnDto, PermissionInventoryEntryDto } from "../api/management-types";
 import { usePermissionsCopy, type PermissionsCopy } from "../i18n";
@@ -72,6 +72,17 @@ export function PermissionsMatrixView({
     () => sortPermissionsRows(entries, displayColumns, sort, copy),
     [entries, displayColumns, sort, copy],
   );
+  const selectableEntries = sortedEntries.filter(
+    (entry) => !pendingPermissionKeys.has(entry.id),
+  );
+  const selectedSelectableCount = selectableEntries.filter((entry) => checkedIds.has(entry.id)).length;
+
+  const toggleAll = () => {
+    const shouldSelect = selectedSelectableCount !== selectableEntries.length;
+    for (const entry of selectableEntries) {
+      if (checkedIds.has(entry.id) !== shouldSelect) onToggleChecked(entry.id);
+    }
+  };
 
   return (
     <MatrixTable
@@ -82,7 +93,14 @@ export function PermissionsMatrixView({
     >
       <thead className="matrix-table__head">
         <tr>
-          <th className="matrix-table__th matrix-table__th--checkbox" aria-label="Select Column" />
+          <th className="matrix-table__th matrix-table__th--checkbox">
+            <SelectAllCheckbox
+              selectedCount={selectedSelectableCount}
+              totalCount={selectableEntries.length}
+              onToggle={toggleAll}
+              label="visible permissions"
+            />
+          </th>
           <MatrixSortableHeader
             label="Rule"
             align="identity"

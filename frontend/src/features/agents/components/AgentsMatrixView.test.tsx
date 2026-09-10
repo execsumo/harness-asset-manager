@@ -143,6 +143,35 @@ describe("AgentsMatrixView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sort by Codex" }));
     expect(rowNames()).toEqual(["Alpha Agent", "Zeta Agent"]);
   });
+
+  it("selects all visible untracked rows from the header checkbox", () => {
+    const onToggleChecked = vi.fn();
+    render(
+      <AgentsMatrixView
+        entries={[
+          ...entries,
+          {
+            ...entries[0],
+            ref: "review:gamma",
+            name: "Gamma Agent",
+            kind: "unmanaged",
+          },
+        ]}
+        columns={columns}
+        pendingAgentKeys={new Set()}
+        pendingPerHarnessKeys={new Set()}
+        checkedRefs={new Set()}
+        onOpenDetail={vi.fn()}
+        onToggleChecked={onToggleChecked}
+        onEnableHarness={vi.fn()}
+        onDisableHarness={vi.fn()}
+        onAdopt={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all visible agents" }));
+    expect(onToggleChecked).toHaveBeenCalledWith("review:gamma");
+  });
 });
 
 function rowNames(): string[] {
