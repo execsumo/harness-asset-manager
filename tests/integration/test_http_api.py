@@ -94,7 +94,7 @@ class HttpApiTests(unittest.TestCase):
             self.assertEqual(shared_audit["displayStatus"], "Managed")
             self.assertEqual(shared_audit["actions"], {"canManage": False, "canStopManaging": False, "canDelete": True})
             self.assertEqual(trace_lens["displayStatus"], "Unmanaged")
-            self.assertEqual(trace_lens["actions"], {"canManage": True, "canStopManaging": False, "canDelete": False})
+            self.assertEqual(trace_lens["actions"], {"canManage": True, "canStopManaging": False, "canDelete": True})
             self.assertEqual(detail["displayStatus"], "Managed")
             self.assertEqual(
                 [cell["label"] for cell in detail["harnessCells"]],
