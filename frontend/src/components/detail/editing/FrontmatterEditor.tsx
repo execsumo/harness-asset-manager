@@ -25,6 +25,8 @@ export interface OtherFrontmatterEntry {
   id: string;
   key: string;
   value: string;
+  /** Parsed nested YAML value, kept apart from the compact display value. */
+  rawValue?: unknown;
 }
 
 export interface FrontmatterEditorProps {
@@ -57,10 +59,17 @@ export function serializeFrontmatterToYaml(
   }
   for (const entry of other) {
     if (entry.key.trim()) {
-      if (entry.value === "") {
+      const serializedRawValue =
+        entry.rawValue === undefined || entry.rawValue === null
+          ? undefined
+          : JSON.stringify(entry.rawValue);
+      const value = serializedRawValue ?? entry.value;
+      if (value === "") {
         lines.push(`${entry.key.trim()}: ""`);
       } else {
-        lines.push(`${entry.key.trim()}: ${entry.value}`);
+        // JSON flow collections are valid YAML and preserve nested frontmatter in
+        // raw mode even when the structured editor shows a compact summary.
+        lines.push(`${entry.key.trim()}: ${value}`);
       }
     }
   }
@@ -189,9 +198,15 @@ export function FrontmatterEditor({
     field: "key" | "value",
     val: string,
   ) => {
-    const updated = otherEntries.map((item, idx) =>
-      idx === index ? { ...item, [field]: val } : item,
-    );
+    const updated = otherEntries.map((item, idx) => {
+      if (idx !== index) return item;
+      if (field === "value") {
+        // Once the user edits the display text, the parsed nested value is no
+        // longer authoritative and must not overwrite that intentional edit.
+        return { ...item, value: val, rawValue: undefined };
+      }
+      return { ...item, key: val };
+    });
     onChangeOtherEntries(updated);
   };
 

@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from harness_asset_manager.atomic_files import atomic_write_text
+from harness_asset_manager.application.agents import parse_agent_document
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
     FakeHomeSpec,
@@ -1079,11 +1080,36 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertNotIn("model", config)
             self.assertEqual(config["permissionMode"], "acceptEdits")
             self.assertEqual(config["hooks"], "(1 entry)")
+            hooks_row = next(row for row in detail["configuration"] if row["key"] == "hooks")
+            self.assertEqual(
+                hooks_row["rawValue"],
+                {"PreToolUse": [{"matcher": "Bash"}]},
+            )
             # name/description have their own places in the view.
             self.assertNotIn("name", config)
             self.assertNotIn("description", config)
 
-            harness.put_json("/api/agents/bookman", {"description": "Updated."})
+            # This is the frontend's save shape: it sends the display value and the
+            # separate parsed value back for every custom row. The display summary
+            # must never replace a nested hook mapping in the stored document.
+            metadata = [
+                {
+                    "key": row["key"],
+                    "value": row["value"],
+                    **({"rawValue": row["rawValue"]} if row.get("rawValue") is not None else {}),
+                }
+                for row in detail["configuration"]
+            ]
+            harness.put_json(
+                "/api/agents/bookman",
+                {"description": "Updated.", "metadata": metadata},
+            )
+
+            stored_path = harness.spec.agents_root / "bookman.md"
+            stored = stored_path.read_text(encoding="utf-8")
+            self.assertNotIn("hooks: (1 entry)", stored)
+            parsed = parse_agent_document(stored, slug="bookman", path=stored_path)
+            self.assertEqual(parsed.metadata["hooks"], {"PreToolUse": [{"matcher": "Bash"}]})
 
             after = harness.get_json("/api/agents/bookman")
             after_config = {row["key"]: row["value"] for row in after["configuration"]}

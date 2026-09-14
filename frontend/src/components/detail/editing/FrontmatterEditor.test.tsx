@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   FrontmatterEditor,
   parseFrontmatterFromYaml,
+  serializeFrontmatterToYaml,
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "./FrontmatterEditor";
@@ -156,6 +157,23 @@ skills:
     );
 
     expect(screen.getByTestId("custom-skills-editor")).toBeInTheDocument();
+  });
+
+  it("serializes a compact nested value instead of its display summary", () => {
+    const yaml = serializeFrontmatterToYaml(
+      [],
+      [
+        {
+          id: "1",
+          key: "hooks",
+          value: "(1 entry)",
+          rawValue: { PreToolUse: [{ matcher: "Bash" }] },
+        },
+      ],
+    );
+
+    expect(yaml).toContain('hooks: {"PreToolUse":[{"matcher":"Bash"}]}');
+    expect(yaml).not.toContain("(1 entry)");
   });
 
   it("edits a nested block in a textarea, so its indentation survives", () => {

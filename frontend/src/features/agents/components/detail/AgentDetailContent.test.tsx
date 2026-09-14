@@ -65,6 +65,41 @@ describe("AgentDetailContent", () => {
     vi.unstubAllGlobals();
   });
 
+  it("sends nested custom frontmatter separately from its display summary", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({})));
+
+    renderDetail(
+      agentDetailFixture({
+        configuration: [
+          {
+            key: "hooks",
+            value: "(1 entry)",
+            rawValue: { PreToolUse: [{ matcher: "Bash" }] },
+          },
+        ],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), {
+      target: { value: "Updated description" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      const putCall = fetchMock.mock.calls.find(
+        ([input, init]) => String(input).includes("/api/agents/chief") && init?.method === "PUT",
+      );
+      expect(putCall).toBeDefined();
+      const request = JSON.parse(String(putCall?.[1]?.body));
+      expect(request.metadata).toContainEqual({
+        key: "hooks",
+        value: "(1 entry)",
+        rawValue: { PreToolUse: [{ matcher: "Bash" }] },
+      });
+    });
+  });
+
   it("renders skills chips in edit mode and saves attached skills with auto-enable toast feedback", async () => {
     fetchMock.mockImplementation((input, init) => {
       const url = String(input);

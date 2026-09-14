@@ -399,11 +399,20 @@
         "type": "object"
       },
       "AgentConfigEntryResponse": {
-        "description": "One frontmatter key we do not interpret, shown verbatim.",
+        "description": "One frontmatter key we do not interpret.\n\n``value`` is the human-readable display value. ``rawValue`` carries nested YAML\ncollections separately so a client can display a compact summary without sending\nthat summary back to the writer and corrupting the source document.",
         "properties": {
           "key": {
             "title": "Key",
             "type": "string"
+          },
+          "rawValue": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rawvalue"
           },
           "value": {
             "title": "Value",

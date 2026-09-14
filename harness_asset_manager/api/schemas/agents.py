@@ -158,10 +158,16 @@ class CreateAgentRequest(BaseModel):
 
 
 class AgentConfigEntryResponse(BaseModel):
-    """One frontmatter key we do not interpret, shown verbatim."""
+    """One frontmatter key we do not interpret.
+
+    ``value`` is the human-readable display value. ``rawValue`` carries nested YAML
+    collections separately so a client can display a compact summary without sending
+    that summary back to the writer and corrupting the source document.
+    """
 
     key: str
     value: str
+    rawValue: object | None = None
 
 
 class UpdateAgentRequest(BaseModel):

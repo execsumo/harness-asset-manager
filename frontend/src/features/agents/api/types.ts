@@ -160,7 +160,7 @@ export interface AgentUpdateRequest {
   memory?: string;
   hermesProvider?: string;
   hermesModel?: string;
-  metadata?: Array<{ key: string; value: string }>;
+  metadata?: Array<{ key: string; value: string; rawValue?: unknown }>;
 }
 
 export interface AgentDetailDto {
@@ -184,8 +184,8 @@ export interface AgentDetailDto {
     installMethod: "symlink" | "rendered" | "none";
     installed: boolean;
   }>;
-  /** Frontmatter beyond name/description, verbatim and in file order. */
-  configuration: Array<{ key: string; value: string }>;
+  /** Frontmatter beyond name/description, with nested values kept lossless for edits. */
+  configuration: Array<{ key: string; value: string; rawValue?: unknown }>;
   canDelete: boolean;
   /** False for unmanaged agents that cannot be edited in place. */
   canEdit: boolean;

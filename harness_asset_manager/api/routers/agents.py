@@ -49,6 +49,7 @@ from harness_asset_manager.application.agents import (
     validate_memory,
 )
 from harness_asset_manager.application.agents.hermes_profile import ensure_profile
+from harness_asset_manager.application.agents.parser import split_frontmatter
 from harness_asset_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
@@ -200,7 +201,13 @@ def update_agent(
 ) -> AgentDetailResponse:
     extra_metadata = None
     if body.metadata is not None:
-        extra_metadata = [(entry.key, entry.value) for entry in body.metadata]
+        extra_metadata = [
+            (
+                entry.key,
+                entry.rawValue if entry.rawValue is not None else entry.value,
+            )
+            for entry in body.metadata
+        ]
 
     validated_skills = (
         container.agents_mutations.validate_skills(body.skills)
@@ -406,6 +413,24 @@ def adopt_agent(
     return AdoptAgentResponse(ok=True, ref=slug)
 
 
+def _structured_frontmatter_values(document: str) -> dict[str, object]:
+    """Return nested frontmatter values for lossless client round-trips.
+
+    The detail UI displays compact summaries for mappings and lists. Keep those
+    summaries separate from the parsed value so saving another field cannot turn a
+    valid Claude ``hooks`` mapping into text such as ``(1 entry)``.
+    """
+    try:
+        metadata, _prompt = split_frontmatter(document)
+    except Exception:  # noqa: BLE001 - rendered/non-Markdown detail documents have none
+        return {}
+    return {
+        key: value
+        for key, value in metadata.items()
+        if isinstance(value, (dict, list))
+    }
+
+
 def _detail(
     detail: AgentDetail,
     *,
@@ -415,6 +440,7 @@ def _detail(
 ) -> AgentDetailResponse:
     failed_list = failed or []
     harness_failures_list = harness_failures or []
+    structured_metadata = _structured_frontmatter_values(detail.document)
     return AgentDetailResponse(
         ref=detail.ref,
         name=detail.name,
@@ -439,7 +465,12 @@ def _detail(
             for harness in detail.harnesses
         ],
         configuration=[
-            AgentConfigEntryResponse(key=key, value=value) for key, value in detail.configuration
+            AgentConfigEntryResponse(
+                key=key,
+                value=value,
+                rawValue=structured_metadata.get(key),
+            )
+            for key, value in detail.configuration
         ],
         canDelete=detail.can_delete,
         canEdit=detail.can_edit,

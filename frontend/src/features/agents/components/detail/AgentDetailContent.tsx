@@ -167,6 +167,9 @@ export function AgentDetailContent({
         id: `entry-${idx}-${c.key}`,
         key: c.key,
         value: c.value,
+        ...(c.rawValue !== undefined && c.rawValue !== null
+          ? { rawValue: c.rawValue }
+          : {}),
       }));
   }, [detail.configuration]);
 
@@ -229,6 +232,9 @@ export function AgentDetailContent({
           id: `entry-${idx}-${c.key}`,
           key: c.key,
           value: c.value,
+          ...(c.rawValue !== undefined && c.rawValue !== null
+            ? { rawValue: c.rawValue }
+            : {}),
         })),
     );
     setPrompt(detail.prompt);
@@ -591,7 +597,13 @@ export function AgentDetailContent({
     const metadataPayload = [
       ...finalOther
       .filter((e) => e.key.trim().length > 0)
-      .map((e) => ({ key: e.key.trim(), value: e.value })),
+      .map((e) => ({
+        key: e.key.trim(),
+        value: e.value,
+        ...(e.rawValue !== undefined && e.rawValue !== null
+          ? { rawValue: e.rawValue }
+          : {}),
+      })),
       ...(parseMcpServerRefs(finalMcpServersStr).length > 0
         ? [{
             key: "mcpServers",
