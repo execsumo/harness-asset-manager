@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.application.agents import parse_agent_document
+from harness_asset_manager.atomic_files import atomic_write_text
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
     FakeHomeSpec,
