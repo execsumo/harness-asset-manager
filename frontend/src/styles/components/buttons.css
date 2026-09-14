@@ -47,7 +47,7 @@
 
 .btn.btn-primary {
   background: var(--color-accent);
-  color: var(--color-text-inverted);
+  color: var(--color-accent-contrast);
   font-weight: var(--weight-medium);
 }
 

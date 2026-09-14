@@ -61,16 +61,20 @@
   --color-text-subtle: #6f6c66;
   --color-text-inverted: #0b0c0f;
 
-  /* Accent */
+  /* Accent — blue in both themes. This app's whole job is surfacing drift,
+     review queues, and starred items, all of which are amber; making the
+     primary action amber too would put "Capture all" in direct competition
+     with "4 Drifted". Blue means interactive, amber means attention.
+     `strong` is the hover step: brighter than `accent` on dark, darker on
+     light, so it always reads as more emphatic against its own background. */
   --color-accent: #6aa9d6;
-  --color-accent-strong: #4184b0;
+  --color-accent-strong: #8cc0e4;
   --color-accent-contrast: #0b0c0f;
   --color-accent-soft: rgba(106, 169, 214, 0.16);
   --color-accent-softer: rgba(106, 169, 214, 0.08);
 
-  /* Selection highlight — warm amber to sit with the warm dark neutrals
-     (the blue accent reads cold against this palette). Light themes mirror
-     the brand amber accent instead. */
+  /* Selection highlight — amber, deliberately not the accent, so a selected
+     range never reads as a clickable accent surface. */
   --color-highlight: #f3c969;
   --color-highlight-soft: rgba(243, 201, 105, 0.16);
   --color-highlight-softer: rgba(243, 201, 105, 0.09);
@@ -83,8 +87,9 @@
   --color-warning: #f3c969;
   --color-warning-soft: rgba(243, 201, 105, 0.14);
 
-  /* Starred is its own affordance, not an accent or a status — it keeps the
-     same amber in both themes so a starred row reads identically. */
+  /* Starred is its own affordance — neither an accent nor a status. Tuned per
+     theme: this bright amber is a 2.2:1 glyph on white, well under the 3:1
+     WCAG floor for a UI control, so the light theme darkens it. */
   --color-star: #f59e0b;
   --color-star-soft: rgba(245, 158, 11, 0.1);
 
@@ -175,17 +180,26 @@
   --color-text-subtle: #8d8677;
   --color-text-inverted: #ffffff;
 
-  /* Accent (brand amber from the logo) */
-  --color-accent: #b06a04;
-  --color-accent-strong: #8c4f03;
+  /* Accent — the same blue role as dark, darkened to clear WCAG AA against
+     both the white card (5.4:1) and the cream page (5.0:1). The amber this
+     replaced managed only 4.3:1 / 3.9:1, so accent-coloured labels were
+     failing. Brand amber still carries the logo, star, highlight, warnings. */
+  --color-accent: #2f6f9f;
+  --color-accent-strong: #26567d;
   --color-accent-contrast: #ffffff;
-  --color-accent-soft: rgba(176, 106, 4, 0.12);
-  --color-accent-softer: rgba(176, 106, 4, 0.06);
+  --color-accent-soft: rgba(47, 111, 159, 0.12);
+  --color-accent-softer: rgba(47, 111, 159, 0.06);
 
-  /* Selection highlight mirrors the brand amber accent in light themes. */
-  --color-highlight: #b06a04;
-  --color-highlight-soft: rgba(176, 106, 4, 0.12);
-  --color-highlight-softer: rgba(176, 106, 4, 0.06);
+  /* Selection highlight — amber, and dark enough to stay legible as text on
+     its own wash. */
+  --color-highlight: #9a5c03;
+  --color-highlight-soft: rgba(154, 92, 3, 0.12);
+  --color-highlight-softer: rgba(154, 92, 3, 0.06);
+
+  /* Star, darkened to a 3.5:1 glyph on white (the dark theme's #f59e0b is
+     only 2.2:1 here). */
+  --color-star: #c27803;
+  --color-star-soft: rgba(194, 120, 3, 0.1);
 
   /* Status — warning is a true amber here. It used to reuse the subtle-text
      brown, which read as "disabled" rather than "needs attention". */

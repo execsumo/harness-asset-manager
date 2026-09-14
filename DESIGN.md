@@ -29,7 +29,7 @@ colors-dark:
   text-muted: '#9a958d'
   text-subtle: '#6f6c66'
   accent: '#6aa9d6'
-  accent-strong: '#4184b0'
+  accent-strong: '#8cc0e4'
   highlight: '#f3c969'
   success: '#6bc2a4'
   warning: '#f3c969'
@@ -46,13 +46,13 @@ colors-light:
   text: '#1f1f1c'
   text-muted: '#6b6558'
   text-subtle: '#8d8677'
-  accent: '#b06a04'
-  accent-strong: '#8c4f03'
-  highlight: '#b06a04'
+  accent: '#2f6f9f'
+  accent-strong: '#26567d'
+  highlight: '#9a5c03'
   success: '#0f6e56'
   warning: '#97620a'
   danger: '#b14828'
-  star: '#f59e0b' # inherited from :root, not redeclared — identical in both themes
+  star: '#c27803'
 radii: { 2xs: 3px, xs: 6px, sm: 8px, md: 12px, lg: 16px, xl: 20px, pill: 999px }
 spacing:
   unit: 4px
@@ -147,21 +147,34 @@ mechanism is a second thing to keep in step.
 **Dark** is a near-black `#0b0c0f` page with warm parchment text. **Light** is
 a cream `#f8f5ed` page with white cards.
 
-The one place the themes deliberately diverge is the accent hue: dark uses a
-muted blue (`#6aa9d6`), light uses the brand amber from the logo (`#b06a04`).
-Blue reads cold against the warm dark neutrals for large fills, so dark pairs
-it with an amber `--color-highlight` for selection; light uses amber for both.
-If you are adding an accent-coloured surface, check it in both themes — this is
-the seam where things break.
+**The accent is blue in both themes, and the brand amber is not the accent.**
+This is the load-bearing decision in the palette, and it is counter-intuitive
+enough to be worth defending. HarnessAM exists to surface drift, review queues,
+and starred items — all of which are amber. Making the primary action amber too
+would put "Capture all" in direct visual competition with "4 Drifted" on the
+same screen. So the roles are split:
 
-Semantic colours (`success`, `warning`, `danger`) are tuned per theme for
-contrast, not reused across them. Light's `warning` in particular must stay a
-true amber; a desaturated brown reads as *disabled* rather than *needs
-attention*.
+| Hue | Means |
+|---|---|
+| Blue | interactive — primary actions, focus, links, coverage counts |
+| Amber | attention — warnings, drift, review queues, starred rows, the logo mark |
+| Green | healthy, in sync |
+| Red | destructive |
 
-`--color-star` is the one colour that is identical in both themes. Starring is
-a user affordance, not a status, and a starred row should read the same
-everywhere.
+The brand amber is not diminished by this; it still carries the logo, the star,
+selection highlight, and every warning. It simply is not also the button
+colour.
+
+Each theme tunes its own hex values for contrast against its own surfaces —
+nothing is shared across themes except intent. `--color-accent-strong` is the
+hover step and is *brighter* than `accent` on dark, *darker* on light, so it
+always reads as more emphatic against whatever is behind it.
+
+Every foreground colour here clears WCAG AA (4.5:1) as text on both the page
+and a card, and `--color-star` clears the 3:1 floor for a UI glyph. That is a
+constraint, not an observation: the light accent used to be amber at 4.28:1 on
+white and 3.93:1 on cream, which failed. If you retune a colour, check it —
+`--color-star` and the light accent have the least headroom.
 
 ## Elevation & depth
 
