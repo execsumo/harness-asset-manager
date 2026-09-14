@@ -641,8 +641,23 @@ Automatic capture is deliberately conservative: because the manifest travels bet
 machines, a local file that has diverged from the manifest is left for you to resolve
 explicitly rather than being captured over the top of another machine's edit.
 
-Droid/Factory has no entry — its only config file is MCP-owned, which the MCP family
-already manages.
+Every supported harness has an entry, read from its user-level config:
+
+| Harness | Preferences read from |
+|---|---|
+| **Claude Code** | `~/.claude/settings.json` |
+| **Codex CLI** | `~/.codex/config.toml` |
+| **Pi** | `~/.pi/agent/settings.json` |
+| **Antigravity (agy)** | `~/.gemini/antigravity-cli/settings.json` |
+| **Cursor** | `~/.cursor/cli-config.json` |
+| **OpenCode** | `~/.opencode/opencode.jsonc` |
+| **Hermes Agent** | `~/.hermes/config.yaml` (or `$HERMES_HOME/config.yaml`) |
+| **Factory Droid** | `~/.factory/settings.json` |
+
+Where a harness keeps several families in one document, the other families' keys are
+named in the catalog and withheld — in each harness's own spelling, which is not always
+Claude's (OpenCode's servers live under `mcp`, Codex's under `mcp_servers`). A guard test
+pins that: any family binding into the same file as `configs` has to be excluded from it.
 
 ### Mutation Audit Journal
 

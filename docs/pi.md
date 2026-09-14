@@ -10,6 +10,15 @@ directory, `~/.pi/agent/`, and does not write project-local `.pi/` resources.
 | Skills | `~/.pi/agent/skills/<name>/SKILL.md` | Supported, global only |
 | Agents | `~/.pi/agent/agents/<name>.md` | Supported through Pi's subagent extension |
 | Prompt templates | `~/.pi/agent/prompts/<name>.md` | Supported as global `/name` commands |
+| Preferences | `~/.pi/agent/settings.json` | Supported through the Configs family |
+
+Preferences (provider, model, thinking level, theme, terminal and markdown
+options, installed packages, …) are captured from `~/.pi/agent/settings.json`
+into the portable manifest. Three keys are withheld: `skills` and `prompts` are
+resource path lists the skills and slash-command families already own, and
+`trackingId` is a per-install analytics UUID that must not be cloned onto
+another machine. Secrets and absolute paths are stripped by the Configs family
+itself, so path-valued keys such as `shellPath` or `sessionDir` never travel.
 
 Agents use HAM's standard Markdown frontmatter format. Pi's subagent extension
 discovers the user-level `agents/` directory, so HAM installs agents there as

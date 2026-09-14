@@ -6,11 +6,13 @@ from pathlib import Path
 from unittest import mock
 
 from harness_asset_manager.env_names import (
+    FACTORY_ROOT_ENV,
     HERMES_HOME_ENV,
     HERMES_ROOT_ENV,
     legacy_name,
 )
 from harness_asset_manager.harness.catalog import (
+    SUPPORTED_HARNESS_DEFINITIONS,
     _hermes_home,
     _hermes_profile_skills_root,
     _hermes_root,
@@ -19,6 +21,7 @@ from harness_asset_manager.harness.catalog import (
 from harness_asset_manager.harness.contracts import (
     AgentFileBindingProfile,
     CommandFileBindingProfile,
+    ConfigSubtreeBindingProfile,
     FileTreeBindingProfile,
 )
 from harness_asset_manager.harness.resolution import resolve_context
@@ -115,6 +118,98 @@ class PiHarnessCatalogTests(unittest.TestCase):
             )
             self.assertEqual(commands.invocation_prefix, "/")
             self.assertEqual(commands.render_format, "frontmatter_markdown")
+
+    def test_pi_configs_bind_the_user_settings_file(self) -> None:
+        with hermetic_env():
+            context = resolve_context({"HOME": "/tmp/pi-home"})
+            definition = next(item for item in supported_harness_definitions() if item.harness == "pi")
+
+            configs = definition.binding_for("configs")
+            self.assertIsInstance(configs, ConfigSubtreeBindingProfile)
+            self.assertEqual(
+                configs.resolve_config_path(context),
+                Path("/tmp/pi-home/.pi/agent/settings.json"),
+            )
+            self.assertEqual(configs.file_format, "json")
+            self.assertEqual(configs.subtree_path, ())
+            # ``skills``/``prompts`` are resource path lists the file families own,
+            # and ``trackingId`` is a per-install analytics UUID.
+            self.assertEqual(
+                configs.exclusion_keys,
+                frozenset({"skills", "prompts", "trackingId"}),
+            )
+
+
+class FactoryDroidHarnessCatalogTests(unittest.TestCase):
+    def test_droid_configs_bind_the_personal_settings_file(self) -> None:
+        with hermetic_env():
+            context = resolve_context({"HOME": "/tmp/droid-home"})
+            definition = next(
+                item for item in supported_harness_definitions() if item.harness == "droid"
+            )
+
+            configs = definition.binding_for("configs")
+            self.assertIsInstance(configs, ConfigSubtreeBindingProfile)
+            self.assertEqual(
+                configs.resolve_config_path(context),
+                Path("/tmp/droid-home/.factory/settings.json"),
+            )
+            self.assertEqual(configs.file_format, "json")
+            # Command policy stays with the (deliberately unmapped) permissions
+            # family rather than travelling as a preference — docs/factory-droid.md.
+            for key in ("hooks", "commandAllowlist", "commandDenylist", "commandBlocklist"):
+                self.assertIn(key, configs.exclusion_keys)
+
+    def test_droid_configs_follow_the_factory_root_override(self) -> None:
+        with hermetic_env():
+            context = resolve_context(
+                {"HOME": "/tmp/droid-home", FACTORY_ROOT_ENV: "/tmp/factory-elsewhere"}
+            )
+            definition = next(
+                item for item in supported_harness_definitions() if item.harness == "droid"
+            )
+
+            self.assertEqual(
+                definition.binding_for("configs").resolve_config_path(context),
+                Path("/tmp/factory-elsewhere/settings.json"),
+            )
+
+
+class ConfigsBindingExclusionTests(unittest.TestCase):
+    """Every family sharing a harness's config file must be excluded from Configs.
+
+    Configs captures *the whole document minus ``exclusion_keys``*, so a family that
+    writes into the same file and is not named there gets silently copied into the
+    portable manifest and re-applied on the next machine. That is how OpenCode's
+    ``mcp`` block leaked: the exclusions carried Claude's ``mcpServers`` spelling.
+    """
+
+    def test_same_file_family_keys_are_excluded_from_configs(self) -> None:
+        with hermetic_env():
+            context = resolve_context({"HOME": "/tmp/parity-home"})
+            for definition in SUPPORTED_HARNESS_DEFINITIONS:
+                configs = definition.binding_for("configs")
+                if not isinstance(configs, ConfigSubtreeBindingProfile):
+                    continue
+                configs_path = configs.resolve_config_path(context)
+
+                for family, profile in definition.bindings.items():
+                    if family == "configs":
+                        continue
+                    if not isinstance(profile, ConfigSubtreeBindingProfile):
+                        continue
+                    if profile.resolve_config_path(context) != configs_path:
+                        continue
+                    if not profile.subtree_path:
+                        continue
+                    with self.subTest(harness=definition.harness, family=family):
+                        self.assertIn(
+                            profile.subtree_path[0],
+                            configs.exclusion_keys,
+                            f"{definition.harness}/{family} writes "
+                            f"{'.'.join(profile.subtree_path)} into the same file as "
+                            f"configs; add {profile.subtree_path[0]!r} to exclusion_keys.",
+                        )
 
 
 if __name__ == "__main__":

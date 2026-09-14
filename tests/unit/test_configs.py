@@ -6,6 +6,7 @@ from harness_asset_manager.application.configs.extraction import extract_prefere
 from harness_asset_manager.application.configs.model import ConfigRecord
 from harness_asset_manager.application.configs.service import ConfigsService
 from harness_asset_manager.application.configs.store import ConfigStore
+from harness_asset_manager.harness.catalog import SUPPORTED_HARNESS_DEFINITIONS
 
 
 class DummyAssetTagService:
@@ -231,3 +232,85 @@ class ConfigsTests(unittest.TestCase):
             
             self.assertEqual(res["dummy"]["managed"], False)
             self.assertEqual(res["dummy"]["hasRecord"], True)
+
+
+class HarnessPreferenceExtractionTests(unittest.TestCase):
+    """The catalog's exclusion keys, run against real-shaped harness documents.
+
+    ``test_harness_catalog`` pins the keys; these pin what they *do* — which of a
+    harness's settings end up in the portable manifest and which stay on the machine.
+    """
+
+    def _exclusions(self, harness):
+        definition = next(d for d in SUPPORTED_HARNESS_DEFINITIONS if d.harness == harness)
+        return set(definition.binding_for("configs").exclusion_keys)
+
+    def test_pi_keeps_preferences_and_drops_resource_paths_and_tracking_id(self):
+        doc = {
+            "defaultProvider": "openai-codex",
+            "defaultModel": "gpt-5.6-luna",
+            "defaultThinkingLevel": "high",
+            "theme": "catppuccin-quiet",
+            "hideThinkingBlock": True,
+            "images": {"blockImages": False},
+            "packages": ["npm:pi-blackhole"],
+            "trackingId": "9f0b5c1e-0000-4000-8000-000000000000",
+            "skills": ["/home/dev/.pi/agent/skills"],
+            "prompts": ["shared/prompts"],
+            "shellPath": "/bin/zsh",
+        }
+
+        prefs = extract_preferences(doc, self._exclusions("pi"), "/home/dev")
+
+        self.assertEqual(prefs["defaultModel"], "gpt-5.6-luna")
+        self.assertEqual(prefs["defaultThinkingLevel"], "high")
+        self.assertEqual(prefs["theme"], "catppuccin-quiet")
+        self.assertEqual(prefs["images"], {"blockImages": False})
+        self.assertEqual(prefs["packages"], ["npm:pi-blackhole"])
+        self.assertNotIn("trackingId", prefs)
+        self.assertNotIn("skills", prefs)
+        self.assertNotIn("prompts", prefs)
+        self.assertNotIn("shellPath", prefs)  # absolute path, machine-local
+
+    def test_droid_keeps_preferences_and_drops_command_policy_and_hooks(self):
+        doc = {
+            "model": "claude-opus-4-5",
+            "reasoningEffort": "high",
+            "outputStyle": "concise",
+            "diffMode": "github",
+            "sessionDefaultSettings": {"interactionMode": "auto", "autonomyLevel": "low"},
+            "hooks": {"PreToolUse": [{"hooks": [{"type": "command", "command": "notify"}]}]},
+            "commandAllowlist": ["ls"],
+            "commandDenylist": ["rm"],
+            "commandBlocklist": [],
+            "trustedFolders": {"/home/dev": {"trustedAt": "2026-08-13T04:03:36.553Z"}},
+            "customModels": [{"name": "local", "apiKey": "sk-secret"}],
+        }
+
+        prefs = extract_preferences(doc, self._exclusions("droid"), "/home/dev")
+
+        self.assertEqual(prefs["model"], "claude-opus-4-5")
+        self.assertEqual(prefs["reasoningEffort"], "high")
+        self.assertEqual(prefs["outputStyle"], "concise")
+        self.assertEqual(prefs["diffMode"], "github")
+        self.assertEqual(prefs["sessionDefaultSettings"]["autonomyLevel"], "low")
+        self.assertNotIn("hooks", prefs)
+        for key in ("commandAllowlist", "commandDenylist", "commandBlocklist"):
+            self.assertNotIn(key, prefs)
+        self.assertNotIn("trustedFolders", prefs)  # absolute paths as keys
+        self.assertNotIn("customModels", prefs)  # nested credential
+
+    def test_opencode_drops_its_own_mcp_and_hook_keys(self):
+        doc = {
+            "theme": "tokyonight",
+            "model": "anthropic/claude-opus-4-5",
+            "mcp": {"context7": {"type": "remote", "url": "https://example.test/mcp"}},
+            "experimental": {"hook": {"file_edited": {"*.py": [{"command": ["ruff"]}]}}},
+        }
+
+        prefs = extract_preferences(doc, self._exclusions("opencode"), "/home/dev")
+
+        self.assertEqual(prefs["theme"], "tokyonight")
+        self.assertEqual(prefs["model"], "anthropic/claude-opus-4-5")
+        self.assertNotIn("mcp", prefs)
+        self.assertNotIn("experimental", prefs)

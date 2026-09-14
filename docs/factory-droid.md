@@ -17,6 +17,21 @@ This prevents a global sync from unexpectedly changing committed team configurat
 | MCP servers | `~/.factory/mcp.json`, under `mcpServers` | Supported, global only |
 | Custom droids | `~/.factory/droids/<name>.md` | Supported, personal only |
 | Custom slash commands | `~/.factory/commands/<name>.md` | Supported, personal only |
+| Preferences | `~/.factory/settings.json` | Supported through the Configs family |
+
+Preferences (`model`, `reasoningEffort`, `outputStyle`, `diffMode`, sound and
+session defaults, …) are captured from `~/.factory/settings.json` into the
+portable manifest. Four groups are withheld: `hooks`, which Droid also writes
+into this file and which HAM does not map (below), and `commandAllowlist`,
+`commandDenylist`, and `commandBlocklist`, which are the command policy the
+permissions family deliberately leaves alone (below). Capturing either would
+make Configs a second, silent owner of them. `trustedFolders` and `customModels`
+drop out on their own — the first is keyed by absolute path, the second carries
+a credential.
+
+`~/.factory/settings.local.json` is a user-level override that merges on top of
+`settings.json`. HAM manages `settings.json` only; keep machine-specific values
+in the local override if you do not want them in the manifest.
 
 HAM can also store the portable `AGENTS.md` instructions file as ordinary project
 content, but it is not a managed asset family and is not copied into
@@ -42,7 +57,8 @@ root with `HARNESS_ASSET_MANAGER_FACTORY_ROOT`.
 When the override is set, it replaces the entire personal Factory root. For example,
 setting it to `/tmp/factory-home` makes HAM use
 `/tmp/factory-home/skills`, `/tmp/factory-home/mcp.json`,
-`/tmp/factory-home/droids`, and `/tmp/factory-home/commands`.
+`/tmp/factory-home/droids`, `/tmp/factory-home/commands`, and
+`/tmp/factory-home/settings.json`.
 
 ## Documentation basis
 

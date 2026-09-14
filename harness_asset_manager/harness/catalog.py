@@ -270,6 +270,16 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="pi",
         support_tier="best_effort",
         bindings={
+            # Pi's user-level settings file. ``skills`` and ``prompts`` are path
+            # lists that the skills and slash-command families already own here,
+            # and ``trackingId`` is a per-install analytics UUID, so none of the
+            # three are portable preferences.
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".pi" / "agent" / "settings.json",
+                file_format="json",
+                subtree_path=(),
+                exclusion_keys=frozenset(["skills", "prompts", "trackingId"]),
+            ),
             # Pi's global resource directory is ~/.pi/agent. Skills are loaded
             # from its skills subdirectory using the Agent Skills format.
             "skills": FileTreeBindingProfile(
@@ -444,11 +454,16 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="opencode",
         support_tier="best_effort",
         bindings={
+            # OpenCode keeps every family in one document, so the exclusions have to
+            # name OpenCode's own keys: servers live under ``mcp`` (not the Claude
+            # spelling ``mcpServers``) and hooks under ``experimental.hook``.
+            # ``exclusion_keys`` is top-level only, so the whole ``experimental``
+            # block is withheld rather than letting the hooks leak into preferences.
             "configs": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".opencode" / "opencode.jsonc",
                 file_format="jsonc",
                 subtree_path=(),
-                exclusion_keys=frozenset(["mcpServers", "hooks"]),
+                exclusion_keys=frozenset(["mcp", "experimental"]),
             ),
             "skills": FileTreeBindingProfile(
                 managed_env=OPENCODE_ROOT_ENV,
@@ -514,6 +529,24 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         install_probe="droid",
         support_tier="best_effort",
         bindings={
+            # Droid's personal settings file. Hooks are written into this file as
+            # well as ~/.factory/hooks.json, and commandAllowlist/Denylist/Blocklist
+            # are the command policy docs/factory-droid.md deliberately leaves to the
+            # permissions family — neither is a portable preference.
+            "configs": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: _factory_home(context) / "settings.json",
+                file_format="json",
+                subtree_path=(),
+                exclusion_keys=frozenset(
+                    [
+                        "mcpServers",
+                        "hooks",
+                        "commandAllowlist",
+                        "commandDenylist",
+                        "commandBlocklist",
+                    ]
+                ),
+            ),
             "skills": FileTreeBindingProfile(
                 managed_env=FACTORY_ROOT_ENV,
                 managed_default=lambda context: _factory_home(context) / "skills",
