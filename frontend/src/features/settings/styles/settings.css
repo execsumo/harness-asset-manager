@@ -12,9 +12,9 @@
 .settings-section__heading {
   margin: 0;
   color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-size: var(--font-size-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 
 .settings-section__head {
@@ -50,14 +50,14 @@
 
 .settings-row__title {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
 .settings-row__sub {
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
 }
 
 .settings-row__icon {
@@ -69,8 +69,8 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-bold);
 }
 
 .settings-path {
@@ -78,16 +78,16 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text);
 }
 
 .settings-harness-group__heading {
   margin: var(--space-2) 0 0;
   color: var(--color-text-muted);
-  font-size: 0.82rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 
@@ -127,8 +127,8 @@
   padding: var(--space-2);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-weight: 650;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--weight-semibold);
   text-align: center;
   vertical-align: middle;
 }
@@ -154,9 +154,9 @@
 .settings-maintenance__group-heading th {
   padding: var(--space-2) var(--space-3) var(--space-1);
   color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-caps);
   text-align: left;
   text-transform: uppercase;
 }
@@ -180,8 +180,8 @@
 .settings-maintenance__harness-name {
   overflow: hidden;
   color: var(--color-text);
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -190,7 +190,7 @@
   overflow: hidden;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--font-size-3xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

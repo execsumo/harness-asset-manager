@@ -60,7 +60,7 @@
 .board-column__title {
   margin: 0;
   font-size: var(--font-size-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
@@ -75,14 +75,14 @@
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .board-column__description {
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
 }
 
 .board-column__body {
@@ -97,7 +97,7 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   text-align: center;
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .skill-card--board {
@@ -156,7 +156,7 @@
   background: var(--color-accent);
   color: var(--color-text-inverted);
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   box-shadow: var(--shadow-sm);
   pointer-events: none;
 }

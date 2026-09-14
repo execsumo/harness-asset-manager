@@ -22,8 +22,8 @@
   gap: var(--space-2);
   color: var(--color-text);
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  line-height: 1.4;
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
   }
 
   .scan-config-panel__checkbox {
@@ -33,7 +33,7 @@
   min-height: 38px;
   color: var(--color-text);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   }
 
   .scan-config-panel__checkbox input {
@@ -98,7 +98,7 @@
 
   .scan-config-panel__input-action:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-soft);
+  box-shadow: var(--focus-ring);
   }
 
   .scan-config-panel__input {
@@ -109,7 +109,7 @@
   outline: none;
   border-color: var(--color-accent);
   background: color-mix(in srgb, var(--color-surface-sunken) 72%, var(--color-accent-softer));
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
   }
 
   .scan-config-panel__input::placeholder {
@@ -120,7 +120,7 @@
   .scan-config-panel__hint {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   }
 
   .scan-config-panel__hint-link {
@@ -144,7 +144,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   }
 
   .scan-config-panel__status--neutral {
@@ -174,7 +174,7 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   }
 
   .scan-config-detail-modal__form {
@@ -217,7 +217,7 @@
   .scan-config-detail-modal__validation-label {
   color: var(--color-text-subtle);
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
   }
 
@@ -236,7 +236,7 @@
   grid-column: 1 / -1;
   margin: 0;
   font-size: var(--font-size-xs);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   }
 
   @media (max-width: 680px) {

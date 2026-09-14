@@ -3,6 +3,11 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+
+// Self-hosted variable fonts — must load before the token layer that names them.
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
+
 import "./styles/index.css";
 
 /* Feature-local CSS.
@@ -24,6 +29,7 @@ import "./features/mcp/styles/pages.css";
 import "./features/mcp/styles/detail-sheet.css";
 import "./features/mcp/styles/edit-dialogs.css";
 import "./features/permissions/styles/permissions.css";
+import "./features/configs/styles/configs.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

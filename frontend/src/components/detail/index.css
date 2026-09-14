@@ -12,11 +12,11 @@
   gap: 8px;
   min-height: 24px;
   padding: 0 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
+  font-size: var(--font-size-3xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -38,8 +38,8 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
+  font-size: var(--font-size-3xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -77,8 +77,8 @@
   position: relative;
   display: block;
   overflow: hidden;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: var(--color-overlay-subtle);
 }
 
 .detail-skeleton::after {
@@ -88,9 +88,9 @@
   transform: translateX(-100%);
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0) 100%
+    transparent 0%,
+    var(--color-overlay-sheen) 50%,
+    transparent 100%
   );
   animation: detail-skeleton-shimmer 1.4s ease-in-out infinite;
 }

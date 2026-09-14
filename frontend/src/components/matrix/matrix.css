@@ -35,7 +35,7 @@
   background: inherit;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   text-align: left;
   white-space: nowrap;
   vertical-align: middle;
@@ -178,12 +178,12 @@
 .matrix-table__th--star .matrix-table__sort-btn:focus-visible,
 .matrix-table__star-header-btn:hover,
 .matrix-table__star-header-btn:focus-visible {
-  color: #f59e0b;
+  color: var(--color-star);
 }
 
 .matrix-table__th--star .matrix-table__sort-btn[data-active="true"],
 .matrix-table__star-header-btn[data-active="true"] {
-  color: #f59e0b;
+  color: var(--color-star);
 }
 
 .matrix-table__th--end .matrix-table__sort-btn {
@@ -205,7 +205,7 @@
 .matrix-table__name-text {
   color: var(--color-text);
   font-size: var(--font-size-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -228,9 +228,9 @@
   border-radius: var(--radius-pill);
   background: var(--color-surface-sunken);
   color: var(--color-text-muted);
-  font-size: 0.65rem;
-  font-weight: 500;
-  line-height: 1;
+  font-size: var(--font-size-3xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-none);
 }
 
 .matrix-table__tag-pill--more {
@@ -242,7 +242,7 @@
   margin: 2px 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -259,13 +259,13 @@
 .matrix-table__coverage-count {
   color: var(--color-text);
   font-size: var(--font-size-md);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .matrix-table__coverage-total {
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: 400;
+  font-weight: var(--weight-regular);
   margin-left: 2px;
   white-space: pre;
 }
@@ -308,7 +308,7 @@
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .matrix-harness-target[data-state="empty"] {

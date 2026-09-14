@@ -1,9 +1,27 @@
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; font-family: var(--font-sans); background: var(--color-bg); color: var(--color-text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-snug);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+/* Digits must not reflow as counts change — every number in the app sits in a
+   table cell, a badge, or a sidebar counter. */
+body { font-variant-numeric: tabular-nums; }
 img, svg { display: block; max-width: 100%; }
-input, button, textarea, select { font: inherit; }
+input, button, textarea, select { font: inherit; letter-spacing: inherit; }
 p, h1, h2, h3, h4 { overflow-wrap: break-word; margin: 0; }
+h1, h2, h3, h4 { font-weight: var(--weight-semibold); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
 ul, ol { list-style: none; padding: 0; margin: 0; }
 a { color: inherit; text-decoration: none; }
 button { background: none; border: none; cursor: pointer; color: inherit; }
 table { border-collapse: collapse; width: 100%; }
+code, pre, kbd, samp { font-family: var(--font-mono); font-variant-ligatures: none; }
+::selection { background: var(--color-highlight-soft); }

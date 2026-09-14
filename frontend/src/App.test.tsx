@@ -52,7 +52,7 @@ describe("App shell", () => {
   it("renders the sidebar with primary nav groups", async () => {
     renderApp("/skills/use");
     await waitFor(() => expect(screen.getByLabelText(/primary navigation/i)).toBeInTheDocument());
-    expect(screen.getByText(/harness-asset-manager/)).toBeInTheDocument();
+    expect(screen.getByText("HarnessAM")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Overview$/i })).toBeInTheDocument();
     // "Skills" is ambiguous (family heading + Marketplace sub-link), so assert Agents.
     expect(screen.getByRole("link", { name: /Agents/i })).toBeInTheDocument();
@@ -182,13 +182,13 @@ describe("App shell", () => {
     );
   });
 
-  it("navigates to overview from the harness-asset-manager brand", async () => {
+  it("navigates to overview from the HarnessAM brand", async () => {
     renderApp("/settings");
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByRole("link", { name: /harness-asset-manager/i }));
+    fireEvent.click(screen.getByRole("link", { name: /HarnessAM/i }));
 
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument(),

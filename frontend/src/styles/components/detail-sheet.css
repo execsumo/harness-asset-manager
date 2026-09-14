@@ -65,9 +65,9 @@
 .detail-sheet__section-heading {
   margin: 0;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
-  letter-spacing: 0.02em;
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 
@@ -146,7 +146,7 @@
   flex: 0 0 auto;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border-strong);
   background: transparent;
 }
@@ -154,7 +154,7 @@
 .detail-sheet__binding-dot[data-tone="enabled"] {
   border-color: color-mix(in srgb, var(--color-accent) 70%, transparent);
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 .detail-sheet__binding-dot[data-tone="warning"] {

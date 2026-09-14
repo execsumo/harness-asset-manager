@@ -11,7 +11,7 @@
   padding: 2px var(--space-3);
   border-radius: var(--radius-pill);
   font-size: var(--font-size-xs);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
@@ -115,7 +115,7 @@
   margin: 0;
   color: var(--color-text);
   font-size: var(--font-size-md);
-  line-height: 1.55;
+  line-height: var(--leading-normal);
   white-space: pre-wrap;
 }
 
@@ -202,7 +202,7 @@
   position: relative;
   z-index: 1;
   transform: translate(5px, 6px);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   font-size: var(--font-size-md);
 }
 
@@ -346,7 +346,7 @@
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   white-space: pre-wrap;
   background: var(--color-surface-sunken);
   border-radius: var(--radius-sm);
@@ -363,10 +363,10 @@
 .mcp-tool__params-heading {
   margin: 0;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
 }
 
 .mcp-tool__params {
@@ -401,13 +401,13 @@
 
 .mcp-tool__param-required {
   color: var(--color-danger);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .mcp-tool__param-body {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .mcp-tool__param-body p {
@@ -465,7 +465,7 @@
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .mcp-detail__prompt-args {

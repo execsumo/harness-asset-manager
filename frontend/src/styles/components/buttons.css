@@ -23,7 +23,7 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 0.88rem;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
@@ -42,13 +42,13 @@
 .btn:focus-visible,
 .icon-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 .btn.btn-primary {
   background: var(--color-accent);
   color: var(--color-text-inverted);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .btn.btn-primary:hover {
@@ -105,7 +105,7 @@
 
 .card-icon-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 .card-icon-button:disabled {
@@ -133,15 +133,15 @@
 
 .skill-star-btn:hover,
 .asset-star-btn:hover {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.08);
+  color: var(--color-star);
+  background: var(--color-star-soft);
 }
 
 .skill-star-btn:focus-visible,
 .asset-star-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-softer, rgba(59, 130, 246, 0.4));
-  color: #f59e0b;
+  box-shadow: var(--focus-ring);
+  color: var(--color-star);
 }
 
 .skill-star-btn:disabled,
@@ -153,7 +153,7 @@
 
 .skill-star-btn--active,
 .asset-star-btn--active {
-  color: #f59e0b;
+  color: var(--color-star);
 }
 
 .skill-star-btn--active .skill-star-icon,

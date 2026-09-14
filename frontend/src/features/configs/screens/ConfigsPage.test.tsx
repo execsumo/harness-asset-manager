@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../test/fetch";
@@ -38,19 +38,32 @@ const CONFIGS = {
   },
 };
 
+const SETTINGS = {
+  autoAdopt: {},
+  autoAdoptHarnessOptions: {},
+  autoAdoptHarnesses: {},
+  harnesses: [
+    { harness: "claude", label: "Claude", logoKey: "claude", installed: true, managedLocation: null, supportEnabled: true },
+    { harness: "cursor", label: "Cursor", logoKey: "cursor", installed: true, managedLocation: null, supportEnabled: true },
+    { harness: "opencode", label: "OpenCode", logoKey: "opencode", installed: true, managedLocation: null, supportEnabled: true },
+  ],
+};
+
+function respond(url: string) {
+  if (url === "/api/configs/") return okJson(CONFIGS);
+  if (url.startsWith("/api/settings")) return okJson(SETTINGS);
+  if (url.includes("/api/asset-tags")) return okJson({});
+  if (url.includes("/api/home")) return okJson({ home: "/home/dev" });
+  return null;
+}
+
 describe("ConfigsPage", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
-    
-    // Tag mock
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url === "/api/configs/") {
-        return okJson(CONFIGS);
-      }
-      if (url.includes("/api/asset-tags")) {
-        return okJson({});
-      }
+      const response = respond(url);
+      if (response) return response;
       throw new Error(`Unhandled URL ${url}`);
     });
   });
@@ -60,65 +73,61 @@ describe("ConfigsPage", () => {
     fetchMock.mockReset();
   });
 
-  it("lists each captured harness with its preferences", async () => {
+  it("lists each detected harness with its status, key count, and config path", async () => {
     renderWithAppProviders(<ConfigsPage />);
 
-    expect(await screen.findByText("claude")).toBeTruthy();
-    expect(await screen.findByText("cursor")).toBeTruthy();
-    
-    // Check table headers and content
-    expect(screen.getByText("Managed")).toBeTruthy();
-    // cursor and opencode are both unmanaged here.
-    expect(screen.getAllByText("Not managed").length).toBe(2);
-    
-    expect(screen.getByText("2")).toBeTruthy();
-    // Two harnesses report zero keys, so assert on the count rather than identity.
-    expect(screen.getAllByText("0").length).toBe(2);
-    
-    expect(screen.getByText("drifted")).toBeTruthy();
-    
-    // The details drawer opens on click
-    fireEvent.click(screen.getByText("claude"));
-    
-    // Now diff should be fetched, wait for the mock
+    expect(await screen.findByText("Claude")).toBeTruthy();
+    expect(screen.getByText("Cursor")).toBeTruthy();
+    expect(screen.getByText("OpenCode")).toBeTruthy();
+
+    // "Drifted" / "Not managed" also label summary tiles, so scope to the table.
+    const table = within(screen.getByRole("table"));
+    expect(table.getByText("Drifted")).toBeTruthy();
+    // cursor has no record; opencode has one without a local file.
+    expect(table.getByText("Not managed")).toBeTruthy();
+    expect(table.getByText("Record only")).toBeTruthy();
+
+    // Paths pass through unabbreviated here — the home dir context defaults to null.
+    expect(screen.getByText("/home/dev/.claude/settings.json")).toBeTruthy();
+    expect(table.getByText("2")).toBeTruthy();
+  });
+
+  it("summarises the fleet and lets a tile filter the table", async () => {
+    renderWithAppProviders(<ConfigsPage />);
+
+    const drifted = await screen.findByRole("button", { name: /Drifted/ });
+    expect(within(drifted).getByText("1")).toBeTruthy();
+
+    fireEvent.click(drifted);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Cursor")).toBeNull();
+    });
+    expect(screen.getByText("Claude")).toBeTruthy();
+  });
+
+  it("opens the detail sheet and reports drift for a managed harness", async () => {
+    renderWithAppProviders(<ConfigsPage />);
+
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
-      if (url === "/api/configs/") {
-        return okJson(CONFIGS);
-      }
       if (url === "/api/configs/claude/diff") {
-        return okJson({
-          state: "drifted",
-          missing: ["theme"],
-          extra: [],
-          changed: ["model"],
-        });
+        return okJson({ state: "drifted", missing: ["theme"], extra: [], changed: ["model"] });
       }
-      if (url.includes("/api/asset-tags")) {
-        return okJson({});
-      }
+      const response = respond(url);
+      if (response) return response;
       throw new Error(`Unhandled URL ${url}`);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText(/Missing in file: theme/)).toBeTruthy();
-    });
-    expect(screen.getByText(/Changed values: model/)).toBeTruthy();
-    
-    // An empty bucket must not render an empty "Extra:" line.
-    expect(screen.queryByText(/Extra in file:/)).toBeNull();
-  });
+    fireEvent.click(await screen.findByText("Claude"));
 
-  it("renders disabled state actions properly", async () => {
-    renderWithAppProviders(<ConfigsPage />);
+    expect(await screen.findByText("Drift detected")).toBeTruthy();
+    expect(screen.getByText("Missing in file")).toBeTruthy();
+    expect(screen.getByText("theme")).toBeTruthy();
+    expect(screen.getByText("Changed values")).toBeTruthy();
 
-    expect(await screen.findByText("cursor")).toBeTruthy();
-    
-    fireEvent.click(screen.getByText("cursor"));
-    
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Enable/ })).toBeTruthy();
-    });
+    // An empty bucket must not render an empty "Extra in file" row.
+    expect(screen.queryByText("Extra in file")).toBeNull();
   });
 
   it("offers to stop managing a managed harness, and posts to disable", async () => {
@@ -129,44 +138,63 @@ describe("ConfigsPage", () => {
         calls.push(url);
         return okJson({ status: "ok" });
       }
-      if (url === "/api/configs/") return okJson(CONFIGS);
-      if (url.includes("/api/asset-tags")) return okJson({});
-      if (url.endsWith("/diff")) return okJson({ state: "managed", missing: [], extra: [], changed: [] });
+      if (url.endsWith("/diff")) {
+        return okJson({ state: "managed", missing: [], extra: [], changed: [] });
+      }
+      const response = respond(url);
+      if (response) return response;
       throw new Error(`Unhandled URL ${url}`);
     });
 
     renderWithAppProviders(<ConfigsPage />);
-    fireEvent.click(await screen.findByText("claude"));
 
-    const stop = await screen.findByRole("button", { name: /Stop Managing/ });
-    fireEvent.click(stop);
+    fireEvent.click(await screen.findByRole("button", { name: "Stop managing" }));
 
     await waitFor(() => {
       expect(calls).toContain("/api/configs/claude/disable");
     });
   });
 
+  it("manages an unmanaged harness straight from its row", async () => {
+    const calls: string[] = [];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (init?.method === "POST") {
+        calls.push(url);
+        return okJson({ status: "ok" });
+      }
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Manage" }));
+
+    await waitFor(() => {
+      expect(calls).toContain("/api/configs/cursor/enable");
+    });
+  });
+
   it("flags a record whose config file is absent, without assuming it is stale", async () => {
     renderWithAppProviders(<ConfigsPage />);
 
-    // opencode: not managed here, but a record exists — it may be live on another
-    // machine, so the notice must say so rather than offering a silent cleanup.
-    fireEvent.click(await screen.findByText("opencode"));
+    fireEvent.click(await screen.findByText("OpenCode"));
 
-    expect(await screen.findByText(/Stale Record Detected/)).toBeTruthy();
+    expect(await screen.findByText("Record without a local file")).toBeTruthy();
     expect(screen.getByText(/managed on another machine/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Remove Record/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Remove record/ })).toBeTruthy();
   });
 
   it("does not flag a harness that has no record at all", async () => {
     renderWithAppProviders(<ConfigsPage />);
 
-    // cursor has no record, so there is nothing to clean up — only Enable.
-    fireEvent.click(await screen.findByText("cursor"));
+    fireEvent.click(await screen.findByText("Cursor"));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Enable/ })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Manage/ })).toBeTruthy();
     });
-    expect(screen.queryByText(/Stale Record Detected/)).toBeNull();
+    expect(screen.queryByText("Record without a local file")).toBeNull();
   });
 });

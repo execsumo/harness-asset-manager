@@ -33,8 +33,8 @@
 }
 
 .bootstrap-banner__text {
-  font-size: 0.92rem;
-  line-height: 1.4;
+  font-size: var(--font-size-md);
+  line-height: var(--leading-snug);
 }
 
 .bootstrap-banner__actions {
@@ -68,10 +68,10 @@
 }
 
 .bootstrap-group__title {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--tracking-caps);
   color: var(--color-text-muted);
   margin-bottom: var(--space-1);
 }
@@ -109,15 +109,15 @@
 }
 
 .bootstrap-item-row__name {
-  font-weight: 500;
-  font-size: 0.92rem;
+  font-weight: var(--weight-medium);
+  font-size: var(--font-size-md);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .bootstrap-item-row__target {
-  font-size: 0.8rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -133,10 +133,10 @@
 }
 
 .bootstrap-badge {
-  font-size: 0.75rem;
+  font-size: var(--font-size-2xs);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .bootstrap-badge--link {
@@ -155,7 +155,7 @@
   justify-content: space-between;
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-border);
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
 }
 
 .bootstrap-dialog__controls-links {
@@ -169,7 +169,7 @@
   padding: 0;
   color: var(--color-accent);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -182,8 +182,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-medium);
 }
 
 .bootstrap-status-chip--applied {

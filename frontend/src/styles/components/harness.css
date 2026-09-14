@@ -15,35 +15,25 @@
   display: block;
 }
 
-/* Nous Research's source mark is black; invert it only on dark surfaces. */
-:root:not([data-theme="light"]) .harness-avatar__logo--hermes,
-:root:not([data-theme="light"]) .matrix-harness-target__logo--hermes {
+/* Two source marks are monochrome and need normalising per theme. `data-theme`
+   is written to <html> before first paint (index.html + lib/theme.tsx), so
+   these key off it alone. */
+
+/* Nous Research's mark is black — invert it on dark surfaces only. */
+:root[data-theme="dark"] .harness-avatar__logo--hermes,
+:root[data-theme="dark"] .matrix-harness-target__logo--hermes {
   filter: invert(1);
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .harness-avatar__logo--hermes,
-  :root:not([data-theme="dark"]) .matrix-harness-target__logo--hermes {
-    filter: none;
-  }
-}
-
-/* Factory Droid's source mark is normalized to black on light surfaces and white on dark ones. */
+/* Factory Droid's mark is flattened to black on light, white on dark. */
 :root[data-theme="light"] .harness-avatar__logo--droid,
 :root[data-theme="light"] .matrix-harness-target__logo--droid {
   filter: brightness(0);
 }
 
-:root:not([data-theme="light"]) .harness-avatar__logo--droid,
-:root:not([data-theme="light"]) .matrix-harness-target__logo--droid {
+:root[data-theme="dark"] .harness-avatar__logo--droid,
+:root[data-theme="dark"] .matrix-harness-target__logo--droid {
   filter: brightness(0) invert(1);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .harness-avatar__logo--droid,
-  :root:not([data-theme="dark"]) .matrix-harness-target__logo--droid {
-    filter: brightness(0);
-  }
 }
 
 .harness-avatar__fallback {
@@ -52,12 +42,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-2xs);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1;
+  font-size: var(--font-size-3xs);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-none);
 }
 
 }

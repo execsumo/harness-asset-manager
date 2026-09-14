@@ -32,7 +32,7 @@
 .mcp-choose-version__title {
   margin: 0;
   font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
@@ -40,7 +40,7 @@
   margin: var(--space-1) 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .mcp-choose-version__close {
@@ -116,7 +116,7 @@
 .mcp-choose-version__indicator[data-selected="true"] {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-accent-contrast);
 }
 
 .mcp-choose-version__option-body {

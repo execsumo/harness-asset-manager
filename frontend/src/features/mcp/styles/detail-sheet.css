@@ -59,7 +59,7 @@
   margin: 0;
   color: var(--color-text);
   font-size: var(--font-size-sm);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .mcp-detail__status-summary {
@@ -76,7 +76,7 @@
   overflow: hidden;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.35;
+  line-height: var(--leading-snug);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -102,7 +102,7 @@
   margin: 2px 0 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.4;
+  line-height: var(--leading-snug);
 }
 
 .mcp-detail__connection-grid {
@@ -122,7 +122,7 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-caps);
 }
 
 .mcp-detail__field-value code {
@@ -194,7 +194,7 @@
 .mcp-marketplace-link-chip__icon {
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 
 .mcp-needs-review-detail__sightings {

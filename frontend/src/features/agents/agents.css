@@ -46,7 +46,7 @@
   margin-top: 4px;
   color: var(--color-text-muted);
   text-transform: none;
-  font-size: 0.85rem;
+  font-size: var(--font-size-sm);
   letter-spacing: normal;
   font-family: inherit;
 }
@@ -157,7 +157,7 @@
   margin: var(--space-3) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .agent-dialog-footer {
@@ -183,7 +183,7 @@
 .agent-issues__title {
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
 }
 
@@ -257,8 +257,8 @@
   color: var(--color-text-muted);
   font-family: var(--font-mono, "JetBrains Mono", monospace);
   font-size: var(--font-size-xs, 0.75rem);
-  font-weight: 500;
-  line-height: 1.4;
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
   cursor: pointer;
   transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
 }
@@ -309,7 +309,7 @@
   background: var(--color-surface-raised);
   color: var(--color-text);
   font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .agent-skills-editor__chip-remove {
@@ -323,7 +323,7 @@
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: color 120ms ease;
 }
 
@@ -384,12 +384,12 @@
 }
 
 .agent-skills-editor__suggestion-name {
-  font-weight: 500;
+  font-weight: var(--weight-medium);
 }
 
 .agent-skills-editor__suggestion-slug {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.7rem;
+  font-size: var(--font-size-3xs);
   color: var(--color-text-muted);
 }
 

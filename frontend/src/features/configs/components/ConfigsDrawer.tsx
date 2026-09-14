@@ -1,128 +1,226 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect } from "react";
-import { DetailHeader } from "../../../components/detail/DetailHeader";
-import { DetailSection } from "../../../components/detail/DetailSection";
-import type { ConfigRowData } from "../model/selectors";
-import { useConfigDiffMutation, useEnableConfigMutation, useDisableConfigMutation, useRestoreConfigMutation, useCaptureConfigsMutation } from "../api/queries";
 import { Download, Power, PowerOff, Upload } from "lucide-react";
-import { StatusBadge } from "../../../components/ui/StatusBadge";
 
-export function ConfigsDrawer({ row, onClose }: { row: ConfigRowData | null; onClose: () => void }) {
+import { DetailHeader } from "../../../components/detail/DetailHeader";
+import { DetailNote } from "../../../components/detail/DetailNote";
+import { DetailSection } from "../../../components/detail/DetailSection";
+import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
+import { useFormatPath } from "../../../lib/paths";
+import {
+  useCaptureConfigsMutation,
+  useConfigDiffMutation,
+  useDisableConfigMutation,
+  useEnableConfigMutation,
+  useRestoreConfigMutation,
+} from "../api/queries";
+import { useConfigsCopy } from "../i18n";
+import type { ConfigRowData, ConfigStatus } from "../model/selectors";
+
+const STATUS_TONE: Record<ConfigStatus, string> = {
+  managed: "success",
+  drifted: "warning",
+  orphaned: "neutral",
+  unmanaged: "muted",
+};
+
+const CAPTURED_AT_FORMAT = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+export function ConfigsDrawer({
+  row,
+  onClose,
+}: {
+  row: ConfigRowData | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog.Root open={row !== null} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="detail-sheet__overlay" />
+        <Dialog.Content className="detail-sheet" aria-describedby={undefined}>
+          {row ? <ConfigsDrawerBody row={row} onClose={onClose} /> : null}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function ConfigsDrawerBody({ row, onClose }: { row: ConfigRowData; onClose: () => void }) {
+  const copy = useConfigsCopy();
+  const formatPath = useFormatPath();
   const diff = useConfigDiffMutation();
   const enable = useEnableConfigMutation();
   const disable = useDisableConfigMutation();
   const restore = useRestoreConfigMutation();
   const capture = useCaptureConfigsMutation();
-  
-  useEffect(() => {
-    if (row && row.managed) {
-      diff.mutate(row.harness);
-    }
-  }, [row, diff.mutate]);
 
-  const handleEnable = () => {
-    if (row) enable.mutate(row.harness, { onSuccess: () => diff.mutate(row.harness) });
-  };
-  const handleDisable = () => {
-    if (row) disable.mutate(row.harness);
-  };
-  const handleRestore = () => {
-    if (row) restore.mutate(row.harness, { onSuccess: () => diff.mutate(row.harness) });
-  };
-  const handleCapture = () => {
-    if (row) capture.mutate(true, { onSuccess: () => diff.mutate(row.harness) });
-  };
+  const { harness, managed } = row;
+  const { mutate: runDiff } = diff;
+
+  useEffect(() => {
+    if (managed) runDiff(harness);
+  }, [harness, managed, runDiff]);
+
+  const refreshDiff = { onSuccess: () => runDiff(harness) };
+  const drift = diff.data;
+  const hasDrift = drift?.state === "drifted";
 
   return (
-    <Dialog.Root open={!!row} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="detail-sheet__overlay" />
-        <Dialog.Content className="detail-sheet" aria-describedby={undefined}>
-          {row ? (
-            <>
-              <DetailHeader
-                title={<h2 className="skill-detail__title-text">Configs: {row.harness}</h2>}
-                onClose={onClose}
-              />
-              <div className="detail-sheet__body">
-                <DetailSection heading="Status">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <StatusBadge 
-                      label={row.managed ? "Managed" : "Not managed"} 
-                      tone={row.managed ? "success" : "muted"} 
-                    />
-                    <div>
-                      {row.managed ? (
-                        <button className="action-pill action-pill--danger" onClick={handleDisable} disabled={disable.isPending}>
-                          <PowerOff size={14} className="action-pill__icon" /> Stop Managing
-                        </button>
-                      ) : (
-                        <button className="action-pill action-pill--accent" onClick={handleEnable} disabled={enable.isPending}>
-                          <Power size={14} className="action-pill__icon" /> Enable
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {!row.managed && row.hasRecord && (
-                    <div style={{ marginTop: "1rem", padding: "0.75rem", backgroundColor: "var(--bg-warning-muted)", borderRadius: "6px" }}>
-                      <p style={{ margin: "0 0 0.5rem 0" }}><strong>Stale Record Detected</strong></p>
-                      <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.9em" }}>
-                        A record exists in your manifest, but the config file is absent on this machine. If this harness is managed on another machine, leave this alone. If this is a stale record, you can remove it.
-                      </p>
-                      <button className="action-pill action-pill--danger" onClick={handleDisable} disabled={disable.isPending}>
-                        <PowerOff size={14} className="action-pill__icon" /> Remove Record
-                      </button>
-                    </div>
-                  )}
-                </DetailSection>
+    <>
+      <DetailHeader
+        closeLabel={copy.detail.close}
+        onClose={onClose}
+        title={
+          <div className="configs-detail__title">
+            <HarnessAvatar harness={row.harness} label={row.label} logoKey={row.logoKey} />
+            <h2 className="skill-detail__title-text">{row.label}</h2>
+          </div>
+        }
+        meta={
+          <>
+            <span className={`ui-status-badge ui-status-badge--${STATUS_TONE[row.status]}`}>
+              {copy.status[row.status]}
+            </span>
+            {row.managed ? (
+              <span className="configs-detail__meta-item">
+                {copy.detail.keyCount(row.keyCount)}
+              </span>
+            ) : null}
+            {row.capturedAt ? (
+              <span className="configs-detail__meta-item">
+                {copy.detail.capturedAt} {CAPTURED_AT_FORMAT.format(new Date(row.capturedAt))}
+              </span>
+            ) : null}
+          </>
+        }
+        titleAction={
+          row.managed ? (
+            <button
+              type="button"
+              className="action-pill action-pill--danger"
+              onClick={() => disable.mutate(row.harness)}
+              disabled={disable.isPending}
+              data-pending={disable.isPending || undefined}
+            >
+              <PowerOff size={14} aria-hidden="true" />
+              {copy.actions.stopManaging}
+            </button>
+          ) : !row.hasRecord ? (
+            <button
+              type="button"
+              className="action-pill action-pill--accent"
+              onClick={() => enable.mutate(row.harness, refreshDiff)}
+              disabled={enable.isPending}
+              data-pending={enable.isPending || undefined}
+            >
+              <Power size={14} aria-hidden="true" />
+              {copy.actions.manage}
+            </button>
+          ) : null
+        }
+      />
 
-                <DetailSection heading="Source">
-                  <code style={{ wordBreak: 'break-all' }}>{row.sourceFile}</code>
-                </DetailSection>
-                
-                {row.managed && (
-                  <>
-                    <DetailSection heading="Last Captured">
-                      <span className="muted-text">{row.capturedAt ? new Date(row.capturedAt).toLocaleString() : 'Never'}</span>
-                    </DetailSection>
+      <div className="detail-sheet__body">
+        <DetailSection heading={copy.detail.sourceHeading}>
+          <code className="configs-detail__path">{formatPath(row.sourceFile)}</code>
+        </DetailSection>
 
-                    <DetailSection heading="Drift Analysis">
-                      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                        <button className="action-pill" onClick={handleRestore} disabled={restore.isPending}>
-                          <Download size={14} className="action-pill__icon" /> Restore
-                        </button>
-                        <button className="action-pill action-pill--accent" onClick={handleCapture} disabled={capture.isPending}>
-                          <Upload size={14} className="action-pill__icon" /> Capture Current
-                        </button>
-                      </div>
+        {!row.managed ? (
+          <DetailSection heading={copy.detail.statusHeading}>
+            {row.hasRecord ? (
+              <DetailNote
+                title={copy.detail.orphanTitle}
+                actions={
+                  <button
+                    type="button"
+                    className="action-pill action-pill--danger"
+                    onClick={() => disable.mutate(row.harness)}
+                    disabled={disable.isPending}
+                    data-pending={disable.isPending || undefined}
+                  >
+                    <PowerOff size={14} aria-hidden="true" />
+                    {copy.actions.removeRecord}
+                  </button>
+                }
+              >
+                <p>{copy.detail.orphanBody}</p>
+              </DetailNote>
+            ) : (
+              <p className="muted-text">{copy.detail.unmanagedBody}</p>
+            )}
+          </DetailSection>
+        ) : null}
 
-                      {diff.isPending ? (
-                        <p className="muted-text">Analyzing drift...</p>
-                      ) : diff.data?.state === "drifted" ? (
-                        <div style={{ padding: "0.75rem", backgroundColor: "var(--bg-warning-muted)", borderRadius: "6px" }}>
-                          <p style={{ margin: "0 0 0.5rem 0" }}><strong>Drift detected</strong></p>
-                          {diff.data.missing.length > 0 && <p style={{ margin: "0 0 0.25rem 0" }}>Missing in file: {diff.data.missing.join(", ")}</p>}
-                          {diff.data.extra.length > 0 && <p style={{ margin: "0 0 0.25rem 0" }}>Extra in file: {diff.data.extra.join(", ")}</p>}
-                          {diff.data.changed.length > 0 && <p style={{ margin: "0" }}>Changed values: {diff.data.changed.join(", ")}</p>}
-                        </div>
-                      ) : (
-                        <p className="muted-text">No drift. File matches manifest.</p>
-                      )}
-                    </DetailSection>
-
-                    <DetailSection heading={`Preferences Map (${row.keyCount} keys)`}>
-                      <pre style={{ background: "var(--bg-secondary)", padding: "1rem", borderRadius: "6px", overflowX: "auto", fontSize: "0.85em" }}>
-                        {JSON.stringify(row.preferences, null, 2)}
-                      </pre>
-                    </DetailSection>
-                  </>
-                )}
+        {row.managed ? (
+          <>
+            <DetailSection heading={copy.detail.driftHeading}>
+              <div className="configs-detail__actions">
+                <button
+                  type="button"
+                  className="action-pill"
+                  onClick={() => restore.mutate(row.harness, refreshDiff)}
+                  disabled={restore.isPending}
+                  data-pending={restore.isPending || undefined}
+                  title={copy.detail.restoreHint}
+                >
+                  <Download size={14} aria-hidden="true" />
+                  {copy.actions.restore}
+                </button>
+                <button
+                  type="button"
+                  className="action-pill action-pill--accent"
+                  onClick={() => capture.mutate(true, refreshDiff)}
+                  disabled={capture.isPending}
+                  data-pending={capture.isPending || undefined}
+                  title={copy.detail.captureHint}
+                >
+                  <Upload size={14} aria-hidden="true" />
+                  {copy.actions.capture}
+                </button>
               </div>
-            </>
-          ) : null}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+
+              {diff.isPending ? (
+                <p className="muted-text">{copy.detail.analyzing}</p>
+              ) : hasDrift ? (
+                <DetailNote title={copy.detail.driftDetected}>
+                  <dl className="configs-detail__drift">
+                    <DriftGroup label={copy.detail.missing} keys={drift.missing} />
+                    <DriftGroup label={copy.detail.extra} keys={drift.extra} />
+                    <DriftGroup label={copy.detail.changed} keys={drift.changed} />
+                  </dl>
+                </DetailNote>
+              ) : (
+                <p className="muted-text">{copy.detail.noDrift}</p>
+              )}
+            </DetailSection>
+
+            <DetailSection heading={copy.detail.preferencesHeading}>
+              <pre className="configs-detail__preferences ui-scrollbar--thin">
+                {JSON.stringify(row.preferences, null, 2)}
+              </pre>
+            </DetailSection>
+          </>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function DriftGroup({ label, keys }: { label: string; keys: string[] }) {
+  if (keys.length === 0) return null;
+  return (
+    <div className="configs-detail__drift-group">
+      <dt>{label}</dt>
+      <dd>
+        {keys.map((key) => (
+          <code key={key} className="configs-detail__drift-key">
+            {key}
+          </code>
+        ))}
+      </dd>
+    </div>
   );
 }

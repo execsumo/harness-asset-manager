@@ -1,39 +1,72 @@
+/* Design tokens.
+ *
+ * Themes: `data-theme` is written to <html> before first paint by the
+ * bootstrap script in index.html and kept in sync by lib/theme.tsx, so the
+ * palettes below key off that attribute alone — there is no
+ * prefers-color-scheme fallback to keep in step with them.
+ */
+
 :root {
-  --font-sans: "Inter", "SF Pro Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* Typeface — Geist for UI, Geist Mono for paths, keys, and code. Both are
+     self-hosted variable fonts (@fontsource-variable, imported in main.tsx)
+     so the app renders identically offline. */
+  --font-sans: "Geist Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 
-  /* Typography scale */
-  --font-size-xs: 0.72rem;
-  --font-size-sm: 0.84rem;
-  --font-size-md: 0.92rem;
-  --font-size-lg: 1.05rem;
-  --font-size-xl: 1.32rem;
-  --font-size-2xl: 2rem;
+  /* Type scale — 11 → 28px. Every font-size in the app resolves to one of
+     these; no raw rem values in component CSS. */
+  --font-size-3xs: 0.6875rem; /* 11px — caps micro-labels, tag pills */
+  --font-size-2xs: 0.75rem; /* 12px — counts, badges, table meta */
+  --font-size-xs: 0.8125rem; /* 13px — secondary text, descriptions */
+  --font-size-sm: 0.875rem; /* 14px — dense body, table cells, controls */
+  --font-size-md: 0.9375rem; /* 15px — body */
+  --font-size-lg: 1.0625rem; /* 17px — card and section headings */
+  --font-size-xl: 1.25rem; /* 20px — detail-sheet titles */
+  --font-size-2xl: 1.75rem; /* 28px — page titles */
 
-  color-scheme: dark;
+  /* Weights — Geist is variable, so these are exact axis positions. */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Line heights */
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  /* Letter spacing — display sizes tighten, caps labels open up. */
+  --tracking-tight: -0.02em;
+  --tracking-snug: -0.011em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.03em;
+  --tracking-caps: 0.06em;
 
   /* Surfaces */
   --color-bg: #0b0c0f;
-  --color-surface: #1c1d21;
-  --color-surface-raised: #24252a;
-  --color-surface-sunken: #15161a;
-  --color-sidebar-bg: #1a1b1f;
+  --color-surface: #16171b;
+  --color-surface-raised: #1f2025;
+  --color-surface-sunken: #121317;
+  --color-sidebar-bg: #121317;
 
   /* Borders */
-  --color-border: #2a2b2f;
+  --color-border: #26272c;
   --color-border-strong: #3a3b40;
 
   /* Text */
   --color-text: #e8e6e1;
-  --color-text-muted: #8a8680;
-  --color-text-subtle: #65625d;
-  --color-text-inverted: #ffffff;
+  --color-text-muted: #9a958d;
+  --color-text-subtle: #6f6c66;
+  --color-text-inverted: #0b0c0f;
 
-  /* Accent (Notion-ish dark-mode blue) */
-  --color-accent: #529cca;
+  /* Accent */
+  --color-accent: #6aa9d6;
   --color-accent-strong: #4184b0;
-  --color-accent-soft: rgba(82, 156, 202, 0.14);
-  --color-accent-softer: rgba(82, 156, 202, 0.08);
+  --color-accent-contrast: #0b0c0f;
+  --color-accent-soft: rgba(106, 169, 214, 0.16);
+  --color-accent-softer: rgba(106, 169, 214, 0.08);
 
   /* Selection highlight — warm amber to sit with the warm dark neutrals
      (the blue accent reads cold against this palette). Light themes mirror
@@ -44,16 +77,35 @@
 
   /* Status */
   --color-success: #6bc2a4;
-  --color-success-soft: rgba(107, 194, 164, 0.12);
+  --color-success-soft: rgba(107, 194, 164, 0.14);
   --color-danger: #f08d79;
   --color-danger-soft: rgba(240, 141, 121, 0.14);
   --color-warning: #f3c969;
-  --color-warning-soft: rgba(243, 201, 105, 0.16);
+  --color-warning-soft: rgba(243, 201, 105, 0.14);
+
+  /* Starred is its own affordance, not an accent or a status — it keeps the
+     same amber in both themes so a starred row reads identically. */
+  --color-star: #f59e0b;
+  --color-star-soft: rgba(245, 158, 11, 0.1);
+
+  /* Neutral wash that follows the theme's text colour — for skeletons,
+     hairlines, and other "slightly off the surface" fills. */
+  --color-overlay-subtle: color-mix(in srgb, var(--color-text) 8%, transparent);
+  --color-overlay-sheen: color-mix(in srgb, var(--color-text) 12%, transparent);
+
+  /* Focus ring — one definition, used by every interactive element. A crisp
+     1px edge plus a soft halo, so it stays legible on the page background, on
+     a card, and on a raised fill alike. */
+  --focus-ring: 0 0 0 1px var(--color-accent), 0 0 0 4px var(--color-accent-soft);
+  --focus-ring-danger: 0 0 0 1px var(--color-danger), 0 0 0 4px var(--color-danger-soft);
 
   /* Radii */
+  --radius-2xs: 3px; /* controls under ~16px, where 6px reads as a circle */
+  --radius-xs: 6px;
   --radius-sm: 8px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-pill: 999px;
 
   /* Spacing scale */
@@ -88,105 +140,61 @@
   --shadow-panel: 0 12px 28px rgba(0, 0, 0, 0.28);
   --shadow-lift: 0 10px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
 
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-medium: 200ms;
+
   /* Layout */
   --sidebar-width: 256px;
+  --page-max-width: 1200px;
+
+  color-scheme: dark;
 }
 
-/* System light theme preference if the user hasn't explicitly selected dark theme */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-
-    /* Surfaces */
-    --color-bg: #f8f5ed;
-    --color-surface: #ffffff;
-    --color-surface-raised: #ffffff;
-    --color-surface-sunken: #eae6db;
-    --color-sidebar-bg: #f2efe7;
-
-    /* Borders */
-    --color-border: #e2dccb;
-    --color-border-strong: #c8bfa6;
-
-    /* Text */
-    --color-text: #1f1f1c;
-    --color-text-muted: #6e6859;
-    --color-text-subtle: #9a8e72;
-    --color-text-inverted: #ffffff;
-
-    /* Accent (Brand Amber from logo) */
-    --color-accent: #c07204;
-    --color-accent-strong: #965303;
-    --color-accent-soft: rgba(192, 114, 4, 0.12);
-    --color-accent-softer: rgba(192, 114, 4, 0.06);
-
-    /* Selection highlight mirrors the brand amber accent in light themes. */
-    --color-highlight: #c07204;
-    --color-highlight-soft: rgba(192, 114, 4, 0.12);
-    --color-highlight-softer: rgba(192, 114, 4, 0.06);
-
-    /* Status */
-    --color-success: #0f6e56;
-    --color-success-soft: #e8f5ee;
-    --color-danger: #b14828;
-    --color-danger-soft: #f7e5da;
-    --color-warning: #9a8e72;
-    --color-warning-soft: #fbf9f4;
-
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(31, 31, 28, 0.05);
-    --shadow-md: 0 4px 12px rgba(31, 31, 28, 0.08);
-    --shadow-panel: 0 12px 28px rgba(31, 31, 28, 0.1);
-    --shadow-lift: 0 10px 32px rgba(31, 31, 28, 0.12), 0 2px 8px rgba(31, 31, 28, 0.06);
-
-    /* Scrollbars */
-    --scrollbar-track: rgba(0, 0, 0, 0.02);
-    --scrollbar-thumb: rgba(154, 142, 114, 0.3);
-    --scrollbar-thumb-hover: rgba(154, 142, 114, 0.5);
-    --scrollbar-thumb-active: rgba(154, 142, 114, 0.7);
-    --scrollbar-corner: #f8f5ed;
-  }
-}
-
-/* Explicit light theme setting */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  /* Surfaces */
+  /* Surfaces. `raised` is the fill for hover, active, and chip states, so it
+     has to be visible against all three of the page, the sidebar, and a white
+     card — hence a warm tint rather than the white it used to share with
+     `surface`, which made every hover state invisible inside a card. */
   --color-bg: #f8f5ed;
   --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-surface-sunken: #eae6db;
-  --color-sidebar-bg: #f2efe7;
+  --color-surface-raised: #efeadd;
+  --color-surface-sunken: #eae5d7;
+  --color-sidebar-bg: #f2eee5;
 
   /* Borders */
-  --color-border: #e2dccb;
+  --color-border: #e3ddcc;
   --color-border-strong: #c8bfa6;
 
   /* Text */
   --color-text: #1f1f1c;
-  --color-text-muted: #6e6859;
-  --color-text-subtle: #9a8e72;
+  --color-text-muted: #6b6558;
+  --color-text-subtle: #8d8677;
   --color-text-inverted: #ffffff;
 
-  /* Accent (Brand Amber from logo) */
-  --color-accent: #c07204;
-  --color-accent-strong: #965303;
-  --color-accent-soft: rgba(192, 114, 4, 0.12);
-  --color-accent-softer: rgba(192, 114, 4, 0.06);
+  /* Accent (brand amber from the logo) */
+  --color-accent: #b06a04;
+  --color-accent-strong: #8c4f03;
+  --color-accent-contrast: #ffffff;
+  --color-accent-soft: rgba(176, 106, 4, 0.12);
+  --color-accent-softer: rgba(176, 106, 4, 0.06);
 
   /* Selection highlight mirrors the brand amber accent in light themes. */
-  --color-highlight: #c07204;
-  --color-highlight-soft: rgba(192, 114, 4, 0.12);
-  --color-highlight-softer: rgba(192, 114, 4, 0.06);
+  --color-highlight: #b06a04;
+  --color-highlight-soft: rgba(176, 106, 4, 0.12);
+  --color-highlight-softer: rgba(176, 106, 4, 0.06);
 
-  /* Status */
+  /* Status — warning is a true amber here. It used to reuse the subtle-text
+     brown, which read as "disabled" rather than "needs attention". */
   --color-success: #0f6e56;
-  --color-success-soft: #e8f5ee;
+  --color-success-soft: rgba(15, 110, 86, 0.12);
   --color-danger: #b14828;
-  --color-danger-soft: #f7e5da;
-  --color-warning: #9a8e72;
-  --color-warning-soft: #fbf9f4;
+  --color-danger-soft: rgba(177, 72, 40, 0.12);
+  --color-warning: #97620a;
+  --color-warning-soft: rgba(151, 98, 10, 0.14);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(31, 31, 28, 0.05);

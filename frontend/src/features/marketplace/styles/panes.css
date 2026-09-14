@@ -16,7 +16,7 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.45;
+  line-height: var(--leading-snug);
   text-align: right;
   white-space: nowrap;
 }

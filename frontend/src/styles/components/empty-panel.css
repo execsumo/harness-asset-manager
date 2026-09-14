@@ -31,9 +31,9 @@
 
 .empty-panel__title {
   margin: 0;
-  font-size: 1.32rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--color-text);
   text-align: center;
 }
@@ -41,7 +41,7 @@
 .empty-panel__body {
   margin: var(--space-4) 0 var(--space-6);
   color: var(--color-text-muted);
-  line-height: 1.55;
+  line-height: var(--leading-normal);
   text-align: center;
 }
 
@@ -62,14 +62,14 @@
 .empty-panel__step-label {
   color: var(--color-accent);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 
 .empty-panel__step-copy {
   color: var(--color-text);
-  font-size: 0.92rem;
+  font-size: var(--font-size-md);
 }
 
 .empty-panel__actions {

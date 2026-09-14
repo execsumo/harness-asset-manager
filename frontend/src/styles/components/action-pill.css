@@ -25,8 +25,8 @@
   background: transparent;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.5;
-  font-weight: 500;
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
   white-space: nowrap;
@@ -41,7 +41,7 @@
 
 .action-pill:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-soft);
+  box-shadow: var(--focus-ring);
 }
 
 .action-pill:disabled {
@@ -101,7 +101,7 @@
 }
 
 .action-pill--danger:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-danger) 20%, transparent);
+  box-shadow: var(--focus-ring-danger);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -123,8 +123,8 @@
   background: transparent;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  line-height: 1.5;
-  font-weight: 500;
+  line-height: var(--leading-normal);
+  font-weight: var(--weight-medium);
   white-space: nowrap;
 }
 

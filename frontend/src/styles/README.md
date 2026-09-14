@@ -28,6 +28,36 @@ file in the import list cannot silently change which rule wins.
 | a cross-cutting helper class (e.g. `.muted-text`) | `styles/utilities.css` | `utilities` |
 | an emergency override | `styles/overrides.css` (create if missing) | `overrides` |
 
+## Tokens are the only source of scale values
+
+`tokens.css` owns every font size, weight, line height, letter spacing, radius,
+and focus ring in the app. Component CSS references them and never hardcodes a
+raw value — `font-size: 0.85rem` or `border-radius: 4px` in a feature file is a
+bug, not a style choice. The scales:
+
+| Group | Tokens |
+|---|---|
+| Size | `--font-size-3xs` (11px) → `--font-size-2xl` (28px) |
+| Weight | `--weight-regular` / `-medium` / `-semibold` / `-bold` |
+| Leading | `--leading-none` / `-tight` / `-snug` / `-normal` / `-relaxed` |
+| Tracking | `--tracking-tight` / `-snug` / `-normal` / `-wide` / `-caps` |
+| Radius | `--radius-2xs` (3px) → `--radius-xl`, plus `--radius-pill` |
+| Focus | `--focus-ring`, `--focus-ring-danger` |
+
+Use `--radius-2xs` for controls under ~16px; `--radius-xs` reads as a circle at
+that size.
+
+## Theming
+
+Both palettes key off `data-theme` on `<html>` alone. The attribute is written
+before first paint by the bootstrap script in `frontend/index.html` and kept in
+sync by `lib/theme.tsx`, so there is no `prefers-color-scheme` fallback to keep
+in step — do not add one.
+
+Light mode has a real elevation ramp (`sunken` → `bg` → `surface` → `raised`).
+`--color-surface-raised` is the hover/active/chip fill and must stay visible
+against the page, the sidebar, *and* a white card.
+
 ## File conventions
 
 - Wrap each file's contents in `@layer <layer-name> { … }`.
@@ -88,6 +118,8 @@ frontend/src/features/
     panes.css              # marketplace keep-mounted panes
   settings/styles/
     settings.css
+  configs/styles/
+    configs.css            # configs summary strip, table, and detail sheet
 
 frontend/src/components/
   detail/index.css         # shared detail-view skeleton styles (components layer)

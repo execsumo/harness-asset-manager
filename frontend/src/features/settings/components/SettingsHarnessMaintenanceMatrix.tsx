@@ -48,7 +48,7 @@ export function SettingsHarnessMaintenanceMatrix({
       </div>
       <div className="settings-maintenance__scroll">
         <table className="settings-maintenance__table">
-          <caption className="sr-only">{copy.heading}</caption>
+          <caption className="u-visually-hidden">{copy.heading}</caption>
           <thead>
             <tr>
               <th scope="col">Harness</th>

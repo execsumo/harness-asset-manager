@@ -44,10 +44,10 @@
   margin-left: var(--space-2);
   padding: 2px 7px;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-sans);
   font-size: 10px;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--tracking-wide);
   border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 36%, transparent);
   background: color-mix(in srgb, var(--color-warning, #f59e0b) 12%, transparent);
   color: var(--color-warning, #f59e0b);
@@ -91,7 +91,7 @@
   flex: 0 0 auto;
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: currentColor;
 }
 

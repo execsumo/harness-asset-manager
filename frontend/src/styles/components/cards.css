@@ -68,7 +68,7 @@
   justify-content: center;
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
   background: transparent;
   border: 1px solid var(--color-border-strong);
   opacity: 0.55;
@@ -102,10 +102,10 @@
 
 .skill-card__name {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--weight-semibold);
   color: var(--color-text);
-  letter-spacing: -0.005em;
+  letter-spacing: var(--tracking-snug);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -114,8 +114,8 @@
 .skill-card__description {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.88rem;
-  line-height: 1.5;
+  font-size: var(--font-size-sm);
+  line-height: var(--leading-normal);
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -126,11 +126,11 @@
   display: inline-flex;
   align-items: center;
   padding: 3px var(--space-2);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 0.72rem;
-  letter-spacing: 0.01em;
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-snug);
 }
 
 .skill-card__harness-row {
@@ -177,9 +177,9 @@
   justify-content: center;
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  border-radius: 4px;
+  font-size: var(--font-size-3xs);
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-xs);
 }
 
 .skill-card__harness-toggle-stack {
@@ -202,7 +202,7 @@
 
 .skill-card__harness-toggle:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent-soft);
+  box-shadow: var(--focus-ring);
   border-radius: var(--radius-xs);
 }
 
@@ -228,7 +228,7 @@
 .skill-card__harness-count {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }

@@ -15,6 +15,8 @@ const englishCommonCopy = {
     browseMarketplace: "Browse marketplace",
     openMarketplace: "Open Marketplace",
     reviewItems: "Review items",
+    star: "Star",
+    unstar: "Remove star",
   },
   nav: {
     primary: "Primary navigation",

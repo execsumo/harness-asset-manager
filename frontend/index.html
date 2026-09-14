@@ -3,11 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>Harness Asset Manager</title>
+    <title>HarnessAM</title>
+    <script>
+      // Paint the stored theme before first paint. Without this the app renders
+      // dark, then React's effect swaps to light one frame later.
+      (function () {
+        try {
+          var stored = localStorage.getItem("skillmgr.theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

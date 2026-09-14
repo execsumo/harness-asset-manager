@@ -143,7 +143,8 @@ const englishMcpCopy = {
       addTooltip: "Add this server to Harness Asset Manager",
       chooseTooltip: "Choose which config Harness Asset Manager should keep",
       adopt: "Adopt",
-      chooseConfigToAdopt: "Choose config to adopt",
+      // Sits in a fixed-width matrix column — the full sentence is in chooseTooltip.
+      chooseConfigToAdopt: "Choose config",
       identical: "Identical",
       differsAcrossHarnesses: "Differs across harnesses",
       foundInHarnesses: (count: number) => `Found in ${count} harness${count === 1 ? "" : "es"}`,

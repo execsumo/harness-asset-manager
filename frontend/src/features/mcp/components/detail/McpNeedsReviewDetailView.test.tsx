@@ -97,7 +97,7 @@ describe("McpNeedsReviewDetailView", () => {
     );
 
     expect(screen.queryByText(/Configurations differ across harnesses/i)).toBeNull();
-    const chooseButton = screen.getByRole("button", { name: "Choose config to adopt" });
+    const chooseButton = screen.getByRole("button", { name: "Choose config" });
     expect(chooseButton.closest(".mcp-detail-shell__footer")).not.toBeNull();
     expect(screen.queryByRole("heading", { name: "Config to adopt" })).toBeNull();
   });

@@ -29,7 +29,7 @@
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--font-size-md);
 }
 
 .filter-bar__search input::-webkit-search-cancel-button,
@@ -40,7 +40,7 @@
 .filter-bar__search input:focus-visible {
   outline: none;
   background: var(--color-surface-raised);
-  box-shadow: 0 0 0 2px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 .filter-bar__search input::placeholder {
@@ -68,7 +68,7 @@
   padding: 0;
   transform: translateY(-50%);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
   color: var(--color-text-muted);
   cursor: pointer;
@@ -86,7 +86,7 @@
 
 .filter-bar__clear:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 .pill-group {
@@ -124,7 +124,7 @@
 
 .pill-group__count {
   color: var(--color-text-subtle);
-  font-size: 0.76rem;
+  font-size: var(--font-size-2xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -146,7 +146,7 @@
   background: var(--color-surface);
   color: var(--color-text-muted);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
   cursor: pointer;
   transition: color 120ms ease, background 120ms ease;
 }
@@ -178,7 +178,7 @@
 
 .filter-trigger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -196,7 +196,7 @@
   color: var(--color-accent);
   font: inherit;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .harness-filter-chip__label {
@@ -211,7 +211,7 @@
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
   color: inherit;
   cursor: pointer;
@@ -229,7 +229,7 @@
 
 .harness-filter-chip__clear:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-accent-softer);
+  box-shadow: var(--focus-ring);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -262,7 +262,7 @@
   color: var(--color-text-muted);
   font: inherit;
   font-size: var(--font-size-xs);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   cursor: pointer;
   transition: all 120ms ease;
 }
@@ -277,7 +277,7 @@
   background: var(--color-accent-softer);
   color: var(--color-accent);
   border-color: var(--color-accent-soft);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .skill-tag-chip--starred.skill-tag-chip--active {
@@ -304,8 +304,8 @@
   border-radius: var(--radius-pill);
   background: var(--color-surface-sunken);
   color: inherit;
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: var(--font-size-3xs);
+  font-weight: var(--weight-semibold);
   opacity: 0.85;
 }
 

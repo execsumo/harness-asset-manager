@@ -288,7 +288,7 @@ describe("McpServerMatrixView", () => {
     });
 
     expect(screen.getByText("Differs across harnesses")).toBeInTheDocument();
-    const chooseButton = screen.getByRole("button", { name: /^Choose config to adopt$/ });
+    const chooseButton = screen.getByRole("button", { name: /^Choose config$/ });
     expect(chooseButton).toBeInTheDocument();
     fireEvent.click(chooseButton);
     expect(onChooseConfigToAdopt).toHaveBeenCalledWith("context7");

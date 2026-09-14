@@ -56,7 +56,7 @@
   align-items: center;
   gap: var(--space-2);
   color: var(--color-text-muted);
-  font-size: 0.84rem;
+  font-size: var(--font-size-sm);
 }
 
 .page-header__breadcrumb span[data-current="true"] {
@@ -69,9 +69,9 @@
 
 .page-header__title {
   margin: var(--space-3) 0 0;
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
   color: var(--color-text);
 }
 
@@ -79,7 +79,7 @@
   margin: var(--space-3) 0 0;
   max-width: 56ch;
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .page-header__actions {

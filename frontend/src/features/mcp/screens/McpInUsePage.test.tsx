@@ -878,7 +878,7 @@ describe("McpInUsePage", () => {
     renderPage("/mcp?status=untracked");
     await waitFor(() => expect(screen.getByText("Context7")).toBeInTheDocument());
     expect(screen.getByText(/Differs across harnesses/)).toBeInTheDocument();
-    const chooseButton = screen.getByRole("button", { name: /^Choose config to adopt$/ });
+    const chooseButton = screen.getByRole("button", { name: /^Choose config$/ });
     fireEvent.click(chooseButton);
 
     await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());

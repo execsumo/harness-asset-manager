@@ -1,0 +1,265 @@
+@layer features {
+
+/* -------------------------------------------------------------------------- */
+/* Summary strip — counts that double as the status filter                     */
+/* -------------------------------------------------------------------------- */
+
+.configs-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.configs-summary__tile {
+  --configs-summary-tone: var(--color-text-muted);
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.configs-summary__tile[data-tone="accent"] {
+  --configs-summary-tone: var(--color-accent);
+}
+
+.configs-summary__tile[data-tone="warning"] {
+  --configs-summary-tone: var(--color-warning);
+}
+
+.configs-summary__tile:hover {
+  border-color: color-mix(in srgb, var(--configs-summary-tone) 42%, var(--color-border));
+}
+
+.configs-summary__tile[data-active="true"] {
+  border-color: var(--configs-summary-tone);
+  background: color-mix(in srgb, var(--configs-summary-tone) 8%, var(--color-surface));
+}
+
+.configs-summary__tile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.configs-summary__value {
+  color: var(--configs-summary-tone);
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-none);
+}
+
+/* A zero is not news — colouring it draws the eye to the one tile with
+   nothing in it. */
+.configs-summary__value[data-empty="true"] {
+  color: var(--color-text-subtle);
+}
+
+.configs-summary__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Nothing to filter to — stays readable, stops looking clickable. */
+.configs-summary__tile:disabled {
+  cursor: default;
+}
+
+.configs-summary__tile:disabled:hover {
+  border-color: var(--color-border);
+}
+
+@media (max-width: 680px) {
+  .configs-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Table                                                                       */
+/* -------------------------------------------------------------------------- */
+
+.configs-table__th--status,
+.configs-table__cell--status {
+  width: 132px;
+}
+
+.configs-table__th--captured,
+.configs-table__cell--captured {
+  width: 148px;
+}
+
+.configs-table__th--actions,
+.configs-table__cell--actions {
+  width: 148px;
+  padding-right: var(--space-4);
+  text-align: right;
+}
+
+.configs-table__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.configs-table__identity-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* An unmanaged harness is still detected — desaturate its mark rather than
+   dimming the whole row, which made the row text hard to read. */
+.configs-table__avatar--idle .harness-avatar__logo {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.matrix-table__row:hover .configs-table__avatar--idle .harness-avatar__logo {
+  filter: none;
+  opacity: 1;
+}
+
+.configs-table__path {
+  display: block;
+  color: var(--color-text-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  line-height: var(--leading-snug);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.configs-table__keys {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-medium);
+}
+
+.configs-table__keys[data-empty="true"] {
+  color: var(--color-text-subtle);
+  font-weight: var(--weight-regular);
+}
+
+.configs-table__captured {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* The row action only earns full contrast once the row is in play — otherwise
+   six pills compete with the harness names for attention. */
+.configs-table__cell--actions .action-pill {
+  opacity: 0.62;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.matrix-table__row:hover .configs-table__cell--actions .action-pill,
+.matrix-table__row:focus-within .configs-table__cell--actions .action-pill {
+  opacity: 1;
+}
+
+@media (max-width: 900px) {
+  .configs-table__th--captured,
+  .configs-table__cell--captured {
+    display: none;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Detail sheet                                                                */
+/* -------------------------------------------------------------------------- */
+
+.configs-detail__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.configs-detail__meta-item {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.configs-detail__path {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.configs-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.configs-detail__drift {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.configs-detail__drift-group {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.configs-detail__drift-group dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.configs-detail__drift-group dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.configs-detail__drift-key {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text);
+  font-size: var(--font-size-2xs);
+}
+
+.configs-detail__preferences {
+  max-height: 420px;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-size: var(--font-size-2xs);
+  line-height: var(--leading-relaxed);
+  overflow: auto;
+  tab-size: 2;
+}
+
+@media (max-width: 680px) {
+  .configs-detail__drift-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+}

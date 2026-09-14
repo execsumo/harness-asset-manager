@@ -9,11 +9,11 @@
   min-height: 22px;
   padding: 0 var(--space-2);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--color-surface-raised);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.06em;
+  font-size: var(--font-size-3xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
   color: var(--color-text);
 }

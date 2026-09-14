@@ -26,6 +26,7 @@ import {
 import { Link, NavLink, useLocation } from "react-router-dom";
 
 import { useSidebarModel, type SidebarIconKey } from "../app/capability-registry";
+import { AppBrand } from "./AppBrand";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
 import { useTheme } from "../lib/theme";
@@ -43,8 +44,8 @@ export function Sidebar({ onRefresh, refreshPending }: SidebarProps) {
   return (
     <aside className="sidebar ui-scrollbar--thin" aria-label={common.nav.primary}>
       <div className="sidebar__brand">
-        <Link to="/overview" className="sidebar__brand-name">
-          harness-asset-manager
+        <Link to="/overview" className="sidebar__brand-name" aria-label="HarnessAM — overview">
+          <AppBrand />
         </Link>
       </div>
 

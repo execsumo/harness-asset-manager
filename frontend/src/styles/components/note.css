@@ -1,18 +1,56 @@
 @layer components {
 
+/* In-body highlight surface for a detail sheet: a caveat, a drift report, a
+   destructive-cleanup offer. Tone sets the border and wash; structure
+   (title / body / actions) is optional. */
 .detail-note {
+  --detail-note-tone: var(--color-warning);
   margin: 0;
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--color-warning) 18%, var(--color-border));
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--detail-note-tone) 24%, var(--color-border));
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-warning-soft) 72%, transparent);
+  background: color-mix(in srgb, var(--detail-note-tone) 9%, transparent);
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.45;
+  line-height: var(--leading-snug);
+}
+
+.detail-note--danger {
+  --detail-note-tone: var(--color-danger);
+}
+
+.detail-note--info {
+  --detail-note-tone: var(--color-accent);
 }
 
 .detail-note strong {
   color: var(--color-text);
+}
+
+.detail-note__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-snug);
+}
+
+.detail-note__body > :first-child {
+  margin-top: 0;
+}
+
+.detail-note__body > :last-child {
+  margin-bottom: 0;
+}
+
+.detail-note__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 }
