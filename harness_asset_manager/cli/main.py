@@ -128,6 +128,12 @@ def add_server_options(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="HTTPS port to publish on the tailnet. Defaults to $HAM_TAILNET_PORT or 7443.",
     )
+    parser.add_argument(
+        "--hermes-compat",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Auto-install the Hermes compatibility sidecar on startup (best-effort). Disable with --no-hermes-compat.",
+    )
 
 
 def normalize_argv(argv: list[str] | None) -> list[str]:
@@ -237,6 +243,7 @@ def serve_command(args: argparse.Namespace) -> int:
         api_token=token,
         tailnet=args.tailnet,
         tailnet_port=resolved_tailnet_port(args, env),
+        hermes_compat=args.hermes_compat,
     )
 
 
@@ -281,6 +288,7 @@ def start_command(args: argparse.Namespace) -> int:
         *state_dir_args(args.state_dir),
         *(["--tailnet"] if args.tailnet else ["--no-tailnet"]),
         *tailnet_port_args(args.tailnet_port),
+        *(["--hermes-compat"] if args.hermes_compat else ["--no-hermes-compat"]),
     )
     try:
         with log_path.open("ab") as log_file:

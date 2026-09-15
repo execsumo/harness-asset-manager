@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-Action = Literal["link", "skip", "conflict"]
+Action = Literal["link", "relink", "skip", "conflict"]
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class BootstrapAction:
     # be worse than showing none.
     target: Path | None
     binding_target: str | None = None
+    legacy_targets: list[Path] | None = None
     reason: str | None = None  # machine-readable skip/conflict code
     detail: str | None = None  # human sentence for the UI
 

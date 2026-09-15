@@ -295,23 +295,54 @@ class BootstrapPlanner:
                     )
                     continue
 
+                legacy_targets: list[Path] = []
+                if adapter is not None and adapter.status().installed:
+                    try:
+                        managed_root = adapter.status().managed_root
+                        if managed_root.exists():
+                            for p in managed_root.rglob("*"):
+                                if p.is_symlink():
+                                    try:
+                                        if p.resolve() == store_pkg.resolve() and p != target:
+                                            legacy_targets.append(p)
+                                    except OSError:
+                                        pass
+                    except OSError:
+                        pass
+
                 # 4. Target already the correct binding
                 if target.is_symlink():
                     try:
                         if target.resolve() == store_pkg.resolve():
-                            actions.append(
-                                BootstrapAction(
-                                    family="skills",
-                                    ref=ref,
-                                    display_name=display_name,
-                                    harness=harness,
-                                    binding_target=str(binding),
-                                    action="skip",
-                                    target=target,
-                                    reason="already-linked",
-                                    detail=f"Target {target} is already bound to store asset",
+                            if legacy_targets:
+                                actions.append(
+                                    BootstrapAction(
+                                        family="skills",
+                                        ref=ref,
+                                        display_name=display_name,
+                                        harness=harness,
+                                        binding_target=str(binding),
+                                        action="relink",
+                                        target=target,
+                                        legacy_targets=legacy_targets,
+                                        reason="legacy-bindings-present",
+                                        detail=f"Target {target} is correct, but legacy bindings remain and will be removed",
+                                    )
                                 )
-                            )
+                            else:
+                                actions.append(
+                                    BootstrapAction(
+                                        family="skills",
+                                        ref=ref,
+                                        display_name=display_name,
+                                        harness=harness,
+                                        binding_target=str(binding),
+                                        action="skip",
+                                        target=target,
+                                        reason="already-linked",
+                                        detail=f"Target {target} is already bound to store asset",
+                                    )
+                                )
                             continue
                     except OSError:
                         pass
@@ -339,17 +370,33 @@ class BootstrapPlanner:
                     continue
 
                 # 6. Otherwise
-                actions.append(
-                    BootstrapAction(
-                        family="skills",
-                        ref=ref,
-                        display_name=display_name,
-                        harness=harness,
-                        binding_target=str(binding),
-                        action="link",
-                        target=target,
+                if not legacy_targets:
+                    actions.append(
+                        BootstrapAction(
+                            family="skills",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            binding_target=str(binding),
+                            action="link",
+                            target=target,
+                        )
                     )
-                )
+                else:
+                    actions.append(
+                        BootstrapAction(
+                            family="skills",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            binding_target=str(binding),
+                            action="relink",
+                            target=target,
+                            legacy_targets=legacy_targets,
+                            reason="missing-binding",
+                            detail=f"Target {target} is missing and will be created",
+                        )
+                    )
 
         return actions
 

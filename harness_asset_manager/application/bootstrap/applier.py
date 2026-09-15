@@ -196,6 +196,12 @@ class BootstrapApplier:
         # Re-check on disk immediately before acting
         already_linked = self._check_already_linked(action, target)
         if already_linked:
+            if action.legacy_targets:
+                for legacy in action.legacy_targets:
+                    try:
+                        legacy.unlink(missing_ok=True)
+                    except OSError:
+                        pass
             return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
@@ -240,6 +246,13 @@ class BootstrapApplier:
                 self._apply_slash_command(action.ref, action.harness)
             else:
                 raise ValueError(f"Unknown placement family: {action.family}")
+
+            if action.legacy_targets:
+                for legacy in action.legacy_targets:
+                    try:
+                        legacy.unlink(missing_ok=True)
+                    except OSError:
+                        pass
 
             record_bootstrap(
                 self.mutation_audit,
