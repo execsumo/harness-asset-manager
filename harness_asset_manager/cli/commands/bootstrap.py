@@ -44,6 +44,9 @@ def _print_plan_table(plan: BootstrapPlan) -> None:
     for a in plan.actions:
         if a.action == "link":
             detail = str(a.target)
+        elif a.action == "relink":
+            stale = len(a.legacy_targets or ())
+            detail = f"{a.target} (clears {stale} stale binding{'' if stale == 1 else 's'})"
         elif a.action == "conflict":
             detail = f"{a.target} ({a.detail or a.reason})"
         else:
@@ -51,9 +54,10 @@ def _print_plan_table(plan: BootstrapPlan) -> None:
         rows.append([a.family, a.display_name, a.harness, a.action.upper(), detail])
 
     print_table(headers, rows)
+    relinks = len(plan.relinks)
     print(
-        f"\nPlan: {len(plan.linkable)} to link, {len(plan.conflicts)} conflict(s), "
-        f"{len(plan.skipped)} skipped."
+        f"\nPlan: {len(plan.linkable) - relinks} to link, {relinks} to relink, "
+        f"{len(plan.conflicts)} conflict(s), {len(plan.skipped)} skipped."
     )
 
 
