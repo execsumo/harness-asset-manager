@@ -1,6 +1,6 @@
 {
   "include": ["harness_asset_manager", "scripts"],
-  "exclude": ["**/__pycache__", "**/node_modules"],
+  "exclude": ["**/__pycache__", "**/node_modules", "harness_asset_manager/data/hermes"],
   "executionEnvironments": [
     {
       "root": ".",
