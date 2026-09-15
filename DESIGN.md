@@ -232,6 +232,43 @@ should change.
 confirmation footers where a binary Cancel | Confirm should carry more weight.
 Do not introduce a third button style.
 
+**Detail action footers.** Every asset-family detail view presents actions in a
+single sticky footer using `DetailActionFooter` (`.detail-action-footer`). No
+per-feature footer classes, no cloned rule bodies, and no action rows placed
+inside the scrolling sheet body (e.g. Delete must always remain reachable in the
+sticky footer).
+
+All asset families adhere to the canonical action set, fixed order, and consistent
+visual tone:
+
+| # | Action | Class | Shown when |
+|---|---|---|---|
+| 1 | `Add to HarnessAM` | `action-pill action-pill--md action-pill--accent` | asset is unadopted and adoptable |
+| 2 | `Update` | `action-pill action-pill--md` | family supports it (only skills today) |
+| 3 | `Remove from HarnessAM` | `action-pill action-pill--md` | asset is adopted |
+| 4 | `Delete` | `action-pill action-pill--md action-pill--danger` | a deletable harness copy exists |
+
+Families only vary in which rows they show depending on capability and state.
+`Remove from HarnessAM` is a plain pill with a tooltip explaining the effect and a
+confirm dialog before triggering.
+
+**Product short name.** Buttons and tight chrome controls use the abbreviated
+product name `"HarnessAM"` (e.g. `"Add to HarnessAM"`, `"Remove from HarnessAM"`).
+Prose, titles, headings, and explanatory tooltips or dialog descriptions use the
+full name `"Harness Asset Manager"`.
+
+**Selection and bulk actions.** Every row in every asset-family matrix is
+selectable via row checkboxes. Selection does not restrict which rows can be
+checked; instead, bulk action bars partition a mixed selection into eligible and
+ineligible subsets and display honest counts for each action (e.g. showing the
+number of adoptable or deletable items among those selected).
+
+**Adding an asset family.** Any new asset family must wire the shared
+`DetailActionFooter` and adhere to the canonical action table and matrix
+selection contract. Do not hand-roll per-feature footer chrome or customized
+selection behavior.
+
+
 **Status.** `.ui-status-badge` is the uppercase mono badge for state
 (`success` / `warning` / `neutral` / `muted`). `.card-status-pill` is its
 ghost-pill cousin, for when a status sits in a row of action pills and should
