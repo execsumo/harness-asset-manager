@@ -64,18 +64,44 @@ def _patch_skill_manager_tool(module):
 
 
 def _patch_skills_tool(module):
+    """Stop a directory-symlinked package tripping the trusted-directory warning.
+
+    ``_log_security_warnings`` asks ``_under_any``, which compares only the
+    *resolved* path. A package that is a directory symlink resolves outside the
+    skills root, so a skill sitting exactly where it belongs gets warned about --
+    noise a native package never produces.
+
+    Patch the warning function ONLY. ``_under_any`` itself also backs the
+    project-skill quarantine gate and ``_collect_skill_candidates``; relaxing it
+    globally would weaken a real security control. Trust is decided by the
+    lexical path being under a trusted root -- the same root the skill was
+    discovered through -- never by pattern-matching a path string.
+    """
     try:
-        orig_under_any = module._under_any
-        def _under_any(path, dirs):
-            if orig_under_any(path, dirs):
-                return True
-            try:
-                resolved = path.resolve()
-                # Accept if it's within a harnessam skills store
-                return any(part in (".harnessam", "harnessam") for part in resolved.parts)
-            except Exception:
-                return False
-        module._under_any = _under_any
+        from contextlib import suppress
+
+        injection_patterns = module._INJECTION_PATTERNS
+        logger = module.logger
+
+        def _log_security_warnings(name, skill_md, content, all_dirs, active_skills_dir):
+            lexically_trusted = any(
+                skill_md.is_relative_to(d) for d in (active_skills_dir, *all_dirs)
+            )
+            resolved_trusted = [active_skills_dir.resolve()]
+            with suppress(Exception):
+                resolved_trusted.extend(d.resolve() for d in all_dirs)
+            warnings = []
+            if not lexically_trusted and not module._under_any(skill_md, resolved_trusted):
+                warnings.append(
+                    "skill file is outside the trusted skills directory "
+                    f"(~/.hermes/skills/): {skill_md}"
+                )
+            if any(p in content.lower() for p in injection_patterns):
+                warnings.append("skill content contains patterns that may indicate prompt injection")
+            if warnings:
+                logger.warning("Skill security warning for '%s': %s", name, "; ".join(warnings))
+
+        module._log_security_warnings = _log_security_warnings
     except Exception:
         pass
 
