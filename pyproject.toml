@@ -49,7 +49,7 @@ version = { attr = "harness_asset_manager.__version__" }
 include = ["harness_asset_manager*"]
 
 [tool.setuptools.package-data]
-harness_asset_manager = ["VERSION", "data/templates/*"]
+harness_asset_manager = ["VERSION", "data/templates/*", "data/hermes/*"]
 
 # Static analysis -------------------------------------------------------------
 # Ruff is the backend lint gate (per RECOMMENDATIONS.md §1.2). We adopt the
@@ -64,6 +64,9 @@ harness_asset_manager = ["VERSION", "data/templates/*"]
 # follow-up once the deferred cleanup lands.
 [tool.ruff]
 target-version = "py311"
+exclude = [
+    "harness_asset_manager/data/hermes/*",
+]
 
 [tool.ruff.lint]
 select = ["I", "F"]

@@ -88,6 +88,51 @@ def _is_slash_harness_installed(kernel: HarnessKernelService, harness: str) -> b
     return _is_slash_detected(kernel, definition, binding)
 
 
+def _resolved_key(path: Path) -> str:
+    """Identity for comparing a link's destination to a store package."""
+    try:
+        return str(path.resolve())
+    except OSError:
+        return str(path)
+
+
+def _links_to(adapter, store_key: str, cache: dict[Path, dict[str, list[Path]]]) -> list[Path]:
+    """Symlinks under *adapter*'s managed root that resolve to *store_key*.
+
+    Each managed root is walked once and memoised in *cache*; the index is keyed by
+    resolved destination so a package lookup is a dict hit rather than another walk.
+
+    Only symlinks are indexed, which is what makes the caller's cleanup safe: a native
+    harness-owned skill is a real directory and can never appear here.
+    """
+    if adapter is None:
+        return []
+    try:
+        status = adapter.status()
+        if not status.installed:
+            return []
+        managed_root = status.managed_root
+    except OSError:
+        return []
+
+    index = cache.get(managed_root)
+    if index is None:
+        index = {}
+        try:
+            if managed_root.exists():
+                for candidate in managed_root.rglob("*"):
+                    if not candidate.is_symlink():
+                        continue
+                    try:
+                        index.setdefault(str(candidate.resolve()), []).append(candidate)
+                    except OSError:
+                        continue
+        except OSError:
+            pass
+        cache[managed_root] = index
+    return index.get(store_key, [])
+
+
 class BootstrapPlanner:
     """Computes the new-device bootstrap plan pure with respect to mutation.
 
@@ -167,6 +212,34 @@ class BootstrapPlanner:
         )
         return BootstrapPlan(actions=sorted_actions)
 
+    def _skill_binding_values(
+        self,
+        entry,
+        store_key: str,
+        enabled_harnesses: set[str],
+        link_index: dict[Path, dict[str, list[Path]]],
+    ) -> list[str]:
+        """Recorded intent for *entry*, plus any harness that is live-bound to it today.
+
+        ``enabledHarnesses`` is the portable record, but it only covers bindings made
+        since HAM started writing it. Bindings created by older versions are real and
+        live yet absent from the manifest, so planning from the manifest alone leaves
+        them unnormalised forever — invisible to the very pass meant to tidy them.
+
+        Observing the filesystem closes that: a symlink under a harness's managed root
+        that resolves to this package *is* an enabled binding, whatever the manifest
+        says. Observation only ever adds a harness, never drops recorded intent, so a
+        recorded-but-unlinked binding is still planned as a ``link``.
+        """
+        recorded = list(entry.enabled_harnesses)
+        seen = {BindingTarget.parse(value).harness for value in recorded}
+        observed = []
+        for harness in sorted(enabled_harnesses - seen):
+            adapter = self.skills_read_models.find_adapter(harness)
+            if _links_to(adapter, store_key, link_index):
+                observed.append(harness)
+        return [*recorded, *observed]
+
     def _plan_skills(self) -> list[BootstrapAction]:
         actions: list[BootstrapAction] = []
         try:
@@ -175,13 +248,19 @@ class BootstrapPlanner:
             return []
 
         enabled_harnesses_in_settings = set(self.skills_read_models.enabled_harnesses())
+        # One walk per managed root, shared by every package. Scanning inside the
+        # per-(package, harness) loop re-read the same trees once per manifest entry.
+        link_index: dict[Path, dict[str, list[Path]]] = {}
 
         for entry in manifest.entries:
             ref = f"shared:{entry.package_dir}"
             display_name = entry.declared_name or entry.package_dir
             store_pkg = self.skills_store.root / entry.package_dir
+            store_key = _resolved_key(store_pkg)
 
-            for binding_value in entry.enabled_harnesses:
+            for binding_value in self._skill_binding_values(
+                entry, store_key, enabled_harnesses_in_settings, link_index
+            ):
                 binding = BindingTarget.parse(binding_value)
                 harness = binding.harness
 
@@ -238,7 +317,14 @@ class BootstrapPlanner:
                 )
                 if target is None and adapter is not None:
                     try:
-                        target = adapter._binding_path(entry.package_dir)
+                        # The CANONICAL placement, deliberately not `_binding_path`.
+                        # `_binding_path` returns an existing link in whatever category
+                        # it already occupies, which keeps legacy layouts readable — the
+                        # right answer for reads, the wrong one here. Bootstrap is the
+                        # pass that tidies placement, so it aims at the canonical target
+                        # and lets an off-category link become a `legacy_target`, turning
+                        # the action into `relink` instead of a no-op `skip`.
+                        target = adapter._default_binding_path(entry.package_dir)
                     except Exception:
                         target = default_target
                 elif target is None:
@@ -295,23 +381,45 @@ class BootstrapPlanner:
                     )
                     continue
 
+                legacy_targets = [
+                    p
+                    for p in _links_to(adapter, store_key, link_index)
+                    if p != target
+                ]
+
                 # 4. Target already the correct binding
                 if target.is_symlink():
                     try:
                         if target.resolve() == store_pkg.resolve():
-                            actions.append(
-                                BootstrapAction(
-                                    family="skills",
-                                    ref=ref,
-                                    display_name=display_name,
-                                    harness=harness,
-                                    binding_target=str(binding),
-                                    action="skip",
-                                    target=target,
-                                    reason="already-linked",
-                                    detail=f"Target {target} is already bound to store asset",
+                            if legacy_targets:
+                                actions.append(
+                                    BootstrapAction(
+                                        family="skills",
+                                        ref=ref,
+                                        display_name=display_name,
+                                        harness=harness,
+                                        binding_target=str(binding),
+                                        action="relink",
+                                        target=target,
+                                        legacy_targets=legacy_targets,
+                                        reason="legacy-bindings-present",
+                                        detail=f"Target {target} is correct, but legacy bindings remain and will be removed",
+                                    )
                                 )
-                            )
+                            else:
+                                actions.append(
+                                    BootstrapAction(
+                                        family="skills",
+                                        ref=ref,
+                                        display_name=display_name,
+                                        harness=harness,
+                                        binding_target=str(binding),
+                                        action="skip",
+                                        target=target,
+                                        reason="already-linked",
+                                        detail=f"Target {target} is already bound to store asset",
+                                    )
+                                )
                             continue
                     except OSError:
                         pass
@@ -339,17 +447,33 @@ class BootstrapPlanner:
                     continue
 
                 # 6. Otherwise
-                actions.append(
-                    BootstrapAction(
-                        family="skills",
-                        ref=ref,
-                        display_name=display_name,
-                        harness=harness,
-                        binding_target=str(binding),
-                        action="link",
-                        target=target,
+                if not legacy_targets:
+                    actions.append(
+                        BootstrapAction(
+                            family="skills",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            binding_target=str(binding),
+                            action="link",
+                            target=target,
+                        )
                     )
-                )
+                else:
+                    actions.append(
+                        BootstrapAction(
+                            family="skills",
+                            ref=ref,
+                            display_name=display_name,
+                            harness=harness,
+                            binding_target=str(binding),
+                            action="relink",
+                            target=target,
+                            legacy_targets=legacy_targets,
+                            reason="missing-binding",
+                            detail=f"Target {target} is missing and will be created",
+                        )
+                    )
 
         return actions
 

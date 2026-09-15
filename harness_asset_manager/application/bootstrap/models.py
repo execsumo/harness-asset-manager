@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-Action = Literal["link", "skip", "conflict"]
+Action = Literal["link", "relink", "skip", "conflict"]
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class BootstrapAction:
     # be worse than showing none.
     target: Path | None
     binding_target: str | None = None
+    legacy_targets: list[Path] | None = None
     reason: str | None = None  # machine-readable skip/conflict code
     detail: str | None = None  # human sentence for the UI
 
@@ -50,7 +51,14 @@ class BootstrapPlan:
 
     @property
     def linkable(self) -> tuple[BootstrapAction, ...]:
-        return tuple(action for action in self.actions if action.action == "link")
+        """Everything apply acts on. A ``relink`` belongs here: it creates the canonical
+        link exactly like a ``link`` does, and additionally clears the stale ones. Leaving
+        it out listed relinks in the plan and then silently never applied them."""
+        return tuple(action for action in self.actions if action.action in ("link", "relink"))
+
+    @property
+    def relinks(self) -> tuple[BootstrapAction, ...]:
+        return tuple(action for action in self.actions if action.action == "relink")
 
     @property
     def conflicts(self) -> tuple[BootstrapAction, ...]:
@@ -64,6 +72,7 @@ class BootstrapPlan:
         return {
             "actions": [action.to_dict() for action in self.actions],
             "linkableCount": len(self.linkable),
+            "relinkCount": len(self.relinks),
             "conflictCount": len(self.conflicts),
             "skippedCount": len(self.skipped),
             "totalCount": len(self.actions),

@@ -44,6 +44,9 @@ def _print_plan_table(plan: BootstrapPlan) -> None:
     for a in plan.actions:
         if a.action == "link":
             detail = str(a.target)
+        elif a.action == "relink":
+            stale = len(a.legacy_targets or ())
+            detail = f"{a.target} (clears {stale} stale binding{'' if stale == 1 else 's'})"
         elif a.action == "conflict":
             detail = f"{a.target} ({a.detail or a.reason})"
         else:
@@ -51,9 +54,10 @@ def _print_plan_table(plan: BootstrapPlan) -> None:
         rows.append([a.family, a.display_name, a.harness, a.action.upper(), detail])
 
     print_table(headers, rows)
+    relinks = len(plan.relinks)
     print(
-        f"\nPlan: {len(plan.linkable)} to link, {len(plan.conflicts)} conflict(s), "
-        f"{len(plan.skipped)} skipped."
+        f"\nPlan: {len(plan.linkable) - relinks} to link, {relinks} to relink, "
+        f"{len(plan.conflicts)} conflict(s), {len(plan.skipped)} skipped."
     )
 
 
@@ -66,6 +70,15 @@ def run_bootstrap(container: BackendContainer, args: argparse.Namespace) -> int:
         else:
             _print_plan_table(plan)
         return 0
+
+    # Bootstrap is the "initialise this device" action, so it is where the Hermes
+    # compatibility sidecar belongs for a user who never starts the server. Serve
+    # applies it too; both are best-effort and a no-op when it is already current.
+    # Deliberately not done while building the container: every CLI read would
+    # then write to the Hermes virtualenv.
+    from harness_asset_manager.runtime.hermes_compat import apply_hermes_compat
+
+    apply_hermes_compat(container.hermes_root)
 
     to_apply = list(plan.linkable)
     if getattr(args, "include_conflicts", False):

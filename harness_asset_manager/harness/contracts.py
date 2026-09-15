@@ -213,6 +213,7 @@ class HarnessDefinition:
     logo_key: str | None
     install_probe: str
     support_tier: SupportTier = "best_effort"
+    family_support_tiers: Mapping[FamilyKey, SupportTier] = field(default_factory=dict)
     bindings: Mapping[FamilyKey, BindingProfile] = field(default_factory=dict)
 
     def supports_family(self, family: FamilyKey) -> bool:
@@ -220,6 +221,12 @@ class HarnessDefinition:
 
     def binding_for(self, family: FamilyKey) -> BindingProfile | None:
         return self.bindings.get(family)
+
+    def support_tier_for(self, family: FamilyKey) -> SupportTier:
+        return self.family_support_tiers.get(family, self.support_tier)
+
+    def is_core_for(self, family: FamilyKey) -> bool:
+        return self.support_tier_for(family) == "core"
 
     @property
     def is_core(self) -> bool:

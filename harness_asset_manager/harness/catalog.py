@@ -117,7 +117,7 @@ def supported_harness_ids() -> tuple[str, ...]:
     return tuple(definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS)
 
 
-def core_harness_ids() -> tuple[str, ...]:
+def core_harness_ids(family: FamilyKey | None = None) -> tuple[str, ...]:
     """The harnesses this tool is built for — see ``SupportTier``.
 
     Derived from the catalog rather than listed anywhere else, so promoting or
@@ -125,7 +125,8 @@ def core_harness_ids() -> tuple[str, ...]:
     the release gates, the coverage ratchet, and the docs follow.
     """
     return tuple(
-        definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS if definition.is_core
+        definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS
+        if definition.is_core or (family is not None and definition.family_support_tiers and definition.family_support_tiers.get(family) == "core")
     )
 
 
@@ -580,6 +581,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         logo_key="hermes",
         install_probe="hermes",
         support_tier="best_effort",
+        family_support_tiers={"skills": "core"},
         bindings={
             "configs": ConfigSubtreeBindingProfile(
                 config_path_resolver=_hermes_config_path,

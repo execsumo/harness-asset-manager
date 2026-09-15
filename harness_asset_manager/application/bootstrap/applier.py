@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,6 +16,8 @@ from harness_asset_manager.harness.contracts import CommandFileBindingProfile
 from harness_asset_manager.hashing import hash_file, hash_text
 
 from .models import BootstrapAction, BootstrapApplyResult
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from harness_asset_manager.application import BackendContainer
@@ -184,6 +187,19 @@ class BootstrapApplier:
             return self._apply_config_merge_one(action, allow_conflicts=allow_conflicts)
         raise ValueError(f"Unknown family: {action.family}")
 
+    def _unlink_legacy_targets(self, action: BootstrapAction) -> None:
+        """Drop the stale bindings recorded on *action*.
+
+        The planner only ever records a path here that is a symlink resolving to the
+        same store package, so this cannot remove harness-owned content. Failures are
+        tolerated: a stale link we could not delete is untidy, never incorrect.
+        """
+        for legacy in action.legacy_targets or ():
+            try:
+                legacy.unlink(missing_ok=True)
+            except OSError:
+                logger.debug("could not remove stale binding %s", legacy, exc_info=True)
+
     def _apply_placement_one(
         self,
         action: BootstrapAction,
@@ -196,6 +212,7 @@ class BootstrapApplier:
         # Re-check on disk immediately before acting
         already_linked = self._check_already_linked(action, target)
         if already_linked:
+            self._unlink_legacy_targets(action)
             return BootstrapApplyResult(
                 family=action.family,
                 ref=action.ref,
@@ -228,6 +245,16 @@ class BootstrapApplier:
 
         # Execute the family-specific primitive
         try:
+            # A relink must clear the stale links BEFORE the mutation runs.
+            # `enable_managed_package` resolves the destination through the adapter's
+            # `_binding_path`, which deliberately prefers an EXISTING link in whatever
+            # category it already occupies. With a stale link still present the mutation
+            # simply reuses that path, and the cleanup below then deletes it — unbinding
+            # the skill instead of relocating it. Removing them first leaves the adapter
+            # with nothing to reuse, so it falls back to the canonical placement.
+            if action.action == "relink":
+                self._unlink_legacy_targets(action)
+
             if action.family == "agents":
                 self.agents_mutations.enable(action.ref, action.harness)
             elif action.family == "skills":
@@ -240,6 +267,8 @@ class BootstrapApplier:
                 self._apply_slash_command(action.ref, action.harness)
             else:
                 raise ValueError(f"Unknown placement family: {action.family}")
+
+            self._unlink_legacy_targets(action)
 
             record_bootstrap(
                 self.mutation_audit,

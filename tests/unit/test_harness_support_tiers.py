@@ -62,11 +62,54 @@ class SupportTierTests(unittest.TestCase):
         for definition in SUPPORTED_HARNESS_DEFINITIONS:
             with self.subTest(harness=definition.harness):
                 self.assertIn(definition.support_tier, {"core", "best_effort"})
+                if definition.family_support_tiers:
+                    for family, tier in definition.family_support_tiers.items():
+                        self.assertIn(family, ALL_FAMILIES)
+                        self.assertIn(tier, {"core", "best_effort"})
 
     def test_is_core_agrees_with_the_tier_field(self) -> None:
         for definition in SUPPORTED_HARNESS_DEFINITIONS:
             with self.subTest(harness=definition.harness):
                 self.assertEqual(definition.is_core, definition.support_tier == "core")
+
+    def test_hermes_family_tiers(self) -> None:
+        hermes = _definition("hermes")
+        self.assertEqual(hermes.support_tier, "best_effort")
+        self.assertEqual(hermes.family_support_tiers.get("skills"), "core")
+        self.assertNotEqual(hermes.family_support_tiers.get("slash_commands"), "core")
+
+    def test_hermes_skills_are_core_without_promoting_the_whole_harness(self) -> None:
+        """The concrete claim, stated rather than derived.
+
+        ``test_core_harness_ids_by_family`` rebuilds its expectation from
+        ``family_support_tiers`` — the same field the implementation reads — so it
+        agrees with whatever the catalog happens to say. This pins the actual policy:
+        Hermes Skills are a release-blocking commitment, Hermes slash commands are not,
+        and the family-scoped promotion must not leak into the harness-wide core set.
+        """
+        self.assertIn("hermes", core_harness_ids("skills"))
+        self.assertNotIn("hermes", core_harness_ids("slash_commands"))
+        self.assertNotIn("hermes", core_harness_ids())
+        self.assertFalse(_definition("hermes").is_core)
+        self.assertTrue(_definition("hermes").is_core_for("skills"))
+        self.assertFalse(_definition("hermes").is_core_for("slash_commands"))
+
+    def test_core_harness_ids_by_family(self) -> None:
+        # Build the EXPECTED_CORE_BY_FAMILY from the existing policy source
+        expected_core_by_family: dict[FamilyKey, set[str]] = {family: set() for family in ALL_FAMILIES}
+        for family in ALL_FAMILIES:
+            for harness_id in EXPECTED_CORE:
+                if family not in KNOWN_CORE_GAPS.get(harness_id, {}):
+                    expected_core_by_family[family].add(harness_id)
+
+            # Add harnesses that explicitly promote themselves for this family
+            for definition in SUPPORTED_HARNESS_DEFINITIONS:
+                if definition.family_support_tiers and definition.family_support_tiers.get(family) == "core":
+                    expected_core_by_family[family].add(definition.harness)
+
+        for family in ALL_FAMILIES:
+            with self.subTest(family=family):
+                self.assertEqual(set(core_harness_ids(family)), expected_core_by_family[family])
 
 
 class CoreHarnessFamilyCoverageTests(unittest.TestCase):
