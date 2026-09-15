@@ -207,17 +207,30 @@ marketplace/
 .sync-conflict-*
 *.sync-conflict-*
 .syncthing.*
+
+# Credentials — never commit
+api-token
 """
 
 
 def _ensure_default_gitignore(data_dir: Path) -> None:
     gitignore_path = data_dir / ".gitignore"
-    if not gitignore_path.exists():
-        try:
+    try:
+        if not gitignore_path.exists():
             data_dir.mkdir(parents=True, exist_ok=True)
             gitignore_path.write_text(DEFAULT_STORE_GITIGNORE, encoding="utf-8")
-        except OSError:
-            pass
+            return
+        # Existing stores predate the api-token exclusion above and are never
+        # rewritten wholesale (a user's own edits to this file must survive an
+        # upgrade), so patch just the missing line in rather than skipping it.
+        existing = gitignore_path.read_text(encoding="utf-8")
+        if "api-token" not in existing.splitlines():
+            with gitignore_path.open("a", encoding="utf-8") as handle:
+                if existing and not existing.endswith("\n"):
+                    handle.write("\n")
+                handle.write("\n# Credentials — never commit\napi-token\n")
+    except OSError:
+        pass
 
 
 def build_backend_container(
