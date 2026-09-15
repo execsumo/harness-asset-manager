@@ -78,23 +78,23 @@ runs and the mapping is left pointing at a dead backend until the app is relaunc
 
 ## Delegating development (herdr + agy)
 
-We work inside **herdr** (`HERDR_ENV=1`) — use the `ogulcancelik--herdr` skill. Delegate
-substantial implementation to the **`agy`** agent running in another pane:
+We work inside **herdr** (`HERDR_ENV=1`) and delegate substantial implementation to the **`agy`**
+agent in a sibling pane.
 
-- Check for an agy pane with `herdr pane list`. If one exists, send the brief with
-  `herdr pane run <agy-pane-id> "<instruction>"`.
-- **If no agy pane exists, create one**: split a pane (`herdr pane split <pane> --direction right --no-focus`)
-  and run `agy` in it, then delegate to it.
-- Give agy a **complete written brief** (a `/tmp/<task>.md` file works well, then point agy at it):
-  the task, the branch to use (short-lived off `main`, per the strategy above), git discipline
-  (logical commits, push, **no merge to main without review**), and a **mandatory** pressure-test
-  plus the full validation suite.
-- **Monitor by exception.** Watch agy's herdr `agent_status`: `blocked` → grant the permission or
-  answer; `idle`/`done` are unreliable instantaneously (agy flaps and reports `done` while waiting
-  on its own subprocess) — only act on **sustained** quiescence, and **read the pane to confirm it
-  actually finished** before trusting it.
-- **Always independently verify agy's work** before reporting it done — re-run the validation suite
-  yourself and spot-check the diff. Do not relay agy's pass counts on faith.
+**Read the `delegate` skill before orchestrating or handing work to another agent.** It owns the
+whole workflow — spawning the delegate with a reverse channel, writing the spec, monitoring by
+exception, and verifying before integration — and it has the tested helpers. Do not hand-roll
+pane splits, escalation, or monitor loops from memory; the mechanics that used to live in this
+section were stale and incomplete. Use the `ogulcancelik--herdr` skill for raw herdr operations
+that fall outside a delegation.
+
+Three project-specific requirements to carry into every brief:
+
+- **Branch discipline**, per the strategy above: a short-lived branch off `main`, logical commits,
+  push — and **no merge to `main` without review**.
+- **A mandatory pressure test** plus the full validation suite below as the Definition of Done.
+- **Always independently verify** before reporting work done — re-run the validation suite yourself
+  and spot-check the diff. Do not relay a delegate's pass counts on faith.
 
 ## Validation suite
 
