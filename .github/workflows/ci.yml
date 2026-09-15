@@ -65,20 +65,29 @@ jobs:
           ./.venv/bin/pip install -r requirements.txt
 
       - name: Install dev dependencies
+        id: deps
         run: ./.venv/bin/pip install -r requirements-dev.txt
 
+      # Once the toolchain is installed, every validation step below runs even if
+      # an earlier one failed, so a lint nit can never again mask a real type,
+      # audit, or test failure. The job still fails if any of them fail — this
+      # changes what gets reported, not what is enforced.
       - name: Backend lint
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: ./.venv/bin/ruff check harness_asset_manager tests scripts
 
       - name: Python type check
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: ./.venv/bin/pyright
 
       - name: Python dependency audit
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           ./.venv/bin/pip install pip-audit
           ./.venv/bin/pip-audit
 
       - name: Backend compatibility tests
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: bash scripts/test_backend.sh
 
   frontend-validate:
@@ -101,30 +110,41 @@ jobs:
           ./.venv/bin/pip install -r requirements.txt
 
       - name: Install Node dependencies
+        id: deps
         run: npm ci
 
+      # As in backend-compat: once dependencies are in place every check below
+      # reports its own result, so one failure no longer hides the other seven.
       - name: Dependency audit
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run audit:check
 
       - name: Check version sync
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: ./.venv/bin/python scripts/sync_version.py --check
 
       - name: Check release target resolver
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run release-targets:check
 
       - name: Frontend lint
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run lint:frontend
 
       - name: Frontend typecheck
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run typecheck
 
       - name: OpenAPI codegen drift check
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run codegen:check
 
       - name: Frontend tests and coverage ratchet
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run test:coverage
 
       - name: Frontend build
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: npm run build
 
   package-smoke:

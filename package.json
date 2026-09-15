@@ -13,13 +13,17 @@
     "build:release": "./.venv/bin/python scripts/build_release.py",
     "build": "VITE_API_BASE=/api vite build",
     "lint:frontend": "eslint frontend/src",
+    "lint:backend": "./.venv/bin/ruff check harness_asset_manager tests scripts",
+    "lint:backend:fix": "./.venv/bin/ruff check --fix harness_asset_manager tests scripts",
     "typecheck": "tsc --noEmit",
+    "typecheck:backend": "./.venv/bin/pyright",
     "test": "NODE_ENV=test vitest run",
     "test:coverage": "NODE_ENV=test vitest run --coverage",
     "release-targets:check": "node scripts/check_release_targets_js.cjs",
     "audit:check": "node scripts/audit_gate.cjs",
     "codegen:openapi": "./.venv/bin/python scripts/dump_openapi.py && openapi-typescript frontend/src/api/openapi.json -o frontend/src/api/generated.ts",
-    "codegen:check": "npm run codegen:openapi && git diff --exit-code frontend/src/api/openapi.json frontend/src/api/generated.ts"
+    "codegen:check": "npm run codegen:openapi && git diff --exit-code frontend/src/api/openapi.json frontend/src/api/generated.ts",
+    "validate": "npm run lint:backend && npm run typecheck:backend && bash scripts/test_backend.sh && npm run lint:frontend && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

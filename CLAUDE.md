@@ -98,12 +98,34 @@ Three project-specific requirements to carry into every brief:
 
 ## Validation suite
 
+Run the whole thing with one command — it mirrors what CI enforces, in CI's order:
+
 ```bash
-npm run typecheck
+npm run validate
+```
+
+That is equivalent to:
+
+```bash
+npm run lint:backend        # ruff — the gate this suite used to omit
+npm run typecheck:backend   # pyright
 bash scripts/test_backend.sh
+npm run lint:frontend
+npm run typecheck
 npm test
 npm run build
 ```
+
+**Do not skip `lint:backend`.** Ruff selects only `I` (import order) and `F`
+(pyflakes), so it is a small gate — but it is the *first* step of every
+`backend-compat` job, and this suite historically left it out. That is exactly how
+three commits, one of them a release, reached `main` red: an import-order nit
+failed CI before pyright, pip-audit, or the backend tests ever ran. `npm run
+lint:backend:fix` auto-fixes the whole class of finding.
+
+CI no longer lets one failing check hide the others — every validation step runs
+and reports independently once dependencies install — but a red check is still a
+red check. Run this before you push.
 
 <!-- rtk-instructions v2 -->
 # RTK (Rust Token Killer) - Token-Optimized Commands
