@@ -10,8 +10,8 @@ from ruamel.yaml.error import YAMLError
 from .model import (
     CONTRACT_KEY_SET,
     CONTRACT_KEYS,
-    RETIRED_KEYS,
     MODE_DEFAULT,
+    RETIRED_KEYS,
     SPAWNING_DEFAULT,
     TRUST_PROJECT_DEFAULT,
     AgentDefinition,

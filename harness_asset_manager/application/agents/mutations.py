@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Iterable, Literal, cast
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 
-from .adapters import AgentHarnessAdapter, GENERATED_MARKER, parse_codex_agent
+from .adapters import GENERATED_MARKER, AgentHarnessAdapter, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
 from .model import (
