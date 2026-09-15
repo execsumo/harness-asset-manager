@@ -81,6 +81,7 @@ def serve_foreground(
     api_token: str | None = None,
     tailnet: bool = True,
     tailnet_port: int = 7443,
+    hermes_compat: bool = True,
 ) -> int:
     resolved_frontend = resolve_frontend_dist(frontend_dist)
     create_app = _create_app()
@@ -113,6 +114,11 @@ def serve_foreground(
                 "(tailscale serve). Disable with --no-tailnet.",
                 flush=True,
             )
+
+    if hermes_compat:
+        from .hermes_compat import apply_hermes_compat
+
+        apply_hermes_compat(container.hermes_root)
 
     try:
         uvicorn = _uvicorn()

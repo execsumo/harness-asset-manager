@@ -14,6 +14,7 @@ from . import (
     agents,
     bootstrap,
     configs,
+    hermes,
     hooks,
     mcp,
     permissions,
@@ -39,6 +40,7 @@ GROUP_NAMES = frozenset(
         "refresh",
         "settings",
         "skills",
+        "hermes",
     }
 )
 
@@ -50,4 +52,4 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
 
 
 __all__ = ["GROUP_NAMES", "register"]
-_MODULES = (bootstrap, skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs)
+_MODULES = (bootstrap, skills, agents, mcp, hooks, permissions, slash_commands, settings, refresh, configs, hermes)
