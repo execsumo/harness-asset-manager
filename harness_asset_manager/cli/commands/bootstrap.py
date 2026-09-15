@@ -71,6 +71,15 @@ def run_bootstrap(container: BackendContainer, args: argparse.Namespace) -> int:
             _print_plan_table(plan)
         return 0
 
+    # Bootstrap is the "initialise this device" action, so it is where the Hermes
+    # compatibility sidecar belongs for a user who never starts the server. Serve
+    # applies it too; both are best-effort and a no-op when it is already current.
+    # Deliberately not done while building the container: every CLI read would
+    # then write to the Hermes virtualenv.
+    from harness_asset_manager.runtime.hermes_compat import apply_hermes_compat
+
+    apply_hermes_compat(container.hermes_root)
+
     to_apply = list(plan.linkable)
     if getattr(args, "include_conflicts", False):
         to_apply.extend(plan.conflicts)
