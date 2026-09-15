@@ -59,6 +59,10 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     add_confirmation_flag(delete)
     delete.set_defaults(handler=delete_command)
 
+    unmanage = group.add_parser("unmanage", parents=[common], help="Stop managing a slash command, leaving it in place.")
+    unmanage.add_argument("name")
+    unmanage.set_defaults(handler=unmanage_command)
+
 
 def list_commands(container: "BackendContainer", args: argparse.Namespace) -> int:
     payload = container.slash_command_queries.list_commands()
@@ -166,6 +170,16 @@ def delete_command(container: "BackendContainer", args: argparse.Namespace) -> i
     confirm(f"delete slash command /{args.name}", assume_yes=args.yes)
     payload = container.slash_command_mutations.delete_command(args.name)
     return _print_sync_result(payload, json_output=args.json_output, message=f"deleted /{args.name}")
+
+
+def unmanage_command(container: "BackendContainer", args: argparse.Namespace) -> int:
+    payload = container.slash_command_mutations.unmanage_command(args.name)
+    container.invalidation.invalidate_all()
+    if args.json_output:
+        print_json(payload)
+        return 0
+    print(f"stopped managing /{args.name}")
+    return 0
 
 
 def _print_sync_result(payload: dict[str, object], *, json_output: bool, message: str) -> int:

@@ -60,6 +60,10 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     add_confirmation_flag(delete)
     delete.set_defaults(handler=delete_hook)
 
+    unmanage = group.add_parser("unmanage", parents=[common], help="Stop managing a hook, leaving it in place.")
+    unmanage.add_argument("id")
+    unmanage.set_defaults(handler=unmanage_hook)
+
     enable = group.add_parser("enable", parents=[common], help="Bind a hook into one harness.")
     enable.add_argument("id")
     add_harness_flag(enable)
@@ -167,6 +171,16 @@ def delete_hook(container: "BackendContainer", args: argparse.Namespace) -> int:
         print_json(payload)
         return 0 if payload.get("ok") else 1
     return print_result(payload, message=f"deleted {args.id}")
+
+
+def unmanage_hook(container: "BackendContainer", args: argparse.Namespace) -> int:
+    payload = container.hooks_mutations.unmanage_hook(args.id)
+    container.invalidation.invalidate_all()
+    if args.json_output:
+        print_json(payload)
+        return 0
+    print(f"stopped managing {args.id}")
+    return 0
 
 
 def enable_hook(container: "BackendContainer", args: argparse.Namespace) -> int:

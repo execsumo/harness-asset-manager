@@ -326,6 +326,16 @@ def delete_agent(
     return OkResponse(ok=True)
 
 
+@router.post("/{agent_ref:path}/unmanage", response_model=OkResponse)
+def unmanage_agent(
+    agent_ref: str,
+    container: BackendContainer = Depends(get_container),
+) -> OkResponse:
+    container.agents_mutations.unmanage(agent_ref)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
 @router.post("/{agent_ref:path}/enable", response_model=OkResponse)
 def enable_agent(
     agent_ref: str,

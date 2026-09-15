@@ -1582,5 +1582,82 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertIn("Reviews code carefully", stored)
 
 
+class AgentUnmanageTests(unittest.TestCase):
+    def test_unmanage_happy_path_materializes_real_file_and_reclassifies(self) -> None:
+        with AppTestHarness() as harness:
+            detail = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Reviewer",
+                    "description": "Reviews code",
+                    "prompt": "You are a reviewer.",
+                    "harnesses": ["claude"],
+                },
+            )
+            slug = detail["ref"]
+            claude_path = harness.spec.home / ".claude" / "agents" / f"{slug}.md"
+            self.assertTrue(claude_path.is_symlink())
+
+            res = harness.post_json(f"/api/agents/{slug}/unmanage")
+            self.assertTrue(res["ok"])
+
+            # Store file dropped
+            self.assertFalse((harness.spec.agents_root / f"{slug}.md").exists())
+
+            # Harness copy materialized as regular file, byte-identical content
+            self.assertTrue(claude_path.is_file())
+            self.assertFalse(claude_path.is_symlink())
+            self.assertIn("Reviews code", claude_path.read_text(encoding="utf-8"))
+
+            # Next inventory read reclassifies it as unmanaged
+            inventory = harness.get_json("/api/agents")
+            unmanaged = [e for e in inventory["entries"] if e["ref"] == f"claude/{slug}"]
+            self.assertEqual(len(unmanaged), 1)
+            self.assertEqual(unmanaged[0]["kind"], "unmanaged")
+
+    def test_unmanage_refuses_disabled_harness_with_binding(self) -> None:
+        with AppTestHarness() as harness:
+            detail = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Reviewer",
+                    "description": "Reviews code",
+                    "prompt": "You are a reviewer.",
+                    "harnesses": ["claude", "cursor"],
+                },
+            )
+            slug = detail["ref"]
+            harness.put_json("/api/settings/harnesses/cursor/support", {"enabled": False})
+
+            res = harness.post_json(f"/api/agents/{slug}/unmanage", expected_status=409)
+            self.assertIn("disabled harnesses still have bindings", res["error"])
+            self.assertTrue((harness.spec.agents_root / f"{slug}.md").exists())
+
+    def test_unmanage_refuses_when_no_harness_enabled(self) -> None:
+        with AppTestHarness() as harness:
+            detail = harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Reviewer",
+                    "description": "Reviews code",
+                    "prompt": "You are a reviewer.",
+                    "harnesses": [],
+                },
+            )
+            slug = detail["ref"]
+            res = harness.post_json(f"/api/agents/{slug}/unmanage", expected_status=400)
+            self.assertIn("turn on at least one harness", res["error"])
+
+    def test_unmanage_refuses_unmanaged_agent(self) -> None:
+        with AppTestHarness() as harness:
+            _seed_unmanaged_claude_agent(harness.spec, slug="stray")
+            res = harness.post_json("/api/agents/claude/stray/unmanage", expected_status=400)
+            self.assertIn("only managed agents can be unmanaged", res["error"])
+
+    def test_unmanage_nonexistent_agent_returns_404(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/agents/does-not-exist/unmanage", expected_status=404)
+
+
 if __name__ == "__main__":
     unittest.main()

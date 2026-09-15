@@ -353,6 +353,46 @@ class HookRoutesTests(unittest.TestCase):
             detail_sightings = [s["harness"] for s in detail["sightings"]]
             self.assertNotIn("claude", detail_sightings)
 
+    def test_unmanage_hook_leaves_harness_config_untouched_and_reclassifies(self) -> None:
+        with AppTestHarness() as harness:
+            response = harness.post_json(
+                "/api/hooks",
+                {
+                    "id": "my-hook",
+                    "event": "pre_tool_use",
+                    "command": "echo hello",
+                    "match": "shell",
+                },
+            )
+            self.assertTrue(response["ok"])
+            harness.post_json("/api/hooks/my-hook/enable", {"harness": "claude"})
+
+            # Claude settings has the hook
+            claude_settings = harness.spec.home / ".claude" / "settings.json"
+            self.assertTrue(claude_settings.is_file())
+            content_before = claude_settings.read_text(encoding="utf-8")
+            self.assertIn("echo hello", content_before)
+
+            # Unmanage
+            res = harness.post_json("/api/hooks/my-hook/unmanage")
+            self.assertTrue(res["ok"])
+
+            # Claude settings STILL has the hook untouched!
+            content_after = claude_settings.read_text(encoding="utf-8")
+            self.assertEqual(content_before, content_after)
+
+            # Next inventory read reclassifies it as unmanaged
+            payload = harness.get_json("/api/hooks")
+            entry = next(
+                e for e in payload["entries"]
+                if e.get("spec") and e["spec"].get("command") == "echo hello"
+            )
+            self.assertEqual(entry["kind"], "unmanaged")
+
+    def test_unmanage_nonexistent_hook_returns_404(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/hooks/missing/unmanage", expected_status=404)
+
 
 if __name__ == "__main__":
     unittest.main()

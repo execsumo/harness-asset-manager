@@ -364,5 +364,75 @@ class SlashCommandApiTests(unittest.TestCase):
             self.assertIn("codex", single_sync_targets)
 
 
+class SlashCommandUnmanageTests(unittest.TestCase):
+    def test_unmanage_happy_path_materializes_local_files_and_reclassifies(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "code-review",
+                    "description": "Review code",
+                    "prompt": "Review: $ARGUMENTS",
+                    "targets": ["codex"],
+                },
+            )
+            codex_file = harness.spec.home / ".codex" / "prompts" / "code-review.md"
+            self.assertTrue(codex_file.is_file())
+            content_before = codex_file.read_text(encoding="utf-8")
+
+            res = harness.post_json("/api/slash-commands/code-review/unmanage")
+            self.assertTrue(res["ok"])
+
+            # Store file is dropped
+            store_file = harness.spec.xdg_data_home / "harness-asset-manager" / "slash-commands" / "commands" / "code-review.md"
+            self.assertFalse(store_file.exists())
+
+            # Harness copy survives and is byte-identical
+            self.assertTrue(codex_file.is_file())
+            self.assertEqual(codex_file.read_text(encoding="utf-8"), content_before)
+
+            # Next inventory read reclassifies it as unmanaged reviewCommand
+            payload = harness.get_json("/api/slash-commands")
+            self.assertFalse(any(c["name"] == "code-review" for c in payload["commands"]))
+            unmanaged = [r for r in payload["reviewCommands"] if r["name"] == "code-review"]
+            self.assertEqual(len(unmanaged), 1)
+            self.assertEqual(unmanaged[0]["kind"], "unmanaged")
+
+    def test_unmanage_refuses_disabled_harness_with_binding(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "code-review",
+                    "description": "Review code",
+                    "prompt": "Review: $ARGUMENTS",
+                    "targets": ["codex", "claude"],
+                },
+            )
+            harness.put_json("/api/settings/harnesses/claude/support", {"enabled": False})
+
+            res = harness.post_json("/api/slash-commands/code-review/unmanage", expected_status=409)
+            self.assertIn("disabled harnesses still have bindings", res["error"])
+
+    def test_unmanage_refuses_when_no_harness_bound(self) -> None:
+        with AppTestHarness() as harness:
+            # Create command with empty targets list
+            harness.post_json(
+                "/api/slash-commands",
+                {
+                    "name": "code-review",
+                    "description": "Review code",
+                    "prompt": "Review: $ARGUMENTS",
+                    "targets": [],
+                },
+            )
+            res = harness.post_json("/api/slash-commands/code-review/unmanage", expected_status=400)
+            self.assertIn("turn on at least one harness", res["error"])
+
+    def test_unmanage_nonexistent_command_returns_404(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/slash-commands/missing/unmanage", expected_status=404)
+
+
 if __name__ == "__main__":
     unittest.main()

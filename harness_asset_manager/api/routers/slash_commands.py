@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.api.schemas import (
+    OkResponse,
     SetSlashCommandTagsRequest,
     SlashCommandDeleteResponse,
     SlashCommandImportRequest,
@@ -116,3 +117,10 @@ def sync_slash_command(
 @router.delete("/{name}", response_model=SlashCommandDeleteResponse)
 def delete_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     return container.slash_command_mutations.delete_command(name)
+
+
+@router.post("/{name}/unmanage", response_model=OkResponse)
+def unmanage_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
+    result = container.slash_command_mutations.unmanage_command(name)
+    container.invalidation.invalidate_all()
+    return result

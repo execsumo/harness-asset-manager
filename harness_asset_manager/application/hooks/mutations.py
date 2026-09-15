@@ -112,6 +112,13 @@ class HooksMutationService:
             remove_after_full_success=lambda: self.store.remove(id),
         ).to_dict()
 
+    def unmanage_hook(self, id: str) -> dict[str, object]:
+        if self.store.get_managed(id) is None:
+            raise MutationError(f"unknown hook: {id}", status=404)
+        self.store.remove(id)
+        self.read_models.invalidate()
+        return {"ok": True}
+
     def enable_hook(
         self,
         id: str,

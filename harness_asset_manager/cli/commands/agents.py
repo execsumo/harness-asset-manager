@@ -82,6 +82,10 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     add_confirmation_flag(delete)
     delete.set_defaults(handler=delete_agent)
 
+    unmanage = group.add_parser("unmanage", parents=[common], help="Stop managing an agent, leaving it in place.")
+    unmanage.add_argument("ref")
+    unmanage.set_defaults(handler=unmanage_agent)
+
     enable = group.add_parser("enable", parents=[common], help="Bind an agent into one harness.")
     enable.add_argument("ref")
     add_harness_flag(enable)
@@ -281,6 +285,16 @@ def delete_agent(container: "BackendContainer", args: argparse.Namespace) -> int
         print_json({"ok": True})
         return 0
     print(f"deleted agent {args.ref}")
+    return 0
+
+
+def unmanage_agent(container: "BackendContainer", args: argparse.Namespace) -> int:
+    payload = container.agents_mutations.unmanage(args.ref)
+    container.invalidation.invalidate_all()
+    if args.json_output:
+        print_json(payload)
+        return 0
+    print(f"stopped managing {args.ref}")
     return 0
 
 

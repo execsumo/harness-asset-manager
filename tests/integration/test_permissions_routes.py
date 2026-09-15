@@ -261,6 +261,45 @@ class PermissionRoutesTests(unittest.TestCase):
             detail_sightings = [s["harness"] for s in detail["sightings"]]
             self.assertNotIn("claude", detail_sightings)
 
+    def test_unmanage_permission_leaves_harness_config_untouched_and_reclassifies(self) -> None:
+        with AppTestHarness() as harness:
+            response = harness.post_json(
+                "/api/permissions",
+                {
+                    "id": "my-perm",
+                    "decision": "deny",
+                    "scope": "shell",
+                    "pattern": "git push",
+                },
+            )
+            self.assertTrue(response["ok"])
+            harness.post_json("/api/permissions/my-perm/enable", {"harness": "claude"})
+
+            claude_settings = harness.spec.home / ".claude" / "settings.json"
+            self.assertTrue(claude_settings.is_file())
+            content_before = claude_settings.read_text(encoding="utf-8")
+            self.assertIn("git push", content_before)
+
+            # Unmanage
+            res = harness.post_json("/api/permissions/my-perm/unmanage")
+            self.assertTrue(res["ok"])
+
+            # Claude settings STILL has the deny rule untouched!
+            content_after = claude_settings.read_text(encoding="utf-8")
+            self.assertEqual(content_before, content_after)
+
+            # Next inventory read reclassifies it as unmanaged
+            payload = harness.get_json("/api/permissions")
+            entry = next(
+                e for e in payload["entries"]
+                if e.get("spec") and e["spec"].get("pattern") == "git push"
+            )
+            self.assertEqual(entry["kind"], "unmanaged")
+
+    def test_unmanage_nonexistent_permission_returns_404(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/permissions/missing/unmanage", expected_status=404)
+
 
 if __name__ == "__main__":
     unittest.main()

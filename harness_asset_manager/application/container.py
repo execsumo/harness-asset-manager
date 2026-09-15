@@ -310,6 +310,9 @@ def build_backend_container(
         # Re-resolved per call so toggling a harness in Settings takes effect at once.
         return resolve_slash_targets(harness_kernel)
 
+    def resolve_all_slash_snapshot():
+        return resolve_slash_targets(harness_kernel, include_disabled=True)
+
     slash_command_read_models = SlashCommandReadModelService(
         slash_command_store,
         slash_command_sync_state,
@@ -326,6 +329,7 @@ def build_backend_container(
         SlashCommandPlanner(slash_command_path_policy),
         resolve_slash_snapshot,
         asset_tags=asset_tags,
+        resolve_all_targets=resolve_all_slash_snapshot,
     )
     slash_auto_adopt = SlashCommandsAutoAdoptService(
         read_models=slash_command_read_models,
@@ -449,6 +453,12 @@ def build_backend_container(
             target.id: AgentHarnessAdapter(target, paths.agents_root) for target in targets
         }
 
+    def resolve_all_agents_snapshot():
+        targets = resolve_agent_targets(harness_kernel, include_disabled=True)
+        return targets, {
+            target.id: AgentHarnessAdapter(target, paths.agents_root) for target in targets
+        }
+
     def rebaseline_agent_bindings(slug: str) -> None:
         """After we write a store file, re-record the baseline for **live** bindings.
 
@@ -493,6 +503,7 @@ def build_backend_container(
         asset_tags=asset_tags,
         skills_queries=skills_queries,
         skills_mutations=skills_mutations,
+        resolve_all=resolve_all_agents_snapshot,
     )
 
 

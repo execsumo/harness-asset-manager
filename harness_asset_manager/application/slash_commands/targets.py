@@ -10,7 +10,9 @@ from harness_asset_manager.harness import (
 from .models import SlashTarget, SlashTargetId
 
 
-def resolve_slash_targets(kernel: HarnessKernelService) -> tuple[SlashTarget, ...]:
+def resolve_slash_targets(
+    kernel: HarnessKernelService, *, include_disabled: bool = False
+) -> tuple[SlashTarget, ...]:
     """Columns for the slash-commands matrix.
 
     Deliberately *not* a curated list. Which harnesses appear is decided the same way
@@ -26,7 +28,7 @@ def resolve_slash_targets(kernel: HarnessKernelService) -> tuple[SlashTarget, ..
             continue
         definition = binding.definition
         target_id = cast(SlashTargetId, definition.harness)
-        if target_id not in enabled:
+        if not include_disabled and target_id not in enabled:
             continue
         root_path = profile.resolve_root_path(kernel.context)
         output_dir = profile.resolve_output_dir(kernel.context)

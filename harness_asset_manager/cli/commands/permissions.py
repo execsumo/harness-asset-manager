@@ -69,6 +69,10 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     add_confirmation_flag(delete)
     delete.set_defaults(handler=delete_permission)
 
+    unmanage = group.add_parser("unmanage", parents=[common], help="Stop managing a permission rule, leaving it in place.")
+    unmanage.add_argument("id")
+    unmanage.set_defaults(handler=unmanage_permission)
+
     enable = group.add_parser("enable", parents=[common], help="Bind a permission rule into one harness.")
     enable.add_argument("id")
     add_harness_flag(enable)
@@ -177,6 +181,16 @@ def delete_permission(container: "BackendContainer", args: argparse.Namespace) -
         print_json(payload)
         return 0 if payload.get("ok") else 1
     return print_result(payload, message=f"deleted {args.id}")
+
+
+def unmanage_permission(container: "BackendContainer", args: argparse.Namespace) -> int:
+    payload = container.permissions_mutations.unmanage_permission(args.id)
+    container.invalidation.invalidate_all()
+    if args.json_output:
+        print_json(payload)
+        return 0
+    print(f"stopped managing {args.id}")
+    return 0
 
 
 def enable_permission(container: "BackendContainer", args: argparse.Namespace) -> int:

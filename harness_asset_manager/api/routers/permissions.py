@@ -83,6 +83,16 @@ def delete_permission(
     return container.permissions_mutations.delete_permission(id)
 
 
+@router.post("/{id}/unmanage", response_model=OkResponse)
+def unmanage_permission(
+    id: str,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.permissions_mutations.unmanage_permission(id)
+    container.invalidation.invalidate_all()
+    return result
+
+
 @router.post("/{id}/enable", response_model=OkResponse)
 def enable_permission(
     id: str,

@@ -86,6 +86,16 @@ def delete_hook(
     return container.hooks_mutations.delete_hook(id)
 
 
+@router.post("/{id}/unmanage", response_model=OkResponse)
+def unmanage_hook(
+    id: str,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    result = container.hooks_mutations.unmanage_hook(id)
+    container.invalidation.invalidate_all()
+    return result
+
+
 @router.post("/{id}/enable", response_model=OkResponse)
 def enable_hook(
     id: str,

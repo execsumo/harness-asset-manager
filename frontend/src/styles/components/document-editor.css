@@ -322,7 +322,7 @@
 
 .document-section__body-textarea {
   width: 100%;
-  min-height: 220px;
+  min-height: 660px;
   padding: var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

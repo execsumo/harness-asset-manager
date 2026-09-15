@@ -118,6 +118,13 @@ class PermissionsMutationService:
             remove_after_full_success=_remove,
         ).to_dict()
 
+    def unmanage_permission(self, id: str) -> dict[str, object]:
+        if self.store.get_managed(id) is None:
+            raise MutationError(f"unknown permission: {id}", status=404)
+        self.store.remove(id)
+        self.read_models.invalidate()
+        return {"ok": True}
+
     def enable_permission(
         self,
         id: str,

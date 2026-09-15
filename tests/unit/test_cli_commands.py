@@ -304,6 +304,17 @@ class AgentCommandTests(CliCommandTestCase):
         self.assertIn(str(self.spec.agents_root / "audit-bot.md"), event["targetPaths"])
         self.assertNotIn("secret prompt", json.dumps(event))
 
+    def test_unmanage_leaves_file_in_place_and_removes_from_managed(self) -> None:
+        self.run_cli("agents", "create", "--name", "Bot", "--description", "d", "--prompt", "p")
+        self.run_cli("agents", "enable", "bot", "--harness", "claude")
+        code, out, err = self.run_cli("agents", "unmanage", "bot")
+        self.assertEqual(code, 0, msg=err)
+        agents = self.run_json("agents", "list")["entries"]
+        self.assertEqual(len(agents), 1)
+        self.assertEqual(agents[0]["kind"], "unmanaged")
+        self.assertTrue(agents[0]["actions"]["canAdopt"])
+
+
 
 class HookCommandTests(CliCommandTestCase):
     def test_create_and_fan_out_to_every_harness(self) -> None:
@@ -320,6 +331,18 @@ class HookCommandTests(CliCommandTestCase):
         listing = self.run_json("hooks", "list")
         entry = next(item for item in listing["entries"] if item["id"] == "lint-gate")
         self.assertEqual(entry["enabledStatus"], "enabled")
+
+    def test_unmanage_hook_removes_store_entry(self) -> None:
+        code, _, err = self.run_cli(
+            "hooks", "create", "--id", "lint-gate", "--event", "post_tool_use",
+            "--command", "npm run lint", "--match", "file_write",
+        )
+        self.assertEqual(code, 0, msg=err)
+        code, out, err = self.run_cli("hooks", "unmanage", "lint-gate")
+        self.assertEqual(code, 0, msg=err)
+        listing = self.run_json("hooks", "list")
+        entry = next((item for item in listing["entries"] if item["id"] == "lint-gate"), None)
+        self.assertIsNone(entry)
 
     def test_unsupported_match_is_rejected_by_the_parser(self) -> None:
         # "Edit" is a Claude tool name, not a category; the store would accept it and
@@ -353,6 +376,18 @@ class PermissionCommandTests(CliCommandTestCase):
         entry = next(item for item in listing["entries"] if item["id"] == "no-force-push")
         self.assertEqual(entry["spec"]["scope"], "shell")
 
+    def test_unmanage_permission_removes_store_entry(self) -> None:
+        code, _, err = self.run_cli(
+            "permissions", "create", "--id", "no-force-push", "--decision", "deny",
+            "--scope", "shell", "--pattern", "git push --force",
+        )
+        self.assertEqual(code, 0, msg=err)
+        code, out, err = self.run_cli("permissions", "unmanage", "no-force-push")
+        self.assertEqual(code, 0, msg=err)
+        listing = self.run_json("permissions", "list")
+        entry = next((item for item in listing["entries"] if item["id"] == "no-force-push"), None)
+        self.assertIsNone(entry)
+
     def test_unsupported_scope_is_rejected_by_the_parser(self) -> None:
         with self.assertRaises(SystemExit):
             self.run_cli(
@@ -375,6 +410,16 @@ class SlashCommandTests(CliCommandTestCase):
         code, _, err = self.run_cli("commands", "delete", "deploy", "--yes")
         self.assertEqual(code, 0, msg=err)
         self.assertEqual(self.run_json("commands", "list")["commands"], [])
+
+    def test_unmanage_leaves_harness_output_and_removes_store(self) -> None:
+        code, out, err = self.run_cli(
+            "commands", "create", "--name", "deploy", "--description", "Deploy", "--prompt", "Deploy it."
+        )
+        self.assertEqual(code, 0, msg=err)
+        code, out, err = self.run_cli("commands", "unmanage", "deploy")
+        self.assertEqual(code, 0, msg=err)
+        self.assertEqual(self.run_json("commands", "list")["commands"], [])
+
 
 
 

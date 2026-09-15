@@ -7,7 +7,9 @@ from harness_asset_manager.harness import AgentFileBindingProfile, HarnessKernel
 from .model import AgentTarget
 
 
-def resolve_agent_targets(kernel: HarnessKernelService) -> tuple[AgentTarget, ...]:
+def resolve_agent_targets(
+    kernel: HarnessKernelService, *, include_disabled: bool = False
+) -> tuple[AgentTarget, ...]:
     """Columns for the agents matrix.
 
     Deliberately *not* a curated list. Which harnesses appear is decided the same way
@@ -22,7 +24,7 @@ def resolve_agent_targets(kernel: HarnessKernelService) -> tuple[AgentTarget, ..
         if not isinstance(profile, AgentFileBindingProfile):
             continue
         definition = binding.definition
-        if definition.harness not in enabled:
+        if not include_disabled and definition.harness not in enabled:
             continue
         targets.append(
             AgentTarget(

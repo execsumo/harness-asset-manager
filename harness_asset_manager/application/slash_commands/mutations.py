@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Iterable, get_args
 
+from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 
+from .codecs import render_slash_command
 from .executor import SlashCommandSyncExecutor
 from .models import SlashCommand, SlashReviewAction, SlashTarget, SlashTargetId
 from .planner import SlashCommandPlanner
@@ -29,6 +31,7 @@ class SlashCommandMutationService:
         planner: SlashCommandPlanner,
         resolve_targets: Callable[[], tuple[SlashTarget, ...]],
         asset_tags: AssetTagService | None = None,
+        resolve_all_targets: Callable[[], tuple[SlashTarget, ...]] | None = None,
     ) -> None:
         self.store = store
         self.sync_state = sync_state
@@ -36,6 +39,7 @@ class SlashCommandMutationService:
         self.read_models = read_models
         self.planner = planner
         self.resolve_targets = resolve_targets
+        self.resolve_all_targets = resolve_all_targets
         self.asset_tags = asset_tags
         self.path_policy = planner.path_policy
         self.sync_executor = SlashCommandSyncExecutor(sync_state, planner, self.path_policy)
@@ -107,6 +111,44 @@ class SlashCommandMutationService:
         self.store.delete_command(name)
         self.sync_state.remove_command(name)
         return {"ok": True, "sync": removed["sync"]}
+
+    def unmanage_command(self, name: str) -> dict[str, object]:
+        validate_command_name(name)
+        command = self.store.get_command(name)
+        if command is None:
+            raise MutationError(f"slash command not found: {name}", status=404)
+
+        all_targets = self.resolve_all_targets() if self.resolve_all_targets is not None else self.resolve_targets()
+        enabled_targets = self.resolve_targets()
+        enabled_target_ids = {t.id for t in enabled_targets}
+
+        records = self.sync_state.load().get(name, {})
+
+        disabled_target_labels: list[str] = []
+        for target_id in records:
+            if target_id not in enabled_target_ids:
+                t = next((candidate for candidate in all_targets if candidate.id == target_id), None)
+                disabled_target_labels.append(t.label if t else target_id)
+
+        if disabled_target_labels:
+            raise MutationError(
+                f"cannot stop managing while disabled harnesses still have bindings: {', '.join(sorted(disabled_target_labels))}; re-enable support or clean them manually",
+                status=409,
+            )
+
+        bound_enabled_targets = [t for t in enabled_targets if t.id in records]
+        if not bound_enabled_targets:
+            raise MutationError("turn on at least one harness before stopping management", status=400)
+
+        for target in bound_enabled_targets:
+            path = self.path_policy.output_path(target, command.name)
+            rendered = render_slash_command(command, target.render_format)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(path, rendered, follow_symlinks=True)
+
+        self.store.delete_command(name)
+        self.sync_state.remove_command(name)
+        return {"ok": True}
 
     def import_unmanaged_command(self, *, target: str, name: str) -> dict[str, object]:
         resolved_targets = self.resolve_targets()

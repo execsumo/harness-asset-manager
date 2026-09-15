@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Iterable, Literal, cast
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 
-from .adapters import AgentHarnessAdapter, parse_codex_agent
+from .adapters import AgentHarnessAdapter, GENERATED_MARKER, parse_codex_agent
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
 from .model import (
@@ -55,9 +55,11 @@ class AgentMutationService:
         asset_tags: AssetTagService | None = None,
         skills_queries: SkillsQueryService | None = None,
         skills_mutations: SkillsMutationService | None = None,
+        resolve_all: TargetResolver | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
+        self._resolve_all = resolve_all or resolve
         self.ledger = ledger
         self.asset_tags = asset_tags
         self.skills_queries = skills_queries
@@ -444,6 +446,69 @@ class AgentMutationService:
         # Covers harnesses the user has since disabled in Settings, which are not in
         # `targets` and so were never asked to unbind.
         self.ledger.forget_slug(slug)
+
+    def unmanage(self, ref: str) -> dict[str, bool]:
+        if "/" in ref:
+            raise MutationError(
+                f"only managed agents can be unmanaged; this is unmanaged ({ref})",
+                status=400,
+            )
+        slug = ref
+        agent = self.store.get(slug)
+        if agent is None:
+            raise MutationError(f"agent not found: {slug}", status=404)
+
+        all_targets, all_adapters = self._resolve_all()
+        enabled_targets, _ = self._resolve()
+        enabled_ids = {t.id for t in enabled_targets}
+
+        enabled_bindings: list[tuple[AgentTarget, AgentHarnessAdapter]] = []
+        disabled_bindings: list[tuple[AgentTarget, AgentHarnessAdapter]] = []
+
+        ledger_records = self.ledger.load().get(slug, {})
+
+        for target in all_targets:
+            if not target.supports_agents:
+                continue
+            adapter = all_adapters.get(target.id)
+            if adapter is None:
+                continue
+            is_bound = adapter.is_enabled(slug) or (target.id in ledger_records)
+            if not is_bound:
+                continue
+            if target.id in enabled_ids:
+                enabled_bindings.append((target, adapter))
+            else:
+                disabled_bindings.append((target, adapter))
+
+        if disabled_bindings:
+            disabled_names = ", ".join(target.label for target, _ in disabled_bindings)
+            raise MutationError(
+                f"cannot stop managing while disabled harnesses still have bindings: {disabled_names}; re-enable support or clean them manually",
+                status=409,
+            )
+        if not enabled_bindings:
+            raise MutationError("turn on at least one harness before stopping management", status=400)
+
+        content = agent.path.read_text(encoding="utf-8")
+        for _target, adapter in enabled_bindings:
+            path = adapter.binding_path(slug)
+            if adapter.renders:
+                if path.exists():
+                    text = path.read_text(encoding="utf-8")
+                    lines = text.splitlines(keepends=True)
+                    if lines and GENERATED_MARKER in lines[0]:
+                        lines = lines[1:]
+                    atomic_write_text(path, "".join(lines), follow_symlinks=True)
+            else:
+                if path.is_symlink():
+                    path.unlink()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                atomic_write_text(path, content)
+
+        self.store.delete(slug)
+        self.ledger.forget_slug(slug)
+        return {"ok": True}
 
     # -- ledger -------------------------------------------------------------
 
