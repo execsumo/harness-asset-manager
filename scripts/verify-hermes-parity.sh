@@ -117,4 +117,3 @@ PYEOF
 "$HERMES_HOME/hermes-agent/venv/bin/python" test_delete.py
 rm test_delete.py
 echo "PASS: delete refused"
-

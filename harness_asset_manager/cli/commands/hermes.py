@@ -19,25 +19,43 @@ def register(subparsers, common: argparse.ArgumentParser) -> None:
     remove_parser = compat_sub.add_parser("remove", help="Remove the compatibility sidecar.")
     remove_parser.set_defaults(handler=compat_remove_command)
 
+_NOT_DETECTED = (
+    "Hermes not detected; nothing to do. "
+    "Looked for a virtualenv under <hermes-root>/hermes-agent/venv."
+)
+
+
 def compat_status_command(container, args: argparse.Namespace) -> int:
     from harness_asset_manager.runtime.hermes_compat import status
     print(status(container.hermes_root))
     return 0
 
+
 def compat_install_command(container, args: argparse.Namespace) -> int:
-    from harness_asset_manager.runtime.hermes_compat import apply_hermes_compat
+    """Install or refresh the sidecar.
+
+    "Hermes is not installed" is a normal outcome, not a failure — HAM supports
+    machines without Hermes — so it exits 0. Only a real write failure exits 1,
+    which keeps this usable in a dotfiles bootstrap script.
+    """
+    from harness_asset_manager.runtime.hermes_compat import apply_hermes_compat, status
+    if status(container.hermes_root) == "not-detected":
+        print(_NOT_DETECTED)
+        return 0
     if apply_hermes_compat(container.hermes_root):
         print("Installed.")
         return 0
-    else:
-        print("Failed to install or not required.")
-        return 1
+    print("Failed to install the Hermes compatibility sidecar.")
+    return 1
+
 
 def compat_remove_command(container, args: argparse.Namespace) -> int:
-    from harness_asset_manager.runtime.hermes_compat import remove_hermes_compat
+    from harness_asset_manager.runtime.hermes_compat import remove_hermes_compat, status
+    if status(container.hermes_root) == "not-detected":
+        print(_NOT_DETECTED)
+        return 0
     if remove_hermes_compat(container.hermes_root):
         print("Removed.")
         return 0
-    else:
-        print("Failed to remove.")
-        return 1
+    print("Failed to remove the Hermes compatibility sidecar.")
+    return 1

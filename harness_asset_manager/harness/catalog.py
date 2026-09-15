@@ -125,7 +125,7 @@ def core_harness_ids(family: FamilyKey | None = None) -> tuple[str, ...]:
     the release gates, the coverage ratchet, and the docs follow.
     """
     return tuple(
-        definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS 
+        definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS
         if definition.is_core or (family is not None and definition.family_support_tiers and definition.family_support_tiers.get(family) == "core")
     )
 
