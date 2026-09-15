@@ -132,13 +132,11 @@ export default function SlashCommandsPage() {
 
   useEffect(() => {
     setSelectedRefs((current) => {
-      const visibleUntracked = new Set(
-        entries.filter((entry) => entry.kind === "unmanaged").map((entry) => entry.id),
-      );
+      const visible = new Set(entries.map((entry) => entry.id));
       let changed = false;
       const next = new Set<string>();
       for (const ref of current) {
-        if (visibleUntracked.has(ref)) next.add(ref);
+        if (visible.has(ref)) next.add(ref);
         else changed = true;
       }
       return changed ? next : current;
@@ -172,6 +170,16 @@ export default function SlashCommandsPage() {
   }, [controller, entries, selectedRefs]);
 
   const selectedCount = selectedRefs.size;
+  const adoptableSelectedCount = useMemo(
+    () =>
+      entries.filter(
+        (entry) =>
+          entry.kind === "unmanaged" &&
+          selectedRefs.has(entry.id) &&
+          primaryReviewAction(entry.review) === "import",
+      ).length,
+    [entries, selectedRefs],
+  );
   const title = statusFilter === "untracked" ? copy.review.title : copy.inUse.title;
   const subtitle = statusFilter === "untracked" ? copy.review.subtitle(counts.untracked) : copy.inUse.subtitle;
 
@@ -327,11 +335,26 @@ export default function SlashCommandsPage() {
                 <X size={14} />
               </button>
             </div>
-            <span className="bulk-bar__divider" aria-hidden="true" />
-            <button type="button" className="bulk-bar__action" onClick={() => void handleAdoptSelected()} disabled={adoptingSelected}>
-              {adoptingSelected ? <LoadingSpinner size="sm" label="Adopting selected commands..." /> : <Plus size={15} />}
-              Adopt selected
-            </button>
+            {adoptableSelectedCount > 0 ? (
+              <>
+                <span className="bulk-bar__divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="bulk-bar__action"
+                  onClick={() => void handleAdoptSelected()}
+                  disabled={adoptingSelected}
+                >
+                  {adoptingSelected ? (
+                    <LoadingSpinner size="sm" label="Adopting selected commands..." />
+                  ) : (
+                    <Plus size={15} />
+                  )}
+                  {adoptableSelectedCount === selectedCount
+                    ? "Adopt selected"
+                    : `Adopt selected (${adoptableSelectedCount})`}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

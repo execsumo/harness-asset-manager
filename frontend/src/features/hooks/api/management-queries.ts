@@ -16,6 +16,7 @@ import {
   setHookHarnesses,
   setHookTags,
   uninstallHook,
+  unmanageHook,
 } from "./management-client";
 import { invalidateHooksQueries } from "./invalidation";
 import { HOOKS_GC_TIME_MS, HOOKS_INVENTORY_REFETCH_INTERVAL_MS, HOOKS_STALE_TIME_MS, hooksManagementKeys } from "./keys";
@@ -105,3 +106,12 @@ export function useReconcileHookMutation() {
     onSettled: () => invalidateHooksQueries(queryClient),
   });
 }
+
+export function useUnmanageHookMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unmanageHook(id),
+    onSettled: () => invalidateHooksQueries(queryClient),
+  });
+}
+

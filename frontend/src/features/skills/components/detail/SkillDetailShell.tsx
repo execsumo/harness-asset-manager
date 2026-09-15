@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 
 interface SkillDetailShellProps {
   chrome: ReactNode;
@@ -25,11 +26,9 @@ export function SkillDetailShell({
       >
         <div className="detail-sheet__body">{body}</div>
       </div>
-      {footer ? (
-        <footer className="skill-detail-shell__footer" aria-label="Skill actions">
-          {footer}
-        </footer>
-      ) : null}
+      <DetailActionFooter ariaLabel="Skill actions">
+        {footer}
+      </DetailActionFooter>
     </>
   );
 }

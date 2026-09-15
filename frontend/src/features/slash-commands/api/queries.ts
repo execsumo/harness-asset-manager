@@ -9,6 +9,7 @@ import {
   resolveSlashCommandReview,
   setSlashCommandTags,
   syncSlashCommand,
+  unmanageSlashCommand,
   updateSlashCommand,
 } from "./client";
 import {
@@ -99,3 +100,12 @@ export function useResolveSlashCommandReviewMutation() {
     onSuccess: async () => invalidateSlashCommandQueries(queryClient),
   });
 }
+
+export function useUnmanageSlashCommandMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ name }: { name: string }) => unmanageSlashCommand(name),
+    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+  });
+}
+

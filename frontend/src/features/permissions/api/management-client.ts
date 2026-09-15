@@ -93,3 +93,8 @@ export async function reconcilePermission(args: {
     },
   );
 }
+
+export async function unmanagePermission(id: string): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>(`/permissions/${encodeURIComponent(id)}/unmanage`, {});
+}
+

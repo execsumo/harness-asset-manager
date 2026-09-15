@@ -36,7 +36,7 @@ describe("SlashCommandsReviewPage", () => {
 
     await waitFor(() => expect(screen.getByText("code-review")).toBeInTheDocument());
     expect(screen.queryByText("/code-review")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Adopt" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to HarnessAM" }));
 
     await waitFor(() => expect(requests).toEqual([{ target: "codex", name: "code-review" }]));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("SlashCommandsReviewPage", () => {
 
     fireEvent.click(screen.getByText("code-review"));
     const reopened = screen.getByRole("dialog", { name: "Slash command to review code-review" });
-    fireEvent.click(within(reopened).getByRole("button", { name: "Adopt" }));
+    fireEvent.click(within(reopened).getByRole("button", { name: "Add to HarnessAM" }));
 
     await waitFor(() => expect(requests).toEqual([{ target: "codex", name: "code-review" }]));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -237,7 +237,7 @@ describe("SlashCommandsReviewPage", () => {
     expect(within(dialog).getByText("Canonical prompt")).toBeInTheDocument();
     expect(within(dialog).getByText("Target prompt")).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Adopt" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add to HarnessAM" }));
 
     await waitFor(() =>
       expect(requests).toEqual([{ target: "codex", name: "code-review", action: "adopt_target" }]),
@@ -358,7 +358,7 @@ describe("SlashCommandsReviewPage", () => {
     expect(within(harnesses).getByText("Resolve from footer")).toBeInTheDocument();
     expect(within(dialog).getByText("Canonical prompt")).toBeInTheDocument();
     expect(within(dialog).getByText("Target prompt")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Adopt" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Add to HarnessAM" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Remove binding" })).not.toBeInTheDocument();
   });
 
@@ -380,13 +380,20 @@ describe("SlashCommandsReviewPage", () => {
     expect(screen.queryByText("managed-command")).not.toBeInTheDocument();
   });
 
-  it("does not render checkboxes on managed rows", async () => {
+  it("renders checkboxes on managed rows", async () => {
     fetchMock.mockImplementation(
       createRouteFetchMock([
         {
           match: "/api/slash-commands",
           response: slashCommandsPayload({
-            commands: [{ name: "managed-command", description: "Managed", prompt: "Prompt", syncTargets: [] }],
+            commands: [
+              {
+                name: "managed-command",
+                description: "Managed description",
+                prompt: "Managed prompt",
+                syncTargets: [],
+              },
+            ],
           }),
         },
       ]),
@@ -396,7 +403,7 @@ describe("SlashCommandsReviewPage", () => {
 
     await waitFor(() => expect(screen.getByText("managed-command")).toBeInTheDocument());
     expect(screen.getByRole("checkbox", { name: /select code-review/i })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /managed-command/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /select managed-command/i })).toBeInTheDocument();
   });
 
   it("shows the bulk dock only after an untracked row is selected", async () => {

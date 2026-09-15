@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { okJson } from "../../../../test/fetch";
@@ -185,4 +185,57 @@ describe("HookDetailSheet", () => {
       ).toBe(true);
     });
   });
+
+  it("calls unmanage API and closes sheet when Remove from HarnessAM is clicked", async () => {
+    fetchMock.mockImplementation((input, init) => {
+      const url = String(input);
+      const method = init?.method || "GET";
+      if (url.includes("/api/hooks/pre-commit-lint/unmanage") && method === "POST") {
+        return Promise.resolve(okJson({ ok: true }));
+      }
+      if (url.includes("/api/hooks/pre-commit-lint")) {
+        return Promise.resolve(okJson(hookDetailFixture({ kind: "managed" })));
+      }
+      return Promise.resolve(okJson({}));
+    });
+
+    const onClose = vi.fn();
+    renderWithAppProviders(
+      <HookDetailSheet
+        id="pre-commit-lint"
+        knownTags={["quality"]}
+        columns={columns}
+        pendingPerHarness={new Set()}
+        isServerPending={false}
+        isUninstalling={false}
+        onClose={onClose}
+        onEnableHarness={vi.fn()}
+        onDisableHarness={vi.fn()}
+        onResolveConfig={vi.fn().mockResolvedValue(undefined)}
+        onUninstall={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Remove from HarnessAM" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove from HarnessAM" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const confirmBtn = within(dialog).getByRole("button", { name: "Remove from HarnessAM" });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]).includes("/api/hooks/pre-commit-lint/unmanage") &&
+            call[1]?.method === "POST",
+        ),
+      ).toBe(true);
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
 });
+

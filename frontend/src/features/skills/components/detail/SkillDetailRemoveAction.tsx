@@ -28,7 +28,7 @@ export function SkillDetailRemoveAction({
         onRequestRemove();
       } : undefined}
     >
-      Remove from Harness Asset Manager
+      Remove from HarnessAM
     </button>
   );
 

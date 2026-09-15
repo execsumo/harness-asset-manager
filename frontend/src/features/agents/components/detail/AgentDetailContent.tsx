@@ -7,6 +7,7 @@ import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 import { DocumentSection } from "../../../../components/detail/editing/DocumentSection";
 import {
   FrontmatterEditor,
@@ -17,8 +18,16 @@ import {
 import { useToast } from "../../../../components/Toast";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
+import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
 import { FrontmatterSegmentedField } from "../../../../components/detail/editing/FrontmatterSegmentedField";
-import { useDeleteAgentMutation, useSetAgentTagsMutation, useUpdateAgentMutation } from "../../api/queries";
+import {
+  useAdoptAgentMutation,
+  useDeleteAgentMutation,
+  useSetAgentTagsMutation,
+  useUnmanageAgentMutation,
+  useUpdateAgentMutation,
+} from "../../api/queries";
+import { AdoptConflictDialog } from "../AdoptConflictDialog";
 import { useSkillsListQuery } from "../../../skills/public";
 import {
   AGENT_CONTRACT_KEYS,
@@ -30,7 +39,7 @@ import {
   MEMORY_VALUES,
 } from "../../api/types";
 import { stripFrontmatter } from "../../model/document";
-import type { AgentDetailDto } from "../../api/types";
+import type { AgentAdoptConflict, AgentDetailDto } from "../../api/types";
 import {
   AgentSkillsFieldEditor,
   deriveSkillTagOptions,
@@ -85,7 +94,13 @@ export function AgentDetailContent({
   const deleteMutation = useDeleteAgentMutation();
   const updateMutation = useUpdateAgentMutation();
   const setTagsMutation = useSetAgentTagsMutation();
+  const adoptMutation = useAdoptAgentMutation();
+  const unmanageMutation = useUnmanageAgentMutation();
   const skillsListQuery = useSkillsListQuery();
+
+  const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
+  const [conflictPending, setConflictPending] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
 
   const adoptedSkills = useMemo<AdoptedSkillOption[]>(() => {
     if (knownSkills && knownSkills.length > 0) {
@@ -695,8 +710,60 @@ export function AgentDetailContent({
     }
   };
 
+  const handleAdopt = async () => {
+    setLocalActionError(null);
+    try {
+      const result = await adoptMutation.mutateAsync({ ref: detail.ref });
+      if (result && "conflict" in result) {
+        setConflict(result);
+      } else {
+        toast("Agent added to Harness Asset Manager");
+        onClose();
+      }
+    } catch (err) {
+      setLocalActionError(err instanceof Error ? err.message : "Could not adopt agent");
+    }
+  };
+
+  const handleResolveConflict = async (onConflict: "keep_store" | "replace_store") => {
+    if (!conflict) return;
+    setConflictPending(true);
+    try {
+      await adoptMutation.mutateAsync({ ref: conflict.slug, onConflict });
+      setConflict(null);
+      toast("Agent added to Harness Asset Manager");
+      onClose();
+    } catch (err) {
+      setLocalActionError(err instanceof Error ? err.message : "Could not resolve conflict");
+    } finally {
+      setConflictPending(false);
+    }
+  };
+
+  const handleUnmanage = async () => {
+    setLocalActionError(null);
+    try {
+      const promise = unmanageMutation.mutateAsync(detail.ref);
+      setRemoveDialogOpen(false);
+      onClose();
+      await promise;
+      toast("Agent removed from Harness Asset Manager");
+    } catch (err) {
+      setLocalActionError(err instanceof Error ? err.message : "Failed to remove agent from Harness Asset Manager");
+      setRemoveDialogOpen(false);
+    }
+  };
+
   const isDeleting = deleteMutation.isPending;
+  const isAdopting = adoptMutation.isPending;
+  const isUnmanaging = unmanageMutation.isPending;
   const isUnmanaged = detail.storePath === null;
+  const hasEnabledHarness = detail.harnesses.some((h) => h.state === "enabled");
+  const isRemoveBlocked = !hasEnabledHarness || isUnmanaging || isDeleting;
+  const removeTooltip = !hasEnabledHarness
+    ? "Enable at least one harness before removing this agent from Harness Asset Manager."
+    : "Removes this agent from the Harness Asset Manager store and restores local copies only for the harnesses that are currently enabled.";
+
 
   return (
     <>
@@ -885,19 +952,63 @@ export function AgentDetailContent({
         </div>
       </div>
 
-      {detail.canDelete ? (
-        <footer className="skill-detail-shell__footer" aria-label="Agent actions">
+      <DetailActionFooter ariaLabel="Agent actions">
+        {isUnmanaged ? (
+          <button
+            type="button"
+            className="action-pill action-pill--md action-pill--accent"
+            disabled={isAdopting || isDeleting}
+            onClick={handleAdopt}
+          >
+            {isAdopting ? <Loader2 size={14} className="animate-spin agent-action-spinner" /> : null}
+            Add to HarnessAM
+          </button>
+        ) : null}
+
+        {!isUnmanaged ? (
+          isRemoveBlocked ? (
+            <UiTooltipTriggerBoundary
+              content={removeTooltip}
+              contentClassName="ui-popup--tooltip--hint"
+              align="end"
+            >
+              <button
+                type="button"
+                className="action-pill action-pill--md"
+                disabled={isRemoveBlocked}
+                onClick={() => setRemoveDialogOpen(true)}
+              >
+                {isUnmanaging ? <Loader2 size={14} className="animate-spin agent-action-spinner" /> : null}
+                Remove from HarnessAM
+              </button>
+            </UiTooltipTriggerBoundary>
+          ) : (
+            <UiTooltip content={removeTooltip} contentClassName="ui-popup--tooltip--hint" align="end">
+              <button
+                type="button"
+                className="action-pill action-pill--md"
+                disabled={isRemoveBlocked}
+                onClick={() => setRemoveDialogOpen(true)}
+              >
+                {isUnmanaging ? <Loader2 size={14} className="animate-spin agent-action-spinner" /> : null}
+                Remove from HarnessAM
+              </button>
+            </UiTooltip>
+          )
+        ) : null}
+
+        {detail.canDelete ? (
           <button
             type="button"
             className="action-pill action-pill--md action-pill--danger"
-            disabled={isDeleting}
+            disabled={isDeleting || isUnmanaging}
             onClick={() => setDeleteDialogOpen(true)}
           >
             {isDeleting ? <Loader2 size={14} className="animate-spin agent-action-spinner" /> : null}
             Delete
           </button>
-        </footer>
-      ) : null}
+        ) : null}
+      </DetailActionFooter>
 
       {detail.canDelete ? (
         <ConfirmActionDialog
@@ -915,6 +1026,17 @@ export function AgentDetailContent({
       ) : null}
 
       <ConfirmActionDialog
+        open={removeDialogOpen}
+        title="Remove from Harness Asset Manager"
+        description={<>Are you sure you want to remove <strong>{detail.name}</strong> from Harness Asset Manager? This will restore raw local files for currently enabled harnesses and stop tracking this agent.</>}
+        confirmLabel="Remove from HarnessAM"
+        pendingLabel="Removing..."
+        isPending={isUnmanaging}
+        onOpenChange={setRemoveDialogOpen}
+        onConfirm={handleUnmanage}
+      />
+
+      <ConfirmActionDialog
         open={discardDialogOpen}
         title="Discard changes?"
         description="You have unsaved changes that will be lost. Are you sure you want to discard them?"
@@ -928,6 +1050,19 @@ export function AgentDetailContent({
           onClose();
         }}
       />
+
+      <AdoptConflictDialog
+        open={conflict !== null}
+        slug={conflict?.slug ?? ""}
+        storePath={conflict?.storePath ?? ""}
+        harnessPath={conflict?.harnessPath ?? ""}
+        isPending={conflictPending}
+        onOpenChange={(open) => {
+          if (!open) setConflict(null);
+        }}
+        onConfirm={handleResolveConflict}
+      />
     </>
   );
 }
+

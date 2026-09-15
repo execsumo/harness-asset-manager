@@ -79,7 +79,7 @@ describe("McpNeedsReviewDetailView", () => {
 
     expect(screen.getByRole("heading", { name: "Config to adopt" })).toBeInTheDocument();
     const adoptButton = screen.getByRole("button", { name: "Adopt" });
-    expect(adoptButton.closest(".mcp-detail-shell__footer")).not.toBeNull();
+    expect(adoptButton.closest(".detail-action-footer")).not.toBeNull();
     expect(screen.queryByText(/Configurations differ across harnesses/i)).toBeNull();
   });
 
@@ -98,7 +98,7 @@ describe("McpNeedsReviewDetailView", () => {
 
     expect(screen.queryByText(/Configurations differ across harnesses/i)).toBeNull();
     const chooseButton = screen.getByRole("button", { name: "Choose config" });
-    expect(chooseButton.closest(".mcp-detail-shell__footer")).not.toBeNull();
+    expect(chooseButton.closest(".detail-action-footer")).not.toBeNull();
     expect(screen.queryByRole("heading", { name: "Config to adopt" })).toBeNull();
   });
 });

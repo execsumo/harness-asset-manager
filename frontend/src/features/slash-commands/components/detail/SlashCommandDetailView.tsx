@@ -7,6 +7,7 @@ import { DetailSection } from "../../../../components/detail/DetailSection";
 import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 import { DocumentSection } from "../../../../components/detail/editing/DocumentSection";
 import {
   FrontmatterEditor,
@@ -16,7 +17,13 @@ import {
 } from "../../../../components/detail/editing/FrontmatterEditor";
 import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { useToast } from "../../../../components/Toast";
-import { useSetSlashCommandTagsMutation, useUpdateSlashCommandMutation } from "../../api/queries";
+import { UiTooltip } from "../../../../components/ui/UiTooltip";
+import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
+import {
+  useSetSlashCommandTagsMutation,
+  useUnmanageSlashCommandMutation,
+  useUpdateSlashCommandMutation,
+} from "../../api/queries";
 import type {
   SlashCommandDto,
   SlashTargetDto,
@@ -50,10 +57,31 @@ export function SlashCommandDetailView({
   const copy = useSlashCommandsCopy();
   const { toast } = useToast();
   const updateMutation = useUpdateSlashCommandMutation();
+  const unmanageMutation = useUnmanageSlashCommandMutation();
   const setTagsMutation = useSetSlashCommandTagsMutation();
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
 
   const commandPending = pendingName === command.name;
   const enabledTargetIds = useMemo(() => syncedTargetIds(command), [command]);
+
+  const hasEnabledTargets = enabledTargetIds.size > 0;
+  const isRemoveBlocked = !hasEnabledTargets || unmanageMutation.isPending || commandPending;
+  const removeTooltip = !hasEnabledTargets
+    ? "Enable at least one harness before removing this command from Harness Asset Manager."
+    : "Removes this command from the Harness Asset Manager store and restores local copies only for the harnesses that are currently enabled.";
+
+  const handleUnmanage = async () => {
+    try {
+      const promise = unmanageMutation.mutateAsync({ name: command.name });
+      setRemoveDialogOpen(false);
+      onClose();
+      await promise;
+      toast("Slash command removed from Harness Asset Manager");
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to remove slash command from Harness Asset Manager");
+      setRemoveDialogOpen(false);
+    }
+  };
 
   const isStarred = (command.tags || []).some((t) => t.toLowerCase() === "starred");
 
@@ -313,17 +341,62 @@ export function SlashCommandDetailView({
         </div>
       </div>
 
-      <footer className="slash-command-detail-shell__footer" aria-label={copy.detail.actionsAria}>
+      <DetailActionFooter ariaLabel={copy.detail.actionsAria}>
+        {isRemoveBlocked ? (
+          <UiTooltipTriggerBoundary
+            content={removeTooltip}
+            contentClassName="ui-popup--tooltip--hint"
+            align="end"
+          >
+            <button
+              type="button"
+              className="action-pill action-pill--md"
+              disabled={isRemoveBlocked}
+              onClick={() => setRemoveDialogOpen(true)}
+            >
+              {unmanageMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+              ) : null}
+              Remove from HarnessAM
+            </button>
+          </UiTooltipTriggerBoundary>
+        ) : (
+          <UiTooltip content={removeTooltip} contentClassName="ui-popup--tooltip--hint" align="end">
+            <button
+              type="button"
+              className="action-pill action-pill--md"
+              disabled={isRemoveBlocked}
+              onClick={() => setRemoveDialogOpen(true)}
+            >
+              {unmanageMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+              ) : null}
+              Remove from HarnessAM
+            </button>
+          </UiTooltip>
+        )}
+
         <button
           type="button"
           className="action-pill action-pill--md action-pill--danger"
-          disabled={commandPending}
+          disabled={commandPending || unmanageMutation.isPending}
           onClick={() => onDelete(command)}
         >
           <Trash2 size={13} aria-hidden="true" />
           {copy.detail.delete}
         </button>
-      </footer>
+      </DetailActionFooter>
+
+      <ConfirmActionDialog
+        open={removeDialogOpen}
+        title="Remove from Harness Asset Manager"
+        description={<>Are you sure you want to remove <strong>{command.name}</strong> from Harness Asset Manager? This will restore raw local files for currently enabled harnesses and stop tracking this command.</>}
+        confirmLabel="Remove from HarnessAM"
+        pendingLabel="Removing..."
+        isPending={unmanageMutation.isPending}
+        onOpenChange={setRemoveDialogOpen}
+        onConfirm={handleUnmanage}
+      />
 
       <ConfirmActionDialog
         open={discardDialogOpen}

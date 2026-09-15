@@ -57,7 +57,7 @@ export function AgentsMatrixView({
   const [sort, setSort] = useState<AgentSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortAgentsRows(entries, columns, sort), [entries, columns, sort]);
   const selectableEntries = sortedEntries.filter(
-    (entry) => entry.kind === "unmanaged" && !pendingAgentKeys.has(entry.ref),
+    (entry) => !pendingAgentKeys.has(entry.ref),
   );
   const selectedSelectableCount = selectableEntries.filter((entry) => checkedRefs.has(entry.ref)).length;
 
@@ -204,14 +204,12 @@ function AgentsMatrixRow({
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
       <td className="matrix-table__cell matrix-table__cell--checkbox">
-        {isUntracked ? (
-          <CardSelectCheckbox
-            checked={checked}
-            disabled={pendingAgent}
-            label={checked ? `Deselect ${entry.name}` : `Select ${entry.name}`}
-            onToggle={() => onToggleChecked(entry.ref)}
-          />
-        ) : null}
+        <CardSelectCheckbox
+          checked={checked}
+          disabled={pendingAgent}
+          label={checked ? `Deselect ${entry.name}` : `Select ${entry.name}`}
+          onToggle={() => onToggleChecked(entry.ref)}
+        />
       </td>
       <td
         className="matrix-table__cell matrix-table__cell--identity agent-pointer"

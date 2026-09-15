@@ -5,6 +5,7 @@ import {
   DetailBindingIdentity,
   type DetailBindingTone,
 } from "../../../../components/detail/DetailBindingIdentity";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
 import { DetailTags } from "../../../../components/detail/DetailTags";
@@ -168,14 +169,14 @@ export function SlashCommandReviewDetailView({
         </div>
       </div>
 
-      <footer className="slash-review-detail-shell__footer" aria-label={copy.detail.review.actionsAria}>
+      <DetailActionFooter ariaLabel={copy.detail.review.actionsAria}>
         {orderedActions.map((action, index) => {
           const pending = pendingAction === action;
           return (
             <button
               key={action}
               type="button"
-              className={`action-pill${index === 0 ? " action-pill--accent" : ""}`}
+              className={`action-pill action-pill--md${index === 0 ? " action-pill--accent" : ""}`}
               title={copy.review.actionTitle(action)}
               disabled={Boolean(pendingAction)}
               onClick={() => {
@@ -187,7 +188,7 @@ export function SlashCommandReviewDetailView({
             </button>
           );
         })}
-      </footer>
+      </DetailActionFooter>
     </>
   );
 }

@@ -62,7 +62,9 @@ export function SlashCommandMatrix({
   const [sort, setSort] = useState<SlashMatrixSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortEntries(entries, sort), [entries, sort]);
   const selectableEntries = sortedEntries.filter((entry) => {
-    if (entry.kind === "managed") return false;
+    if (entry.kind === "managed") {
+      return pendingName !== entry.command.name;
+    }
     const action = primaryReviewAction(entry.review);
     return action !== null && pendingReviewKey !== reviewKey(entry.review.target, entry.review.name, action);
   });
@@ -215,8 +217,15 @@ function SlashCommandMatrixRow({
     const displayTags = (command.tags || []).filter((t) => t.toLowerCase() !== "starred");
 
     return (
-      <tr className="matrix-table__row">
-        <td className="matrix-table__cell matrix-table__cell--checkbox" />
+      <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
+        <td className="matrix-table__cell matrix-table__cell--checkbox">
+          <CardSelectCheckbox
+            checked={checked}
+            disabled={pendingName === command.name}
+            label={checked ? `Deselect ${command.name}` : `Select ${command.name}`}
+            onToggle={() => onToggleChecked(entry.id)}
+          />
+        </td>
         <td className="matrix-table__cell matrix-table__cell--identity" onClick={() => onOpenManaged(command)}>
           <div className="matrix-table__name-row slash-matrix-name-row">
             <OverflowTooltipText as="span" className="matrix-table__name-text">{command.name}</OverflowTooltipText>
@@ -302,7 +311,7 @@ function SlashCommandMatrixRow({
           checked={checked}
           disabled={isDisabled}
           label={checked ? `Deselect ${review.name}` : `Select ${review.name}`}
-          onToggle={() => onToggleChecked(review.reviewRef)}
+          onToggle={() => onToggleChecked(entry.id)}
         />
       </td>
       <td className="matrix-table__cell matrix-table__cell--identity">

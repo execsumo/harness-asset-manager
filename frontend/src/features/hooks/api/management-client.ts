@@ -94,3 +94,8 @@ export async function reconcileHook(args: {
     },
   );
 }
+
+export async function unmanageHook(id: string): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>(`/hooks/${encodeURIComponent(id)}/unmanage`, {});
+}
+

@@ -387,7 +387,7 @@ describe("Agents unified inventory", () => {
     expect(screen.queryByText("Managed Agent")).not.toBeInTheDocument();
   });
 
-  it("does not render checkboxes on managed rows", async () => {
+  it("renders checkboxes on managed rows", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.includes("/api/agents")) return okJson(mixedAgentsFixture());
@@ -397,7 +397,7 @@ describe("Agents unified inventory", () => {
     renderWithAppProviders(<AgentsInUsePage />, { route: "/agents" });
     await waitFor(() => expect(screen.getByText("Managed Agent")).toBeInTheDocument());
     expect(screen.getByRole("checkbox", { name: /select ok agent/i })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /managed agent/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /select managed agent/i })).toBeInTheDocument();
   });
 
   it("shows the bulk dock only after an untracked row is selected", async () => {

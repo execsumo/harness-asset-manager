@@ -2,13 +2,22 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, Star, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
+import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 import { DetailBindingIdentity } from "../../../../components/detail/DetailBindingIdentity";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
 import { DetailTags } from "../../../../components/detail/DetailTags";
 import { ErrorBanner } from "../../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../../components/LoadingSpinner";
-import { useHookDetailQuery, useSetHookTagsMutation } from "../../api/management-queries";
+import { UiTooltip } from "../../../../components/ui/UiTooltip";
+import { useToast } from "../../../../components/Toast";
+import {
+  useHookDetailQuery,
+  usePromoteHookMutation,
+  useSetHookTagsMutation,
+  useUnmanageHookMutation,
+} from "../../api/management-queries";
 import { useHooksCopy } from "../../i18n";
 import { isHooksHarnessAddressable } from "../../model/selectors";
 
@@ -45,10 +54,38 @@ export function HookDetailSheet({
 }: HookDetailSheetProps) {
   const headingId = useId();
   const copy = useHooksCopy();
+  const { toast } = useToast();
   const detailQuery = useHookDetailQuery(id);
   const setTagsMutation = useSetHookTagsMutation();
+  const promoteMutation = usePromoteHookMutation();
+  const unmanageMutation = useUnmanageHookMutation();
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [resolvePending, setResolvePending] = useState(false);
   const [resolveError, setResolveError] = useState("");
+
+  const handleAdopt = async () => {
+    if (!detailQuery.data) return;
+    try {
+      await promoteMutation.mutateAsync({ id: detailQuery.data.id });
+      toast("Hook added to Harness Asset Manager");
+      onClose();
+    } catch (err) {
+      setResolveError(err instanceof Error ? err.message : "Could not adopt hook");
+    }
+  };
+
+  const handleUnmanage = async () => {
+    if (!detailQuery.data) return;
+    try {
+      await unmanageMutation.mutateAsync(detailQuery.data.id);
+      setRemoveDialogOpen(false);
+      onClose();
+      toast("Hook removed from Harness Asset Manager");
+    } catch (err) {
+      setResolveError(err instanceof Error ? err.message : "Failed to remove hook from Harness Asset Manager");
+      setRemoveDialogOpen(false);
+    }
+  };
 
   if (!id) return null;
 
@@ -111,47 +148,49 @@ export function HookDetailSheet({
   }
 
   return (
-    <Dialog.Root
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="detail-sheet hook-detail-modal" aria-describedby="hook-detail-desc">
-          <div id="hook-detail-desc" className="u-visually-hidden">
-            Hook detail panel showing hook specs and enabled status across harnesses.
-          </div>
-          
-          <DetailHeader
-            title={<h2 id={headingId} className="skill-detail__title">{displayName}</h2>}
-            titleAction={(
-              <button
-                type="button"
-                className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
-                aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
-                onClick={handleToggleStar}
-              >
-                <Star
-                  size={18}
-                  className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
-                />
-              </button>
-            )}
-            closeLabel={copy.detail.close}
-            onClose={onClose}
-          />
-
-          {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
-          {resolveError ? <ErrorBanner message={resolveError} onDismiss={() => setResolveError("")} /> : null}
-
-          {detailQuery.isPending ? (
-            <div className="panel-state">
-              <LoadingSpinner label={copy.detail.loading} />
+    <>
+      <Dialog.Root
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="detail-sheet hook-detail-modal" aria-describedby="hook-detail-desc">
+            <div id="hook-detail-desc" className="u-visually-hidden">
+              Hook detail panel showing hook specs and enabled status across harnesses.
             </div>
-          ) : detail ? (
-            <div className="detail-sheet__body">
+            
+            <DetailHeader
+              title={<h2 id={headingId} className="skill-detail__title">{displayName}</h2>}
+              titleAction={(
+                <button
+                  type="button"
+                  className={`skill-star-btn ${isStarred ? "skill-star-btn--active" : ""}`}
+                  aria-label={isStarred ? `Unstar ${displayName}` : `Star ${displayName}`}
+                  onClick={handleToggleStar}
+                >
+                  <Star
+                    size={18}
+                    className={`skill-star-icon ${isStarred ? "skill-star-icon--filled" : ""}`}
+                  />
+                </button>
+              )}
+              closeLabel={copy.detail.close}
+              onClose={onClose}
+            />
+
+            {errorMessage ? <ErrorBanner message={errorMessage} /> : null}
+            {resolveError ? <ErrorBanner message={resolveError} onDismiss={() => setResolveError("")} /> : null}
+
+            {detailQuery.isPending ? (
+              <div className="panel-state">
+                <LoadingSpinner label={copy.detail.loading} />
+              </div>
+            ) : detail ? (
+              <>
+                <div className="detail-sheet__body">
               <DetailSection heading={copy.detail.about}>
                 <dl className="detail-sheet__description-list">
                   {spec?.description ? (
@@ -287,21 +326,69 @@ export function HookDetailSheet({
                 </div>
               </DetailSection>
 
-              <div className="detail-sheet__footer-actions">
+              </div>
+
+              <DetailActionFooter ariaLabel="Hook actions">
+                {detail.kind === "unmanaged" ? (
+                  <button
+                    type="button"
+                    className="action-pill action-pill--md action-pill--accent"
+                    onClick={handleAdopt}
+                    disabled={promoteMutation.isPending || isServerPending}
+                  >
+                    {promoteMutation.isPending ? (
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    ) : null}
+                    Add to HarnessAM
+                  </button>
+                ) : null}
+
+                {detail.kind === "managed" ? (
+                  <UiTooltip
+                    content="Removes this hook from Harness Asset Manager and keeps its configuration in harnesses as unmanaged."
+                    contentClassName="ui-popup--tooltip--hint"
+                    align="end"
+                  >
+                    <button
+                      type="button"
+                      className="action-pill action-pill--md"
+                      onClick={() => setRemoveDialogOpen(true)}
+                      disabled={unmanageMutation.isPending || isServerPending}
+                    >
+                      {unmanageMutation.isPending ? (
+                        <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                      ) : null}
+                      Remove from HarnessAM
+                    </button>
+                  </UiTooltip>
+                ) : null}
+
                 <button
                   type="button"
-                  className="action-pill action-pill--danger-outline"
+                  className="action-pill action-pill--md action-pill--danger"
                   onClick={onUninstall}
                   disabled={isUninstalling || isServerPending}
                 >
                   <Trash2 size={14} className="action-pill__icon" />
                   {copy.detail.uninstall}
                 </button>
-              </div>
-            </div>
+              </DetailActionFooter>
+            </>
           ) : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+    <ConfirmActionDialog
+      open={removeDialogOpen}
+      title="Remove from Harness Asset Manager"
+      description={<>Are you sure you want to remove <strong>{displayName}</strong> from Harness Asset Manager? This will keep existing settings in your harnesses and stop tracking this hook.</>}
+      confirmLabel="Remove from HarnessAM"
+      pendingLabel="Removing..."
+      isPending={unmanageMutation.isPending}
+      onOpenChange={setRemoveDialogOpen}
+      onConfirm={handleUnmanage}
+    />
+  </>
   );
 }

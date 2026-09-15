@@ -18,7 +18,7 @@ describe("SkillDetailRemoveAction", () => {
       </UiTooltipProvider>,
     );
 
-    const button = screen.getByRole("button", { name: "Remove from Harness Asset Manager" });
+    const button = screen.getByRole("button", { name: "Remove from HarnessAM" });
     fireEvent.focus(button);
 
     await waitFor(() => {
@@ -42,7 +42,7 @@ describe("SkillDetailRemoveAction", () => {
       </UiTooltipProvider>,
     );
 
-    const trigger = screen.getByRole("button", { name: "Remove from Harness Asset Manager" }).closest(".ui-tooltip-trigger");
+    const trigger = screen.getByRole("button", { name: "Remove from HarnessAM" }).closest(".ui-tooltip-trigger");
     expect(trigger).not.toBeNull();
 
     fireEvent.focus(trigger!);
@@ -53,6 +53,6 @@ describe("SkillDetailRemoveAction", () => {
       expect(bubble).toHaveTextContent("Enable at least one harness before removing this skill from Harness Asset Manager.");
     });
 
-    expect(screen.getByRole("button", { name: "Remove from Harness Asset Manager" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Remove from HarnessAM" })).toBeDisabled();
   });
 });

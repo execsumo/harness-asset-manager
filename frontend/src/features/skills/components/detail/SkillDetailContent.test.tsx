@@ -94,7 +94,7 @@ describe("SkillDetailContent", () => {
 
     const footer = screen.getByLabelText("Skill actions");
     expect(footer).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add to Harness Asset Manager" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add to HarnessAM" })).toBeInTheDocument();
     expect(
       screen.queryByText(/Shared Store is the canonical physical package/i),
     ).not.toBeInTheDocument();
@@ -167,7 +167,7 @@ describe("SkillDetailContent", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "Add to Harness Asset Manager" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to HarnessAM" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Skill actions")).toBeInTheDocument();
     expect(screen.getByText("No Update Available")).toBeInTheDocument();
     expect(screen.queryByText("Managed")).not.toBeInTheDocument();

@@ -152,16 +152,14 @@ export default function HooksInUsePage() {
   const isReady = status === "ready" && Boolean(inventory);
   const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
 
-  // Keep only currently visible, untracked rows selected as filters or inventory change.
+  // Keep only currently visible rows selected as filters or inventory change.
   useEffect(() => {
     setSelectedIds((current) => {
-      const visibleUntracked = new Set(
-        entries.filter((entry) => entry.kind === "unmanaged").map((entry) => entry.id),
-      );
+      const visible = new Set(entries.map((entry) => entry.id));
       let changed = false;
       const next = new Set<string>();
       for (const id of current) {
-        if (visibleUntracked.has(id)) next.add(id);
+        if (visible.has(id)) next.add(id);
         else changed = true;
       }
       return changed ? next : current;
@@ -254,6 +252,10 @@ export default function HooksInUsePage() {
     : null;
 
   const selectedCount = selectedIds.size;
+  const adoptableSelectedCount = useMemo(
+    () => entries.filter((entry) => entry.kind === "unmanaged" && selectedIds.has(entry.id)).length,
+    [entries, selectedIds],
+  );
 
   return (
     <>
@@ -427,20 +429,26 @@ export default function HooksInUsePage() {
                 <X size={14} />
               </button>
             </div>
-            <span className="bulk-bar__divider" aria-hidden="true" />
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void handleAdoptSelected()}
-              disabled={adoptingSelected}
-            >
-              {adoptingSelected ? (
-                <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
-              ) : (
-                <Plus size={15} aria-hidden="true" />
-              )}
-              {copy.inUse.adoptSelected}
-            </button>
+            {adoptableSelectedCount > 0 ? (
+              <>
+                <span className="bulk-bar__divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  className="bulk-bar__action"
+                  onClick={() => void handleAdoptSelected()}
+                  disabled={adoptingSelected}
+                >
+                  {adoptingSelected ? (
+                    <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
+                  ) : (
+                    <Plus size={15} aria-hidden="true" />
+                  )}
+                  {adoptableSelectedCount === selectedCount
+                    ? copy.inUse.adoptSelected
+                    : `${copy.inUse.adoptSelected} (${adoptableSelectedCount})`}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

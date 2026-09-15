@@ -66,3 +66,11 @@ export async function setSlashCommandTags(
   );
 }
 
+export async function unmanageSlashCommand(name: string): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>(
+    `/slash-commands/${encodeURIComponent(name)}/unmanage`,
+    {},
+  );
+}
+
+

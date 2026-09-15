@@ -65,7 +65,7 @@ export function HooksMatrixView({
     [entries, columns, sort, copy],
   );
   const selectableEntries = sortedEntries.filter(
-    (entry) => entry.kind === "unmanaged" && !pendingHookKeys.has(entry.id),
+    (entry) => !pendingHookKeys.has(entry.id),
   );
   const selectedSelectableCount = selectableEntries.filter((entry) => checkedIds.has(entry.id)).length;
 
@@ -215,14 +215,12 @@ function HooksMatrixRow({
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
       <td className="matrix-table__cell matrix-table__cell--checkbox">
-        {isUntracked ? (
-          <CardSelectCheckbox
-            checked={checked}
-            label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
-            onToggle={() => onToggleChecked(entry.id)}
-            disabled={pendingHook}
-          />
-        ) : null}
+        <CardSelectCheckbox
+          checked={checked}
+          label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
+          onToggle={() => onToggleChecked(entry.id)}
+          disabled={pendingHook}
+        />
       </td>
       <td
         className="matrix-table__cell matrix-table__cell--identity"

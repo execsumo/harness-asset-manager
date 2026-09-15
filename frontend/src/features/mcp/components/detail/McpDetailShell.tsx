@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { DetailActionFooter } from "../../../../components/detail/DetailActionFooter";
 
 interface McpDetailShellProps {
   chrome: ReactNode;
@@ -25,11 +26,9 @@ export function McpDetailShell({
       >
         <div className="detail-sheet__body">{body}</div>
       </div>
-      {footer ? (
-        <footer className="mcp-detail-shell__footer" aria-label="MCP actions">
-          {footer}
-        </footer>
-      ) : null}
+      <DetailActionFooter ariaLabel="MCP actions">
+        {footer}
+      </DetailActionFooter>
     </>
   );
 }

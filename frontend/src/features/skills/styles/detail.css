@@ -24,17 +24,6 @@
   overscroll-behavior: contain;
 }
 
-.skill-detail-shell__footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
 .skill-detail__chrome {
   display: grid;
   gap: 12px;

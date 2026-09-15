@@ -34,9 +34,9 @@ const englishSlashCommandsCopy = {
     cannotUpdate: "Cannot update",
     actionLabel: (action: SlashReviewAction | null) => {
       if (action === "restore_managed") return "Restore";
-      if (action === "adopt_target") return "Adopt";
+      if (action === "adopt_target") return "Add to HarnessAM";
       if (action === "remove_binding") return "Remove binding";
-      if (action === "import") return "Adopt";
+      if (action === "import") return "Add to HarnessAM";
       return "Review";
     },
     actionTitle: (action: SlashReviewAction) => {

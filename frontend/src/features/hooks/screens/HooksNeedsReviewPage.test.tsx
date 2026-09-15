@@ -143,7 +143,7 @@ describe("Hooks unified inventory page", () => {
     expect(screen.queryByText("Managed Hook")).not.toBeInTheDocument();
   });
 
-  it("does not render checkboxes on managed rows", async () => {
+  it("renders checkboxes on managed rows", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.includes("/api/hooks")) return okJson(mixedHooksInventoryFixture());
@@ -153,7 +153,7 @@ describe("Hooks unified inventory page", () => {
     renderPage("/hooks");
     await waitFor(() => expect(screen.getByText("Managed Hook")).toBeInTheDocument());
     expect(screen.getByRole("checkbox", { name: /select pre-commit check/i })).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /managed hook/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /select managed hook/i })).toBeInTheDocument();
   });
 
   it("shows the bulk dock only after an untracked row is selected", async () => {

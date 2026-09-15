@@ -16,6 +16,7 @@ import {
   setPermissionHarnesses,
   setPermissionTags,
   uninstallPermission,
+  unmanagePermission,
 } from "./management-client";
 import { invalidatePermissionsQueries } from "./invalidation";
 import { HOOKS_GC_TIME_MS, HOOKS_INVENTORY_REFETCH_INTERVAL_MS, HOOKS_STALE_TIME_MS, permissionsManagementKeys } from "./keys";
@@ -105,3 +106,12 @@ export function useReconcilePermissionMutation() {
     onSettled: () => invalidatePermissionsQueries(queryClient),
   });
 }
+
+export function useUnmanagePermissionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unmanagePermission(id),
+    onSettled: () => invalidatePermissionsQueries(queryClient),
+  });
+}
+

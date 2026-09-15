@@ -189,13 +189,11 @@ export default function AgentsInUsePage() {
 
   useEffect(() => {
     setSelectedRefs((current) => {
-      const visibleUntracked = new Set(
-        entries.filter((entry) => entry.kind === "unmanaged").map((entry) => entry.ref),
-      );
+      const visible = new Set(entries.map((entry) => entry.ref));
       let changed = false;
       const next = new Set<string>();
       for (const ref of current) {
-        if (visibleUntracked.has(ref)) next.add(ref);
+        if (visible.has(ref)) next.add(ref);
         else changed = true;
       }
       return changed ? next : current;
@@ -327,6 +325,9 @@ export default function AgentsInUsePage() {
     : "";
   const selectedCount = selectedRefs.size;
   const adoptableCount = entries.filter((entry) => entry.kind === "unmanaged" && entry.actions.canAdopt).length;
+  const adoptableSelectedCount = entries.filter(
+    (entry) => selectedRefs.has(entry.ref) && entry.kind === "unmanaged" && entry.actions.canAdopt,
+  ).length;
   const deletableSelectedCount = entries.filter(
     (entry) => selectedRefs.has(entry.ref) && entry.actions.canDelete,
   ).length;
@@ -532,19 +533,21 @@ export default function AgentsInUsePage() {
           onDelete={handleDeleteSelected}
           showHarnessActions={false}
           showDestructiveAction={deletableSelectedCount > 0}
-          extraActions={(
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void handleAdoptSelected()}
-              disabled={pendingSelectedAction !== null}
-            >
-              {pendingSelectedAction === "adopt" ? <LoadingSpinner size="sm" label="Adopting selected agents..." /> : <Plus size={15} />}
-              Adopt selected
-            </button>
-          )}
+          extraActions={
+            adoptableSelectedCount > 0 ? (
+              <button
+                type="button"
+                className="bulk-bar__action"
+                onClick={() => void handleAdoptSelected()}
+                disabled={pendingSelectedAction !== null}
+              >
+                {pendingSelectedAction === "adopt" ? <LoadingSpinner size="sm" label="Adopting selected agents..." /> : <Plus size={15} />}
+                {adoptableSelectedCount === selectedCount ? "Adopt selected" : `Adopt selected (${adoptableSelectedCount})`}
+              </button>
+            ) : null
+          }
           destructive={{
-            actionLabel: "Delete",
+            actionLabel: deletableSelectedCount === selectedCount ? "Delete" : `Delete (${deletableSelectedCount})`,
             confirmTitle: `Delete ${deletableSelectedCount} local agent${deletableSelectedCount === 1 ? "" : "s"}?`,
             confirmDescription: "This permanently removes the selected agent files from their harnesses.",
             confirmNote: "Adopted agents are not affected.",

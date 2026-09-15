@@ -86,3 +86,7 @@ export async function setAgentTags(ref: string, tags: string[]): Promise<{ tags:
   return putJson<{ tags: string[] }>(`/agents/${ref}/tags`, { tags });
 }
 
+export async function unmanageAgent(ref: string): Promise<void> {
+  await postJson<void>(`/agents/${ref}/unmanage`, {});
+}
+
