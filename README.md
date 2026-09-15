@@ -551,14 +551,68 @@ Verified against a real Hermes v0.21.0 install rather than assumed:
   `hermes -p <name>`, and deletes cleanly. A new symlink under `skills/harnessam/` is
   picked up on the very next invocation — no restart, no registration.
 - **Hermes cannot destroy a canonical HAM package through a Bot's link.** Archiving
-  relocates the *symlink* (`Path.rename`), leaving the target intact; the autonomous
-  curator only considers skills carrying `created_by: agent` provenance, which a HAM
-  binding never has; and the hub installer refuses any install path that redirects
-  through a symlink.
+  relocates the *symlink* (`Path.rename`), leaving the target intact; Hermes' delete
+  guard refuses to recurse through a symlink at all; and the hub installer refuses any
+  install path that redirects through a symlink.
+- **The autonomous curator only touches skills carrying `created_by: agent` provenance.**
+  A HAM binding does not carry it by default, so autonomous curation leaves it alone
+  until you opt in with `hermes curator adopt <name>` — the same opt-in a Skill you wrote
+  by hand needs. Once adopted, the curator maintains it like any native Skill and its
+  edits land in the canonical HAM package. See
+  [Skills parity and the compatibility sidecar](#skills-parity-and-the-compatibility-sidecar).
 - The residual risk is therefore a *detached binding*, not lost work: a foreground
   `hermes skills archive` inside a Bot moves HAM's link into `skills/.archive/`. HAM
   reports that as re-bindable, distinctly from a broken link (target gone) or a stale
   one (target outside the store).
+
+#### Skills parity and the compatibility sidecar
+
+A Skill that Harness Asset Manager enables for Hermes behaves like a Skill Hermes created
+itself: discovered and loaded into the prompt, listed in the Hermes Web UI, editable
+through Hermes' own editor, and — once you opt in — maintained by Hermes' **curator**.
+All of it runs through Hermes' ordinary code paths. There is no Hermes-specific mode and
+no second copy of the package.
+
+Discovery always worked, because Hermes' canonical index walker
+(`agent/skill_utils.py::iter_skill_index_files`) follows symlinks. Four of Hermes'
+*management* paths did not: three scanned with `Path.rglob()`, which never descends a
+directory symlink, and one resolved a path before matching it. The practical effect was
+that a linked Skill was invisible to the curator and could not be opened or edited from
+the dashboard.
+
+| Hermes symbol | Defect | What it broke |
+|---|---|---|
+| `tools/skill_usage.py::_iter_skill_mds` | `rglob` does not descend a directory symlink | curator could not see the Skill at all |
+| `tools/skill_manager_tool.py::_iter_skill_dirs` | same | `skill_view`, `skill_manage(patch)`, dashboard editor |
+| `tools/skill_manager_tool.py::_find_skill` | resolved before matching a categorised name | `harnessam/<skill>` never matched |
+| `tools/skills_tool.py::_log_security_warnings` | trust checked only the resolved path | spurious "outside the trusted skills directory" warning |
+
+HAM closes the gap automatically. On initialization and on every `harnessam start`, it
+installs a small **compatibility sidecar** into the Hermes virtualenv that repoints those
+four paths at Hermes' own canonical walker. It is best-effort and silent: if Hermes is not
+installed, or its virtualenv is not where HAM expects, nothing happens and nothing fails.
+
+```bash
+harnessam hermes compat status     # not-detected | absent | stale | current
+harnessam hermes compat install    # install or refresh explicitly
+harnessam hermes compat remove     # take it back out
+harnessam start --no-hermes-compat # skip it for this launch
+```
+
+The sidecar lives in the virtualenv's `site-packages`, which Hermes gitignores. The Hermes
+source checkout is never modified — deliberately, because `hermes update` refuses to run
+on a dirty working tree, so patching it in place would permanently block Hermes updates.
+A Hermes plugin was also ruled out: plugins load lazily per entry point and are not loaded
+for `hermes curator`, which is exactly the path that has to work.
+
+The same four fixes are proposed upstream in
+[NousResearch/hermes-agent#112404](https://github.com/NousResearch/hermes-agent/pull/112404).
+Once they ship, the sidecar becomes redundant and can retire.
+
+**What stays with HAM.** Hermes gets read, use and edit. HAM keeps adoption, source
+updates, binding and deletion. HAM also does not point Hermes' `skills.create_dir` or
+`skills.external_dirs` at the store — either would expose every package in the store
+rather than the ones you selected for Hermes.
 
 #### Provider and model
 

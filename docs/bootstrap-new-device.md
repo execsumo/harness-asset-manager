@@ -207,6 +207,40 @@ The headless path is not a nice-to-have. A new device is very often a server rea
 and the whole feature lives inside a dotfiles workflow — `bootstrap --yes` is the line users will put
 at the end of their bootstrap script.
 
+### Hermes: binding normalization and the compatibility sidecar
+
+Two Hermes-specific things ride the same bootstrap pass.
+
+**Binding normalization.** HAM has historically written Hermes bindings into whatever
+category a Skill happened to carry, and across more than one spelling of the store path
+(`~/.local/share/harnessam/...`, `~/.harnessam/...`, a dotfiles path). All of them resolve
+to the same canonical package, but the placement is inconsistent and the `harnessam`
+category stops meaning anything. The planner emits a `relink` action for these: it links
+the Skill at the canonical `skills/harnessam/<package>` and removes the stragglers.
+
+The removal is deliberately narrow. A path is only ever a candidate when it **is a
+symlink**, it **resolves to the same store package**, and it is **not** the canonical
+target. A native Hermes Skill is a real directory and can never match, so normalization
+cannot delete or move anything Hermes owns. Placement-only: `enabledHarnesses` intent is
+untouched.
+
+```bash
+harnessam bootstrap --dry-run   # review the relink plan first — always do this
+harnessam bootstrap --yes       # apply
+```
+
+**The compatibility sidecar** is installed automatically on init and on every
+`harnessam start`, so a fresh device needs no extra step. It is worth knowing about
+because it is the reason a HAM Skill is visible to Hermes' curator and editable in the
+Hermes dashboard at all:
+
+```bash
+harnessam hermes compat status   # not-detected | absent | stale | current
+```
+
+`not-detected` simply means Hermes is not installed on this device, and exits 0 — it is a
+normal outcome on a machine that does not run Hermes, not a bootstrap failure.
+
 ### Web UI
 
 A dismissible banner on the workspace, not a buried settings toggle.
