@@ -294,6 +294,6 @@ describe("McpServerMatrixView", () => {
     expect(onChooseConfigToAdopt).toHaveBeenCalledWith("context7");
 
     const checkbox = screen.getByRole("checkbox", { name: /select context7/i });
-    expect(checkbox).toHaveAttribute("aria-disabled", "true");
+    expect(checkbox).not.toHaveAttribute("aria-disabled", "true");
   });
 });

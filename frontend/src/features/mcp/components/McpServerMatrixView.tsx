@@ -85,15 +85,11 @@ export function McpServerMatrixView({
           Array.from(pendingAdoptKeys).some((key) => key.startsWith(`${name}:`))),
     );
 
-  const selectableEntries = sortedEntries.filter((entry) => {
-    const isUntracked = entry.kind === "unmanaged";
-    const group = groupsByName?.get(entry.name);
-    return (
-      !pendingServerKeys.has(entry.name) &&
-      !isAdoptPending(entry.name) &&
-      (!isUntracked || (group ? group.identical : true))
-    );
-  });
+  // Every visible row participates in selection. Bulk actions partition the
+  // selection by capability instead of silently excluding review rows.
+  const selectableEntries = sortedEntries.filter(
+    (entry) => !pendingServerKeys.has(entry.name) && !isAdoptPending(entry.name),
+  );
   const selectedSelectableCount = selectableEntries.filter((entry) =>
     entry.kind === "unmanaged"
       ? Boolean(checkedUntrackedNames?.has(entry.name))
@@ -266,7 +262,6 @@ function McpMatrixRow({
   const coverage = matrixCoverage(entry, columns);
   const isUntracked = entry.kind === "unmanaged";
   const isIdentical = group ? group.identical : true;
-  const isSelectable = !isUntracked || isIdentical;
   const isRowPending = pendingServer || pendingAdopt;
   const isStarred = (entry.tags || []).some((t) => t.toLowerCase() === "starred");
   const displayTags = (entry.tags || []).filter((t) => t.toLowerCase() !== "starred");
@@ -278,7 +273,7 @@ function McpMatrixRow({
           checked={checked}
           label={checked ? copy.detail.deselect(entry.displayName) : copy.detail.select(entry.displayName)}
           onToggle={() => onToggleChecked(entry.name)}
-          disabled={isRowPending || !isSelectable}
+          disabled={isRowPending}
         />
       </td>
       <td className="matrix-table__cell matrix-table__cell--identity">

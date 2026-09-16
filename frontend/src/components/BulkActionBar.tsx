@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Check, CircleSlash2, Star, Trash2, X } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { Check, ChevronDown, CircleSlash2, Star, Trash2, X } from "lucide-react";
 
 import { BulkTagPopover } from "./BulkTagPopover";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
@@ -9,12 +10,20 @@ import { useCommonCopy } from "../i18n";
 
 export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag" | "adopt";
 
+export interface BulkHarnessOption {
+  harness: string;
+  label: string;
+}
+
 interface BulkActionBarProps {
   selectedCount: number;
   pending: MultiSelectAction | null;
   onClear: () => void;
   onEnableAll?: () => Promise<void>;
   onDisableAll?: () => Promise<void>;
+  harnessOptions?: readonly BulkHarnessOption[];
+  onEnableHarness?: (harness: string) => Promise<void>;
+  onDisableHarness?: (harness: string) => Promise<void>;
   onDelete: () => Promise<void>;
   extraActions?: ReactNode;
   showHarnessActions?: boolean;
@@ -41,6 +50,9 @@ export function BulkActionBar({
   onClear,
   onEnableAll,
   onDisableAll,
+  harnessOptions,
+  onEnableHarness,
+  onDisableHarness,
   onDelete,
   extraActions,
   showHarnessActions = true,
@@ -154,6 +166,24 @@ export function BulkActionBar({
                 </button>
               </>
             ) : null}
+            {showHarnessActions && harnessOptions && harnessOptions.length > 0 && onEnableHarness && onDisableHarness ? (
+              <>
+                <BulkHarnessMenu
+                  action="enable"
+                  options={harnessOptions}
+                  pending={pending === "enable-all"}
+                  disabled={disabled}
+                  onSelect={onEnableHarness}
+                />
+                <BulkHarnessMenu
+                  action="disable"
+                  options={harnessOptions}
+                  pending={pending === "disable-all"}
+                  disabled={disabled}
+                  onSelect={onDisableHarness}
+                />
+              </>
+            ) : null}
           </div>
 
           {showDestructiveAction ? (
@@ -193,5 +223,66 @@ export function BulkActionBar({
         }}
       />
     </>
+  );
+}
+
+function BulkHarnessMenu({
+  action,
+  options,
+  pending,
+  disabled,
+  onSelect,
+}: {
+  action: "enable" | "disable";
+  options: readonly BulkHarnessOption[];
+  pending: boolean;
+  disabled: boolean;
+  onSelect: (harness: string) => Promise<void>;
+}) {
+  const isEnable = action === "enable";
+  const label = isEnable ? "Enable on" : "Disable on";
+  const Icon = isEnable ? Check : CircleSlash2;
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="bulk-bar__action"
+          disabled={disabled}
+          aria-label={`${label} a harness`}
+        >
+          {pending ? <LoadingSpinner size="sm" label={label} /> : <Icon size={15} />}
+          {label}
+          <ChevronDown size={13} aria-hidden="true" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className="ui-popup ui-popup--menu ui-menu" align="end" sideOffset={8}>
+          <ul className="ui-menu__list">
+            <li className="ui-menu__section-label">
+              {isEnable ? "Enable selected on" : "Disable selected on"}
+            </li>
+            {options.map((option) => (
+              <li key={option.harness}>
+                <Popover.Close asChild>
+                  <button
+                    type="button"
+                    className="ui-menu__item"
+                    aria-label={`${label} ${option.label}`}
+                    onClick={() => void onSelect(option.harness)}
+                  >
+                    <span className="ui-menu__icon" aria-hidden="true">
+                      <Icon size={14} />
+                    </span>
+                    <span className="ui-menu__label">{option.label}</span>
+                  </button>
+                </Popover.Close>
+              </li>
+            ))}
+          </ul>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }

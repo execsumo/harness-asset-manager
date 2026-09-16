@@ -85,6 +85,36 @@ describe("Skills MatrixView", () => {
     expect(rowNames()).toEqual(["Zeta", "Alpha"]);
   });
 
+  it("selects every visible row from the header checkbox", () => {
+    const reviewRow: SkillListRow = {
+      ...rows[0],
+      skillRef: "local:review",
+      name: "Review",
+      displayStatus: "Unmanaged",
+      actions: { canManage: false, canStopManaging: false, canDelete: false },
+    };
+    const onToggleChecked = vi.fn();
+    render(
+      <MatrixView
+        rows={[...rows, reviewRow]}
+        harnessColumns={harnessColumns}
+        checkedRefs={new Set()}
+        selectedSkillRef={null}
+        pendingToggleKeys={new Set()}
+        onOpenSkill={vi.fn()}
+        onToggleChecked={onToggleChecked}
+        onToggleCell={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all visible skills" }));
+
+    expect(onToggleChecked).toHaveBeenCalledTimes(3);
+    expect(onToggleChecked).toHaveBeenCalledWith("shared:alpha");
+    expect(onToggleChecked).toHaveBeenCalledWith("shared:zeta");
+    expect(onToggleChecked).toHaveBeenCalledWith("local:review");
+  });
+
   it("toggles harness cells", () => {
     const { onToggleCell } = renderMatrix();
 

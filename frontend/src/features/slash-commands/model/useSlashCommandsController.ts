@@ -242,12 +242,15 @@ export function useSlashCommandsController() {
 
   async function runBulkAction(
     action: MultiSelectAction,
+    selectedNames: readonly string[],
     task: (name: string) => Promise<unknown>,
     successMessage: string,
     failureMessage: string,
-  ): Promise<void> {
-    if (checkedNames.size === 0) return;
-    const names = Array.from(checkedNames);
+  ): Promise<boolean> {
+    const names = Array.from(new Set(selectedNames)).filter((name) =>
+      data?.commands.some((command) => command.name === name),
+    );
+    if (names.length === 0) return false;
     setBulkPending(action);
     setActionError("");
     try {
@@ -264,40 +267,86 @@ export function useSlashCommandsController() {
             })
             .join("; "),
         );
-      } else {
-        setCheckedNames(new Set());
-        toast(successMessage);
+        return false;
       }
+      setCheckedNames(new Set());
+      toast(successMessage);
+      return true;
     } catch {
       setActionError(failureMessage);
+      return false;
     } finally {
       setBulkPending(null);
     }
   }
 
-  async function handleBulkEnableAll(): Promise<void> {
-    if (!data) return;
+  function selectedNamesFallback(): string[] {
+    return Array.from(checkedNames);
+  }
+
+  async function handleBulkEnableAll(selectedNames = selectedNamesFallback()): Promise<boolean> {
+    if (!data) return false;
     const targets = data.targets.filter((target) => target.enabled).map((target) => target.id);
-    await runBulkAction(
+    return runBulkAction(
       "enable-all",
+      selectedNames,
       (name) => syncMutation.mutateAsync({ name, body: { targets } }),
       "Slash commands enabled",
       "Unable to enable slash commands.",
     );
   }
 
-  async function handleBulkDisableAll(): Promise<void> {
-    await runBulkAction(
+  async function handleBulkDisableAll(selectedNames = selectedNamesFallback()): Promise<boolean> {
+    return runBulkAction(
       "disable-all",
+      selectedNames,
       (name) => syncMutation.mutateAsync({ name, body: { targets: [] } }),
       "Slash commands disabled",
       "Unable to disable slash commands.",
     );
   }
 
-  async function handleBulkDelete(): Promise<void> {
-    await runBulkAction(
+  async function handleBulkEnableHarness(
+    harness: SlashTargetId,
+    selectedNames = selectedNamesFallback(),
+  ): Promise<boolean> {
+    return runBulkAction(
+      "enable-all",
+      selectedNames,
+      (name) => {
+        const command = data?.commands.find((candidate) => candidate.name === name);
+        if (!command) return Promise.resolve();
+        const targets = new Set(syncedTargetIds(command));
+        targets.add(harness);
+        return syncMutation.mutateAsync({ name, body: { targets: Array.from(targets) as SlashTargetId[] } });
+      },
+      "Slash commands enabled",
+      "Unable to enable slash commands.",
+    );
+  }
+
+  async function handleBulkDisableHarness(
+    harness: SlashTargetId,
+    selectedNames = selectedNamesFallback(),
+  ): Promise<boolean> {
+    return runBulkAction(
+      "disable-all",
+      selectedNames,
+      (name) => {
+        const command = data?.commands.find((candidate) => candidate.name === name);
+        if (!command) return Promise.resolve();
+        const targets = Array.from(syncedTargetIds(command)).filter((target) => target !== harness) as SlashTargetId[];
+        return syncMutation.mutateAsync({ name, body: { targets } });
+      },
+      "Slash commands disabled",
+      "Unable to disable slash commands.",
+    );
+  }
+
+  async function handleBulkDelete(selectedNames = selectedNamesFallback()): Promise<boolean> {
+    return runBulkAction(
       "delete",
+      selectedNames,
       (name) => deleteMutation.mutateAsync({ name }),
       "Slash commands deleted",
       "Unable to delete slash commands.",
@@ -360,6 +409,8 @@ export function useSlashCommandsController() {
     handleBulkDelete,
     handleBulkDisableAll,
     handleBulkEnableAll,
+    handleBulkEnableHarness,
+    handleBulkDisableHarness,
     handleSubmit,
     handleToggleChecked,
     handleToggleTarget,

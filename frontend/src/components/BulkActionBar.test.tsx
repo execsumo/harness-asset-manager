@@ -34,6 +34,35 @@ describe("BulkActionBar", () => {
     expect(screen.queryByRole("button", { name: /Tag selected/i })).not.toBeInTheDocument();
   });
 
+  it("offers enable and disable menus for individual harnesses", async () => {
+    const onEnableHarness = vi.fn().mockResolvedValue(undefined);
+    const onDisableHarness = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        pending={null}
+        onClear={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+        harnessOptions={[
+          { harness: "codex", label: "Codex" },
+          { harness: "hermes", label: "Hermes" },
+        ]}
+        onEnableHarness={onEnableHarness}
+        onDisableHarness={onDisableHarness}
+        destructive={defaultDestructive}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Enable on a harness" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enable on Hermes" }));
+    await waitFor(() => expect(onEnableHarness).toHaveBeenCalledWith("hermes"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Disable on a harness" }));
+    fireEvent.click(screen.getByRole("button", { name: "Disable on Codex" }));
+    await waitFor(() => expect(onDisableHarness).toHaveBeenCalledWith("codex"));
+  });
+
   it("renders Star button when onStarSelected is provided", () => {
     const onStarSelected = vi.fn().mockResolvedValue(undefined);
 

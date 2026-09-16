@@ -46,17 +46,21 @@ export function useHooksManagementController() {
     async (
       id: string,
       target: "enabled" | "disabled",
+      rethrow = false,
     ): Promise<void> => {
       try {
         await pendingHookRegistry.run(id, async () => {
           const response = await setHarnessesMutation.mutateAsync({ id, target });
           if (!response.ok) {
             const failed = response.failed.map((f) => `${f.harness}: ${f.error}`).join("; ");
-            setActionErrorMessage(failed || "Some harnesses could not be updated");
+            const message = failed || "Some harnesses could not be updated";
+            setActionErrorMessage(message);
+            if (rethrow) throw new Error(message);
           }
         });
       } catch (error) {
         setActionErrorMessage(error instanceof Error ? error.message : "Action failed");
+        if (rethrow) throw error;
       }
     },
     [pendingHookRegistry, setHarnessesMutation],
@@ -84,7 +88,7 @@ export function useHooksManagementController() {
   );
 
   const handleToggleHarness = useCallback(
-    async (id: string, harness: string, currentEnabled: boolean): Promise<void> => {
+    async (id: string, harness: string, currentEnabled: boolean, rethrow = false): Promise<void> => {
       const pendingKey = `${id}:${harness}`;
       try {
         await pendingPerHarnessRegistry.run(pendingKey, async () => {
@@ -96,6 +100,7 @@ export function useHooksManagementController() {
         });
       } catch (error) {
         setActionErrorMessage(error instanceof Error ? error.message : "Action failed");
+        if (rethrow) throw error;
       }
     },
     [disableMutation, enableMutation, pendingPerHarnessRegistry],

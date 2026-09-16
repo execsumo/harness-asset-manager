@@ -38,6 +38,8 @@ export interface SkillsWorkspaceContextValue {
   onClearMultiSelect: () => void;
   onMultiSelectEnableAll: () => Promise<void>;
   onMultiSelectDisableAll: () => Promise<void>;
+  onMultiSelectEnableHarness: (harness: string) => Promise<void>;
+  onMultiSelectDisableHarness: (harness: string) => Promise<void>;
   onMultiSelectDelete: () => Promise<void>;
   onMultiSelectStar: () => Promise<void>;
   onMultiSelectTag: (tags: string[]) => Promise<void>;

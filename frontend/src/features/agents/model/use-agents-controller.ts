@@ -27,7 +27,7 @@ export function useAgentsController() {
   const inventory = inventoryQuery.data ?? null;
 
   const handleToggleHarness = useCallback(
-    async (ref: string, harness: string, disable: boolean) => {
+    async (ref: string, harness: string, disable: boolean, rethrow = false) => {
       const key = `${ref}:${harness}`;
       setPendingPerHarnessKeys((curr) => {
         const next = new Set(curr);
@@ -43,6 +43,7 @@ export function useAgentsController() {
         }
       } catch (err) {
         setActionErrorMessage(err instanceof Error ? (err as any).error || err.toString() : "Failed to toggle harness");
+        if (rethrow) throw err;
       } finally {
         setPendingPerHarnessKeys((curr) => {
           const next = new Set(curr);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { BulkActionBar } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
@@ -29,8 +29,10 @@ import type { McpInstallConfigValues } from "../model/install-config";
 import {
   extractMcpTagCounts,
   filterMcpServersInUse,
+  matrixCellFor,
   pillCounts,
   type InUsePillValue,
+  isMcpHarnessAddressable,
 } from "../model/selectors";
 import { useMcpEnableWorkflow } from "../model/use-mcp-enable-workflow";
 import { useMcpManagementController } from "../model/use-mcp-management-controller";
@@ -71,6 +73,7 @@ export default function McpInUsePage() {
     handleAdoptConfig,
     multiSelectedNames,
     multiSelectPending,
+    handlePruneMultiSelect,
     handleToggleMultiSelect,
     handleClearMultiSelect,
     handleMultiSelectEnableAll,
@@ -203,16 +206,21 @@ export default function McpInUsePage() {
   const visibleActionErrorMessage =
     actionErrorMessage || enableConfigError || pageActionErrorMessage;
 
-  // Keep only currently visible, identical unmanaged rows selected as filters or inventory change.
+  const visibleManagedNames = useMemo(
+    () => new Set(entries.filter((entry) => entry.kind === "managed").map((entry) => entry.name)),
+    [entries],
+  );
+
+  // Keep only currently visible rows selected as filters or inventory change.
+  useEffect(() => {
+    handlePruneMultiSelect(visibleManagedNames);
+  }, [handlePruneMultiSelect, visibleManagedNames]);
+
   useEffect(() => {
     setSelectedUntrackedNames((current) => {
       const visibleUntracked = new Set(
         entries
-          .filter((entry) => {
-            if (entry.kind !== "unmanaged") return false;
-            const g = groupMap.get(entry.name);
-            return g ? g.identical : true;
-          })
+          .filter((entry) => entry.kind === "unmanaged")
           .map((entry) => entry.name),
       );
       let changed = false;
@@ -236,7 +244,11 @@ export default function McpInUsePage() {
 
   const handleAdoptSelected = useCallback(async () => {
     const names = entries
-      .filter((entry) => entry.kind === "unmanaged" && selectedUntrackedNames.has(entry.name))
+      .filter((entry) => {
+        if (entry.kind !== "unmanaged" || !selectedUntrackedNames.has(entry.name)) return false;
+        const group = groupMap.get(entry.name);
+        return group ? group.identical : true;
+      })
       .map((entry) => entry.name);
     if (names.length === 0) return;
     setAdoptingSelected(true);
@@ -252,7 +264,7 @@ export default function McpInUsePage() {
     } finally {
       setAdoptingSelected(false);
     }
-  }, [entries, handleAdoptConfig, selectedUntrackedNames]);
+  }, [entries, groupMap, handleAdoptConfig, selectedUntrackedNames]);
 
   const identicalServers = useMemo(() => {
     return entries.filter((e) => {
@@ -428,6 +440,77 @@ export default function McpInUsePage() {
   );
 
   const selectedUntrackedCount = selectedUntrackedNames.size;
+  const selectedManagedCount = multiSelectedNames.size;
+  const selectedAdoptableUntrackedCount = entries.filter((entry) => {
+    if (entry.kind !== "unmanaged" || !selectedUntrackedNames.has(entry.name)) return false;
+    const group = groupMap.get(entry.name);
+    return group ? group.identical : true;
+  }).length;
+  const bulkHarnessOptions = inventory?.columns
+    .filter(isMcpHarnessAddressable)
+    .map((column) => ({ harness: column.harness, label: column.label }));
+
+  const handleBulkEnableHarness = useCallback(
+    async (harness: string): Promise<void> => {
+      const column = inventory?.columns.find((candidate) => candidate.harness === harness);
+      const selectedEntries = Array.from(multiSelectedNames)
+        .map((name) => findEntry(name))
+        .filter((entry): entry is McpInventoryEntryDto =>
+          Boolean(entry && column && entry.kind === "managed" && matrixCellFor(entry, column, copy).action === "enable"),
+        );
+      if (selectedEntries.length === 0) return;
+      try {
+        await requestBulkEnable(
+          selectedEntries,
+          (entry) => {
+            requestConfiguredEnable(entry.name, findHarnessLabel(harness), (config) => {
+              void handleEnableInHarness(entry.name, harness, config, true)
+                .then(handleClearMultiSelect)
+                .catch(() => undefined);
+            });
+          },
+          async () => {
+            await Promise.all(
+              selectedEntries.map((entry) => handleEnableInHarness(entry.name, harness, undefined, true)),
+            );
+            handleClearMultiSelect();
+          },
+          setPageActionErrorMessage,
+        );
+      } catch {
+        // The controller has already surfaced the mutation failure.
+      }
+    },
+    [
+      copy,
+      findEntry,
+      findHarnessLabel,
+      handleClearMultiSelect,
+      handleEnableInHarness,
+      inventory?.columns,
+      multiSelectedNames,
+      requestBulkEnable,
+      requestConfiguredEnable,
+    ],
+  );
+
+  const handleBulkDisableHarness = useCallback(
+    async (harness: string): Promise<void> => {
+      const column = inventory?.columns.find((candidate) => candidate.harness === harness);
+      const names = Array.from(multiSelectedNames).filter((name) => {
+        const entry = findEntry(name);
+        return Boolean(entry && column && entry.kind === "managed" && matrixCellFor(entry, column, copy).action === "disable");
+      });
+      if (names.length === 0) return;
+      try {
+        await Promise.all(names.map((name) => handleDisableInHarness(name, harness, true)));
+        handleClearMultiSelect();
+      } catch {
+        // The controller has already surfaced the mutation failure.
+      }
+    },
+    [copy, findEntry, handleClearMultiSelect, handleDisableInHarness, inventory?.columns, multiSelectedNames],
+  );
 
   return (
     <>
@@ -627,63 +710,49 @@ export default function McpInUsePage() {
       ) : null}
 
       <BulkActionBar
-        selectedCount={multiSelectedNames.size}
+        selectedCount={selectedManagedCount + selectedUntrackedCount}
         pending={multiSelectPending}
-        onClear={handleClearMultiSelect}
+        onClear={() => {
+          handleClearMultiSelect();
+          setSelectedUntrackedNames(new Set());
+        }}
+        showHarnessActions={selectedManagedCount > 0}
         onEnableAll={handleBulkEnableAll}
         onDisableAll={handleMultiSelectDisableAll}
+        harnessOptions={bulkHarnessOptions}
+        onEnableHarness={handleBulkEnableHarness}
+        onDisableHarness={handleBulkDisableHarness}
         onDelete={handleMultiSelectUninstall}
-        onTagSelected={handleMultiSelectTag}
-        onStarSelected={handleMultiSelectStar}
+        showDestructiveAction={selectedManagedCount > 0}
+        onTagSelected={selectedManagedCount > 0 ? handleMultiSelectTag : undefined}
+        onStarSelected={selectedManagedCount > 0 ? handleMultiSelectStar : undefined}
         starLabel="Star selected"
         knownTags={knownTagNames}
-        destructive={{
-          actionLabel: copy.inUse.uninstall.action,
-          confirmTitle: copy.inUse.uninstall.bulkTitle(multiSelectedNames.size),
-          confirmDescription: copy.inUse.uninstall.description,
-        }}
-      />
-
-      {selectedUntrackedCount > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div
-            className="bulk-bar"
-            data-state="open"
-            role="toolbar"
-            aria-label={common.bulk.ariaLabel}
-          >
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{common.bulk.selected(selectedUntrackedCount)}</span>
-              <button
-                type="button"
-                className="bulk-bar__clear"
-                onClick={() => setSelectedUntrackedNames(new Set())}
-                disabled={adoptingSelected}
-                aria-label={common.actions.clearSelection}
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            <span className="bulk-bar__divider" aria-hidden="true" />
-
+        extraActions={
+          selectedAdoptableUntrackedCount > 0 ? (
             <button
               type="button"
               className="bulk-bar__action"
               onClick={() => void handleAdoptSelected()}
-              disabled={adoptingSelected}
+              disabled={adoptingSelected || multiSelectPending !== null}
             >
               {adoptingSelected ? (
                 <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected || "Adopting selected servers..."} />
               ) : (
                 <Plus size={15} />
               )}
-              {copy.inUse.adoptSelected || "Adopt selected"}
+              {selectedAdoptableUntrackedCount === selectedUntrackedCount
+                ? (copy.inUse.adoptSelected || "Adopt selected")
+                : `${copy.inUse.adoptSelected || "Adopt selected"} (${selectedAdoptableUntrackedCount})`}
             </button>
-          </div>
-        </div>
-      ) : null}
+          ) : null
+        }
+        destructive={{
+          actionLabel: copy.inUse.uninstall.action,
+          confirmTitle: copy.inUse.uninstall.bulkTitle(selectedManagedCount),
+          confirmDescription: copy.inUse.uninstall.description,
+        }}
+      />
 
       <ConfirmActionDialog
         open={confirmUninstallName !== null}

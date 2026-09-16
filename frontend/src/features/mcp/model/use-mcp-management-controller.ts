@@ -58,6 +58,24 @@ export function useMcpManagementController() {
 
   useEffect(() => {
     if (!inventory) return;
+    const managedNames = new Set(
+      inventory.entries
+        .filter((entry) => entry.kind === "managed")
+        .map((entry) => entry.name),
+    );
+    setMultiSelectedNames((current) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const name of current) {
+        if (managedNames.has(name)) next.add(name);
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [inventory]);
+
+  useEffect(() => {
+    if (!inventory) return;
     for (const entry of inventory.entries) {
       if (
         entry.kind !== "managed" ||
@@ -82,6 +100,7 @@ export function useMcpManagementController() {
       name: string,
       target: "enabled" | "disabled",
       config?: McpInstallConfigValues,
+      rethrow = false,
     ): Promise<void> => {
       try {
         await pendingServerRegistry.run(name, async () => {
@@ -91,11 +110,14 @@ export function useMcpManagementController() {
           }
           if (!response.ok) {
             const failed = response.failed.map((f) => `${f.harness}: ${f.error}`).join("; ");
-            setActionErrorMessage(failed || "Some harnesses could not be updated");
+            const message = failed || "Some harnesses could not be updated";
+            setActionErrorMessage(message);
+            if (rethrow) throw new Error(message);
           }
         });
       } catch (error) {
         setActionErrorMessage(error instanceof Error ? error.message : "Action failed");
+        if (rethrow) throw error;
       }
     },
     [availabilityMutation, pendingServerRegistry, setHarnessesMutation],
@@ -121,6 +143,7 @@ export function useMcpManagementController() {
       name: string,
       harness: string,
       config?: McpInstallConfigValues,
+      rethrow = false,
     ): Promise<void> => {
       const key = `${name}:${harness}`;
       try {
@@ -130,13 +153,14 @@ export function useMcpManagementController() {
         });
       } catch (error) {
         setActionErrorMessage(error instanceof Error ? error.message : "Enable failed");
+        if (rethrow) throw error;
       }
     },
     [availabilityMutation, enableMutation, pendingPerHarnessRegistry],
   );
 
   const handleDisableInHarness = useCallback(
-    async (name: string, harness: string): Promise<void> => {
+    async (name: string, harness: string, rethrow = false): Promise<void> => {
       const key = `${name}:${harness}`;
       try {
         await pendingPerHarnessRegistry.run(key, async () => {
@@ -144,6 +168,7 @@ export function useMcpManagementController() {
         });
       } catch (error) {
         setActionErrorMessage(error instanceof Error ? error.message : "Disable failed");
+        if (rethrow) throw error;
       }
     },
     [disableMutation, pendingPerHarnessRegistry],
@@ -205,6 +230,18 @@ export function useMcpManagementController() {
     setMultiSelectedNames(new Set());
   }, []);
 
+  const handlePruneMultiSelect = useCallback((allowedNames: ReadonlySet<string>) => {
+    setMultiSelectedNames((current) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const name of current) {
+        if (allowedNames.has(name)) next.add(name);
+        else changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, []);
+
   const runBulkAction = useCallback(
     async (
       action: MultiSelectAction,
@@ -239,18 +276,15 @@ export function useMcpManagementController() {
 
   const handleMultiSelectEnableAll = useCallback(async (): Promise<void> => {
     await runBulkAction("enable-all", async (name) => {
-      const response = await setHarnessesMutation.mutateAsync({ name, target: "enabled" });
-      if (response.succeeded.length > 0) {
-        void availabilityMutation.mutateAsync(name).catch(() => undefined);
-      }
+      await handleSetServerHarnesses(name, "enabled", undefined, true);
     });
-  }, [availabilityMutation, runBulkAction, setHarnessesMutation]);
+  }, [handleSetServerHarnesses, runBulkAction]);
 
   const handleMultiSelectDisableAll = useCallback(async (): Promise<void> => {
     await runBulkAction("disable-all", async (name) => {
-      await setHarnessesMutation.mutateAsync({ name, target: "disabled" });
+      await handleSetServerHarnesses(name, "disabled", undefined, true);
     });
-  }, [runBulkAction, setHarnessesMutation]);
+  }, [handleSetServerHarnesses, runBulkAction]);
 
   const handleMultiSelectUninstall = useCallback(async (): Promise<void> => {
     await runBulkAction("delete", async (name) => {
@@ -327,6 +361,7 @@ export function useMcpManagementController() {
     multiSelectPending,
     handleToggleMultiSelect,
     handleClearMultiSelect,
+    handlePruneMultiSelect,
     handleMultiSelectEnableAll,
     handleMultiSelectDisableAll,
     handleMultiSelectUninstall,

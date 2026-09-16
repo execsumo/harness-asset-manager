@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar } from "../../../components/BulkActionBar";
+import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -21,6 +21,7 @@ import {
   agentsStatusCounts,
   extractAgentTagCounts,
   filterAgents,
+  matrixCellFor,
   type AgentsStatusFilter,
 } from "../model/selectors";
 import { useAgentsController } from "../model/use-agents-controller";
@@ -70,7 +71,7 @@ export default function AgentsInUsePage() {
   const [search, setSearch] = useState("");
   const [selectedRefs, setSelectedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
-  const [pendingSelectedAction, setPendingSelectedAction] = useState<"adopt" | "delete" | null>(null);
+  const [pendingSelectedAction, setPendingSelectedAction] = useState<MultiSelectAction | null>(null);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
   const [conflictPending, setConflictPending] = useState(false);
@@ -331,6 +332,35 @@ export default function AgentsInUsePage() {
   const deletableSelectedCount = entries.filter(
     (entry) => selectedRefs.has(entry.ref) && entry.actions.canDelete,
   ).length;
+  const selectedManagedCount = entries.filter(
+    (entry) => selectedRefs.has(entry.ref) && entry.kind === "managed",
+  ).length;
+  const bulkHarnessOptions = inventory?.columns
+    .filter((column) => column.installed)
+    .map((column) => ({ harness: column.harness, label: column.label }));
+
+  const handleBulkHarness = useCallback(
+    async (harness: string, disable: boolean): Promise<void> => {
+      const refs = entries
+        .filter((entry) => {
+          if (entry.kind !== "managed" || !selectedRefs.has(entry.ref)) return false;
+          const column = inventory?.columns.find((candidate) => candidate.harness === harness);
+          return column ? matrixCellFor(entry, column).action === (disable ? "disable" : "enable") : false;
+        })
+        .map((entry) => entry.ref);
+      if (refs.length === 0) return;
+      setPendingSelectedAction(disable ? "disable-all" : "enable-all");
+      try {
+        await Promise.all(refs.map((ref) => handleToggleHarness(ref, harness, disable, true)));
+        clearSelected();
+      } catch {
+        // The controller has already surfaced the mutation failure.
+      } finally {
+        setPendingSelectedAction(null);
+      }
+    },
+    [clearSelected, entries, handleToggleHarness, inventory?.columns, selectedRefs],
+  );
 
   return (
     <>
@@ -531,7 +561,10 @@ export default function AgentsInUsePage() {
           pending={pendingSelectedAction}
           onClear={clearSelected}
           onDelete={handleDeleteSelected}
-          showHarnessActions={false}
+          showHarnessActions={selectedManagedCount > 0}
+          harnessOptions={bulkHarnessOptions}
+          onEnableHarness={(harness) => handleBulkHarness(harness, false)}
+          onDisableHarness={(harness) => handleBulkHarness(harness, true)}
           showDestructiveAction={deletableSelectedCount > 0}
           extraActions={
             adoptableSelectedCount > 0 ? (

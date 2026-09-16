@@ -390,6 +390,37 @@ describe("SlashCommandsPage", () => {
     expect(screen.getByLabelText("Active on 1 of 2 targets")).toBeInTheDocument();
   });
 
+  it("bulk-enables a selected command on one target", async () => {
+    const requests: Array<{ url: string; body: unknown }> = [];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/slash-commands/code-review/sync" && init?.method === "POST") {
+        requests.push({ url, body: JSON.parse(String(init.body)) });
+        return okJson({ ok: true, command: null, sync: [] });
+      }
+      if (url === "/api/slash-commands") return okJson(slashCommandsPayload({
+        commands: [{
+          name: "code-review",
+          description: "Review code",
+          prompt: "$ARGUMENTS",
+          syncTargets: [{ target: "claude", path: "/tmp/code-review.md", status: "synced" }],
+        }],
+      }));
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<SlashCommandsPage />);
+
+    await screen.findByRole("table", { name: "Slash commands target matrix" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select code-review" }));
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Enable on a harness" }));
+    fireEvent.click(screen.getByRole("button", { name: "Enable on Codex" }));
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toEqual({ targets: ["claude", "codex"] });
+  });
+
   it("renders star buttons for starred and unstarred slash commands in the matrix and toggles star", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     fetchMock.mockImplementation(

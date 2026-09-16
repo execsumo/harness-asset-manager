@@ -27,7 +27,6 @@ interface MatrixRowProps {
   onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
-  untrackedSelectionOnly?: boolean;
 }
 
 function findCell(row: SkillListRow, harness: string): HarnessCellType {
@@ -59,14 +58,10 @@ export function MatrixRow({
   onToggleStar,
   onManageSkill,
   pendingStructuralActions,
-  untrackedSelectionOnly = false,
 }: MatrixRowProps) {
   const enabledCount = countEnabled(row);
   const totalCount = harnessColumns.length;
   const isUntracked = skillStatusConcept(row.displayStatus) === "needsReview";
-  // Skills keeps managed selection for its enable/disable/delete bar while
-  // limiting the adopt selection to eligible untracked rows.
-  const selectable = untrackedSelectionOnly ? (!isUntracked || row.actions.canManage || row.actions.canDelete) : true;
   const pendingStructuralAction = pendingStructuralActions?.get(row.skillRef) ?? null;
   const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
   const displayTags = (row.tags || []).filter((t) => t.toLowerCase() !== "starred");
@@ -79,14 +74,12 @@ export function MatrixRow({
       data-checked={checked ? "true" : undefined}
     >
       <td className="matrix-table__cell matrix-table__cell--checkbox">
-        {selectable ? (
-          <CardSelectCheckbox
-            checked={checked}
-            label={checked ? `Deselect ${row.name}` : `Select ${row.name}`}
-            onToggle={() => onToggleChecked(row.skillRef)}
-            disabled={pendingStructuralAction !== null}
-          />
-        ) : null}
+        <CardSelectCheckbox
+          checked={checked}
+          label={checked ? `Deselect ${row.name}` : `Select ${row.name}`}
+          onToggle={() => onToggleChecked(row.skillRef)}
+          disabled={pendingStructuralAction !== null}
+        />
       </td>
 
       <td

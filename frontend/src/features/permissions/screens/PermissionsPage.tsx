@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
@@ -19,12 +19,13 @@ import { PermissionFormDialog } from "../components/edit/PermissionFormDialog";
 import {
   extractPermissionsTagCounts,
   filterPermissions,
+  isPermissionsHarnessAddressable,
+  matrixCellFor,
   permissionsSummary,
   type PermissionsStatusFilter,
 } from "../model/selectors";
 import { usePermissionsManagementController } from "../model/use-permissions-management-controller";
 import { useSetPermissionTagsMutation } from "../api/management-queries";
-
 const DETAIL_PARAM = "permission";
 
 function statusLabels(copy: ReturnType<typeof usePermissionsCopy>): Record<PermissionsStatusFilter, string> {
@@ -201,7 +202,10 @@ export default function PermissionsPage() {
   const runBulkAction = useCallback(
     async (action: MultiSelectAction, fn: (id: string) => Promise<unknown>): Promise<void> => {
       if (checkedIds.size === 0) return;
-      const ids = Array.from(checkedIds);
+      const ids = Array.from(checkedIds).filter((id) =>
+        inventory?.entries.some((entry) => entry.id === id && entry.kind === "managed"),
+      );
+      if (ids.length === 0) return;
       setBulkPending(action);
       try {
         const results = await Promise.allSettled(ids.map((id) => fn(id)));
@@ -223,17 +227,33 @@ export default function PermissionsPage() {
         setBulkPending(null);
       }
     },
-    [checkedIds],
+    [checkedIds, inventory],
   );
 
   const handleBulkEnableAll = useCallback(
-    () => runBulkAction("enable-all", (id) => handleSetPermissionHarnesses(id, "enabled")),
+    () => runBulkAction("enable-all", (id) => handleSetPermissionHarnesses(id, "enabled", true)),
     [handleSetPermissionHarnesses, runBulkAction],
   );
 
   const handleBulkDisableAll = useCallback(
-    () => runBulkAction("disable-all", (id) => handleSetPermissionHarnesses(id, "disabled")),
+    () => runBulkAction("disable-all", (id) => handleSetPermissionHarnesses(id, "disabled", true)),
     [handleSetPermissionHarnesses, runBulkAction],
+  );
+
+  const handleBulkHarness = useCallback(
+    (harness: string, disable: boolean) =>
+      runBulkAction(
+        disable ? "disable-all" : "enable-all",
+        (id) => {
+          const entry = inventory?.entries.find((candidate) => candidate.id === id);
+          const column = inventory?.columns.find((candidate) => candidate.harness === harness);
+          if (!entry || entry.kind !== "managed" || !column) return Promise.resolve();
+          return matrixCellFor(entry, column, copy).action === (disable ? "disable" : "enable")
+            ? handleToggleHarness(id, harness, disable, true)
+            : Promise.resolve();
+        },
+      ),
+    [copy, handleToggleHarness, inventory, runBulkAction],
   );
 
   const handleBulkDelete = useCallback(
@@ -294,6 +314,9 @@ export default function PermissionsPage() {
     () => entries.filter((entry) => entry.kind === "unmanaged" && checkedIds.has(entry.id)).length,
     [checkedIds, entries],
   );
+  const bulkHarnessOptions = inventory?.columns
+    .filter(isPermissionsHarnessAddressable)
+    .map((column) => ({ harness: column.harness, label: column.label }));
 
   const handleAdoptSelected = useCallback(async () => {
     const ids = entries
@@ -533,58 +556,46 @@ export default function PermissionsPage() {
         onConfirm={executeUninstall}
       />
 
-      {selectedManagedCount > 0 ? (
+      {checkedIds.size > 0 ? (
         <BulkActionBar
-          selectedCount={selectedManagedCount}
+          selectedCount={checkedIds.size}
           pending={bulkPending}
           onClear={clearChecked}
+          showHarnessActions={selectedManagedCount > 0}
           onEnableAll={handleBulkEnableAll}
           onDisableAll={handleBulkDisableAll}
+          harnessOptions={bulkHarnessOptions}
+          onEnableHarness={(harness) => handleBulkHarness(harness, false)}
+          onDisableHarness={(harness) => handleBulkHarness(harness, true)}
           onDelete={handleBulkDelete}
-          onTagSelected={handleBulkTag}
-          onStarSelected={handleBulkStar}
+          showDestructiveAction={selectedManagedCount > 0}
+          onTagSelected={selectedManagedCount > 0 ? handleBulkTag : undefined}
+          onStarSelected={selectedManagedCount > 0 ? handleBulkStar : undefined}
           starLabel="Star selected"
           knownTags={knownTagNames}
+          extraActions={
+            selectedUntrackedCount > 0 ? (
+              <button
+                type="button"
+                className="bulk-bar__action"
+                onClick={() => void handleAdoptSelected()}
+                disabled={adoptingSelected || bulkPending !== null}
+              >
+                {adoptingSelected ? (
+                  <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
+                ) : (
+                  <Plus size={15} aria-hidden="true" />
+                )}
+                {copy.inUse.adoptSelected}
+              </button>
+            ) : null
+          }
           destructive={{
             actionLabel: copy.inUse.uninstall.action,
             confirmTitle: copy.inUse.uninstall.bulkTitle(selectedManagedCount),
             confirmDescription: copy.inUse.uninstall.singleDescription,
           }}
         />
-      ) : null}
-
-      {selectedUntrackedCount > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div className="bulk-bar" data-state="open" role="toolbar" aria-label={common.bulk.ariaLabel}>
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{common.bulk.selected(selectedUntrackedCount)}</span>
-              <button
-                type="button"
-                className="bulk-bar__clear"
-                onClick={clearChecked}
-                disabled={adoptingSelected}
-                aria-label={common.actions.clearSelection}
-              >
-                <X size={14} />
-              </button>
-            </div>
-            <span className="bulk-bar__divider" aria-hidden="true" />
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void handleAdoptSelected()}
-              disabled={adoptingSelected}
-            >
-              {adoptingSelected ? (
-                <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
-              ) : (
-                <Plus size={15} aria-hidden="true" />
-              )}
-              {copy.inUse.adoptSelected}
-            </button>
-          </div>
-        </div>
       ) : null}
     </>
   );

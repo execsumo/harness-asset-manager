@@ -8,7 +8,6 @@ import {
   MatrixTable,
 } from "../../../../components/matrix";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
-import { skillStatusConcept } from "../../../../lib/product-language";
 import { MatrixRow } from "./MatrixRow";
 import { sortRows, sortKeysEqual, type SortKey, type SortState } from "../../model/sortRows";
 import type { CellActionKey } from "../../model/pending";
@@ -27,7 +26,6 @@ interface MatrixViewProps {
   onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
-  untrackedSelectionOnly?: boolean;
   starredFilterActive?: boolean;
   onToggleStarredFilter?: () => void;
 }
@@ -46,20 +44,17 @@ export function MatrixView({
   onToggleStar,
   onManageSkill,
   pendingStructuralActions,
-  untrackedSelectionOnly = false,
   starredFilterActive = false,
   onToggleStarredFilter,
 }: MatrixViewProps) {
   const [sort, setSort] = useState<SortState>(INITIAL_SORT);
 
   const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
-  const selectableRows = sortedRows.filter((row) => {
-    const isUntracked = skillStatusConcept(row.displayStatus) === "needsReview";
-    const selectable = untrackedSelectionOnly
-      ? (!isUntracked || row.actions.canManage || row.actions.canDelete)
-      : true;
-    return selectable && !pendingStructuralActions?.has(row.skillRef);
-  });
+  // Every visible row participates in selection. Bulk actions decide which
+  // selected rows they can act on rather than hiding rows from select-all.
+  const selectableRows = sortedRows.filter(
+    (row) => !pendingStructuralActions?.has(row.skillRef),
+  );
   const selectedSelectableCount = selectableRows.filter((row) => checkedRefs.has(row.skillRef)).length;
 
   const toggleAll = () => {
@@ -165,7 +160,6 @@ export function MatrixView({
             onToggleStar={onToggleStar}
             onManageSkill={onManageSkill}
             pendingStructuralActions={pendingStructuralActions}
-            untrackedSelectionOnly={untrackedSelectionOnly}
           />
         ))}
       </tbody>

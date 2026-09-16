@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -19,6 +20,8 @@ import {
   extractHookTagCounts,
   filterHooks,
   hooksStatusCounts,
+  isHooksHarnessAddressable,
+  matrixCellFor,
   type HooksStatusFilter,
 } from "../model/selectors";
 import { useHooksManagementController } from "../model/use-hooks-management-controller";
@@ -64,6 +67,7 @@ export default function HooksInUsePage() {
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const [pendingSelectedAction, setPendingSelectedAction] = useState<MultiSelectAction | null>(null);
   const setTagsMutation = useSetHookTagsMutation();
   const copy = useHooksCopy();
   const common = useCommonCopy();
@@ -256,6 +260,38 @@ export default function HooksInUsePage() {
     () => entries.filter((entry) => entry.kind === "unmanaged" && selectedIds.has(entry.id)).length,
     [entries, selectedIds],
   );
+  const selectedManagedCount = useMemo(
+    () => entries.filter((entry) => entry.kind === "managed" && selectedIds.has(entry.id)).length,
+    [entries, selectedIds],
+  );
+  const bulkHarnessOptions = inventory?.columns
+    .filter(isHooksHarnessAddressable)
+    .map((column) => ({ harness: column.harness, label: column.label }));
+
+  const handleBulkHarness = useCallback(
+    async (harness: string, disable: boolean): Promise<void> => {
+      const ids = entries
+        .filter((entry) => {
+          if (entry.kind !== "managed" || !selectedIds.has(entry.id)) return false;
+          const column = inventory?.columns.find((candidate) => candidate.harness === harness);
+          return column
+            ? matrixCellFor(entry, column, copy).action === (disable ? "disable" : "enable")
+            : false;
+        })
+        .map((entry) => entry.id);
+      if (ids.length === 0) return;
+      setPendingSelectedAction(disable ? "disable-all" : "enable-all");
+      try {
+        await Promise.all(ids.map((id) => handleToggleHarness(id, harness, disable, true)));
+        clearSelected();
+      } catch {
+        // The controller has already surfaced the mutation failure.
+      } finally {
+        setPendingSelectedAction(null);
+      }
+    },
+    [clearSelected, copy, entries, handleToggleHarness, inventory?.columns, selectedIds],
+  );
 
   return (
     <>
@@ -414,43 +450,41 @@ export default function HooksInUsePage() {
       />
 
       {selectedCount > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div className="bulk-bar" data-state="open" role="toolbar" aria-label={common.bulk.ariaLabel}>
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{common.bulk.selected(selectedCount)}</span>
+        <BulkActionBar
+          selectedCount={selectedCount}
+          pending={pendingSelectedAction}
+          onClear={clearSelected}
+          showHarnessActions={selectedManagedCount > 0}
+          harnessOptions={bulkHarnessOptions}
+          onEnableHarness={(harness) => handleBulkHarness(harness, false)}
+          onDisableHarness={(harness) => handleBulkHarness(harness, true)}
+          onDelete={async () => undefined}
+          showDestructiveAction={false}
+          extraActions={
+            adoptableSelectedCount > 0 ? (
               <button
                 type="button"
-                className="bulk-bar__clear"
-                onClick={clearSelected}
-                disabled={adoptingSelected}
-                aria-label={common.actions.clearSelection}
+                className="bulk-bar__action"
+                onClick={() => void handleAdoptSelected()}
+                disabled={adoptingSelected || pendingSelectedAction !== null}
               >
-                <X size={14} />
+                {adoptingSelected ? (
+                  <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
+                ) : (
+                  <Plus size={15} aria-hidden="true" />
+                )}
+                {adoptableSelectedCount === selectedCount
+                  ? copy.inUse.adoptSelected
+                  : `${copy.inUse.adoptSelected} (${adoptableSelectedCount})`}
               </button>
-            </div>
-            {adoptableSelectedCount > 0 ? (
-              <>
-                <span className="bulk-bar__divider" aria-hidden="true" />
-                <button
-                  type="button"
-                  className="bulk-bar__action"
-                  onClick={() => void handleAdoptSelected()}
-                  disabled={adoptingSelected}
-                >
-                  {adoptingSelected ? (
-                    <LoadingSpinner size="sm" label={copy.inUse.adoptingSelected} />
-                  ) : (
-                    <Plus size={15} aria-hidden="true" />
-                  )}
-                  {adoptableSelectedCount === selectedCount
-                    ? copy.inUse.adoptSelected
-                    : `${copy.inUse.adoptSelected} (${adoptableSelectedCount})`}
-                </button>
-              </>
-            ) : null}
-          </div>
-        </div>
+            ) : null
+          }
+          destructive={{
+            actionLabel: "Delete",
+            confirmTitle: "Delete selected hooks?",
+            confirmDescription: "This action cannot be undone.",
+          }}
+        />
       ) : null}
     </>
   );

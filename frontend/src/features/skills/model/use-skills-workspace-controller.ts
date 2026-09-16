@@ -306,7 +306,6 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
       setMultiSelectedRefs(new Set());
     } catch (error) {
       setActionErrorMessage(error instanceof Error ? error.message : "Unable to complete the bulk action.");
-      throw error;
     } finally {
       setMultiSelectPending(null);
     }
@@ -317,7 +316,7 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
       const tasks: Promise<unknown>[] = [];
       for (const row of rows) {
         for (const cell of row.cells) {
-          if (cell.state === "disabled") {
+          if (cell.interactive && cell.state === "disabled") {
             tasks.push(toggleMutation.mutateAsync({ skillRef: row.skillRef, harness: cell.harness, nextState: "enabled" }));
           }
         }
@@ -331,13 +330,45 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
       const tasks: Promise<unknown>[] = [];
       for (const row of rows) {
         for (const cell of row.cells) {
-          if (cell.state === "enabled") {
+          if (cell.interactive && cell.state === "enabled") {
             tasks.push(toggleMutation.mutateAsync({ skillRef: row.skillRef, harness: cell.harness, nextState: "disabled" }));
           }
         }
       }
       await Promise.all(tasks);
     });
+  }
+
+  async function handleMultiSelectHarness(
+    harness: string,
+    target: HarnessCellState,
+  ): Promise<void> {
+    await runMultiSelect(target === "enabled" ? "enable-all" : "disable-all", async (rows) => {
+      const tasks = rows.flatMap((row) =>
+        row.cells
+          .filter((cell) =>
+            cell.harness === harness &&
+            cell.interactive &&
+            cell.state !== target,
+          )
+          .map((cell) =>
+            toggleMutation.mutateAsync({
+              skillRef: row.skillRef,
+              harness: cell.harness,
+              nextState: target,
+            }),
+          ),
+      );
+      await Promise.all(tasks);
+    });
+  }
+
+  async function handleMultiSelectEnableHarness(harness: string): Promise<void> {
+    await handleMultiSelectHarness(harness, "enabled");
+  }
+
+  async function handleMultiSelectDisableHarness(harness: string): Promise<void> {
+    await handleMultiSelectHarness(harness, "disabled");
   }
 
   async function handleMultiSelectDelete(): Promise<void> {
@@ -536,6 +567,8 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     onClearMultiSelect: clearMultiSelect,
     onMultiSelectEnableAll: handleMultiSelectEnableAll,
     onMultiSelectDisableAll: handleMultiSelectDisableAll,
+    onMultiSelectEnableHarness: handleMultiSelectEnableHarness,
+    onMultiSelectDisableHarness: handleMultiSelectDisableHarness,
     onMultiSelectDelete: handleMultiSelectDelete,
     onMultiSelectStar: handleMultiSelectStar,
     onMultiSelectTag: handleMultiSelectTag,

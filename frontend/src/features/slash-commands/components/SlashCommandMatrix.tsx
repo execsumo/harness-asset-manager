@@ -61,12 +61,12 @@ export function SlashCommandMatrix({
 }: SlashCommandMatrixProps) {
   const [sort, setSort] = useState<SlashMatrixSortState>(INITIAL_SORT);
   const sortedEntries = useMemo(() => sortEntries(entries, sort), [entries, sort]);
+  // Review rows are selectable too; bulk actions partition them by the
+  // capability they support instead of excluding them from select-all.
   const selectableEntries = sortedEntries.filter((entry) => {
-    if (entry.kind === "managed") {
-      return pendingName !== entry.command.name;
-    }
+    if (entry.kind === "managed") return pendingName !== entry.command.name;
     const action = primaryReviewAction(entry.review);
-    return action !== null && pendingReviewKey !== reviewKey(entry.review.target, entry.review.name, action);
+    return action === null || pendingReviewKey !== reviewKey(entry.review.target, entry.review.name, action);
   });
   const selectedSelectableCount = selectableEntries.filter((entry) => checkedRefs.has(entry.id)).length;
 
@@ -309,7 +309,7 @@ function SlashCommandMatrixRow({
       <td className="matrix-table__cell matrix-table__cell--checkbox">
         <CardSelectCheckbox
           checked={checked}
-          disabled={isDisabled}
+          disabled={isPending}
           label={checked ? `Deselect ${review.name}` : `Select ${review.name}`}
           onToggle={() => onToggleChecked(entry.id)}
         />

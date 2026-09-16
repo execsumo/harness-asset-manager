@@ -65,6 +65,8 @@ export default function SkillsWorkspacePage() {
     onClearMultiSelect,
     onMultiSelectEnableAll,
     onMultiSelectDisableAll,
+    onMultiSelectEnableHarness,
+    onMultiSelectDisableHarness,
     onMultiSelectDelete,
     onMultiSelectStar,
     onMultiSelectTag,
@@ -149,7 +151,7 @@ export default function SkillsWorkspacePage() {
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
   const untrackedRefs = useMemo(
-    () => new Set(sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview" && (row.actions.canManage || row.actions.canDelete)).map((row) => row.skillRef)),
+    () => new Set(sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview").map((row) => row.skillRef)),
     [sortedRows],
   );
   const managedCount = data?.summary.managed ?? 0;
@@ -170,6 +172,19 @@ export default function SkillsWorkspacePage() {
       return changed ? next : current;
     });
   }, [untrackedRefs]);
+
+  // Match the other inventory pages: changing filters drops managed rows that
+  // are no longer represented by the matrix.
+  useEffect(() => {
+    const visibleManagedRefs = new Set(
+      sortedRows
+        .filter((row) => skillStatusConcept(row.displayStatus) === "inUse")
+        .map((row) => row.skillRef),
+    );
+    for (const ref of multiSelectedRefs) {
+      if (!visibleManagedRefs.has(ref)) onToggleMultiSelect(ref);
+    }
+  }, [multiSelectedRefs, onToggleMultiSelect, sortedRows]);
 
   const toggleChecked = useCallback(
     (skillRef: string) => {
@@ -238,6 +253,24 @@ export default function SkillsWorkspacePage() {
     () => sortedRows.some((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete),
     [selectedUntrackedRefs, sortedRows],
   );
+  const selectedAdoptableUntrackedCount = useMemo(
+    () => sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canManage).length,
+    [selectedUntrackedRefs, sortedRows],
+  );
+  const selectedManagedCount = multiSelectedRefs.size;
+  const selectedCount = checkedRefs.size;
+  const selectedDeletableCount = selectedManagedCount + (hasDeletableUntrackedSelection ?
+    sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete).length : 0);
+  const bulkHarnessOptions = data?.harnessColumns
+    .filter((column) => column.installed)
+    .map((column) => ({ harness: column.harness, label: column.label }));
+
+  const handleDeleteSelected = useCallback(async (): Promise<void> => {
+    const tasks: Promise<void>[] = [];
+    if (selectedManagedCount > 0) tasks.push(onMultiSelectDelete());
+    if (selectedUntrackedRefs.size > 0) tasks.push(handleDeleteSelectedUntracked());
+    await Promise.all(tasks);
+  }, [handleDeleteSelectedUntracked, onMultiSelectDelete, selectedManagedCount, selectedUntrackedRefs.size]);
 
   const clearFilters = useCallback(() => {
     updateFilters({ search: "" });
@@ -345,7 +378,6 @@ export default function SkillsWorkspacePage() {
             onToggleStar={onToggleStar}
             onManageSkill={(ref) => void onManageSkill(ref)}
             pendingStructuralActions={pendingStructuralActions}
-            untrackedSelectionOnly
             starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}
           />
@@ -364,51 +396,50 @@ export default function SkillsWorkspacePage() {
         )
       ) : null}
 
-      {multiSelectedRefs.size > 0 ? (
+      {selectedCount > 0 ? (
         <BulkActionBar
-          selectedCount={multiSelectedRefs.size}
-          pending={multiSelectPending}
-          onClear={onClearMultiSelect}
+          selectedCount={selectedCount}
+          pending={multiSelectPending ?? pendingUntrackedAction}
+          onClear={() => {
+            onClearMultiSelect();
+            setSelectedUntrackedRefs(new Set());
+          }}
+          showHarnessActions={selectedManagedCount > 0}
           onEnableAll={onMultiSelectEnableAll}
           onDisableAll={onMultiSelectDisableAll}
-          onDelete={onMultiSelectDelete}
-          onStarSelected={onMultiSelectStar}
+          harnessOptions={bulkHarnessOptions}
+          onEnableHarness={onMultiSelectEnableHarness}
+          onDisableHarness={onMultiSelectDisableHarness}
+          onDelete={handleDeleteSelected}
+          showDestructiveAction={selectedDeletableCount > 0}
+          onStarSelected={selectedManagedCount > 0 ? onMultiSelectStar : undefined}
           starLabel="Star selected"
-          onTagSelected={onMultiSelectTag}
+          onTagSelected={selectedManagedCount > 0 ? onMultiSelectTag : undefined}
           knownTags={knownTagNames}
-          destructive={{
-            actionLabel: copy.bulk.delete,
-            confirmTitle: copy.bulk.confirmTitle(multiSelectedRefs.size),
-            confirmDescription: copy.bulk.confirmDescription,
-            confirmNote: copy.bulk.confirmNote,
-          }}
-        />
-      ) : null}
-
-      {selectedUntrackedRefs.size > 0 ? (
-        <BulkActionBar
-          selectedCount={selectedUntrackedRefs.size}
-          pending={pendingUntrackedAction}
-          onClear={() => setSelectedUntrackedRefs(new Set())}
-          onDelete={handleDeleteSelectedUntracked}
-          showHarnessActions={false}
-          showDestructiveAction={hasDeletableUntrackedSelection}
           extraActions={
-            <button
-              type="button"
-              className="bulk-bar__action"
-              onClick={() => void handleAdoptSelected()}
-              disabled={pendingUntrackedAction !== null}
-            >
-              {pendingUntrackedAction === "adopt" ? <LoadingSpinner size="sm" label={copy.review.adoptingSelected} /> : <Plus size={15} />}
-              {copy.review.adoptSelected}
-            </button>
+            selectedAdoptableUntrackedCount > 0 ? (
+              <button
+                type="button"
+                className="bulk-bar__action"
+                onClick={() => void handleAdoptSelected()}
+                disabled={pendingUntrackedAction !== null || multiSelectPending !== null}
+              >
+                {pendingUntrackedAction === "adopt" ? <LoadingSpinner size="sm" label={copy.review.adoptingSelected} /> : <Plus size={15} />}
+                {selectedAdoptableUntrackedCount === selectedCount
+                  ? copy.review.adoptSelected
+                  : `${copy.review.adoptSelected} (${selectedAdoptableUntrackedCount})`}
+              </button>
+            ) : null
           }
           destructive={{
-            actionLabel: copy.review.deleteSelected,
-            confirmTitle: copy.review.deleteConfirmTitle(selectedUntrackedRefs.size),
-            confirmDescription: copy.review.deleteConfirmDescription,
-            confirmNote: copy.review.deleteConfirmNote,
+            actionLabel: selectedManagedCount === 0 ? copy.review.deleteSelected : copy.bulk.delete,
+            confirmTitle: selectedManagedCount === 0
+              ? copy.review.deleteConfirmTitle(selectedDeletableCount)
+              : copy.bulk.confirmTitle(selectedDeletableCount),
+            confirmDescription: selectedManagedCount === 0
+              ? copy.review.deleteConfirmDescription
+              : copy.bulk.confirmDescription,
+            confirmNote: selectedManagedCount === 0 ? copy.review.deleteConfirmNote : copy.bulk.confirmNote,
           }}
         />
       ) : null}

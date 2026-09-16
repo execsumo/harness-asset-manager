@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
+import { BulkActionBar } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -24,6 +25,7 @@ import {
   type SlashCommandsStatusFilter,
 } from "../model/selectors";
 import { useSlashCommandsController } from "../model/useSlashCommandsController";
+import type { SlashTargetId } from "../api/types";
 import { useSetSlashCommandTagsMutation } from "../api/queries";
 
 const STATUS_LABELS: Record<SlashCommandsStatusFilter, string> = {
@@ -170,6 +172,31 @@ export default function SlashCommandsPage() {
   }, [controller, entries, selectedRefs]);
 
   const selectedCount = selectedRefs.size;
+  const selectedManagedNames = useMemo(
+    () => entries
+      .filter((entry): entry is Extract<typeof entry, { kind: "managed" }> => entry.kind === "managed" && selectedRefs.has(entry.id))
+      .map((entry) => entry.command.name),
+    [entries, selectedRefs],
+  );
+  const selectedManagedCount = selectedManagedNames.length;
+  const handleBulkEnableAll = useCallback(async (): Promise<void> => {
+    if (await controller.handleBulkEnableAll(selectedManagedNames)) setSelectedRefs(new Set());
+  }, [controller, selectedManagedNames]);
+  const handleBulkDisableAll = useCallback(async (): Promise<void> => {
+    if (await controller.handleBulkDisableAll(selectedManagedNames)) setSelectedRefs(new Set());
+  }, [controller, selectedManagedNames]);
+  const handleBulkEnableHarness = useCallback(async (harness: SlashTargetId): Promise<void> => {
+    if (await controller.handleBulkEnableHarness(harness, selectedManagedNames)) setSelectedRefs(new Set());
+  }, [controller, selectedManagedNames]);
+  const handleBulkDisableHarness = useCallback(async (harness: SlashTargetId): Promise<void> => {
+    if (await controller.handleBulkDisableHarness(harness, selectedManagedNames)) setSelectedRefs(new Set());
+  }, [controller, selectedManagedNames]);
+  const handleBulkDelete = useCallback(async (): Promise<void> => {
+    if (await controller.handleBulkDelete(selectedManagedNames)) setSelectedRefs(new Set());
+  }, [controller, selectedManagedNames]);
+  const bulkHarnessOptions = controller.data?.targets
+    .filter((target) => target.enabled)
+    .map((target) => ({ harness: target.id, label: target.label }));
   const adoptableSelectedCount = useMemo(
     () =>
       entries.filter(
@@ -326,37 +353,43 @@ export default function SlashCommandsPage() {
       ) : null}
 
       {selectedCount > 0 ? (
-        <div className="bulk-dock">
-          <div className="bulk-dock__fade" />
-          <div className="bulk-bar" data-state="open" role="toolbar" aria-label="Bulk actions">
-            <div className="bulk-bar__group">
-              <span className="bulk-bar__count">{selectedCount} selected</span>
-              <button type="button" className="bulk-bar__clear" onClick={() => setSelectedRefs(new Set())} disabled={adoptingSelected} aria-label="Clear selection">
-                <X size={14} />
+        <BulkActionBar
+          selectedCount={selectedCount}
+          pending={controller.bulkPending}
+          onClear={() => setSelectedRefs(new Set())}
+          showHarnessActions={selectedManagedCount > 0}
+          onEnableAll={handleBulkEnableAll}
+          onDisableAll={handleBulkDisableAll}
+          harnessOptions={bulkHarnessOptions}
+          onEnableHarness={(harness) => handleBulkEnableHarness(harness as SlashTargetId)}
+          onDisableHarness={(harness) => handleBulkDisableHarness(harness as SlashTargetId)}
+          onDelete={handleBulkDelete}
+          showDestructiveAction={false}
+          extraActions={
+            adoptableSelectedCount > 0 ? (
+              <button
+                type="button"
+                className="bulk-bar__action"
+                onClick={() => void handleAdoptSelected()}
+                disabled={adoptingSelected || controller.bulkPending !== null}
+              >
+                {adoptingSelected ? (
+                  <LoadingSpinner size="sm" label="Adopting selected commands..." />
+                ) : (
+                  <Plus size={15} />
+                )}
+                {adoptableSelectedCount === selectedCount
+                  ? "Adopt selected"
+                  : `Adopt selected (${adoptableSelectedCount})`}
               </button>
-            </div>
-            {adoptableSelectedCount > 0 ? (
-              <>
-                <span className="bulk-bar__divider" aria-hidden="true" />
-                <button
-                  type="button"
-                  className="bulk-bar__action"
-                  onClick={() => void handleAdoptSelected()}
-                  disabled={adoptingSelected}
-                >
-                  {adoptingSelected ? (
-                    <LoadingSpinner size="sm" label="Adopting selected commands..." />
-                  ) : (
-                    <Plus size={15} />
-                  )}
-                  {adoptableSelectedCount === selectedCount
-                    ? "Adopt selected"
-                    : `Adopt selected (${adoptableSelectedCount})`}
-                </button>
-              </>
-            ) : null}
-          </div>
-        </div>
+            ) : null
+          }
+          destructive={{
+            actionLabel: "Delete",
+            confirmTitle: "Delete selected slash commands?",
+            confirmDescription: "This action cannot be undone.",
+          }}
+        />
       ) : null}
 
       <ConfirmActionDialog
