@@ -330,6 +330,24 @@
         "title": "AgentActionsResponse",
         "type": "object"
       },
+      "AgentAttachmentResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "name"
+        ],
+        "title": "AgentAttachmentResponse",
+        "type": "object"
+      },
       "AgentBindingResponse": {
         "properties": {
           "detail": {
@@ -5536,6 +5554,13 @@
           "actions": {
             "$ref": "#/components/schemas/SkillDetailActionsResponse"
           },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentAttachmentResponse"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
           "attentionMessage": {
             "anyOf": [
               {
@@ -5839,6 +5864,13 @@
         "properties": {
           "actions": {
             "$ref": "#/components/schemas/SkillRowActionsResponse"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentAttachmentResponse"
+            },
+            "title": "Agents",
+            "type": "array"
           },
           "cells": {
             "items": {

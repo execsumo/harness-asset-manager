@@ -21,6 +21,7 @@ from .read_models import SkillsReadModelService
 from .source_fetch import SourceFetchService
 
 if TYPE_CHECKING:
+    from harness_asset_manager.application.agents.attachments import AgentAttachment
     from harness_asset_manager.application.asset_tags import AssetTagService
 
 
@@ -36,6 +37,7 @@ class SkillsQueryService:
         self.source_fetcher = source_fetcher
         self.asset_tags = asset_tags
         self._reconcile = reconcile
+        self._agent_attachments_getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]] | None = None
         # Reentrancy guard, per thread. A plain instance flag would let a concurrent
         # reader see another thread's in-flight reconcile and skip its own, returning a
         # snapshot taken mid-adoption. Sync API endpoints run in a threadpool over one
@@ -44,6 +46,9 @@ class SkillsQueryService:
 
     def set_reconcile(self, reconcile: Callable[[], object] | None) -> None:
         self._reconcile = reconcile
+
+    def set_agent_attachments(self, getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]]) -> None:
+        self._agent_attachments_getter = getter
 
     def health(self) -> dict[str, object]:
         snapshot = self.read_models.snapshot()
@@ -54,9 +59,18 @@ class SkillsQueryService:
             "harnessCount": len(snapshot.harness_scans),
         }
 
+    def _get_agent_attachments(self) -> dict[str, tuple[AgentAttachment, ...]]:
+        if self._agent_attachments_getter is None:
+            return {}
+        try:
+            return self._agent_attachments_getter()
+        except Exception:
+            return {}
+
     def list_skills(self) -> dict[str, object]:
         all_tags = self.asset_tags.get_tags_for_family("skills") if self.asset_tags is not None else {}
-        return skills_page_payload(self.inventory(), tags=all_tags)
+        attachments = self._get_agent_attachments()
+        return skills_page_payload(self.inventory(), tags=all_tags, attachments=attachments)
 
     def get_skill_detail(self, skill_ref: str) -> dict[str, object] | None:
         inventory = self.inventory()
@@ -66,6 +80,7 @@ class SkillsQueryService:
         package_root = self.resolve_detail_package_root(entry)
         document_markdown, metadata = read_skill_document_and_metadata(package_root)
         tags = self.asset_tags.get_tags("skills", entry.skill_ref) if self.asset_tags is not None else []
+        attachments = self._get_agent_attachments().get(skill_ref, ())
         return skill_detail_payload(
             entry,
             columns=inventory.columns,
@@ -73,6 +88,7 @@ class SkillsQueryService:
             metadata=metadata,
             source_links=self.build_source_links(entry),
             tags=tags,
+            agents=attachments,
         )
 
     def get_skill_source_status(self, skill_ref: str) -> dict[str, object] | None:

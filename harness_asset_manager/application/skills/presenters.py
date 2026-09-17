@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from harness_asset_manager.application.agents.attachments import AgentAttachment
+
 from .conformance import check_skill_conformance
 from .inventory import (
     InventoryColumn,
@@ -20,8 +22,10 @@ from .policy import (
 def skills_page_payload(
     inventory: SkillInventory,
     tags: dict[str, list[str]] | None = None,
+    attachments: dict[str, tuple[AgentAttachment, ...]] | None = None,
 ) -> dict[str, object]:
     tags_map = tags or {}
+    attachments_map = attachments or {}
     counts = {
         "managed": sum(1 for entry in inventory.entries if display_status(entry) == "Managed"),
         "unmanaged": sum(1 for entry in inventory.entries if display_status(entry) == "Unmanaged"),
@@ -30,7 +34,12 @@ def skills_page_payload(
         "summary": counts,
         "harnessColumns": [column_payload(column) for column in inventory.columns],
         "rows": [
-            row_payload(entry, inventory.columns, tags=tags_map.get(entry.skill_ref, []))
+            row_payload(
+                entry, 
+                inventory.columns, 
+                tags=tags_map.get(entry.skill_ref, []),
+                agents=attachments_map.get(entry.skill_ref, ()),
+            )
             for entry in inventory.entries
         ],
     }
@@ -44,6 +53,7 @@ def skill_detail_payload(
     metadata: list[dict[str, str]] | None = None,
     source_links: dict[str, str | None] | None,
     tags: list[str] | None = None,
+    agents: tuple[AgentAttachment, ...] | None = None,
 ) -> dict[str, object]:
     return {
         "skillRef": entry.skill_ref,
@@ -52,6 +62,7 @@ def skill_detail_payload(
         "displayStatus": display_status(entry),
         "attentionMessage": attention_message(entry),
         "tags": tags or [],
+        "agents": [{"ref": a.ref, "name": a.name} for a in (agents or [])],
         "actions": {
             "canManage": can_manage(entry),
             "stopManagingStatus": stop_managing_status_payload(entry),
@@ -89,6 +100,7 @@ def row_payload(
     entry: InventoryEntry,
     columns: tuple[InventoryColumn, ...],
     tags: list[str] | None = None,
+    agents: tuple[AgentAttachment, ...] | None = None,
 ) -> dict[str, object]:
     return {
         "skillRef": entry.skill_ref,
@@ -96,6 +108,7 @@ def row_payload(
         "description": entry.description,
         "displayStatus": display_status(entry),
         "tags": tags or [],
+        "agents": [{"ref": a.ref, "name": a.name} for a in (agents or [])],
         "actions": {
             "canManage": can_manage(entry),
             "canStopManaging": stop_managing_status(entry) == "available",

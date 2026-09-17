@@ -1592,6 +1592,13 @@ export interface components {
             /** Candelete */
             canDelete: boolean;
         };
+        /** AgentAttachmentResponse */
+        AgentAttachmentResponse: {
+            /** Name */
+            name: string;
+            /** Ref */
+            ref: string;
+        };
         /** AgentBindingResponse */
         AgentBindingResponse: {
             /** Detail */
@@ -3323,6 +3330,8 @@ export interface components {
         /** SkillDetailResponse */
         SkillDetailResponse: {
             actions: components["schemas"]["SkillDetailActionsResponse"];
+            /** Agents */
+            agents?: components["schemas"]["AgentAttachmentResponse"][];
             /** Attentionmessage */
             attentionMessage: string | null;
             /** Conformance */
@@ -3409,6 +3418,8 @@ export interface components {
         /** SkillTableRowResponse */
         SkillTableRowResponse: {
             actions: components["schemas"]["SkillRowActionsResponse"];
+            /** Agents */
+            agents?: components["schemas"]["AgentAttachmentResponse"][];
             /** Cells */
             cells: components["schemas"]["HarnessCellResponse"][];
             /** Conformance */
