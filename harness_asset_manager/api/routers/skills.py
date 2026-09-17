@@ -147,11 +147,7 @@ def attach_agents(
 
     # 1. Normalise skillRefs and validate
     bare_slugs = [ref.removeprefix("shared:") for ref in req.skillRefs]
-    try:
-        validated_skills = container.agents_mutations.validate_skills(bare_slugs)
-    except Exception as e:
-        # validate_skills raises MutationError with 400 invalid_skill
-        raise e
+    validated_skills = container.agents_mutations.validate_skills(bare_slugs)
 
     changed = []
     skipped = []
@@ -191,30 +187,52 @@ def attach_agents(
             continue
 
         # apply
+        previous = agent
         try:
-            container.agents_store.update(
+            updated = container.agents_store.update(
                 agent_ref,
                 skills=next_skills,
             )
-            changed.append(agent_ref)
+        except Exception as e:
+            skipped.append(SkippedAgentResponse(ref=agent_ref, reason=str(e)))
+            continue
 
-            updated = container.agents_store.get(agent_ref)
-            if updated is not None:
-                ensure_profile(
-                    updated,
-                    container.hermes_root,
+        changed.append(agent_ref)
+
+        try:
+            ensure_profile(
+                updated,
+                container.hermes_root,
+                previous=previous,
+            )
+        except Exception as e:  # noqa: BLE001 - keep the HAM agent update
+            for slug in validated_skills:
+                failed.append(
+                    AutoEnableFailureResponse(
+                        skillRef=f"shared:{slug}",
+                        harness="hermes",
+                        error=f"Hermes profile configuration failed: {e}",
+                    )
                 )
 
+        try:
             ae, af = container.agents_mutations.auto_enable_skills_for_agent(
                 agent_ref, next_skills
             )
-            for s_ref, h in ae:
-                auto_enabled.append(AutoEnabledSkillResponse(skillRef=s_ref, harness=h))
-            for s_ref, h, err in af:
-                failed.append(AutoEnableFailureResponse(skillRef=s_ref, harness=h, error=err))
-
-        except Exception as e:
-            skipped.append(SkippedAgentResponse(ref=agent_ref, reason=str(e)))
+        except Exception as e:  # noqa: BLE001 - keep the HAM agent update
+            for slug in validated_skills:
+                failed.append(
+                    AutoEnableFailureResponse(
+                        skillRef=f"shared:{slug}",
+                        harness="unknown",
+                        error=str(e),
+                    )
+                )
+            continue
+        for s_ref, h in ae:
+            auto_enabled.append(AutoEnabledSkillResponse(skillRef=s_ref, harness=h))
+        for s_ref, h, err in af:
+            failed.append(AutoEnableFailureResponse(skillRef=s_ref, harness=h, error=err))
 
     if not req.dryRun:
         container.invalidation.invalidate_all()
