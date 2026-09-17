@@ -70,7 +70,7 @@ tar -xOf "$PACK_FILE" package/LICENSE | cmp -s - "$REPO_ROOT/LICENSE"
 
 "$PYTHON_BIN" "$REPO_ROOT/scripts/serve_marketplace_fixture.py" --manifest "$FIXTURE_MANIFEST" >"$FIXTURE_LOG" 2>&1 &
 FIXTURE_PID=$!
-for _ in {1..150}; do
+for _ in {1..600}; do
   [[ -f "$FIXTURE_MANIFEST" ]] && break
   if ! kill -0 "$FIXTURE_PID" >/dev/null 2>&1; then
     break
@@ -85,7 +85,7 @@ if [[ ! -f "$FIXTURE_MANIFEST" ]]; then
     set -e
     echo "Marketplace fixture exited before writing its manifest (exit code $FIXTURE_EXIT_CODE)." >&2
   else
-    echo "Marketplace fixture did not start within 30 seconds." >&2
+    echo "Marketplace fixture did not start within 120 seconds." >&2
   fi
   if [[ -s "$FIXTURE_LOG" ]]; then
     echo "Fixture log:" >&2
