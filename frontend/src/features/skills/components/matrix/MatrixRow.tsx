@@ -1,4 +1,4 @@
-import { Star } from "lucide-react";
+import { Bot, Star } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../../components/cards/CardSelectCheckbox";
 import { OverflowTooltipText } from "../../../../components/ui/OverflowTooltipText";
@@ -26,6 +26,7 @@ interface MatrixRowProps {
   onToggleCell: (row: SkillListRow, cell: HarnessCellType) => void;
   onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
+  onToggleAgent?: (agentRef: string) => void;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
 }
 
@@ -57,6 +58,7 @@ export function MatrixRow({
   onToggleCell,
   onToggleStar,
   onManageSkill,
+  onToggleAgent,
   pendingStructuralActions,
 }: MatrixRowProps) {
   const enabledCount = countEnabled(row);
@@ -98,9 +100,30 @@ export function MatrixRow({
                 </span>
               ))}
               {displayTags.length > 2 ? (
-                <span className="matrix-table__tag-pill matrix-table__tag-pill--more">
+                <span className="matrix-table__tag-pill">
                   +{displayTags.length - 2}
                 </span>
+              ) : null}
+            </div>
+          ) : null}
+          {(row.agents || []).length > 0 ? (
+            <div className="matrix-table__tag-pills">
+              {(row.agents || []).slice(0, 2).map((agent) => (
+                <span 
+                  key={agent.ref} 
+                  className="matrix-table__tag-pill" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onToggleAgent) onToggleAgent(agent.ref);
+                  }}
+                  style={{ cursor: onToggleAgent ? 'pointer' : 'default' }}
+                >
+                  <Bot size={12} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'text-bottom' }} />
+                  {agent.name}
+                </span>
+              ))}
+              {(row.agents || []).length > 2 ? (
+                <span className="matrix-table__tag-pill">+{(row.agents || []).length - 2} agents</span>
               ) : null}
             </div>
           ) : null}

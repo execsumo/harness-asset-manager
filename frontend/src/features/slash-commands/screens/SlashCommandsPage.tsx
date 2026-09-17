@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -22,6 +22,7 @@ import {
   filterSlashCommandEntries,
   primaryReviewAction,
   slashCommandStatusCounts,
+  syncedTargetIds,
   type SlashCommandsStatusFilter,
 } from "../model/selectors";
 import { useSlashCommandsController } from "../model/useSlashCommandsController";
@@ -172,13 +173,16 @@ export default function SlashCommandsPage() {
   }, [controller, entries, selectedRefs]);
 
   const selectedCount = selectedRefs.size;
-  const selectedManagedNames = useMemo(
+  const selectedManagedEntries = useMemo(
     () => entries
-      .filter((entry): entry is Extract<typeof entry, { kind: "managed" }> => entry.kind === "managed" && selectedRefs.has(entry.id))
-      .map((entry) => entry.command.name),
+      .filter((entry): entry is Extract<typeof entry, { kind: "managed" }> => entry.kind === "managed" && selectedRefs.has(entry.id)),
     [entries, selectedRefs],
   );
-  const selectedManagedCount = selectedManagedNames.length;
+  const selectedManagedNames = useMemo(
+    () => selectedManagedEntries.map((entry) => entry.command.name),
+    [selectedManagedEntries],
+  );
+  const selectedManagedCount = selectedManagedEntries.length;
   const handleBulkEnableAll = useCallback(async (): Promise<void> => {
     if (await controller.handleBulkEnableAll(selectedManagedNames)) setSelectedRefs(new Set());
   }, [controller, selectedManagedNames]);
@@ -196,7 +200,13 @@ export default function SlashCommandsPage() {
   }, [controller, selectedManagedNames]);
   const bulkHarnessOptions = controller.data?.targets
     .filter((target) => target.enabled)
-    .map((target) => ({ harness: target.id, label: target.label }));
+    .map((target) => ({
+      harness: target.id,
+      label: target.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedEntries.map((entry) => syncedTargetIds(entry.command).has(target.id)),
+      ),
+    }));
   const adoptableSelectedCount = useMemo(
     () =>
       entries.filter(
@@ -406,4 +416,11 @@ export default function SlashCommandsPage() {
       />
     </>
   );
+}
+
+function aggregateBulkHarnessState(values: readonly boolean[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every(Boolean)) return "all";
+  if (values.every((value) => !value)) return "none";
+  return "mixed";
 }

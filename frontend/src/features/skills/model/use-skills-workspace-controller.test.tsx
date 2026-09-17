@@ -97,6 +97,9 @@ vi.mock("../api/queries", () => ({
   }),
   useManageSkillMutation: () => ({ mutateAsync: vi.fn() }),
   useManageAllSkillsMutation: () => ({ mutateAsync: vi.fn() }),
+  useAttachAgentsMutation: () => ({
+    mutateAsync: vi.fn(async () => ({ changed: [], skipped: [], autoEnabled: [], failed: [] })),
+  }),
   useSetSkillTagsMutation: () => ({
     mutateAsync: async (vars: { skillRef: string; tags: string[] }) => {
       if (hoisted.failTagsFor.has(vars.skillRef)) {

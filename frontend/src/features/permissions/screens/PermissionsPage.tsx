@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState, type MultiSelectAction } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -306,17 +306,29 @@ export default function PermissionsPage() {
     });
   }, [inventory, runBulkAction, setTagsMutation]);
 
-  const selectedManagedCount = useMemo(
-    () => entries.filter((entry) => entry.kind === "managed" && checkedIds.has(entry.id)).length,
+  const selectedManagedEntries = useMemo(
+    () => entries.filter((entry) => entry.kind === "managed" && checkedIds.has(entry.id)),
     [checkedIds, entries],
   );
+  const selectedManagedCount = selectedManagedEntries.length;
   const selectedUntrackedCount = useMemo(
     () => entries.filter((entry) => entry.kind === "unmanaged" && checkedIds.has(entry.id)).length,
     [checkedIds, entries],
   );
   const bulkHarnessOptions = inventory?.columns
     .filter(isPermissionsHarnessAddressable)
-    .map((column) => ({ harness: column.harness, label: column.label }));
+    .map((column) => ({
+      harness: column.harness,
+      label: column.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedEntries.map((entry) => {
+          const action = matrixCellFor(entry, column, copy).action;
+          if (action === "disable") return true;
+          if (action === "enable") return false;
+          return null;
+        }),
+      ),
+    }));
 
   const handleAdoptSelected = useCallback(async () => {
     const ids = entries
@@ -571,7 +583,7 @@ export default function PermissionsPage() {
           showDestructiveAction={selectedManagedCount > 0}
           onTagSelected={selectedManagedCount > 0 ? handleBulkTag : undefined}
           onStarSelected={selectedManagedCount > 0 ? handleBulkStar : undefined}
-          starLabel="Star selected"
+          starLabel="Star"
           knownTags={knownTagNames}
           extraActions={
             selectedUntrackedCount > 0 ? (
@@ -599,4 +611,11 @@ export default function PermissionsPage() {
       ) : null}
     </>
   );
+}
+
+function aggregateBulkHarnessState(values: readonly (boolean | null)[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every((value) => value === true)) return "all";
+  if (values.every((value) => value === false)) return "none";
+  return "mixed";
 }

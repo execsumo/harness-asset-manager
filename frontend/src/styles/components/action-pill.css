@@ -57,6 +57,12 @@
 
 /* Size modifiers ---------------------------------------------------------- */
 
+.action-pill--sm {
+  padding: 3px var(--space-3);
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
 .action-pill--md {
   padding: 6px var(--space-4);
   gap: var(--space-2);

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScopedReconciliationTracker } from "../../../lib/async/scoped-reconciliation";
 import { queryPolicy } from "../../../lib/query";
 import {
+  attachAgents,
   deleteSkill,
   disableSkill,
   enableSkill,
@@ -29,7 +30,7 @@ import { invalidateSkillsQueries } from "./invalidation";
 import { SKILLS_GC_TIME_MS, SKILLS_STALE_TIME_MS, skillsKeys } from "./keys";
 import { mapSkillDetail, mapSkillsPage } from "./mappers";
 import type { HarnessCellState } from "../model/types";
-import type { SetSkillHarnessesResultDto, SkillDetailDto, SkillsPageDto } from "./types";
+import type { AttachAgentsRequestDto, SetSkillHarnessesResultDto, SkillDetailDto, SkillsPageDto } from "./types";
 
 export { invalidateSkillsQueries } from "./invalidation";
 export { skillsKeys } from "./keys";
@@ -406,3 +407,15 @@ export function useSetSkillTagsMutation() {
   });
 }
 
+
+export function useAttachAgentsMutation() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (req: AttachAgentsRequestDto) => attachAgents(req),
+    onSuccess: (_res, req) => {
+      if (!req.dryRun) {
+        void client.invalidateQueries({ queryKey: skillsKeys.list() });
+      }
+    },
+  });
+}

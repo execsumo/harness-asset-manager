@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
+import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -12,11 +13,13 @@ import { useToast } from "../../../components/Toast";
 import { useCommonCopy } from "../../../i18n";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import { SkillDetailModal } from "../components/detail/SkillDetailModal";
+import { SkillAgentFilterBar } from "../components/tags/SkillAgentFilterBar";
 import { SkillTagFilterBar } from "../components/tags/SkillTagFilterBar";
 import { MatrixView } from "../components/matrix/MatrixView";
 import { SkillsEmptyState } from "../components/pane/SkillsEmptyState";
 import { useSkillsCopy } from "../i18n";
 import {
+  extractSkillAgentCounts,
   extractSkillTagCounts,
   filterSkills,
   skillsStatusCounts,
@@ -70,6 +73,10 @@ export default function SkillsWorkspacePage() {
     onMultiSelectDelete,
     onMultiSelectStar,
     onMultiSelectTag,
+    onMultiSelectAgent,
+    attachAgentsState,
+    onConfirmAttachAgents,
+    onCancelAttachAgents,
     onDeleteSkill,
     onToggleStar,
     onManageAll,
@@ -94,6 +101,45 @@ export default function SkillsWorkspacePage() {
     },
     [searchParams, setSearchParams],
   );
+
+  // URL-backed agent filters (?agent=)
+  const selectedAgents = useMemo(() => searchParams.getAll("agent"), [searchParams]);
+  // Filter options: only agents that actually carry a skill (with counts).
+  const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
+  // Bulk attach/detach vocabulary: every adopted agent. Deliberately NOT the
+  // filter options above - those only list agents that already carry a skill,
+  // so reusing them here left the popover empty until something was already
+  // attached, which made the first attach impossible.
+  const agentOptions = useMemo(() => data?.agentOptions ?? [], [data]);
+
+  const toggleAgentFilter = useCallback(
+    (agentRef: string) => {
+      const params = new URLSearchParams(searchParams);
+      const currentAgents = params.getAll("agent");
+      const hasAgent = currentAgents.includes(agentRef);
+      params.delete("agent");
+      if (!hasAgent) {
+        for (const a of currentAgents) {
+          params.append("agent", a);
+        }
+        params.append("agent", agentRef);
+      } else {
+        for (const a of currentAgents) {
+          if (a !== agentRef) {
+            params.append("agent", a);
+          }
+        }
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearAgentFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("agent");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
@@ -145,8 +191,9 @@ export default function SkillsWorkspacePage() {
         status: statusFilter,
         harness: harnessParam,
         tags: selectedTags,
+        agents: selectedAgents,
       }),
-    [data, filters.search, statusFilter, harnessParam, selectedTags],
+    [data, filters.search, statusFilter, harnessParam, selectedTags, selectedAgents],
   );
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
@@ -159,7 +206,7 @@ export default function SkillsWorkspacePage() {
   const hasData = (data?.rows.length ?? 0) > 0;
   const isReady = controllerStatus === "ready" && Boolean(data);
   const hasActiveFilters =
-    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
+    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0 || selectedAgents.length > 0;
 
   useEffect(() => {
     setSelectedUntrackedRefs((current) => {
@@ -257,13 +304,28 @@ export default function SkillsWorkspacePage() {
     () => sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canManage).length,
     [selectedUntrackedRefs, sortedRows],
   );
-  const selectedManagedCount = multiSelectedRefs.size;
+  const selectedManagedRows = useMemo(
+    () => sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "inUse" && multiSelectedRefs.has(row.skillRef)),
+    [multiSelectedRefs, sortedRows],
+  );
+  const selectedManagedCount = selectedManagedRows.length;
   const selectedCount = checkedRefs.size;
   const selectedDeletableCount = selectedManagedCount + (hasDeletableUntrackedSelection ?
     sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete).length : 0);
   const bulkHarnessOptions = data?.harnessColumns
     .filter((column) => column.installed)
-    .map((column) => ({ harness: column.harness, label: column.label }));
+    .map((column) => ({
+      harness: column.harness,
+      label: column.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedRows.map((row) => {
+          const cell = row.cells.find((candidate) => candidate.harness === column.harness);
+          if (cell?.state === "enabled") return true;
+          if (cell?.state === "disabled") return false;
+          return null;
+        }),
+      ),
+    }));
 
   const handleDeleteSelected = useCallback(async (): Promise<void> => {
     const tasks: Promise<void>[] = [];
@@ -273,13 +335,19 @@ export default function SkillsWorkspacePage() {
   }, [handleDeleteSelectedUntracked, onMultiSelectDelete, selectedManagedCount, selectedUntrackedRefs.size]);
 
   const clearFilters = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("tag");
+        next.delete("agent");
+        next.delete("status");
+        next.delete("harness");
+        return next;
+      },
+      { replace: true },
+    );
     updateFilters({ search: "" });
-    const params = new URLSearchParams(searchParams);
-    params.delete("status");
-    params.delete("harness");
-    params.delete("tag");
-    setSearchParams(params, { replace: true });
-  }, [searchParams, setSearchParams, updateFilters]);
+  }, [setSearchParams, updateFilters]);
 
   const statusOptions = useMemo(
     () => STATUS_VALUES.map((value) => ({ value, label: statusLabel(copy, value), meta: counts[value] })),
@@ -356,6 +424,12 @@ export default function SkillsWorkspacePage() {
               onToggleTag={toggleTagFilter}
               onClearTags={clearTagFilters}
             />
+            <SkillAgentFilterBar
+              agents={knownAgents}
+              selectedAgents={selectedAgents}
+              onToggleAgent={toggleAgentFilter}
+              onClearAgents={clearAgentFilters}
+            />
           </>
         ) : null}
       </div>
@@ -377,6 +451,7 @@ export default function SkillsWorkspacePage() {
             onToggleCell={onToggleCell}
             onToggleStar={onToggleStar}
             onManageSkill={(ref) => void onManageSkill(ref)}
+            onToggleAgent={toggleAgentFilter}
             pendingStructuralActions={pendingStructuralActions}
             starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}
@@ -413,9 +488,11 @@ export default function SkillsWorkspacePage() {
           onDelete={handleDeleteSelected}
           showDestructiveAction={selectedDeletableCount > 0}
           onStarSelected={selectedManagedCount > 0 ? onMultiSelectStar : undefined}
-          starLabel="Star selected"
+          starLabel="Star"
           onTagSelected={selectedManagedCount > 0 ? onMultiSelectTag : undefined}
           knownTags={knownTagNames}
+          onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
+          knownAgents={agentOptions}
           extraActions={
             selectedAdoptableUntrackedCount > 0 ? (
               <button
@@ -444,6 +521,32 @@ export default function SkillsWorkspacePage() {
         />
       ) : null}
 
+      
+      <ConfirmActionDialog
+        open={attachAgentsState !== null}
+        onOpenChange={(open) => {
+          if (!open) onCancelAttachAgents();
+        }}
+        title={attachAgentsState?.mode === "attach" ? "Attach agents?" : "Detach agents?"}
+        description={
+          attachAgentsState ? (
+            <span>
+              {formatAttachAgentPreview(
+                attachAgentsState,
+                data?.harnessColumns ?? [],
+                selectedUntrackedRefs.size,
+              )}
+            </span>
+          ) : ""
+        }
+        note={attachAgentsState?.mode === "detach" ? "Detaching leaves the skill installed on its harnesses." : undefined}
+        confirmLabel={attachAgentsState?.mode === "attach" ? "Attach" : "Detach"}
+        pendingLabel={attachAgentsState?.mode === "attach" ? "Attaching" : "Detaching"}
+        confirmTone={attachAgentsState?.mode === "attach" ? "primary" : "danger"}
+        onConfirm={onConfirmAttachAgents}
+        isPending={multiSelectPending === "attach-agents"}
+      />
+
       <SkillDetailModal
         open={isDesktopDetailOpen || Boolean(selectedSkillRef)}
         skillRef={selectedSkillRef}
@@ -469,4 +572,47 @@ function statusLabel(copy: ReturnType<typeof useSkillsCopy>, value: SkillsStatus
   if (value === "all-harnesses") return copy.inUse.pills.allHarnesses;
   if (value === "off") return copy.inUse.pills.off;
   return copy.review.title;
+}
+
+type AttachAgentsState = NonNullable<ReturnType<typeof useSkillsWorkspaceController>["context"]["attachAgentsState"]>;
+
+function formatAttachAgentPreview(
+  state: AttachAgentsState,
+  harnessColumns: readonly { harness: string; label: string }[],
+  skippedUnmanagedCount: number,
+): string {
+  const action = state.mode === "attach" ? "attach" : "detach";
+  const changedCount = state.projection.changed.length;
+  const bindingCount = state.projection.autoEnabled.length;
+  const harnessLabels = formatHarnessNames(state.projection.autoEnabled.map((item) => item.harness), harnessColumns);
+  const bindingText = state.mode === "attach"
+    ? bindingCount > 0
+      ? `creating ${bindingCount} new harness binding${bindingCount === 1 ? "" : "s"} on ${harnessLabels}`
+      : "creating no new harness bindings"
+    : "removing no harness bindings";
+  const skippedRows = skippedUnmanagedCount > 0
+    ? ` ${skippedUnmanagedCount} unmanaged selected row${skippedUnmanagedCount === 1 ? " is" : "s are"} skipped because only managed skills can be attached to agents.`
+    : "";
+  const skippedAgents = state.projection.skipped.length > 0
+    ? ` ${state.projection.skipped.length} agent${state.projection.skipped.length === 1 ? " is" : "s are"} skipped: ${state.projection.skipped
+        .map((item) => `${item.ref} (${item.reason})`)
+        .join(", ")}.`
+    : "";
+
+  return `You are about to ${action} ${state.agentRefs.length} agent${state.agentRefs.length === 1 ? "" : "s"} across ${state.skillRefs.length} managed skill${state.skillRefs.length === 1 ? "" : "s"}. ${changedCount} agent${changedCount === 1 ? "" : "s"} will change, ${bindingText}.${skippedRows}${skippedAgents}`;
+}
+
+function formatHarnessNames(harnesses: string[], harnessColumns: readonly { harness: string; label: string }[]): string {
+  const labelsByHarness = new Map(harnessColumns.map((column) => [column.harness, column.label]));
+  const labels = Array.from(new Set(harnesses)).map((harness) => labelsByHarness.get(harness) ?? harness);
+  if (labels.length === 0) return "no harnesses";
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+function aggregateBulkHarnessState(values: readonly (boolean | null)[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every((value) => value === true)) return "all";
+  if (values.every((value) => value === false)) return "none";
+  return "mixed";
 }

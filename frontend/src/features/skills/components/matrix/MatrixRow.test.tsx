@@ -15,6 +15,7 @@ function candidate(linkedTargets: string[]): SkillListRow {
     description: "Created by a Bot",
     displayStatus: "Unmanaged",
     tags: [],
+      agents: [],
     actions: { canManage: true, canStopManaging: false, canDelete: false },
     cells: [{ harness: "hermes", label: "Hermes Agent", logoKey: "hermes", state: "found", interactive: false }],
     linkedTargets,

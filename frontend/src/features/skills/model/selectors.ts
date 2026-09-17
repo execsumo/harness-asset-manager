@@ -18,6 +18,8 @@ export interface SkillsFilters {
   harness?: string | null;
   /** Restrict to rows matching any of these tags (OR within tags). */
   tags?: string[] | null;
+  /** Restrict to rows matching any of these agents (OR within agents). */
+  agents?: string[] | null;
 }
 
 export interface AlignedHarnessCell {
@@ -69,7 +71,8 @@ export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFi
     (row) =>
       matchesSearch(row, filters.search, filters.status === "untracked" ? ["found"] : ["enabled", "disabled", "found"]) &&
       matchesHarness(row, filters.harness) &&
-      matchesTags(row, filters.tags),
+      matchesTags(row, filters.tags) &&
+      matchesAgents(row, filters.agents),
   );
 
   if (filters.status === "untracked") return matchingRows.filter((row) => untrackedRows.includes(row));
@@ -95,6 +98,34 @@ function matchesTags(row: SkillListRow, tags: string[] | null | undefined): bool
   if (!tags || tags.length === 0) return true;
   const rowTags = (row.tags || []).map((t) => t.toLowerCase());
   return tags.some((tag) => rowTags.includes(tag.toLowerCase()));
+}
+
+function matchesAgents(row: SkillListRow, agents: string[] | null | undefined): boolean {
+  if (!agents || agents.length === 0) return true;
+  const rowAgents = (row.agents || []).map((a) => a.ref);
+  return agents.some((agent) => rowAgents.includes(agent));
+}
+
+export function extractSkillAgentCounts(data: SkillsWorkspaceData | null): { ref: string; name: string; count: number }[] {
+  if (!data) return [];
+  const countsMap = new Map<string, { ref: string; name: string; count: number }>();
+
+  for (const row of data.rows) {
+    const seenInRow = new Set<string>();
+    for (const agent of row.agents || []) {
+      if (seenInRow.has(agent.ref)) continue;
+      seenInRow.add(agent.ref);
+
+      const existing = countsMap.get(agent.ref);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        countsMap.set(agent.ref, { ref: agent.ref, name: agent.name, count: 1 });
+      }
+    }
+  }
+
+  return Array.from(countsMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
 export function extractSkillTagCounts(data: SkillsWorkspaceData | null): SkillTagCount[] {

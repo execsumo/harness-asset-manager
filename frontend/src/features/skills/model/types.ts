@@ -14,6 +14,8 @@ import type {
   SkillRemoveStatus as SkillRemoveStatusDto,
   SkillSourceStatusDto,
   SkillUpdateStatus as SkillUpdateStatusDto,
+  AgentAttachmentDto,
+  AttachAgentsResponseDto,
 } from "../api/types";
 
 export type SkillStatus = SkillStatusDto;
@@ -29,6 +31,7 @@ export type SkillSourceLinks = SkillSourceLinksDto;
 export type SkillMetadataEntry = SkillMetadataEntryDto;
 export type SkillConformanceIssue = SkillConformanceIssueDto;
 export type BulkManageResult = BulkManageResultDto;
+export type AgentAttachment = AgentAttachmentDto;
 
 export interface SkillListRow {
   skillRef: string;
@@ -36,6 +39,7 @@ export interface SkillListRow {
   description: string;
   displayStatus: SkillStatus;
   tags: string[];
+  agents: AgentAttachment[];
   actions: SkillRowActions;
   cells: HarnessCell[];
   /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */
@@ -48,6 +52,12 @@ export interface SkillsWorkspaceData {
   summary: SkillsSummary;
   harnessColumns: HarnessColumn[];
   rows: SkillListRow[];
+  /**
+   * Every adopted agent, as the attach/detach vocabulary. Deliberately not derived
+   * from `row.agents`: that only names agents that already carry a skill, so using
+   * it as the popover's options makes the very first attach impossible.
+   */
+  agentOptions: AgentAttachmentDto[];
 }
 
 export interface SkillActions extends SkillDetailActionsDto {
@@ -61,6 +71,7 @@ export interface SkillDetail {
   displayStatus: SkillStatus;
   attentionMessage: string | null;
   tags: string[];
+  agents: AgentAttachment[];
   actions: SkillActions;
   harnessCells: HarnessCell[];
   /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */
@@ -72,3 +83,5 @@ export interface SkillDetail {
   packageFiles: string[];
   conformance: SkillConformanceIssue[];
 }
+
+export type AttachAgentsResponse = AttachAgentsResponseDto;

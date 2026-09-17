@@ -1135,6 +1135,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/skills/attach-agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach Agents */
+        post: operations["attach_agents_api_skills_attach_agents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/skills/manage-all": {
         parameters: {
             query?: never;
@@ -1592,6 +1609,13 @@ export interface components {
             /** Candelete */
             canDelete: boolean;
         };
+        /** AgentAttachmentResponse */
+        AgentAttachmentResponse: {
+            /** Name */
+            name: string;
+            /** Ref */
+            ref: string;
+        };
         /** AgentBindingResponse */
         AgentBindingResponse: {
             /** Detail */
@@ -1817,6 +1841,34 @@ export interface components {
         AgentTagsResponse: {
             /** Tags */
             tags?: string[];
+        };
+        /** AttachAgentsRequest */
+        AttachAgentsRequest: {
+            /** Agentrefs */
+            agentRefs: string[];
+            /**
+             * Dryrun
+             * @default false
+             */
+            dryRun: boolean;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "attach" | "detach";
+            /** Skillrefs */
+            skillRefs: string[];
+        };
+        /** AttachAgentsResponse */
+        AttachAgentsResponse: {
+            /** Autoenabled */
+            autoEnabled: components["schemas"]["AutoEnabledSkillResponse"][];
+            /** Changed */
+            changed: string[];
+            /** Failed */
+            failed: components["schemas"]["AutoEnableFailureResponse"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedAgentResponse"][];
         };
         /** AutoEnableFailureResponse */
         AutoEnableFailureResponse: {
@@ -3323,6 +3375,8 @@ export interface components {
         /** SkillDetailResponse */
         SkillDetailResponse: {
             actions: components["schemas"]["SkillDetailActionsResponse"];
+            /** Agents */
+            agents?: components["schemas"]["AgentAttachmentResponse"][];
             /** Attentionmessage */
             attentionMessage: string | null;
             /** Conformance */
@@ -3409,6 +3463,8 @@ export interface components {
         /** SkillTableRowResponse */
         SkillTableRowResponse: {
             actions: components["schemas"]["SkillRowActionsResponse"];
+            /** Agents */
+            agents?: components["schemas"]["AgentAttachmentResponse"][];
             /** Cells */
             cells: components["schemas"]["HarnessCellResponse"][];
             /** Conformance */
@@ -3434,6 +3490,11 @@ export interface components {
         };
         /** SkillsPageResponse */
         SkillsPageResponse: {
+            /**
+             * Agentoptions
+             * @default []
+             */
+            agentOptions: components["schemas"]["AgentAttachmentResponse"][];
             /** Harnesscolumns */
             harnessColumns: components["schemas"]["HarnessColumnResponse"][];
             /** Rows */
@@ -3446,6 +3507,13 @@ export interface components {
             managed: number;
             /** Unmanaged */
             unmanaged: number;
+        };
+        /** SkippedAgentResponse */
+        SkippedAgentResponse: {
+            /** Reason */
+            reason: string;
+            /** Ref */
+            ref: string;
         };
         /** SlashCommandDeleteResponse */
         SlashCommandDeleteResponse: {
@@ -9508,6 +9576,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillsPageResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attach_agents_api_skills_attach_agents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachAgentsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachAgentsResponse"];
                 };
             };
             /** @description Bad Request */

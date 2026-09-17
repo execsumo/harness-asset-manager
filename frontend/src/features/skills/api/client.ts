@@ -11,6 +11,8 @@ import type {
   SkillSourceStatusDto,
   SkillTagsResponse,
   UpdateSkillDocumentRequest,
+  AttachAgentsRequestDto,
+  AttachAgentsResponseDto,
 } from "./types";
 import { fetchJson, postJson, putJson } from "../../../api/http";
 
@@ -85,4 +87,10 @@ export async function manageAllSkills(): Promise<BulkManageResult> {
     throw new Error(firstFailure?.error ?? "Unable to manage all eligible skills.");
   }
   return result;
+}
+
+export async function attachAgents(
+  request: AttachAgentsRequestDto,
+): Promise<AttachAgentsResponseDto> {
+  return postJson<AttachAgentsResponseDto>("/skills/attach-agents", request);
 }

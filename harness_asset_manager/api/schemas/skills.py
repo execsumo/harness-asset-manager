@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .agents import AutoEnabledSkillResponse, AutoEnableFailureResponse
 from .common import HarnessTarget
 
 
@@ -89,12 +90,18 @@ class HarnessCellResponse(BaseModel):
     interactive: bool
 
 
+class AgentAttachmentResponse(BaseModel):
+    ref: str
+    name: str
+
+
 class SkillTableRowResponse(BaseModel):
     skillRef: str
     name: str
     description: str
     displayStatus: SkillStatus
     tags: list[str] = Field(default_factory=list)
+    agents: list[AgentAttachmentResponse] = Field(default_factory=list)
     actions: SkillRowActionsResponse
     cells: list[HarnessCellResponse]
     conformance: list[SkillConformanceIssueResponse] = Field(default_factory=list)
@@ -104,6 +111,7 @@ class SkillsPageResponse(BaseModel):
     summary: SkillsSummaryResponse
     harnessColumns: list[HarnessColumnResponse]
     rows: list[SkillTableRowResponse]
+    agentOptions: list[AgentAttachmentResponse] = []
 
 
 class SkillDetailActionsResponse(BaseModel):
@@ -164,6 +172,7 @@ class SkillDetailResponse(BaseModel):
     displayStatus: SkillStatus
     attentionMessage: str | None
     tags: list[str] = Field(default_factory=list)
+    agents: list[AgentAttachmentResponse] = Field(default_factory=list)
     actions: SkillDetailActionsResponse
     harnessCells: list[HarnessCellResponse]
     locations: list[SkillLocationResponse]
@@ -178,7 +187,29 @@ class SkillSourceStatusResponse(BaseModel):
     updateStatus: SkillUpdateStatus | None
 
 
+class SkippedAgentResponse(BaseModel):
+    ref: str
+    reason: str
+
+
+class AttachAgentsRequest(BaseModel):
+    skillRefs: list[str]
+    agentRefs: list[str]
+    mode: Literal["attach", "detach"]
+    dryRun: bool = False
+
+
+class AttachAgentsResponse(BaseModel):
+    changed: list[str]
+    skipped: list[SkippedAgentResponse]
+    autoEnabled: list[AutoEnabledSkillResponse]
+    failed: list[AutoEnableFailureResponse]
+
+
 __all__ = [
+    "AgentAttachmentResponse",
+    "AttachAgentsRequest",
+    "AttachAgentsResponse",
     "BulkManageFailureResponse",
     "BulkManageResultResponse",
     "DisableSkillRequest",

@@ -51,6 +51,7 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
               description: "A starred skill",
               displayStatus: "Managed",
               tags: ["starred"],
+              agents: [],
               actions: { canManage: false, canStopManaging: true, canDelete: true },
               conformance: [],
               cells: [{ harness: "codex", label: "Codex", logoKey: "codex", state: "enabled", interactive: true }],
@@ -61,6 +62,7 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
               description: "An unstarred skill",
               displayStatus: "Managed",
               tags: ["dev"],
+              agents: [],
               actions: { canManage: false, canStopManaging: true, canDelete: true },
               conformance: [],
               cells: [{ harness: "codex", label: "Codex", logoKey: "codex", state: "disabled", interactive: true }],
@@ -391,6 +393,7 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
             displayStatus: "Managed",
             attentionMessage: null,
             tags: ["backend"],
+            agents: [],
             actions: {
               canManage: false,
               updateStatus: null,

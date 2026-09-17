@@ -34,7 +34,58 @@ describe("BulkActionBar", () => {
     expect(screen.queryByRole("button", { name: /Tag selected/i })).not.toBeInTheDocument();
   });
 
-  it("offers enable and disable menus for individual harnesses", async () => {
+  it("renders merged tri-state harness controls", () => {
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        pending={null}
+        onClear={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+        harnessOptions={[
+          { harness: "codex", label: "Codex", state: "all" },
+          { harness: "hermes", label: "Hermes", state: "none" },
+          { harness: "claude", label: "Claude", state: "mixed" },
+        ]}
+        onEnableHarness={vi.fn().mockResolvedValue(undefined)}
+        onDisableHarness={vi.fn().mockResolvedValue(undefined)}
+        destructive={defaultDestructive}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Harnesses" }));
+
+    expect(screen.getByRole("checkbox", { name: "Codex" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Hermes" })).not.toBeChecked();
+    expect((screen.getByRole("checkbox", { name: "Claude" }) as HTMLInputElement).indeterminate).toBe(true);
+  });
+
+  it("does not call harness callbacks when Apply is clicked without toggles", async () => {
+    const onEnableHarness = vi.fn().mockResolvedValue(undefined);
+    const onDisableHarness = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BulkActionBar
+        selectedCount={3}
+        pending={null}
+        onClear={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+        harnessOptions={[{ harness: "codex", label: "Codex", state: "mixed" }]}
+        onEnableHarness={onEnableHarness}
+        onDisableHarness={onDisableHarness}
+        destructive={defaultDestructive}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Harnesses" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => {
+      expect(onEnableHarness).not.toHaveBeenCalled();
+      expect(onDisableHarness).not.toHaveBeenCalled();
+    });
+  });
+
+  it("calls only the toggled harness callback in the chosen direction", async () => {
     const onEnableHarness = vi.fn().mockResolvedValue(undefined);
     const onDisableHarness = vi.fn().mockResolvedValue(undefined);
 
@@ -45,8 +96,9 @@ describe("BulkActionBar", () => {
         onClear={vi.fn()}
         onDelete={vi.fn().mockResolvedValue(undefined)}
         harnessOptions={[
-          { harness: "codex", label: "Codex" },
-          { harness: "hermes", label: "Hermes" },
+          { harness: "codex", label: "Codex", state: "all" },
+          { harness: "hermes", label: "Hermes", state: "none" },
+          { harness: "claude", label: "Claude", state: "mixed" },
         ]}
         onEnableHarness={onEnableHarness}
         onDisableHarness={onDisableHarness}
@@ -54,13 +106,39 @@ describe("BulkActionBar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Enable on a harness" }));
-    fireEvent.click(screen.getByRole("button", { name: "Enable on Hermes" }));
-    await waitFor(() => expect(onEnableHarness).toHaveBeenCalledWith("hermes"));
+    fireEvent.click(screen.getByRole("button", { name: "Harnesses" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Claude" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Disable on a harness" }));
-    fireEvent.click(screen.getByRole("button", { name: "Disable on Codex" }));
+    await waitFor(() => expect(onEnableHarness).toHaveBeenCalledWith("claude"));
+    expect(onEnableHarness).toHaveBeenCalledTimes(1);
+    expect(onDisableHarness).not.toHaveBeenCalled();
+  });
+
+  it("can disable exactly one checked harness", async () => {
+    const onEnableHarness = vi.fn().mockResolvedValue(undefined);
+    const onDisableHarness = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BulkActionBar
+        selectedCount={2}
+        pending={null}
+        onClear={vi.fn()}
+        onDelete={vi.fn().mockResolvedValue(undefined)}
+        harnessOptions={[{ harness: "codex", label: "Codex", state: "all" }]}
+        onEnableHarness={onEnableHarness}
+        onDisableHarness={onDisableHarness}
+        destructive={defaultDestructive}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Harnesses" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Codex" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
     await waitFor(() => expect(onDisableHarness).toHaveBeenCalledWith("codex"));
+    expect(onDisableHarness).toHaveBeenCalledTimes(1);
+    expect(onEnableHarness).not.toHaveBeenCalled();
   });
 
   it("renders Star button when onStarSelected is provided", () => {
@@ -75,12 +153,12 @@ describe("BulkActionBar", () => {
         onDisableAll={vi.fn().mockResolvedValue(undefined)}
         onDelete={vi.fn().mockResolvedValue(undefined)}
         onStarSelected={onStarSelected}
-        starLabel="Star selected"
+        starLabel="Star"
         destructive={defaultDestructive}
       />,
     );
 
-    const starBtn = screen.getByRole("button", { name: "Star selected" });
+    const starBtn = screen.getByRole("button", { name: "Star" });
     expect(starBtn).toBeInTheDocument();
     fireEvent.click(starBtn);
     expect(onStarSelected).toHaveBeenCalled();

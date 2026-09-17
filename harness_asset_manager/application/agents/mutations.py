@@ -307,12 +307,12 @@ class AgentMutationService:
                     )
         return tuple(deduped)
 
-    def auto_enable_skills_for_agent(
+    def project_auto_enable_bindings(
         self,
         agent_ref: str,
         attached_skills: tuple[str, ...] | list[str],
     ) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
-        """For each harness where the agent is enabled and installed, auto-enable any attached skill not currently enabled there."""
+        """Return (projected_bindings, failing_harnesses) that would occur on auto-enable."""
         if self.skills_mutations is None or not attached_skills:
             return [], []
 
@@ -332,7 +332,7 @@ class AgentMutationService:
                     if adapter is not None and adapter.is_enabled(agent.slug):
                         enabled_harnesses.append(target.id)
 
-        auto_enabled: list[tuple[str, str]] = []
+        projected: list[tuple[str, str]] = []
         failed: list[tuple[str, str, str]] = []
 
         for harness in enabled_harnesses:
@@ -345,13 +345,29 @@ class AgentMutationService:
 
             for slug in attached_skills:
                 skill_ref = f"shared:{slug}"
-                if adapter.has_binding(slug):
-                    continue
-                try:
-                    self.skills_mutations.enable_skill(skill_ref, harness)
-                    auto_enabled.append((skill_ref, harness))
-                except Exception as error:  # noqa: BLE001
-                    failed.append((skill_ref, harness, str(error)))
+                if not adapter.has_binding(slug):
+                    projected.append((skill_ref, harness))
+
+        return projected, failed
+
+    def auto_enable_skills_for_agent(
+        self,
+        agent_ref: str,
+        attached_skills: tuple[str, ...] | list[str],
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
+        """For each harness where the agent is enabled and installed, auto-enable any attached skill not currently enabled there."""
+        if self.skills_mutations is None:
+            return [], []
+
+        projected, failed = self.project_auto_enable_bindings(agent_ref, attached_skills)
+        auto_enabled: list[tuple[str, str]] = []
+
+        for skill_ref, harness in projected:
+            try:
+                self.skills_mutations.enable_skill(skill_ref, harness)
+                auto_enabled.append((skill_ref, harness))
+            except Exception as error:  # noqa: BLE001
+                failed.append((skill_ref, harness, str(error)))
 
         return auto_enabled, failed
 

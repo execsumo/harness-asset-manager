@@ -7,6 +7,7 @@ describe("capability overview model", () => {
     const model = buildOverviewModel(
       {
         summary: { managed: 2, unmanaged: 1 },
+        agentOptions: [],
         harnessColumns: [
           { harness: "codex", label: "Codex", installed: true },
         ],
@@ -17,6 +18,7 @@ describe("capability overview model", () => {
             description: "",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: true, canStopManaging: true },
             conformance: [],
             cells: [
@@ -215,6 +217,7 @@ describe("capability overview model", () => {
       {
         summary: { managed: 1, unmanaged: 0 },
         harnessColumns: [],
+        agentOptions: [],
         rows: [
           {
             skillRef: "shared:creative-ideation",
@@ -222,6 +225,7 @@ describe("capability overview model", () => {
             description: "",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: false, canStopManaging: true },
             cells: [],
             conformance: [
@@ -266,6 +270,7 @@ describe("capability overview model", () => {
       {
         summary: { managed: 1, unmanaged: 0 },
         harnessColumns: [],
+        agentOptions: [],
         rows: [
           {
             skillRef: "shared:tidy",
@@ -273,6 +278,7 @@ describe("capability overview model", () => {
             description: "d",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: false, canStopManaging: true },
             cells: [],
             conformance: [],
