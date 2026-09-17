@@ -35,3 +35,4 @@ export type SetSkillTagsRequest = components["schemas"]["SetSkillTagsRequest"];
 export type SkillTagsResponse = components["schemas"]["SkillTagsResponse"];
 export type BulkManageFailure = components["schemas"]["BulkManageFailureResponse"];
 export type BulkManageResult = components["schemas"]["BulkManageResultResponse"];
+export type AgentAttachmentDto = components["schemas"]["AgentAttachmentResponse"];

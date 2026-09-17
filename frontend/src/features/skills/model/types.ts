@@ -14,6 +14,7 @@ import type {
   SkillRemoveStatus as SkillRemoveStatusDto,
   SkillSourceStatusDto,
   SkillUpdateStatus as SkillUpdateStatusDto,
+  AgentAttachmentDto,
 } from "../api/types";
 
 export type SkillStatus = SkillStatusDto;
@@ -29,6 +30,7 @@ export type SkillSourceLinks = SkillSourceLinksDto;
 export type SkillMetadataEntry = SkillMetadataEntryDto;
 export type SkillConformanceIssue = SkillConformanceIssueDto;
 export type BulkManageResult = BulkManageResultDto;
+export type AgentAttachment = AgentAttachmentDto;
 
 export interface SkillListRow {
   skillRef: string;
@@ -36,6 +38,7 @@ export interface SkillListRow {
   description: string;
   displayStatus: SkillStatus;
   tags: string[];
+  agents: AgentAttachment[];
   actions: SkillRowActions;
   cells: HarnessCell[];
   /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */
@@ -61,6 +64,7 @@ export interface SkillDetail {
   displayStatus: SkillStatus;
   attentionMessage: string | null;
   tags: string[];
+  agents: AgentAttachment[];
   actions: SkillActions;
   harnessCells: HarnessCell[];
   /** Exact bindings, including scoped Hermes Bot targets, when the API provides them. */

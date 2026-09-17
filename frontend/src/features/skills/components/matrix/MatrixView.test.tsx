@@ -16,6 +16,7 @@ const rows: SkillListRow[] = [
     description: "First skill",
     displayStatus: "Managed",
     tags: ["starred"],
+      agents: [],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
     conformance: [],
     cells: [
@@ -29,6 +30,7 @@ const rows: SkillListRow[] = [
     description: "Last skill",
     displayStatus: "Managed",
     tags: ["core"],
+      agents: [],
     actions: { canManage: false, canStopManaging: true, canDelete: true },
     conformance: [],
     cells: [

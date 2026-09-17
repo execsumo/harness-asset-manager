@@ -28,6 +28,7 @@ const unmanagedDetail: SkillDetail = {
   displayStatus: "Unmanaged",
   attentionMessage: null,
   tags: [],
+      agents: [],
   actions: {
     canManage: true,
     updateStatus: null,

@@ -12,11 +12,13 @@ import { useToast } from "../../../components/Toast";
 import { useCommonCopy } from "../../../i18n";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 import { SkillDetailModal } from "../components/detail/SkillDetailModal";
+import { SkillAgentFilterBar } from "../components/tags/SkillAgentFilterBar";
 import { SkillTagFilterBar } from "../components/tags/SkillTagFilterBar";
 import { MatrixView } from "../components/matrix/MatrixView";
 import { SkillsEmptyState } from "../components/pane/SkillsEmptyState";
 import { useSkillsCopy } from "../i18n";
 import {
+  extractSkillAgentCounts,
   extractSkillTagCounts,
   filterSkills,
   skillsStatusCounts,
@@ -95,6 +97,39 @@ export default function SkillsWorkspacePage() {
     [searchParams, setSearchParams],
   );
 
+  // URL-backed agent filters (?agent=)
+  const selectedAgents = useMemo(() => searchParams.getAll("agent"), [searchParams]);
+  const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
+
+  const toggleAgentFilter = useCallback(
+    (agentRef: string) => {
+      const params = new URLSearchParams(searchParams);
+      const currentAgents = params.getAll("agent");
+      const hasAgent = currentAgents.includes(agentRef);
+      params.delete("agent");
+      if (!hasAgent) {
+        for (const a of currentAgents) {
+          params.append("agent", a);
+        }
+        params.append("agent", agentRef);
+      } else {
+        for (const a of currentAgents) {
+          if (a !== agentRef) {
+            params.append("agent", a);
+          }
+        }
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearAgentFilters = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("agent");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
   const knownTags = useMemo(() => extractSkillTagCounts(data), [data]);
@@ -145,8 +180,9 @@ export default function SkillsWorkspacePage() {
         status: statusFilter,
         harness: harnessParam,
         tags: selectedTags,
+        agents: selectedAgents,
       }),
-    [data, filters.search, statusFilter, harnessParam, selectedTags],
+    [data, filters.search, statusFilter, harnessParam, selectedTags, selectedAgents],
   );
   const sortedRows = rows;
   const counts = useMemo(() => skillsStatusCounts(data), [data]);
@@ -159,7 +195,7 @@ export default function SkillsWorkspacePage() {
   const hasData = (data?.rows.length ?? 0) > 0;
   const isReady = controllerStatus === "ready" && Boolean(data);
   const hasActiveFilters =
-    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
+    filters.search.trim() !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0 || selectedAgents.length > 0;
 
   useEffect(() => {
     setSelectedUntrackedRefs((current) => {
@@ -273,13 +309,19 @@ export default function SkillsWorkspacePage() {
   }, [handleDeleteSelectedUntracked, onMultiSelectDelete, selectedManagedCount, selectedUntrackedRefs.size]);
 
   const clearFilters = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("tag");
+        next.delete("agent");
+        next.delete("status");
+        next.delete("harness");
+        return next;
+      },
+      { replace: true },
+    );
     updateFilters({ search: "" });
-    const params = new URLSearchParams(searchParams);
-    params.delete("status");
-    params.delete("harness");
-    params.delete("tag");
-    setSearchParams(params, { replace: true });
-  }, [searchParams, setSearchParams, updateFilters]);
+  }, [setSearchParams, updateFilters]);
 
   const statusOptions = useMemo(
     () => STATUS_VALUES.map((value) => ({ value, label: statusLabel(copy, value), meta: counts[value] })),
@@ -356,6 +398,12 @@ export default function SkillsWorkspacePage() {
               onToggleTag={toggleTagFilter}
               onClearTags={clearTagFilters}
             />
+            <SkillAgentFilterBar
+              agents={knownAgents}
+              selectedAgents={selectedAgents}
+              onToggleAgent={toggleAgentFilter}
+              onClearAgents={clearAgentFilters}
+            />
           </>
         ) : null}
       </div>
@@ -377,6 +425,7 @@ export default function SkillsWorkspacePage() {
             onToggleCell={onToggleCell}
             onToggleStar={onToggleStar}
             onManageSkill={(ref) => void onManageSkill(ref)}
+            onToggleAgent={toggleAgentFilter}
             pendingStructuralActions={pendingStructuralActions}
             starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}

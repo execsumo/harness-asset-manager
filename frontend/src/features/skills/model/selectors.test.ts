@@ -4,6 +4,7 @@ import type { SkillsWorkspaceData } from "./types";
 import {
   countAdoptableLocalSkillRows,
   countNeedsReviewRows,
+  extractSkillAgentCounts,
   extractSkillTagCounts,
   filterNeedsReviewRows,
   filterSkills,
@@ -22,6 +23,7 @@ const data: SkillsWorkspaceData = {
       description: "Shared audit workflow",
       displayStatus: "Managed",
       tags: ["starred", "devops"],
+      agents: [{ ref: "agent1", name: "Agent 1" }],
       actions: { canManage: false, canStopManaging: true, canDelete: false },
       cells: [{ harness: "codex", label: "Codex", state: "disabled", interactive: true }],
     },
@@ -31,6 +33,7 @@ const data: SkillsWorkspaceData = {
       description: "Locally modified audit workflow",
       displayStatus: "Managed",
       tags: ["core", "security"],
+      agents: [{ ref: "agent1", name: "Agent 1" }, { ref: "agent2", name: "Agent 2" }],
       actions: { canManage: false, canStopManaging: true, canDelete: true },
       cells: [{ harness: "codex", label: "Codex", state: "enabled", interactive: true }],
     },
@@ -40,6 +43,7 @@ const data: SkillsWorkspaceData = {
       description: "Trace review workflow",
       displayStatus: "Unmanaged",
       tags: ["devops"],
+      agents: [{ ref: "agent2", name: "Agent 2" }],
       actions: { canManage: true, canStopManaging: false, canDelete: false },
       cells: [{ harness: "codex", label: "Codex", state: "found", interactive: false }],
     },
@@ -88,6 +92,26 @@ describe("skills workspace model", () => {
       { tag: "core", count: 1, isStarred: false },
       { tag: "devops", count: 2, isStarred: false },
       { tag: "security", count: 1, isStarred: false },
+    ]);
+  });
+
+  it("filters skills by single agent and multiple agents with OR semantics", () => {
+    const agent1Only = filterSkills(data, { search: "", status: "all", agents: ["agent1"] });
+    expect(agent1Only.map((row) => row.skillRef)).toEqual(["shared:shared-audit", "shared:audit-skill"]);
+
+    const multiAgents = filterSkills(data, { search: "", status: "all", agents: ["agent1", "agent2"] });
+    expect(multiAgents.map((row) => row.skillRef)).toEqual([
+      "shared:shared-audit",
+      "shared:audit-skill",
+      "unmanaged:trace-lens",
+    ]);
+  });
+
+  it("extracts unique agent counts sorted by name", () => {
+    const agentCounts = extractSkillAgentCounts(data);
+    expect(agentCounts).toEqual([
+      { ref: "agent1", name: "Agent 1", count: 2 },
+      { ref: "agent2", name: "Agent 2", count: 2 },
     ]);
   });
 

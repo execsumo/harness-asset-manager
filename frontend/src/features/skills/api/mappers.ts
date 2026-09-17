@@ -21,6 +21,7 @@ export function mapSkillDetail(dto: SkillDetailDto): SkillDetail {
     displayStatus: dto.displayStatus,
     attentionMessage: dto.attentionMessage,
     tags: dto.tags ?? [],
+    agents: dto.agents ?? [],
     actions: {
       ...dto.actions,
       updateStatus: null,
@@ -43,6 +44,7 @@ function mapSkillRow(dto: SkillTableRowDto): SkillListRow {
     description: dto.description,
     displayStatus: dto.displayStatus,
     tags: dto.tags ?? [],
+    agents: dto.agents ?? [],
     actions: dto.actions,
     cells: dto.cells,
     linkedTargets: dto.linkedTargets,

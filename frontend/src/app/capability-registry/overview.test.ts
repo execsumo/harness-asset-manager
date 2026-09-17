@@ -17,6 +17,7 @@ describe("capability overview model", () => {
             description: "",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: true, canStopManaging: true },
             conformance: [],
             cells: [
@@ -222,6 +223,7 @@ describe("capability overview model", () => {
             description: "",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: false, canStopManaging: true },
             cells: [],
             conformance: [
@@ -273,6 +275,7 @@ describe("capability overview model", () => {
             description: "d",
             displayStatus: "Managed",
             tags: [],
+      agents: [],
             actions: { canDelete: true, canManage: false, canStopManaging: true },
             cells: [],
             conformance: [],
