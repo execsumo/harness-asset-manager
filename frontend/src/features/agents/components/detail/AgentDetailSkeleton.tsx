@@ -24,14 +24,6 @@ export function AgentDetailSkeleton({ onClose }: AgentDetailSkeletonProps) {
         aria-hidden="true"
       >
         <div className="detail-sheet__body">
-          <DetailSection heading="About">
-            <div className="detail-skeleton-paragraph">
-              <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-              <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-              <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-short" />
-            </div>
-          </DetailSection>
-
           <DetailSection heading="Agent definition">
             <div className="skill-detail__document-surface">
               <div className="detail-skeleton-paragraph">

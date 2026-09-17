@@ -15,7 +15,6 @@ import {
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
-import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { useToast } from "../../../../components/Toast";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
@@ -126,7 +125,6 @@ export function SlashCommandDetailView({
     }));
   }, [command.metadata]);
 
-  const [documentMode, setDocumentMode] = useState<"preview" | "edit">("preview");
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [description, setDescription] = useState(command.description);
   const [prompt, setPrompt] = useState(command.prompt);
@@ -232,7 +230,6 @@ export function SlashCommandDetailView({
       });
       toast(copy.detail.savedSuccess(command.name));
       setFrontmatterMode("structured");
-      setDocumentMode("preview");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save slash command.");
     }
@@ -274,12 +271,6 @@ export function SlashCommandDetailView({
 
       <div className="slash-command-detail-shell__body ui-scrollbar" aria-labelledby={headingId}>
         <div className="detail-sheet__body">
-          <DetailSection heading={copy.detail.about ?? "About"}>
-            <p className="skill-detail__copy">
-              {command.description || copy.detail.noDescription}
-            </p>
-          </DetailSection>
-
           <DetailSection heading="Tags">
             <DetailTags
               tags={command.tags || []}
@@ -293,15 +284,6 @@ export function SlashCommandDetailView({
 
           <DocumentSection
             title={copy.detail.document}
-            mode={documentMode}
-            onModeChange={setDocumentMode}
-            previewContent={
-              command.prompt ? (
-                <MarkdownDocument markdown={command.prompt} />
-              ) : (
-                <p className="skill-detail__copy">{copy.detail.noPrompt}</p>
-              )
-            }
             editFrontmatter={(
               <FrontmatterEditor
                 knownFields={knownFields}

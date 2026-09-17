@@ -66,13 +66,15 @@ describe("SlashCommandsPage", () => {
     const dialog = await screen.findByRole("dialog", { name: "Slash command details code-review" });
     expect(within(dialog).getByRole("heading", { name: "code-review", level: 2 })).toBeInTheDocument();
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
-    expect(within(dialog).getByText("$ARGUMENTS")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Description")).toHaveValue("Review code");
+    expect(within(dialog).getByLabelText("Prompt Body")).toHaveValue("$ARGUMENTS");
+    expect(within(dialog).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "New slash command" })).not.toBeInTheDocument();
   });
 
-  it("opens a read-only detail sheet with normalized sections", async () => {
+  it("opens an edit detail sheet with normalized sections", async () => {
     fetchMock.mockImplementation(
       createRouteFetchMock([
         {
@@ -110,24 +112,23 @@ describe("SlashCommandsPage", () => {
     expect(within(dialog).getByRole("heading", { name: "code-review", level: 2 })).toBeInTheDocument();
     expect(within(dialog).queryByText("/code-review")).not.toBeInTheDocument();
     expect(within(dialog).queryByText("/prompts:code-review")).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Name (Immutable)")).toHaveValue("code-review");
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "About" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
     expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
-    expect(within(dialog).getByText("Review code")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Description")).toHaveValue("Review code");
+    expect(within(dialog).getByLabelText("Prompt Body")).toHaveValue("$ARGUMENTS");
+    expect(within(dialog).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
 
-    const aboutHeading = within(dialog).getByRole("heading", { name: "About" });
     const documentHeading = within(dialog).getByRole("heading", { name: "Document" });
     const harnessesHeading = within(dialog).getByRole("heading", { name: "Harnesses" });
-    expect(Boolean(aboutHeading.compareDocumentPosition(documentHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(Boolean(documentHeading.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(within(dialog).queryByRole("heading", { name: "Locations" })).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
-    expect(screen.getByDisplayValue("Review code")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
   });
 
-  it("returns to read-only detail after editing a command", async () => {
+  it("keeps the edit form open after editing a command", async () => {
     const requests: Array<{ url: string; body: unknown }> = [];
     let commands = [
       {
@@ -181,8 +182,6 @@ describe("SlashCommandsPage", () => {
     renderWithAppProviders(<SlashCommandsPage />);
 
     fireEvent.click(await screen.findByText("code-review"));
-    let dialog = screen.getByRole("dialog", { name: "Slash command details code-review" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Review code carefully" } });
     fireEvent.change(screen.getByLabelText("Prompt Body"), { target: { value: "Review this diff carefully." } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -195,9 +194,8 @@ describe("SlashCommandsPage", () => {
       metadata: [],
     });
 
-    dialog = await screen.findByRole("dialog", { name: "Slash command details code-review" });
-    expect(within(dialog).getByText("Review code carefully")).toBeInTheDocument();
-    expect(within(dialog).getByText("Review this diff carefully.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("Review code carefully");
+    expect(screen.getByLabelText("Prompt Body")).toHaveValue("Review this diff carefully.");
   });
 
   it("keeps the edit form open when saving fails", async () => {
@@ -226,8 +224,6 @@ describe("SlashCommandsPage", () => {
     renderWithAppProviders(<SlashCommandsPage />);
 
     fireEvent.click(await screen.findByText("code-review"));
-    const dialog = screen.getByRole("dialog", { name: "Slash command details code-review" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Review code carefully" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 

@@ -80,7 +80,6 @@ describe("AgentDetailContent", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Description" }), {
       target: { value: "Updated description" },
     });
@@ -161,8 +160,8 @@ describe("AgentDetailContent", () => {
       />,
     );
 
-    // Switch to edit mode
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    // Edit mode is the default.
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
 
     // Verify existing skill chip is shown
     expect(screen.getByText("Code Review")).toBeInTheDocument();
@@ -221,9 +220,6 @@ describe("AgentDetailContent", () => {
       />,
     );
 
-    // Switch to edit mode
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-
     // The tag collection quick-pick button for "dev-suite" should be visible
     const tagBtn = await screen.findByRole("button", { name: "dev-suite" });
     expect(tagBtn).toBeInTheDocument();
@@ -239,7 +235,7 @@ describe("AgentDetailContent", () => {
     expect(screen.queryByRole("button", { name: "dev-suite" })).not.toBeInTheDocument();
   });
 
-  it("previews the document body without its YAML frontmatter", async () => {
+  it("opens in edit mode with the document body and no About section", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderWithAppProviders(
@@ -262,8 +258,10 @@ describe("AgentDetailContent", () => {
       />,
     );
 
-    expect(await screen.findByRole("heading", { name: "Review Checklist" })).toBeInTheDocument();
-    expect(screen.queryByText(/model: inherit/)).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("System Prompt")).toHaveValue("You are the Chief of Staff.");
+    expect(screen.getByLabelText("Description")).toHaveValue("Orchestrates tasks");
+    expect(screen.queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
   });
 
   it("offers effort as a fixed choice, with an empty option that clears the key", () => {
@@ -279,8 +277,6 @@ describe("AgentDetailContent", () => {
         onDismissActionError={vi.fn()}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const effort = screen.getByRole("combobox", { name: "Effort" });
     expect(effort).toHaveValue("medium");
@@ -303,8 +299,6 @@ describe("AgentDetailContent", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-
     const effort = screen.getByRole("combobox", { name: "Effort" });
     expect(effort).toHaveValue("maximum");
     expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
@@ -314,7 +308,6 @@ describe("AgentDetailContent", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const labels = Array.from(
       container.querySelectorAll(".frontmatter-editor__known-fields .frontmatter-editor__label"),
@@ -349,7 +342,6 @@ describe("AgentDetailContent", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(agentDetailFixture({ color: "cyan" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const color = screen.getByRole("combobox", { name: "Color" });
     expect(color).toHaveValue("cyan");
@@ -362,7 +354,6 @@ describe("AgentDetailContent", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(agentDetailFixture({ background: "true", isolation: "worktree" }));
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const background = screen.getByRole("group", { name: "Background" });
     expect(
@@ -392,7 +383,6 @@ describe("AgentDetailContent", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(agentDetailFixture());
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const maxTurns = screen.getByRole("textbox", { name: "Max Turns" });
     expect(maxTurns).toHaveValue("");
@@ -414,7 +404,6 @@ describe("AgentDetailContent", () => {
     renderDetail(
       agentDetailFixture({ color: "cyan", background: "true", maxTurns: "30" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
 
     const isolation = screen.getByRole("group", { name: "Isolation" });
     fireEvent.click(within(isolation).getByRole("button", { name: "worktree" }));

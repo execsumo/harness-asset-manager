@@ -3,12 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { DocumentSection } from "./DocumentSection";
 
 describe("DocumentSection", () => {
-  it("renders preview content in preview mode", () => {
+  it("renders preview content when editing is unavailable", () => {
     render(
       <DocumentSection
         title="Document"
-        mode="preview"
-        onModeChange={vi.fn()}
+        editable={false}
         previewContent={<p>Preview markdown</p>}
         editFrontmatter={<div>Frontmatter inputs</div>}
         bodyValue="# Header"
@@ -26,16 +25,12 @@ describe("DocumentSection", () => {
     expect(screen.queryByLabelText("Document body")).not.toBeInTheDocument();
   });
 
-  it("renders editor controls and handles mode switching", () => {
-    const onModeChange = vi.fn();
+  it("renders the editor by default without a mode toggle", () => {
     const onBodyChange = vi.fn();
 
     render(
       <DocumentSection
         title="Document"
-        mode="edit"
-        onModeChange={onModeChange}
-        previewContent={<p>Preview markdown</p>}
         editFrontmatter={<div>Frontmatter inputs</div>}
         bodyValue="# Header"
         onBodyChange={onBodyChange}
@@ -54,8 +49,8 @@ describe("DocumentSection", () => {
     fireEvent.change(textarea, { target: { value: "# Header updated" } });
     expect(onBodyChange).toHaveBeenCalledWith("# Header updated");
 
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
-    expect(onModeChange).toHaveBeenCalledWith("preview");
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
   });
 
   it("renders dirty action bar with Save and Cancel buttons when dirty", () => {
@@ -65,9 +60,6 @@ describe("DocumentSection", () => {
     render(
       <DocumentSection
         title="Document"
-        mode="edit"
-        onModeChange={vi.fn()}
-        previewContent={<p>Preview</p>}
         editFrontmatter={<div>Frontmatter</div>}
         bodyValue="# Header"
         onBodyChange={vi.fn()}

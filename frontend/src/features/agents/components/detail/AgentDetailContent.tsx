@@ -194,7 +194,6 @@ export function AgentDetailContent({
 
   const initialSkills = useMemo(() => (detail.skills || []).map((s) => s.slug), [detail.skills]);
 
-  const [documentMode, setDocumentMode] = useState<"preview" | "edit">("preview");
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
   const [description, setDescription] = useState(detail.description);
@@ -747,7 +746,6 @@ export function AgentDetailContent({
       }
 
       setFrontmatterMode("structured");
-      setDocumentMode("preview");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save agent.");
     }
@@ -876,12 +874,6 @@ export function AgentDetailContent({
         aria-labelledby={headingId}
       >
         <div className="detail-sheet__body">
-          <DetailSection heading="About">
-            <p className="skill-detail__copy">
-              {detail.description || "No description provided."}
-            </p>
-          </DetailSection>
-
           <DetailSection heading="Tags">
             <DetailTags
               tags={detail.tags || []}
@@ -895,8 +887,6 @@ export function AgentDetailContent({
 
           <DocumentSection
             title="Document"
-            mode={documentMode}
-            onModeChange={setDocumentMode}
             editable={detail.canEdit}
             previewContent={(
               <Suspense fallback={<LoadingSpinner size="sm" label="Loading document" />}>

@@ -3,14 +3,13 @@ import type { ReactNode } from "react";
 
 export interface DocumentSectionProps {
   title?: string;
-  previewContent: ReactNode;
+  /** Read-only content shown when editing is unavailable. */
+  previewContent?: ReactNode;
   editFrontmatter: ReactNode;
   bodyValue: string;
   onBodyChange: (value: string) => void;
   bodyLabel?: string;
   bodyPlaceholder?: string;
-  mode: "preview" | "edit";
-  onModeChange: (mode: "preview" | "edit") => void;
   isDirty: boolean;
   isSaving: boolean;
   saveDisabled?: boolean;
@@ -31,8 +30,6 @@ export function DocumentSection({
   onBodyChange,
   bodyLabel = "Body",
   bodyPlaceholder = "Markdown body...",
-  mode,
-  onModeChange,
   isDirty,
   isSaving,
   saveDisabled = false,
@@ -47,31 +44,10 @@ export function DocumentSection({
     <section className="document-section" aria-label={title}>
       <div className="document-section__header">
         <h3 className="document-section__title">{title}</h3>
-        {editable ? (
-        <div className="view-mode-toggle" role="group" aria-label="Document mode">
-          <button
-            type="button"
-            className="view-mode-toggle__btn"
-            data-active={mode === "preview"}
-            onClick={() => onModeChange("preview")}
-            disabled={isSaving}
-          >
-            Preview
-          </button>
-          <button
-            type="button"
-            className="view-mode-toggle__btn"
-            data-active={mode === "edit"}
-            onClick={() => onModeChange("edit")}
-            disabled={isSaving}
-          >
-            Edit
-          </button>
-        </div>
-        ) : null}
+
       </div>
 
-      {mode === "preview" || !editable ? (
+      {!editable ? (
         <div className="document-section__preview">
           <div className="document-section__surface skill-detail__document-surface">
             {previewContent}

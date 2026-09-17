@@ -16,7 +16,6 @@ import {
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
-import MarkdownDocument from "../../../../components/MarkdownDocument";
 import { skillStatusConcept } from "../../../../lib/product-language";
 import { useSkillsCopy, type SkillsCopy } from "../../i18n";
 import { useSetSkillTagsMutation, useUpdateSkillDocumentMutation } from "../../api/queries";
@@ -126,7 +125,6 @@ export function SkillDetailContent({
       }));
   }, [detail.metadata]);
 
-  const [documentMode, setDocumentMode] = useState<"preview" | "edit">("preview");
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
   const [description, setDescription] = useState(detail.description);
@@ -237,7 +235,6 @@ export function SkillDetailContent({
       });
       toast(copy.detail.savedSuccess);
       setFrontmatterMode("structured");
-      setDocumentMode("preview");
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save skill document.");
     }
@@ -292,14 +289,9 @@ export function SkillDetailContent({
         )}
         body={(
           <>
-            <DetailSection heading={copy.detail.about}>
-              <p className="skill-detail__copy">
-                {detail.description || copy.detail.noDescription}
-              </p>
-              {detail.attentionMessage ? (
-                <DetailNote>{detail.attentionMessage}</DetailNote>
-              ) : null}
-            </DetailSection>
+            {detail.attentionMessage ? (
+              <DetailNote>{detail.attentionMessage}</DetailNote>
+            ) : null}
 
             {detail.packageFiles.length > 0 ? (
               <DetailSection heading={copy.detail.packageContents}>
@@ -320,15 +312,6 @@ export function SkillDetailContent({
 
             <DocumentSection
               title={copy.detail.document}
-              mode={documentMode}
-              onModeChange={setDocumentMode}
-              previewContent={
-                detail.documentMarkdown ? (
-                  <MarkdownDocument markdown={detail.documentMarkdown} />
-                ) : (
-                  <p className="skill-detail__copy">{copy.detail.noDocument}</p>
-                )
-              }
               editFrontmatter={(
                 <FrontmatterEditor
                   knownFields={knownFields}

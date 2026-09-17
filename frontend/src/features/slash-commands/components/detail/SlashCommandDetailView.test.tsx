@@ -78,7 +78,7 @@ describe("SlashCommandDetailView", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders command name, description, document preview, and tags", () => {
+  it("renders command name, editable description and prompt, and tags", () => {
     renderWithAppProviders(
       <SlashCommandDetailView
         command={commandFixture()}
@@ -93,8 +93,10 @@ describe("SlashCommandDetailView", () => {
     );
 
     expect(screen.getByRole("heading", { name: "summarize" })).toBeInTheDocument();
-    expect(screen.getByText("Summarize selected context")).toBeInTheDocument();
-    expect(screen.getByText("Summarize this clearly.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("Summarize selected context");
+    expect(screen.getByLabelText("Prompt Body")).toHaveValue("Summarize this clearly.");
+    expect(screen.queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
     expect(screen.getByText("review")).toBeInTheDocument();
   });
 

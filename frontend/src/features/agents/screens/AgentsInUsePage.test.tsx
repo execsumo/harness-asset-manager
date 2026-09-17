@@ -216,13 +216,13 @@ describe("AgentsInUsePage", () => {
       fireEvent.click(screen.getByText("Test Agent"));
       
       await waitFor(() => expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument());
-      expect(screen.getByText("Detail description")).toBeInTheDocument();
+      expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
       expect(screen.getByRole("heading", { name: "Document" })).toBeInTheDocument();
       expect(screen.getByText("Cursor")).toBeInTheDocument();
       expect(screen.getByText("Windsurf")).toBeInTheDocument();
 
-      // Switch to edit mode to see all frontmatter keys and fields
-      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      // Edit mode is the default, so all frontmatter keys and fields are visible.
+      expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
       expect(screen.getByLabelText("Agent Name")).toHaveValue("Test Agent Real Name");
       expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
       expect(screen.queryByLabelText("Tools (comma-separated)")).not.toBeInTheDocument();
@@ -294,8 +294,7 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
       
-      await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument());
-      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      await waitFor(() => expect(screen.getByLabelText("Agent Name")).toBeInTheDocument());
 
       const nameInput = screen.getByLabelText(/Agent Name/i) as HTMLInputElement;
       expect(nameInput.value).toBe("Test Agent Real Name");

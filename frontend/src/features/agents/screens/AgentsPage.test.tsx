@@ -284,7 +284,7 @@ describe("Agents unified inventory", () => {
         screen.getAllByText(/missing required fields: Description, System prompt/).length,
       ).toBeGreaterThanOrEqual(1),
     );
-    await waitFor(() => expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("Description")).toBeInTheDocument());
     expect(
       screen.getAllByText(/fill them in, save, and try adoption again/).length,
     ).toBeGreaterThanOrEqual(1);

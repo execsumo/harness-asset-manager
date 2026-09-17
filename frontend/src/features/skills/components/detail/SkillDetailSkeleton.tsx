@@ -31,14 +31,6 @@ export function SkillDetailSkeleton({ onClose }: SkillDetailSkeletonProps) {
       )}
       body={(
         <>
-        <DetailSection heading={copy.detail.about}>
-          <div className="detail-skeleton-paragraph">
-            <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-            <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-wide" />
-            <span className="detail-skeleton detail-skeleton--line detail-skeleton--line-short" />
-          </div>
-        </DetailSection>
-
         <DetailSection heading="SKILL.md">
           <div className="skill-detail__document-surface">
             <div className="detail-skeleton-paragraph">

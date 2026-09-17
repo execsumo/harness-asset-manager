@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SkillDetail } from "../../model/types";
@@ -59,7 +59,7 @@ const unmanagedDetail: SkillDetail = {
 };
 
 describe("SkillDetailContent", () => {
-  it("renders source links, preview mode by default, and places review actions in the footer rail", async () => {
+  it("renders source links, edit mode by default, and places review actions in the footer rail", async () => {
     render(
       <SkillDetailContent
         detail={unmanagedDetail}
@@ -86,10 +86,12 @@ describe("SkillDetailContent", () => {
       "href",
       unmanagedDetail.sourceLinks?.folderUrl,
     );
-    expect(screen.getByRole("heading", { level: 3, name: "About" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "About" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Harnesses" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Document" })).toBeInTheDocument();
-    expect(screen.getByText("Inspect traces.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Description")).toHaveValue("Trace review workflow");
+    expect(screen.getByLabelText("Body (SKILL.md)")).toHaveValue("## Usage\n\nInspect traces.");
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
     expect(screen.queryByText("Unmanaged")).not.toBeInTheDocument();
 
     const footer = screen.getByLabelText("Skill actions");
@@ -100,7 +102,7 @@ describe("SkillDetailContent", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("switches to edit mode and renders frontmatter inputs and body editor", () => {
+  it("renders frontmatter inputs and body editor by default", () => {
     render(
       <SkillDetailContent
         detail={unmanagedDetail}
@@ -118,8 +120,7 @@ describe("SkillDetailContent", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-
+    expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Trace Lens");
     expect(screen.getByLabelText("Description")).toHaveValue("Trace review workflow");
     expect(screen.getByLabelText("Body (SKILL.md)")).toHaveValue("## Usage\n\nInspect traces.");
