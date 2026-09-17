@@ -38,6 +38,7 @@ class SkillsQueryService:
         self.asset_tags = asset_tags
         self._reconcile = reconcile
         self._agent_attachments_getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]] | None = None
+        self._agent_roster_getter: Callable[[], tuple[AgentAttachment, ...]] | None = None
         # Reentrancy guard, per thread. A plain instance flag would let a concurrent
         # reader see another thread's in-flight reconcile and skip its own, returning a
         # snapshot taken mid-adoption. Sync API endpoints run in a threadpool over one
@@ -49,6 +50,9 @@ class SkillsQueryService:
 
     def set_agent_attachments(self, getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]]) -> None:
         self._agent_attachments_getter = getter
+
+    def set_agent_roster(self, getter: Callable[[], tuple[AgentAttachment, ...]]) -> None:
+        self._agent_roster_getter = getter
 
     def health(self) -> dict[str, object]:
         snapshot = self.read_models.snapshot()
@@ -67,10 +71,23 @@ class SkillsQueryService:
         except Exception:
             return {}
 
+    def _get_agent_roster(self) -> tuple[AgentAttachment, ...]:
+        if self._agent_roster_getter is None:
+            return ()
+        try:
+            return self._agent_roster_getter()
+        except Exception:
+            return ()
+
     def list_skills(self) -> dict[str, object]:
         all_tags = self.asset_tags.get_tags_for_family("skills") if self.asset_tags is not None else {}
         attachments = self._get_agent_attachments()
-        return skills_page_payload(self.inventory(), tags=all_tags, attachments=attachments)
+        return skills_page_payload(
+            self.inventory(),
+            tags=all_tags,
+            attachments=attachments,
+            agent_options=self._get_agent_roster(),
+        )
 
     def get_skill_detail(self, skill_ref: str) -> dict[str, object] | None:
         inventory = self.inventory()

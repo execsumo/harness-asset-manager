@@ -6,6 +6,7 @@ export function mapSkillsPage(dto: SkillsPageDto): SkillsWorkspaceData {
     summary: dto.summary,
     harnessColumns: dto.harnessColumns,
     rows: dto.rows.map(mapSkillRow),
+    agentOptions: dto.agentOptions ?? [],
   };
 }
 

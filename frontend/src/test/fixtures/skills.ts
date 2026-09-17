@@ -13,5 +13,6 @@ export function skillsPayload({
     summary: { managed, unmanaged },
     harnessColumns,
     rows,
+    agentOptions: [],
   };
 }

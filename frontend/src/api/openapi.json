@@ -6018,6 +6018,14 @@
       },
       "SkillsPageResponse": {
         "properties": {
+          "agentOptions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AgentAttachmentResponse"
+            },
+            "title": "Agentoptions",
+            "type": "array"
+          },
           "harnessColumns": {
             "items": {
               "$ref": "#/components/schemas/HarnessColumnResponse"

@@ -27,3 +27,20 @@ def skill_attachments(store: AgentStore) -> dict[str, tuple[AgentAttachment, ...
             attachments[skill].append(att)
 
     return {k: tuple(v) for k, v in attachments.items()}
+
+
+def agent_roster(store: AgentStore) -> tuple[AgentAttachment, ...]:
+    """Every managed agent, as attach/detach vocabulary for the Skills page.
+
+    Deliberately separate from `skill_attachments`: that one only knows agents
+    that already name a skill, so using it as the bulk popover's vocabulary
+    makes the first attach impossible (nothing is attached, so nothing is
+    offered). Managed agents only, per S3. Read-only, same as the inversion.
+    """
+    agents, _issues = store.scan()
+    return tuple(
+        sorted(
+            (AgentAttachment(ref=agent.ref, name=agent.name) for agent in agents),
+            key=lambda attachment: (attachment.name.casefold(), attachment.ref),
+        )
+    )

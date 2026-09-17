@@ -23,6 +23,7 @@ def skills_page_payload(
     inventory: SkillInventory,
     tags: dict[str, list[str]] | None = None,
     attachments: dict[str, tuple[AgentAttachment, ...]] | None = None,
+    agent_options: tuple[AgentAttachment, ...] | None = None,
 ) -> dict[str, object]:
     tags_map = tags or {}
     attachments_map = attachments or {}
@@ -33,6 +34,10 @@ def skills_page_payload(
     return {
         "summary": counts,
         "harnessColumns": [column_payload(column) for column in inventory.columns],
+        "agentOptions": [
+            {"ref": attachment.ref, "name": attachment.name}
+            for attachment in (agent_options or ())
+        ],
         "rows": [
             row_payload(
                 entry, 

@@ -104,7 +104,13 @@ export default function SkillsWorkspacePage() {
 
   // URL-backed agent filters (?agent=)
   const selectedAgents = useMemo(() => searchParams.getAll("agent"), [searchParams]);
+  // Filter options: only agents that actually carry a skill (with counts).
   const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
+  // Bulk attach/detach vocabulary: every adopted agent. Deliberately NOT the
+  // filter options above - those only list agents that already carry a skill,
+  // so reusing them here left the popover empty until something was already
+  // attached, which made the first attach impossible.
+  const agentOptions = useMemo(() => data?.agentOptions ?? [], [data]);
 
   const toggleAgentFilter = useCallback(
     (agentRef: string) => {
@@ -471,7 +477,7 @@ export default function SkillsWorkspacePage() {
           onTagSelected={selectedManagedCount > 0 ? onMultiSelectTag : undefined}
           knownTags={knownTagNames}
           onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
-          knownAgents={knownAgents}
+          knownAgents={agentOptions}
           extraActions={
             selectedAdoptableUntrackedCount > 0 ? (
               <button

@@ -22,7 +22,7 @@ from .agents import (
     AgentStore,
     resolve_agent_targets,
 )
-from .agents.attachments import skill_attachments
+from .agents.attachments import agent_roster, skill_attachments
 from .asset_tags import AssetTagService, AssetTagStore
 from .bootstrap import (
     BootstrapApplier,
@@ -518,6 +518,7 @@ def build_backend_container(
     )
     skills_queries.set_reconcile(skills_auto_adopt.reconcile)
     skills_queries.set_agent_attachments(lambda: skill_attachments(agents_store))
+    skills_queries.set_agent_roster(lambda: agent_roster(agents_store))
 
     skills_tracker = MutationPathTracker(
         lambda: (

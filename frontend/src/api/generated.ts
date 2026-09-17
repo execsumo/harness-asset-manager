@@ -3490,6 +3490,11 @@ export interface components {
         };
         /** SkillsPageResponse */
         SkillsPageResponse: {
+            /**
+             * Agentoptions
+             * @default []
+             */
+            agentOptions: components["schemas"]["AgentAttachmentResponse"][];
             /** Harnesscolumns */
             harnessColumns: components["schemas"]["HarnessColumnResponse"][];
             /** Rows */

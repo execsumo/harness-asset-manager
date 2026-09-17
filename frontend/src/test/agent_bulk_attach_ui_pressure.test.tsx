@@ -17,6 +17,7 @@ const allAgents = [
 
 function skillsPayload() {
   return {
+    agentOptions: allAgents,
     harnessColumns: [
       { harness: "claude", label: "Claude Code", logoKey: "claude", installed: true },
       { harness: "codex", label: "Codex", logoKey: "codex", installed: true },
@@ -164,5 +165,71 @@ describe("Agent Bulk Attach UI Pressure Test", () => {
     expect(written["agent-2"]).toEqual(["existing-skill", "shared:managed-1", "shared:managed-2"]);
     expect(written["agent-bad"]).toEqual([]);
     expect(screen.getByText(/1 agent was skipped: agent-bad \(agent not writable\)/)).toBeInTheDocument();
+  });
+
+  it("offers adopted agents for the first attach even when nothing is attached yet", async () => {
+    // Regression: the popover's vocabulary used to be derived from the union of
+    // row.agents, i.e. only agents that ALREADY carried a skill. On a cold store
+    // that list is empty, so the popover offered nothing and the first attach was
+    // impossible. The vocabulary must come from the adopted-agent roster instead.
+    const coldPayload = {
+      ...skillsPayload(),
+      rows: skillsPayload().rows.map((row) => ({ ...row, agents: [] })),
+    };
+
+    let attachBody: { skillRefs: string[]; agentRefs: string[] } | null = null;
+
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/skills/attach-agents") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as {
+          skillRefs: string[];
+          agentRefs: string[];
+          dryRun: boolean;
+        };
+        if (!body.dryRun) attachBody = body;
+        return Promise.resolve(
+          okJson({ changed: ["agent-1"], skipped: [], autoEnabled: [], failed: [] }),
+        );
+      }
+      if (url.includes("/api/skills") && (!init || init.method === "GET")) {
+        return Promise.resolve(okJson(coldPayload));
+      }
+      return Promise.resolve(okJson({}));
+    });
+
+    renderWithAppProviders(
+      <SkillsWorkspaceSessionProvider>
+        <SkillsWorkspacePage />
+      </SkillsWorkspaceSessionProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("Managed 1")).toBeInTheDocument());
+    // No row carries an agent chip - the cold-start condition.
+    expect(screen.queryByRole("button", { name: /Agent 1/ })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Select all visible skills"));
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Attach to agents" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Attach to agents" })).toBeInTheDocument(),
+    );
+
+    // The whole point: every adopted agent is offered despite zero attachments.
+    expect(screen.getByRole("checkbox", { name: "Agent 1" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Agent 2" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Agent Bad" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Agent 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Attach agents?" })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Attach" }));
+
+    await waitFor(() => expect(attachBody).not.toBeNull());
+    expect(attachBody!.agentRefs).toEqual(["agent-1"]);
+    expect(attachBody!.skillRefs).toEqual(["shared:managed-1", "shared:managed-2"]);
   });
 });

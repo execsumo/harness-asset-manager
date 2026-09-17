@@ -111,6 +111,7 @@ class SkillsPageResponse(BaseModel):
     summary: SkillsSummaryResponse
     harnessColumns: list[HarnessColumnResponse]
     rows: list[SkillTableRowResponse]
+    agentOptions: list[AgentAttachmentResponse] = []
 
 
 class SkillDetailActionsResponse(BaseModel):
