@@ -1,6 +1,6 @@
 # Plan — Attaching Skills to Agents from the Skills page
 
-**Status: unbuilt.** Written 2026-09-16 from a code read of `main` at `4c4a79f`.
+**Status: built.** Written 2026-09-16 from a code read of `main` at `4c4a79f`; implemented through Phase 5 on 2026-09-17.
 
 **Goal:** from the Skills family page, select many skills at once and attach them to (or detach
 them from) one or more adopted agents in a single action, and filter the Skills matrix down to

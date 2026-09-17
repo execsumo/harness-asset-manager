@@ -256,7 +256,8 @@ Typical flow:
 2. Adopt it into the Harness Asset Manager inventory.
 3. Check what the package holds — `scripts/`, `references/`, `assets/` — before enabling it.
 4. Enable it only where it should be available.
-5. Update, remove, or delete it from one place.
+5. Filter by Agent or bulk attach/detach selected Skills to adopted Agents when curating an agent's Skill set.
+6. Update, remove, or delete it from one place.
 
 ![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
 
@@ -295,7 +296,8 @@ Typical flow:
 1. Write an agent — a name, a description, and a system prompt — or adopt one Harness Asset Manager found in a harness.
 2. Turn it on for the harnesses that should have it.
 3. In the detail editor, attach adopted Skills to the agent; the full list of adopted Skills is offered, and typing narrows it.
-4. Review agents discovered in harness directories and adopt the ones worth keeping.
+4. From the Skills page, filter by an Agent chip or select several managed Skills and attach/detach them to adopted Agents in one previewed bulk action.
+5. Review agents discovered in harness directories and adopt the ones worth keeping.
 
 If a harness later edits an agent out from under Harness Asset Manager — some editors replace the link with their own copy — that edit is folded back in automatically, but only when it is provably the only edit. Conflicting edits are always left for you to resolve. See [Agents](#agents-1) below.
 
@@ -364,6 +366,13 @@ several lines is edited in a text area so its indentation stays intact.
 Skills can be starred or assigned free-form tags from the matrix or detail view. Tag chips and
 filters use the shared sidecar store, while the star is surfaced as the pinned `starred` system
 tag.
+
+Managed Skill rows also show **Agents** chips derived from adopted agents' `skills:` frontmatter.
+Clicking a chip filters the matrix with `?agent=`, and the sibling Agent filter can combine several
+agents with OR semantics. Bulk selection offers **Attach to agents** for managed Skills only:
+choose one or more adopted agents, preview the agent files that will change plus any new harness
+bindings, then confirm. Detach removes the Skill slug from the agent frontmatter but deliberately
+leaves existing harness Skill bindings installed.
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
@@ -456,8 +465,11 @@ chips, and URL-backed tag filters.
 The agent detail editor can attach adopted Skills through the `skills:` frontmatter list. HAM
 validates each slug against the managed Skills inventory, suggests adopted Skills while typing,
 and automatically enables newly attached Skills on every installed harness where the agent is
-enabled. Removing a Skill from an agent only changes that agent's frontmatter; it never removes
-a Skill binding that may be used independently.
+enabled. The Skills page is the bulk view over the same relation: its Agent chips and `?agent=`
+filter are a derived reverse index over agent files, and **Attach to agents** writes through the
+same agent update path after a dry-run preview. Removing a Skill from an agent — from either the
+agent detail editor or the Skills bulk detach action — only changes that agent's frontmatter; it
+never removes a Skill binding that may be used independently.
 
 #### When a harness breaks the link
 
