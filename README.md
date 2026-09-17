@@ -369,8 +369,8 @@ tag.
 
 Managed Skill rows also show **Agents** chips derived from adopted agents' `skills:` frontmatter.
 Clicking a chip filters the matrix with `?agent=`, and the sibling Agent filter can combine several
-agents with OR semantics. Bulk selection offers **Attach to agents** for managed Skills only:
-choose one or more adopted agents, preview the agent files that will change plus any new harness
+agents with OR semantics. Bulk selection offers **Agents** for managed Skills only:
+choose one or more adopted agents, review the agent files that will change plus any new harness
 bindings, then confirm. Detach removes the Skill slug from the agent frontmatter but deliberately
 leaves existing harness Skill bindings installed.
 
@@ -466,8 +466,8 @@ The agent detail editor can attach adopted Skills through the `skills:` frontmat
 validates each slug against the managed Skills inventory, suggests adopted Skills while typing,
 and automatically enables newly attached Skills on every installed harness where the agent is
 enabled. The Skills page is the bulk view over the same relation: its Agent chips and `?agent=`
-filter are a derived reverse index over agent files, and **Attach to agents** writes through the
-same agent update path after a dry-run preview. Removing a Skill from an agent — from either the
+filter are a derived reverse index over agent files, and **Agents** writes through the
+same agent update path after a dry-run review. Removing a Skill from an agent — from either the
 agent detail editor or the Skills bulk detach action — only changes that agent's frontmatter; it
 never removes a Skill binding that may be used independently.
 

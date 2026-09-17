@@ -126,7 +126,7 @@ The endpoint returns per-agent and per-binding outcomes, and the UI surfaces the
 `formatMultiSkillFailureMessage` already does for bulk harness toggles. There is no transaction
 across agent files and there will not be one.
 
-**S11 — Naming: "Agents", never "tag".** The bulk control is labelled **Attach to agents**, the
+**S11 — Naming: "Agents", never "tag".** The bulk control is labelled **Agents**, the
 row affordance is an **Agents** chip group, and the filter is **Agent**. "Tag" is already on the
 same page meaning "inert label"; reusing the word for something that writes harness files would
 make the page teach the wrong thing.

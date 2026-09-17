@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { ChevronDown, UserSquare2 } from "lucide-react";
+import { Check, CircleSlash2, ChevronDown, UserSquare2 } from "lucide-react";
 
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -51,48 +51,79 @@ export function BulkAgentPopover({
   const canApply = stagedRefs.size > 0;
 
   return (
-    <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
+    <Popover.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (disabled && open) return;
+        setIsOpen(open);
+      }}
+    >
       <Popover.Trigger asChild>
         <button
           type="button"
           className="bulk-bar__action"
           disabled={disabled}
-          aria-label="Attach to agents"
+          aria-label="Agents"
         >
           {pending ? (
             <LoadingSpinner size="sm" label="Updating agents" />
           ) : (
             <UserSquare2 size={15} />
           )}
-          Attach to agents
+          Agents
           <ChevronDown size={13} aria-hidden="true" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content className="ui-popup" align="end" sideOffset={8}>
-          <div className="ui-popup__header">
-            <h3 className="ui-popup__title">Attach to agents</h3>
+        <Popover.Content className="ui-popup bulk-agent-popover" align="end" sideOffset={8}>
+          <div className="bulk-agent-popover__header">
+            <h3 className="bulk-agent-popover__title">Agents</h3>
           </div>
-          
-          <div className="ui-popup__body" style={{ minWidth: 280 }}>
+
+          <div className="bulk-agent-popover__mode" aria-label="Agent action">
+            <button
+              type="button"
+              className="action-pill action-pill--sm bulk-agent-popover__mode-button"
+              data-selected={mode === "attach"}
+              onClick={() => setMode("attach")}
+              disabled={pending}
+            >
+              <Check size={13} aria-hidden="true" />
+              Attach
+            </button>
+            <button
+              type="button"
+              className="action-pill action-pill--sm bulk-agent-popover__mode-button"
+              data-selected={mode === "detach"}
+              onClick={() => setMode("detach")}
+              disabled={pending}
+            >
+              <CircleSlash2 size={13} aria-hidden="true" />
+              Detach
+            </button>
+          </div>
+
+          <div className="bulk-agent-popover__body">
             {knownAgents.length === 0 ? (
-              <p className="ui-popup__empty">No agents available.</p>
+              <p className="bulk-agent-popover__empty">No agents available.</p>
             ) : (
-              <ul className="ui-menu__list" style={{ maxHeight: 200, overflowY: "auto", margin: "0 -12px" }}>
+              <ul className="bulk-agent-popover__list">
                 {knownAgents.map((agent) => {
                   const isStaged = stagedRefs.has(agent.ref);
                   return (
                     <li key={agent.ref}>
-                      <label className="ui-menu__item">
-                        <span className="ui-menu__icon">
+                      <label className="bulk-agent-popover__item">
+                        <span className="bulk-agent-popover__check-wrap">
                           <input
                             type="checkbox"
+                            className="bulk-agent-popover__checkbox"
                             checked={isStaged}
                             onChange={() => toggleAgent(agent.ref)}
                             aria-label={agent.name}
+                            disabled={pending}
                           />
                         </span>
-                        <span className="ui-menu__label">{agent.name}</span>
+                        <span className="bulk-agent-popover__label">{agent.name}</span>
                       </label>
                     </li>
                   );
@@ -101,23 +132,22 @@ export function BulkAgentPopover({
             )}
           </div>
 
-          <div className="ui-popup__footer" style={{ display: "flex", gap: "8px", justifyContent: "space-between" }}>
-            <select 
-              value={mode} 
-              onChange={(e) => setMode(e.target.value as "attach" | "detach")}
-              className="ui-input"
-              style={{ flex: 1, padding: "4px 8px" }}
-            >
-              <option value="attach">Attach to selected</option>
-              <option value="detach">Detach from selected</option>
-            </select>
+          <div className="bulk-agent-popover__footer">
             <button
               type="button"
-              className="ui-button ui-button--primary"
+              className="action-pill action-pill--sm"
+              onClick={() => setIsOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="action-pill action-pill--sm action-pill--accent"
               disabled={!canApply || pending}
               onClick={() => void handleApply()}
             >
-              Preview
+              {pending ? <LoadingSpinner size="sm" label="Applying" /> : "Apply"}
             </button>
           </div>
         </Popover.Content>

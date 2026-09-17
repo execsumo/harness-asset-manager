@@ -10,7 +10,7 @@ vi.mock("@radix-ui/react-popover", async () => {
 });
 
 describe("BulkAgentPopover", () => {
-  it("previews attach for a fixed-vocabulary multi-agent selection", async () => {
+  it("applies attach for a fixed-vocabulary multi-agent selection", async () => {
     const onApply = vi.fn(async () => undefined);
     render(
       <BulkAgentPopover
@@ -22,15 +22,18 @@ describe("BulkAgentPopover", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Attach to agents" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agents" }));
+    expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 1" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 2" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => expect(onApply).toHaveBeenCalledWith(["agent-1", "agent-2"], "attach"));
   });
 
-  it("previews detach without offering free-form agent creation", async () => {
+  it("applies detach without offering free-form agent creation", async () => {
     const onApply = vi.fn(async () => undefined);
     render(
       <BulkAgentPopover
@@ -39,11 +42,11 @@ describe("BulkAgentPopover", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Attach to agents" }));
+    fireEvent.click(screen.getByRole("button", { name: "Agents" }));
     expect(screen.queryByPlaceholderText(/agent/i)).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "detach" } });
+    fireEvent.click(screen.getByRole("button", { name: "Detach" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => expect(onApply).toHaveBeenCalledWith(["agent-1"], "detach"));
   });

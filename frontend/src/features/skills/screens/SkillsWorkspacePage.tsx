@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -304,13 +304,28 @@ export default function SkillsWorkspacePage() {
     () => sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canManage).length,
     [selectedUntrackedRefs, sortedRows],
   );
-  const selectedManagedCount = multiSelectedRefs.size;
+  const selectedManagedRows = useMemo(
+    () => sortedRows.filter((row) => skillStatusConcept(row.displayStatus) === "inUse" && multiSelectedRefs.has(row.skillRef)),
+    [multiSelectedRefs, sortedRows],
+  );
+  const selectedManagedCount = selectedManagedRows.length;
   const selectedCount = checkedRefs.size;
   const selectedDeletableCount = selectedManagedCount + (hasDeletableUntrackedSelection ?
     sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete).length : 0);
   const bulkHarnessOptions = data?.harnessColumns
     .filter((column) => column.installed)
-    .map((column) => ({ harness: column.harness, label: column.label }));
+    .map((column) => ({
+      harness: column.harness,
+      label: column.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedRows.map((row) => {
+          const cell = row.cells.find((candidate) => candidate.harness === column.harness);
+          if (cell?.state === "enabled") return true;
+          if (cell?.state === "disabled") return false;
+          return null;
+        }),
+      ),
+    }));
 
   const handleDeleteSelected = useCallback(async (): Promise<void> => {
     const tasks: Promise<void>[] = [];
@@ -473,7 +488,7 @@ export default function SkillsWorkspacePage() {
           onDelete={handleDeleteSelected}
           showDestructiveAction={selectedDeletableCount > 0}
           onStarSelected={selectedManagedCount > 0 ? onMultiSelectStar : undefined}
-          starLabel="Star selected"
+          starLabel="Star"
           onTagSelected={selectedManagedCount > 0 ? onMultiSelectTag : undefined}
           knownTags={knownTagNames}
           onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
@@ -593,4 +608,11 @@ function formatHarnessNames(harnesses: string[], harnessColumns: readonly { harn
   if (labels.length === 0) return "no harnesses";
   if (labels.length === 1) return labels[0];
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+function aggregateBulkHarnessState(values: readonly (boolean | null)[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every((value) => value === true)) return "all";
+  if (values.every((value) => value === false)) return "none";
+  return "mixed";
 }

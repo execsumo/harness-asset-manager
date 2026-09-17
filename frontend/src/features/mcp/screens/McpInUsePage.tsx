@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 
-import { BulkActionBar } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -440,7 +440,13 @@ export default function McpInUsePage() {
   );
 
   const selectedUntrackedCount = selectedUntrackedNames.size;
-  const selectedManagedCount = multiSelectedNames.size;
+  const selectedManagedEntries = useMemo(
+    () => Array.from(multiSelectedNames)
+      .map((name) => findEntry(name))
+      .filter((entry): entry is McpInventoryEntryDto => Boolean(entry && entry.kind === "managed")),
+    [findEntry, multiSelectedNames],
+  );
+  const selectedManagedCount = selectedManagedEntries.length;
   const selectedAdoptableUntrackedCount = entries.filter((entry) => {
     if (entry.kind !== "unmanaged" || !selectedUntrackedNames.has(entry.name)) return false;
     const group = groupMap.get(entry.name);
@@ -448,7 +454,18 @@ export default function McpInUsePage() {
   }).length;
   const bulkHarnessOptions = inventory?.columns
     .filter(isMcpHarnessAddressable)
-    .map((column) => ({ harness: column.harness, label: column.label }));
+    .map((column) => ({
+      harness: column.harness,
+      label: column.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedEntries.map((entry) => {
+          const action = matrixCellFor(entry, column, copy).action;
+          if (action === "disable") return true;
+          if (action === "enable") return false;
+          return null;
+        }),
+      ),
+    }));
 
   const handleBulkEnableHarness = useCallback(
     async (harness: string): Promise<void> => {
@@ -726,7 +743,7 @@ export default function McpInUsePage() {
         showDestructiveAction={selectedManagedCount > 0}
         onTagSelected={selectedManagedCount > 0 ? handleMultiSelectTag : undefined}
         onStarSelected={selectedManagedCount > 0 ? handleMultiSelectStar : undefined}
-        starLabel="Star selected"
+        starLabel="Star"
         knownTags={knownTagNames}
         extraActions={
           selectedAdoptableUntrackedCount > 0 ? (
@@ -799,4 +816,11 @@ function uninstallDisplayName(
   if (!inventory || !name) return fallbackName;
   const entry = inventory.entries.find((e) => e.name === name);
   return entry?.displayName ?? name;
+}
+
+function aggregateBulkHarnessState(values: readonly (boolean | null)[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every((value) => value === true)) return "all";
+  if (values.every((value) => value === false)) return "none";
+  return "mixed";
 }

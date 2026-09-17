@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { BulkActionBar, type MultiSelectAction } from "../../../components/BulkActionBar";
+import { BulkActionBar, type BulkHarnessState, type MultiSelectAction } from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -260,13 +260,25 @@ export default function HooksInUsePage() {
     () => entries.filter((entry) => entry.kind === "unmanaged" && selectedIds.has(entry.id)).length,
     [entries, selectedIds],
   );
-  const selectedManagedCount = useMemo(
-    () => entries.filter((entry) => entry.kind === "managed" && selectedIds.has(entry.id)).length,
+  const selectedManagedEntries = useMemo(
+    () => entries.filter((entry) => entry.kind === "managed" && selectedIds.has(entry.id)),
     [entries, selectedIds],
   );
+  const selectedManagedCount = selectedManagedEntries.length;
   const bulkHarnessOptions = inventory?.columns
     .filter(isHooksHarnessAddressable)
-    .map((column) => ({ harness: column.harness, label: column.label }));
+    .map((column) => ({
+      harness: column.harness,
+      label: column.label,
+      state: aggregateBulkHarnessState(
+        selectedManagedEntries.map((entry) => {
+          const action = matrixCellFor(entry, column, copy).action;
+          if (action === "disable") return true;
+          if (action === "enable") return false;
+          return null;
+        }),
+      ),
+    }));
 
   const handleBulkHarness = useCallback(
     async (harness: string, disable: boolean): Promise<void> => {
@@ -488,4 +500,11 @@ export default function HooksInUsePage() {
       ) : null}
     </>
   );
+}
+
+function aggregateBulkHarnessState(values: readonly (boolean | null)[]): BulkHarnessState {
+  if (values.length === 0) return "mixed";
+  if (values.every((value) => value === true)) return "all";
+  if (values.every((value) => value === false)) return "none";
+  return "mixed";
 }

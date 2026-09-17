@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, CircleSlash2, Star, Trash2, X } from "lucide-react";
@@ -10,10 +10,12 @@ import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
 
 export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag" | "adopt" | "attach-agents";
+export type BulkHarnessState = "all" | "none" | "mixed";
 
 export interface BulkHarnessOption {
   harness: string;
   label: string;
+  state?: BulkHarnessState;
 }
 
 interface BulkActionBarProps {
@@ -130,7 +132,7 @@ export function BulkActionBar({
                 ) : (
                   <Star size={15} />
                 )}
-                {starLabel ?? "Star selected"}
+                {starLabel ?? "Star"}
               </button>
             ) : null}
             {onTagSelected ? (
@@ -180,22 +182,13 @@ export function BulkActionBar({
               </>
             ) : null}
             {showHarnessActions && harnessOptions && harnessOptions.length > 0 && onEnableHarness && onDisableHarness ? (
-              <>
-                <BulkHarnessMenu
-                  action="enable"
-                  options={harnessOptions}
-                  pending={pending === "enable-all"}
-                  disabled={disabled}
-                  onSelect={onEnableHarness}
-                />
-                <BulkHarnessMenu
-                  action="disable"
-                  options={harnessOptions}
-                  pending={pending === "disable-all"}
-                  disabled={disabled}
-                  onSelect={onDisableHarness}
-                />
-              </>
+              <BulkHarnessMenu
+                options={harnessOptions}
+                pending={pending === "enable-all" || pending === "disable-all"}
+                disabled={disabled}
+                onEnable={onEnableHarness}
+                onDisable={onDisableHarness}
+              />
             ) : null}
           </div>
 
@@ -240,62 +233,153 @@ export function BulkActionBar({
 }
 
 function BulkHarnessMenu({
-  action,
   options,
   pending,
   disabled,
-  onSelect,
+  onEnable,
+  onDisable,
 }: {
-  action: "enable" | "disable";
   options: readonly BulkHarnessOption[];
   pending: boolean;
   disabled: boolean;
-  onSelect: (harness: string) => Promise<void>;
+  onEnable: (harness: string) => Promise<void>;
+  onDisable: (harness: string) => Promise<void>;
 }) {
-  const isEnable = action === "enable";
-  const label = isEnable ? "Enable on" : "Disable on";
-  const Icon = isEnable ? Check : CircleSlash2;
+  const [isOpen, setIsOpen] = useState(false);
+  const [staged, setStaged] = useState<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    if (!isOpen) {
+      setStaged(new Map());
+    }
+  }, [isOpen]);
+
+  const handleToggle = (harness: string, checked: boolean) => {
+    setStaged((current) => {
+      const next = new Map(current);
+      next.set(harness, checked);
+      return next;
+    });
+  };
+
+  const handleApply = async () => {
+    for (const [harness, shouldEnable] of staged) {
+      if (shouldEnable) await onEnable(harness);
+      else await onDisable(harness);
+    }
+    setIsOpen(false);
+  };
 
   return (
-    <Popover.Root>
+    <Popover.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (disabled && open) return;
+        setIsOpen(open);
+      }}
+    >
       <Popover.Trigger asChild>
         <button
           type="button"
           className="bulk-bar__action"
           disabled={disabled}
-          aria-label={`${label} a harness`}
+          aria-label="Harnesses"
         >
-          {pending ? <LoadingSpinner size="sm" label={label} /> : <Icon size={15} />}
-          {label}
+          {pending ? <LoadingSpinner size="sm" label="Harnesses" /> : <Check size={15} />}
+          Harnesses
           <ChevronDown size={13} aria-hidden="true" />
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content className="ui-popup ui-popup--menu ui-menu" align="end" sideOffset={8}>
-          <ul className="ui-menu__list">
-            <li className="ui-menu__section-label">
-              {isEnable ? "Enable selected on" : "Disable selected on"}
-            </li>
-            {options.map((option) => (
-              <li key={option.harness}>
-                <Popover.Close asChild>
-                  <button
-                    type="button"
-                    className="ui-menu__item"
-                    aria-label={`${label} ${option.label}`}
-                    onClick={() => void onSelect(option.harness)}
-                  >
-                    <span className="ui-menu__icon" aria-hidden="true">
-                      <Icon size={14} />
-                    </span>
-                    <span className="ui-menu__label">{option.label}</span>
-                  </button>
-                </Popover.Close>
-              </li>
-            ))}
+        <Popover.Content className="ui-popup bulk-harness-popover" align="end" sideOffset={8}>
+          <div className="bulk-harness-popover__header">
+            <h3 className="bulk-harness-popover__title">Harnesses</h3>
+            <p className="bulk-harness-popover__description">
+              Mixed harnesses stay unchanged unless toggled.
+            </p>
+          </div>
+          <ul className="bulk-harness-popover__list">
+            {options.map((option) => {
+              const state = option.state ?? "mixed";
+              const checked = staged.get(option.harness) ?? state === "all";
+              const indeterminate = !staged.has(option.harness) && state === "mixed";
+              return (
+                <li key={option.harness}>
+                  <label className="bulk-harness-popover__item" data-state={state}>
+                    <TriStateHarnessCheckbox
+                      label={option.label}
+                      checked={checked}
+                      indeterminate={indeterminate}
+                      disabled={pending}
+                      onChange={(nextChecked) => handleToggle(option.harness, nextChecked)}
+                    />
+                    <span className="bulk-harness-popover__label">{option.label}</span>
+                    <span className="bulk-harness-popover__state">{harnessStateLabel(state)}</span>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
+          <div className="bulk-harness-popover__footer">
+            <button
+              type="button"
+              className="action-pill action-pill--sm"
+              onClick={() => setIsOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="action-pill action-pill--sm action-pill--accent"
+              onClick={() => void handleApply()}
+              disabled={pending}
+            >
+              {pending ? <LoadingSpinner size="sm" label="Applying" /> : "Apply"}
+            </button>
+          </div>
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
   );
+}
+
+function TriStateHarnessCheckbox({
+  label,
+  checked,
+  indeterminate,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="checkbox"
+      className="bulk-harness-popover__checkbox"
+      checked={checked}
+      disabled={disabled}
+      aria-label={label}
+      onChange={(event) => onChange(event.currentTarget.checked)}
+    />
+  );
+}
+
+function harnessStateLabel(state: BulkHarnessState): string {
+  if (state === "all") return "All selected";
+  if (state === "none") return "None selected";
+  return "Mixed";
 }

@@ -410,8 +410,9 @@ describe("SlashCommandsPage", () => {
     await screen.findByRole("table", { name: "Slash commands target matrix" });
     fireEvent.click(screen.getByRole("checkbox", { name: "Select code-review" }));
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
-    fireEvent.click(within(toolbar).getByRole("button", { name: "Enable on a harness" }));
-    fireEvent.click(screen.getByRole("button", { name: "Enable on Codex" }));
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Harnesses" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Codex" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0].body).toEqual({ targets: ["claude", "codex"] });

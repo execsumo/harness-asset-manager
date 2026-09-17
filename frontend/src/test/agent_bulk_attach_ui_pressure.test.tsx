@@ -143,13 +143,13 @@ describe("Agent Bulk Attach UI Pressure Test", () => {
     fireEvent.click(screen.getByLabelText("Select all visible skills"));
 
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
-    fireEvent.click(within(toolbar).getByRole("button", { name: "Attach to agents" }));
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Agents" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Attach to agents" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 1" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 2" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent Bad" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Attach agents?" })).toBeInTheDocument());
     expect(screen.getByText(/2 agents will change/)).toBeInTheDocument();
@@ -210,10 +210,10 @@ describe("Agent Bulk Attach UI Pressure Test", () => {
 
     fireEvent.click(screen.getByLabelText("Select all visible skills"));
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
-    fireEvent.click(within(toolbar).getByRole("button", { name: "Attach to agents" }));
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Agents" }));
 
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Attach to agents" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument(),
     );
 
     // The whole point: every adopted agent is offered despite zero attachments.
@@ -222,7 +222,7 @@ describe("Agent Bulk Attach UI Pressure Test", () => {
     expect(screen.getByRole("checkbox", { name: "Agent Bad" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Agent 1" }));
-    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(screen.getByRole("heading", { name: "Attach agents?" })).toBeInTheDocument(),
     );
