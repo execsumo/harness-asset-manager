@@ -581,9 +581,9 @@ export default function AgentsInUsePage() {
           }
           destructive={{
             actionLabel: deletableSelectedCount === selectedCount ? "Delete" : `Delete (${deletableSelectedCount})`,
-            confirmTitle: `Delete ${deletableSelectedCount} local agent${deletableSelectedCount === 1 ? "" : "s"}?`,
-            confirmDescription: "This permanently removes the selected agent files from their harnesses.",
-            confirmNote: "Adopted agents are not affected.",
+            confirmTitle: `Delete ${deletableSelectedCount} agent${deletableSelectedCount === 1 ? "" : "s"}?`,
+            confirmDescription: "This permanently removes the selected agents from Harness Asset Manager and deletes any files it owns in their harnesses.",
+            confirmNote: "Files that Harness Asset Manager does not own are left in place for review.",
           }}
         />
       ) : null}

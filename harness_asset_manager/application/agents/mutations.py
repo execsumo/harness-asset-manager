@@ -445,15 +445,30 @@ class AgentMutationService:
             harness, unmanaged_slug = self._split_ref(slug)
             self._adapter(harness).remove_unmanaged(unmanaged_slug)
             self.ledger.forget(unmanaged_slug, harness)
+            if self.asset_tags is not None:
+                self.asset_tags.delete_tags_for_ref("agents", slug)
             return
+
         self._require_agent(slug)
-        for target in self.targets:
-            if target.supports_agents:
-                self._disable(self.adapters[target.id], target.id, slug)
+        # Deletion must not be blocked by a harness that is currently disabled in
+        # Settings. Resolve all targets and remove only bindings HAM owns; a real
+        # file that replaced one of our links is deliberately left for review as an
+        # unmanaged agent rather than being deleted behind the user's back.
+        all_targets, all_adapters = self._resolve_all()
+        for target in all_targets:
+            if not target.supports_agents:
+                continue
+            adapter = all_adapters.get(target.id)
+            if adapter is None:
+                continue
+            if adapter.is_enabled(slug) or adapter.is_dangling(slug):
+                adapter.disable(slug)
+                self.ledger.forget(slug, target.id)
+
         self.store.delete(slug)
-        # Covers harnesses the user has since disabled in Settings, which are not in
-        # `targets` and so were never asked to unbind.
         self.ledger.forget_slug(slug)
+        if self.asset_tags is not None:
+            self.asset_tags.delete_tags_for_ref("agents", slug)
 
     def unmanage(self, ref: str) -> dict[str, bool]:
         if "/" in ref:

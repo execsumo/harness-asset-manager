@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { okJson } from "../../../test/fetch";
+import { errorJson, okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
 import AgentsInUsePage from "./AgentsInUsePage";
 import type { AgentInventoryDto, AgentDetailDto } from "../api/types";
@@ -190,7 +190,7 @@ describe("AgentsInUsePage", () => {
 
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
     fireEvent.click(within(toolbar).getByRole("button", { name: "Delete 1 selected" }));
-    expect(screen.getByRole("heading", { name: "Delete 1 local agent?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Delete 1 agent?" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Delete$/ }));
 
     await waitFor(() => {
@@ -306,23 +306,68 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(capturedBody?.name).toBe("Updated Agent Name"));
     });
 
-    it("delete asks for confirmation before issuing DELETE", async () => {
+    it("deletes a managed agent from the bulk action after confirmation", async () => {
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
+        if (url === "/api/agents/agent-1" && init?.method === "DELETE") return okJson({});
+        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        throw new Error(`Unhandled URL ${url}`);
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("checkbox", { name: "Select Test Agent" }));
+
+      const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+      fireEvent.click(within(toolbar).getByRole("button", { name: "Delete 1 selected" }));
+      expect(screen.getByRole("heading", { name: "Delete 1 agent?" })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /^Delete$/ }));
+
+      await waitFor(() => {
+        expect(fetchMock.mock.calls.some(
+          (call) => String(call[0]) === "/api/agents/agent-1" && call[1]?.method === "DELETE",
+        )).toBe(true);
+      });
+    });
+
+    it("keeps the detail view open and shows a deletion error", async () => {
+      fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "/api/agents/agent-1" && init?.method === "DELETE") {
+          return errorJson("binding is not writable", { status: 409 });
+        }
         if (url === "/api/agents") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
-        if (url === "/api/agents/agent-1" && init?.method === "DELETE") return okJson({});
         throw new Error(`Unhandled URL ${url}`);
       });
 
       renderPage();
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
-      
+      await waitFor(() => expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument());
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      fireEvent.click(screen.getByRole("button", { name: "Delete Agent" }));
+
+      await waitFor(() => expect(screen.getByText("binding is not writable")).toBeInTheDocument());
+      expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument();
+    });
+
+    it("delete asks for confirmation before issuing DELETE", async () => {
+      fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "/api/agents/agent-1" && init?.method === "DELETE") return okJson({});
+        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
+        throw new Error(`Unhandled URL ${url}`);
+      });
+
+      renderPage();
+      await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
+      fireEvent.click(screen.getByText("Test Agent"));
+
       await waitFor(() => expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument());
       fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
-      // confirm dialog appears
       await waitFor(() => expect(screen.getByText(/Are you sure you want to delete/i)).toBeInTheDocument());
       const confirmDelete = screen.getByRole("button", { name: "Delete Agent" });
       fireEvent.click(confirmDelete);
@@ -332,7 +377,6 @@ describe("AgentsInUsePage", () => {
         expect(deletes.length).toBe(1);
       });
 
-      // The modal should be closed as part of the delete flow, so no error is shown
       await waitFor(() => {
         expect(screen.queryByRole("heading", { name: "Test Agent Real Name" })).not.toBeInTheDocument();
       });

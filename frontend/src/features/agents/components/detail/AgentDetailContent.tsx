@@ -774,11 +774,12 @@ export function AgentDetailContent({
   const handleDelete = async () => {
     setLocalActionError(null);
     try {
-      const promise = deleteMutation.mutateAsync(detail.ref);
+      await deleteMutation.mutateAsync(detail.ref);
       setDeleteDialogOpen(false);
       onClose();
-      await promise;
     } catch (err) {
+      // Keep the detail view mounted when deletion fails so the user can see why
+      // the action did not complete (for example, a permission or binding error).
       setLocalActionError(err instanceof Error ? err.message : "Failed to delete agent");
       setDeleteDialogOpen(false);
     }

@@ -647,6 +647,44 @@ class AgentBindingTests(AgentsFixture):
         self.assertFalse((self.store_root / "red-team.md").exists())
 
 
+    def test_delete_removes_owned_bindings_from_disabled_harnesses(self) -> None:
+        agent = self.store.create(name="Red Team", description="probe", prompt="p")
+        disabled_dir = self.store_root.parent / "home" / ".cursor" / "agents"
+        disabled_dir.mkdir(parents=True)
+        disabled_target = AgentTarget(
+            id="cursor",
+            label="Cursor",
+            logo_key="cursor",
+            root_path=disabled_dir.parent,
+            output_dir=disabled_dir,
+            file_glob="*.md",
+            render_format="markdown",
+            docs_url="",
+            installed=True,
+        )
+        disabled_adapter = AgentHarnessAdapter(disabled_target, self.store_root)
+        disabled_adapter.enable(agent)
+        self.mutations._resolve_all = lambda: (
+            (self.target, disabled_target),
+            {"claude": self.adapter, "cursor": disabled_adapter},
+        )
+
+        self.mutations.delete("red-team")
+
+        self.assertFalse((self.harness_dir / "red-team.md").exists())
+        self.assertFalse((disabled_dir / "red-team.md").exists())
+        self.assertFalse((self.store_root / "red-team.md").exists())
+
+    def test_delete_does_not_block_on_a_replaced_binding(self) -> None:
+        self.store.create(name="Red Team", description="probe", prompt="p")
+        _write(self.harness_dir / "red-team.md", "a harness-authored copy")
+
+        self.mutations.delete("red-team")
+
+        self.assertTrue((self.harness_dir / "red-team.md").is_file())
+        self.assertFalse((self.store_root / "red-team.md").exists())
+
+
 class AgentInventoryTests(AgentsFixture):
     def test_real_harness_file_is_reported_unmanaged_and_adoptable(self) -> None:
         _write(self.harness_dir / "stray.md", "---\nname: Stray\ndescription: d\n---\nbody\n")
