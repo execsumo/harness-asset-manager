@@ -15,6 +15,7 @@ import type {
   SkillSourceStatusDto,
   SkillUpdateStatus as SkillUpdateStatusDto,
   AgentAttachmentDto,
+  AttachAgentsResponseDto,
 } from "../api/types";
 
 export type SkillStatus = SkillStatusDto;
@@ -76,3 +77,5 @@ export interface SkillDetail {
   packageFiles: string[];
   conformance: SkillConformanceIssue[];
 }
+
+export type AttachAgentsResponse = AttachAgentsResponseDto;

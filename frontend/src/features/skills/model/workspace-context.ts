@@ -2,7 +2,7 @@ import { useOutletContext } from "react-router-dom";
 
 import type { MultiSelectAction } from "../../../components/BulkActionBar";
 import type { BulkSkillsAction, CellActionKey, StructuralSkillAction } from "./pending";
-import type { HarnessCell, SkillListRow, SkillsWorkspaceData } from "./types";
+import type { HarnessCell, SkillListRow, SkillsWorkspaceData, AttachAgentsResponse } from "./types";
 
 export type { MultiSelectAction };
 
@@ -43,6 +43,15 @@ export interface SkillsWorkspaceContextValue {
   onMultiSelectDelete: () => Promise<void>;
   onMultiSelectStar: () => Promise<void>;
   onMultiSelectTag: (tags: string[]) => Promise<void>;
+  onMultiSelectAgent: (agentRefs: string[], mode: "attach" | "detach") => Promise<void>;
+  attachAgentsState: {
+    skillRefs: string[];
+    agentRefs: string[];
+    mode: "attach" | "detach";
+    projection: AttachAgentsResponse;
+  } | null;
+  onConfirmAttachAgents: () => Promise<void>;
+  onCancelAttachAgents: () => void;
   onToggleStar: (skillRef: string) => Promise<void>;
   onSetTags: (skillRef: string, tags: string[]) => Promise<void>;
   onSetSkillAllHarnesses: (skillRef: string, target: SetAllHarnessesTarget) => Promise<SetAllHarnessesResult>;

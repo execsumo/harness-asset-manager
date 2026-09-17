@@ -4,11 +4,12 @@ import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, CircleSlash2, Star, Trash2, X } from "lucide-react";
 
 import { BulkTagPopover } from "./BulkTagPopover";
+import { BulkAgentPopover } from "./BulkAgentPopover";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
 
-export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag" | "adopt";
+export type MultiSelectAction = "enable-all" | "disable-all" | "delete" | "star" | "tag" | "adopt" | "attach-agents";
 
 export interface BulkHarnessOption {
   harness: string;
@@ -32,6 +33,8 @@ interface BulkActionBarProps {
   starLabel?: string;
   onTagSelected?: (tags: string[]) => Promise<void>;
   knownTags?: string[];
+  onAgentSelected?: (agentRefs: string[], mode: "attach" | "detach") => Promise<void>;
+  knownAgents?: { ref: string; name: string }[];
   destructive: {
     /** Button aria-label + confirm button text (e.g. "Delete" / "Uninstall"). */
     actionLabel: string;
@@ -61,6 +64,8 @@ export function BulkActionBar({
   starLabel,
   onTagSelected,
   knownTags,
+  onAgentSelected,
+  knownAgents,
   destructive,
 }: BulkActionBarProps) {
   const [visible, setVisible] = useState(selectedCount > 0);
@@ -134,6 +139,14 @@ export function BulkActionBar({
                 onApply={onTagSelected}
                 disabled={disabled}
                 pending={pending === "tag"}
+              />
+            ) : null}
+            {onAgentSelected ? (
+              <BulkAgentPopover
+                knownAgents={knownAgents}
+                onApply={onAgentSelected}
+                disabled={disabled}
+                pending={pending === "attach-agents"}
               />
             ) : null}
             {showHarnessActions && onEnableAll && onDisableAll ? (

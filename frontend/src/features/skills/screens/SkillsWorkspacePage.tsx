@@ -3,6 +3,7 @@ import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar } from "../../../components/BulkActionBar";
+import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -72,6 +73,10 @@ export default function SkillsWorkspacePage() {
     onMultiSelectDelete,
     onMultiSelectStar,
     onMultiSelectTag,
+    onMultiSelectAgent,
+    attachAgentsState,
+    onConfirmAttachAgents,
+    onCancelAttachAgents,
     onDeleteSkill,
     onToggleStar,
     onManageAll,
@@ -465,6 +470,8 @@ export default function SkillsWorkspacePage() {
           starLabel="Star selected"
           onTagSelected={selectedManagedCount > 0 ? onMultiSelectTag : undefined}
           knownTags={knownTagNames}
+          onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
+          knownAgents={knownAgents}
           extraActions={
             selectedAdoptableUntrackedCount > 0 ? (
               <button
@@ -493,6 +500,32 @@ export default function SkillsWorkspacePage() {
         />
       ) : null}
 
+      
+      <ConfirmActionDialog
+        open={attachAgentsState !== null}
+        onOpenChange={(open) => {
+          if (!open) onCancelAttachAgents();
+        }}
+        title={attachAgentsState?.mode === "attach" ? "Attach agents?" : "Detach agents?"}
+        description={
+          attachAgentsState ? (
+            <span>
+              {formatAttachAgentPreview(
+                attachAgentsState,
+                data?.harnessColumns ?? [],
+                selectedUntrackedRefs.size,
+              )}
+            </span>
+          ) : ""
+        }
+        note={attachAgentsState?.mode === "detach" ? "Detaching leaves the skill installed on its harnesses." : undefined}
+        confirmLabel={attachAgentsState?.mode === "attach" ? "Attach" : "Detach"}
+        pendingLabel={attachAgentsState?.mode === "attach" ? "Attaching" : "Detaching"}
+        confirmTone={attachAgentsState?.mode === "attach" ? "primary" : "danger"}
+        onConfirm={onConfirmAttachAgents}
+        isPending={multiSelectPending === "attach-agents"}
+      />
+
       <SkillDetailModal
         open={isDesktopDetailOpen || Boolean(selectedSkillRef)}
         skillRef={selectedSkillRef}
@@ -518,4 +551,40 @@ function statusLabel(copy: ReturnType<typeof useSkillsCopy>, value: SkillsStatus
   if (value === "all-harnesses") return copy.inUse.pills.allHarnesses;
   if (value === "off") return copy.inUse.pills.off;
   return copy.review.title;
+}
+
+type AttachAgentsState = NonNullable<ReturnType<typeof useSkillsWorkspaceController>["context"]["attachAgentsState"]>;
+
+function formatAttachAgentPreview(
+  state: AttachAgentsState,
+  harnessColumns: readonly { harness: string; label: string }[],
+  skippedUnmanagedCount: number,
+): string {
+  const action = state.mode === "attach" ? "attach" : "detach";
+  const changedCount = state.projection.changed.length;
+  const bindingCount = state.projection.autoEnabled.length;
+  const harnessLabels = formatHarnessNames(state.projection.autoEnabled.map((item) => item.harness), harnessColumns);
+  const bindingText = state.mode === "attach"
+    ? bindingCount > 0
+      ? `creating ${bindingCount} new harness binding${bindingCount === 1 ? "" : "s"} on ${harnessLabels}`
+      : "creating no new harness bindings"
+    : "removing no harness bindings";
+  const skippedRows = skippedUnmanagedCount > 0
+    ? ` ${skippedUnmanagedCount} unmanaged selected row${skippedUnmanagedCount === 1 ? " is" : "s are"} skipped because only managed skills can be attached to agents.`
+    : "";
+  const skippedAgents = state.projection.skipped.length > 0
+    ? ` ${state.projection.skipped.length} agent${state.projection.skipped.length === 1 ? " is" : "s are"} skipped: ${state.projection.skipped
+        .map((item) => `${item.ref} (${item.reason})`)
+        .join(", ")}.`
+    : "";
+
+  return `You are about to ${action} ${state.agentRefs.length} agent${state.agentRefs.length === 1 ? "" : "s"} across ${state.skillRefs.length} managed skill${state.skillRefs.length === 1 ? "" : "s"}. ${changedCount} agent${changedCount === 1 ? "" : "s"} will change, ${bindingText}.${skippedRows}${skippedAgents}`;
+}
+
+function formatHarnessNames(harnesses: string[], harnessColumns: readonly { harness: string; label: string }[]): string {
+  const labelsByHarness = new Map(harnessColumns.map((column) => [column.harness, column.label]));
+  const labels = Array.from(new Set(harnesses)).map((harness) => labelsByHarness.get(harness) ?? harness);
+  if (labels.length === 0) return "no harnesses";
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }

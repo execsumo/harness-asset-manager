@@ -7,7 +7,7 @@ import {
   type CellActionKey,
   type StructuralSkillAction,
 } from "./pending";
-import type { HarnessCell, HarnessCellState, SkillListRow } from "./types";
+import type { AttachAgentsResponse, HarnessCell, HarnessCellState, SkillListRow } from "./types";
 import type {
   MultiSelectAction,
   SetAllHarnessesFailure,
@@ -19,6 +19,7 @@ import {
   useDeleteSkillMutation,
   useManageAllSkillsMutation,
   useManageSkillMutation,
+  useAttachAgentsMutation,
   useSetSkillHarnessesMutation,
   useSetSkillTagsMutation,
   useSkillsListQuery,
@@ -26,6 +27,7 @@ import {
   useUnmanageSkillMutation,
   useUpdateSkillMutation,
 } from "../api/queries";
+import { useToast } from "../../../components/Toast";
 import { useSkillWorkspaceSelection, type SkillsWorkspaceTab } from "./use-skill-workspace-selection";
 
 export interface SkillsWorkspaceController {
@@ -48,6 +50,8 @@ export interface SkillsWorkspaceController {
 
 export function useSkillsWorkspaceController(): SkillsWorkspaceController {
   const listQuery = useSkillsListQuery();
+  const attachAgentsMutation = useAttachAgentsMutation();
+  const { toast } = useToast();
   const toggleMutation = useToggleSkillMutation();
   const setHarnessesMutation = useSetSkillHarnessesMutation();
   const setTagsMutation = useSetSkillTagsMutation();
@@ -63,6 +67,7 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     () => new Map(),
   );
   const [pendingBulkAction, setPendingBulkAction] = useState<BulkSkillsAction | null>(null);
+  const [attachAgentsState, setAttachAgentsState] = useState<SkillsWorkspaceContextValue["attachAgentsState"]>(null);
   const [multiSelectedRefs, setMultiSelectedRefs] = useState<Set<string>>(() => new Set());
   const [multiSelectPending, setMultiSelectPending] = useState<MultiSelectAction | null>(null);
 
@@ -547,7 +552,60 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     [data, multiSelectedRefs, setTagsMutation],
   );
 
-  const context: SkillsWorkspaceContextValue = {
+  const onMultiSelectAgent = useCallback(
+    async (agentRefs: string[], mode: "attach" | "detach") => {
+      const selectedRefs = Array.from(multiSelectedRefs);
+      if (selectedRefs.length === 0 || agentRefs.length === 0) return;
+      setMultiSelectPending("attach-agents");
+      setActionErrorMessage("");
+      try {
+        const res = await attachAgentsMutation.mutateAsync({
+          skillRefs: selectedRefs,
+          agentRefs,
+          mode,
+          dryRun: true,
+        });
+        setAttachAgentsState({ skillRefs: selectedRefs, agentRefs, mode, projection: res });
+      } catch (err) {
+        setActionErrorMessage(err instanceof Error ? err.message : "Unable to preview agent changes.");
+      } finally {
+        setMultiSelectPending(null);
+      }
+    },
+    [multiSelectedRefs, attachAgentsMutation],
+  );
+
+  const onConfirmAttachAgents = useCallback(async () => {
+    if (!attachAgentsState) return;
+    try {
+      setMultiSelectPending("attach-agents");
+      setActionErrorMessage("");
+      const result = await attachAgentsMutation.mutateAsync({
+        skillRefs: attachAgentsState.skillRefs,
+        agentRefs: attachAgentsState.agentRefs,
+        mode: attachAgentsState.mode,
+        dryRun: false,
+      });
+      const failureMessage = formatAttachFailureMessage(result, attachAgentsState.mode);
+      if (failureMessage) {
+        setActionErrorMessage(failureMessage);
+      } else {
+        toast(`Agents updated for ${attachAgentsState.skillRefs.length} skills.`);
+      }
+      setAttachAgentsState(null);
+      setMultiSelectedRefs(new Set());
+    } catch (err) {
+      setActionErrorMessage(err instanceof Error ? err.message : "Unable to update agents.");
+    } finally {
+      setMultiSelectPending(null);
+    }
+  }, [attachAgentsState, attachAgentsMutation, toast]);
+
+  const onCancelAttachAgents = useCallback(() => {
+    setAttachAgentsState(null);
+  }, []);
+
+const context: SkillsWorkspaceContextValue = {
     data,
     hasData,
     isInitialLoading,
@@ -572,6 +630,10 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     onMultiSelectDelete: handleMultiSelectDelete,
     onMultiSelectStar: handleMultiSelectStar,
     onMultiSelectTag: handleMultiSelectTag,
+    onMultiSelectAgent,
+    attachAgentsState,
+    onConfirmAttachAgents,
+    onCancelAttachAgents,
     onToggleStar: handleToggleStar,
     onSetTags: handleSetTags,
     onSetSkillAllHarnesses: handleSetSkillAllHarnesses,
@@ -621,4 +683,27 @@ function formatMultiSkillFailureMessage(
   }
   const names = failingRows.map((entry) => entry.row.name).join(", ");
   return `Unable to ${verb} every harness for ${failingRows.length} skills: ${names}.`;
+}
+
+function formatAttachFailureMessage(
+  result: AttachAgentsResponse,
+  mode: "attach" | "detach",
+): string {
+  const actionableSkipped = result.skipped.filter((item) => item.reason.toLowerCase() !== "no changes needed");
+  const parts: string[] = [];
+  if (actionableSkipped.length > 0) {
+    parts.push(
+      `${actionableSkipped.length} agent${actionableSkipped.length === 1 ? " was" : "s were"} skipped: ${actionableSkipped
+        .map((item) => `${item.ref} (${item.reason})`)
+        .join(", ")}.`,
+    );
+  }
+  if (result.failed.length > 0) {
+    parts.push(
+      `Unable to auto-enable ${result.failed.length} harness binding${result.failed.length === 1 ? "" : "s"} after ${mode}: ${result.failed
+        .map((item) => `${item.skillRef} on ${item.harness} (${item.error})`)
+        .join(", ")}.`,
+    );
+  }
+  return parts.join(" ");
 }

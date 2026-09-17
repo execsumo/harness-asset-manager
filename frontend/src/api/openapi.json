@@ -1026,6 +1026,84 @@
         "title": "AgentTagsResponse",
         "type": "object"
       },
+      "AttachAgentsRequest": {
+        "properties": {
+          "agentRefs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agentrefs",
+            "type": "array"
+          },
+          "dryRun": {
+            "default": false,
+            "title": "Dryrun",
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": [
+              "attach",
+              "detach"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "skillRefs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skillrefs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "skillRefs",
+          "agentRefs",
+          "mode"
+        ],
+        "title": "AttachAgentsRequest",
+        "type": "object"
+      },
+      "AttachAgentsResponse": {
+        "properties": {
+          "autoEnabled": {
+            "items": {
+              "$ref": "#/components/schemas/AutoEnabledSkillResponse"
+            },
+            "title": "Autoenabled",
+            "type": "array"
+          },
+          "changed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/AutoEnableFailureResponse"
+            },
+            "title": "Failed",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedAgentResponse"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed",
+          "skipped",
+          "autoEnabled",
+          "failed"
+        ],
+        "title": "AttachAgentsResponse",
+        "type": "object"
+      },
       "AutoEnableFailureResponse": {
         "properties": {
           "error": {
@@ -5982,6 +6060,24 @@
           "unmanaged"
         ],
         "title": "SkillsSummaryResponse",
+        "type": "object"
+      },
+      "SkippedAgentResponse": {
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "reason"
+        ],
+        "title": "SkippedAgentResponse",
         "type": "object"
       },
       "SlashCommandDeleteResponse": {
@@ -14026,6 +14122,94 @@
           }
         },
         "summary": "List Skills"
+      }
+    },
+    "/api/skills/attach-agents": {
+      "post": {
+        "operationId": "attach_agents_api_skills_attach_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachAgentsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachAgentsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Attach Agents"
       }
     },
     "/api/skills/manage-all": {
