@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.api.schemas import (
+    AttachAgentsRequest,
+    AttachAgentsResponse,
     BulkManageResultResponse,
     DisableSkillRequest,
     EnableSkillRequest,
@@ -130,3 +132,96 @@ def unmanage_skill(skill_ref: str, container: BackendContainer = Depends(get_con
 @router.post("/{skill_ref}/delete", response_model=OkResponse)
 def delete_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
     return container.skills_mutations.delete_skill(skill_ref)
+
+@router.post("/attach-agents", response_model=AttachAgentsResponse)
+def attach_agents(
+    req: AttachAgentsRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    from harness_asset_manager.api.schemas import (
+        AutoEnabledSkillResponse,
+        AutoEnableFailureResponse,
+        SkippedAgentResponse,
+    )
+    from harness_asset_manager.application.agents.hermes_profile import ensure_profile
+
+    # 1. Normalise skillRefs and validate
+    bare_slugs = [ref.removeprefix("shared:") for ref in req.skillRefs]
+    try:
+        validated_skills = container.agents_mutations.validate_skills(bare_slugs)
+    except Exception as e:
+        # validate_skills raises MutationError with 400 invalid_skill
+        raise e
+
+    changed = []
+    skipped = []
+    auto_enabled = []
+    failed = []
+
+    for agent_ref in req.agentRefs:
+        agent = container.agents_store.get(agent_ref)
+        if agent is None:
+            skipped.append(SkippedAgentResponse(ref=agent_ref, reason="agent not found"))
+            continue
+
+        current_skills = agent.skills or ()
+
+        if req.mode == "attach":
+            new_skills = list(current_skills)
+            for slug in validated_skills:
+                if slug not in new_skills:
+                    new_skills.append(slug)
+            next_skills = tuple(new_skills)
+        else:  # detach
+            next_skills = tuple(s for s in current_skills if s not in validated_skills)
+
+        if next_skills == current_skills:
+            skipped.append(SkippedAgentResponse(ref=agent_ref, reason="no changes needed"))
+            continue
+
+        if req.dryRun:
+            changed.append(agent_ref)
+            projected, proj_failed = container.agents_mutations.project_auto_enable_bindings(
+                agent_ref, next_skills
+            )
+            for s_ref, h in projected:
+                auto_enabled.append(AutoEnabledSkillResponse(skillRef=s_ref, harness=h))
+            for s_ref, h, err in proj_failed:
+                failed.append(AutoEnableFailureResponse(skillRef=s_ref, harness=h, error=err))
+            continue
+
+        # apply
+        try:
+            container.agents_store.update(
+                agent_ref,
+                skills=next_skills,
+            )
+            changed.append(agent_ref)
+
+            updated = container.agents_store.get(agent_ref)
+            if updated is not None:
+                ensure_profile(
+                    updated,
+                    container.hermes_root,
+                )
+
+            ae, af = container.agents_mutations.auto_enable_skills_for_agent(
+                agent_ref, next_skills
+            )
+            for s_ref, h in ae:
+                auto_enabled.append(AutoEnabledSkillResponse(skillRef=s_ref, harness=h))
+            for s_ref, h, err in af:
+                failed.append(AutoEnableFailureResponse(skillRef=s_ref, harness=h, error=err))
+
+        except Exception as e:
+            skipped.append(SkippedAgentResponse(ref=agent_ref, reason=str(e)))
+
+    if not req.dryRun:
+        container.invalidation.invalidate_all()
+
+    return {
+        "changed": changed,
+        "skipped": skipped,
+        "autoEnabled": auto_enabled,
+        "failed": failed,
+    }

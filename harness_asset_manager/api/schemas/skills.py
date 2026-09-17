@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .agents import AutoEnableFailureResponse, AutoEnabledSkillResponse
+from .agents import AutoEnabledSkillResponse, AutoEnableFailureResponse
 from .common import HarnessTarget
 
 

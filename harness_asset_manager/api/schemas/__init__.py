@@ -125,6 +125,9 @@ from .settings import (
     SettingsStorageResponse,
 )
 from .skills import (
+    AgentAttachmentResponse,
+    AttachAgentsRequest,
+    AttachAgentsResponse,
     BulkManageFailureResponse,
     BulkManageResultResponse,
     DisableSkillRequest,
@@ -151,6 +154,7 @@ from .skills import (
     SkillTableRowResponse,
     SkillTagsResponse,
     SkillUpdateStatus,
+    SkippedAgentResponse,
     UpdateSkillDocumentRequest,
 )
 from .slash_commands import (
@@ -182,6 +186,7 @@ __all__ = [
     "AdoptAllSkippedResponse",
     "AdoptMcpRequest",
     "AgentActionsResponse",
+    "AgentAttachmentResponse",
     "AgentBindingResponse",
     "AgentColumnResponse",
     "AgentConfigEntryResponse",
@@ -195,6 +200,8 @@ __all__ = [
     "AgentRepairResponse",
     "AgentSkillResponse",
     "AgentTagsResponse",
+    "AttachAgentsRequest",
+    "AttachAgentsResponse",
     "AutoEnableFailureResponse",
     "AutoEnabledSkillResponse",
     "BulkManageFailureResponse",
@@ -280,6 +287,7 @@ __all__ = [
     "SkillTableRowResponse",
     "SkillTagsResponse",
     "SkillUpdateStatus",
+    "SkippedAgentResponse",
     "SkillsPageResponse",
     "SkillsSummaryResponse",
     "SlashCommandDeleteResponse",
