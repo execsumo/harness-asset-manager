@@ -374,7 +374,7 @@ describe("AgentDetailContent", () => {
     ).toEqual(["", "true", "false"]);
   });
 
-  it("uses only installed harnesses discovered in the agent detail", () => {
+  it("offers every known harness and marks the ones not installed here", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(
@@ -393,17 +393,38 @@ describe("AgentDetailContent", () => {
       "claude",
       "cursor",
     ]);
-    expect(screen.getByRole("option", { name: /not an installed harness/ })).toBeInTheDocument();
+    // Agents get authored on one machine for another, so an uninstalled harness stays
+    // selectable -- it is labelled, not withheld.
+    expect(screen.getByRole("option", { name: "Cursor — not installed here" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Code" })).toBeInTheDocument();
+    expect(harness).toHaveValue("cursor");
   });
 
-  it("shows an empty harness dropdown when no installed harnesses are discovered", () => {
+  it("keeps a harness value that matches no known harness selectable", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(
+      agentDetailFixture({
+        harness: "typo-harness",
+        harnesses: [
+          { ...agentDetailFixture().harnesses[0], harness: "claude", label: "Claude Code", installed: true },
+        ],
+      }),
+    );
+
+    const harness = screen.getByRole("combobox", { name: "Harness" });
+    expect(harness).toHaveValue("typo-harness");
+    expect(screen.getByRole("option", { name: /not a valid harness/ })).toBeInTheDocument();
+  });
+
+  it("shows an empty harness dropdown when no harnesses are discovered", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(agentDetailFixture({ harnesses: [] }));
 
     const harness = screen.getByRole("combobox", { name: "Harness" });
     expect(harness).toHaveValue("");
-    expect(screen.getByRole("option", { name: "(no installed harnesses discovered)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "(no harnesses discovered)" })).toBeInTheDocument();
   });
 
   it("shows the max_turns default as a placeholder instead of prefilling the field", () => {

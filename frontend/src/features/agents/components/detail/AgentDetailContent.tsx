@@ -20,6 +20,10 @@ import { DetailBindingIdentity, type DetailBindingTone } from "../../../../compo
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
 import {
+  FrontmatterChoiceSelect,
+  type FrontmatterChoiceOption,
+} from "../../../../components/detail/editing/FrontmatterChoiceSelect";
+import {
   useAdoptAgentMutation,
   useDeleteAgentMutation,
   useSetAgentTagsMutation,
@@ -51,43 +55,6 @@ import {
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
-
-function FrontmatterChoiceSelect({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  options: readonly string[];
-  onChange: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const isKnown = options.includes(value);
-  return (
-    <select
-      className="frontmatter-editor__input"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={disabled}
-      aria-label={label}
-    >
-      <option value="">(none)</option>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-      {value && !isKnown ? (
-        <option value={value}>
-          {value} — not a valid {label.toLowerCase()}
-        </option>
-      ) : null}
-    </select>
-  );
-}
 
 function parseMcpServerRefs(value: string): string[] {
   return value
@@ -311,8 +278,16 @@ export function AgentDetailContent({
       .filter(Boolean);
   };
 
-  const installedHarnesses = useMemo(
-    () => detail.harnesses.filter((harness) => harness.installed),
+  // Every known harness stays selectable, with the uninstalled ones marked. Agents are
+  // authored on one machine for another, so filtering to what happens to be installed
+  // here would make a cross-device target unpickable rather than merely unusual.
+  const harnessOptions = useMemo<FrontmatterChoiceOption[]>(
+    () =>
+      detail.harnesses.map((harness) => ({
+        value: harness.harness,
+        label: harness.label,
+        note: harness.installed ? undefined : "not installed here",
+      })),
     [detail.harnesses],
   );
 
@@ -359,25 +334,14 @@ export function AgentDetailContent({
         value: harnessStr,
         onChange: setHarnessStr,
         renderInput: ({ disabled }) => (
-          <select
-            className="frontmatter-editor__input"
+          <FrontmatterChoiceSelect
+            label="Harness"
             value={harnessStr}
-            onChange={(event) => setHarnessStr(event.target.value)}
+            options={harnessOptions}
+            onChange={setHarnessStr}
             disabled={disabled}
-            aria-label="Harness"
-          >
-            <option value="">
-              {installedHarnesses.length > 0 ? "(none)" : "(no installed harnesses discovered)"}
-            </option>
-            {installedHarnesses.map((harness) => (
-              <option key={harness.harness} value={harness.harness}>
-                {harness.label}
-              </option>
-            ))}
-            {harnessStr && !installedHarnesses.some((harness) => harness.harness === harnessStr) ? (
-              <option value={harnessStr}>{harnessStr} — not an installed harness</option>
-            ) : null}
-          </select>
+            clearLabel={harnessOptions.length > 0 ? "(none)" : "(no harnesses discovered)"}
+          />
         ),
       },
       {
@@ -426,7 +390,6 @@ export function AgentDetailContent({
       },
       {
         key: "memory",
-        wrapInLabel: false,
         label: "Memory",
         value: memoryStr,
         onChange: setMemoryStr,
@@ -442,7 +405,6 @@ export function AgentDetailContent({
       },
       {
         key: "isolation",
-        wrapInLabel: false,
         label: "Isolation",
         value: isolationStr,
         onChange: setIsolationStr,
@@ -458,7 +420,6 @@ export function AgentDetailContent({
       },
       {
         key: "background",
-        wrapInLabel: false,
         label: "Background",
         value: backgroundStr,
         onChange: setBackgroundStr,
@@ -515,7 +476,6 @@ export function AgentDetailContent({
       },
       {
         key: "spawning",
-        wrapInLabel: false,
         label: "Spawning",
         value: spawningStr,
         onChange: setSpawningStr,
@@ -531,7 +491,6 @@ export function AgentDetailContent({
       },
       {
         key: "trust-project",
-        wrapInLabel: false,
         label: "Trust Project",
         value: trustProjectStr,
         onChange: setTrustProjectStr,
@@ -558,7 +517,7 @@ export function AgentDetailContent({
       description,
       roleStr,
       harnessStr,
-      installedHarnesses,
+      harnessOptions,
       colorStr,
       modelStr,
       effortStr,
