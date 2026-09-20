@@ -40,7 +40,13 @@ class SkillsHarnessAdapter(Protocol):
         self, existing_dir: Path, package_path: Path, *, scope: str | None = None
     ) -> None: ...
 
-    def has_binding(self, package_dir: str, *, scope: str | None = None) -> bool: ...
+    def has_binding(
+        self,
+        package_dir: str,
+        *,
+        scope: str | None = None,
+        include_discovery: bool = True,
+    ) -> bool: ...
 
     def prepare_materialize(
         self, package_dir: str, expected_target: Path, *, scope: str | None = None
