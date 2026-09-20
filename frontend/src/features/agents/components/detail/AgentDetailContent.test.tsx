@@ -350,33 +350,60 @@ describe("AgentDetailContent", () => {
     ).toEqual(["", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"]);
   });
 
-  it("renders Claude boolean contract fields as toggles that can also unset the key", () => {
+  it("renders fixed contract fields as dropdowns and preserves existing values", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
-    renderDetail(agentDetailFixture({ background: "true", isolation: "worktree" }));
-
-    const background = screen.getByRole("group", { name: "Background" });
-    expect(
-      within(background).getAllByRole("button").map((button) => button.textContent),
-    ).toEqual(["Unset", "true", "false"]);
-    expect(within(background).getByRole("button", { name: "true" })).toHaveAttribute(
-      "data-active",
-      "true",
+    renderDetail(
+      agentDetailFixture({
+        background: "true",
+        isolation: "worktree",
+        memory: "project",
+        spawning: "false",
+        trustProject: "true",
+      }),
     );
 
-    const isolation = screen.getByRole("group", { name: "Isolation" });
+    expect(screen.getByRole("combobox", { name: "Background" })).toHaveValue("true");
+    expect(screen.getByRole("combobox", { name: "Isolation" })).toHaveValue("worktree");
+    expect(screen.getByRole("combobox", { name: "Memory" })).toHaveValue("project");
+    expect(screen.getByRole("combobox", { name: "Spawning" })).toHaveValue("false");
+    expect(screen.getByRole("combobox", { name: "Trust Project" })).toHaveValue("true");
     expect(
-      within(isolation).getAllByRole("button").map((button) => button.textContent),
-    ).toEqual(["Unset", "worktree"]);
-    expect(within(isolation).getByRole("button", { name: "worktree" })).toHaveAttribute(
-      "data-active",
-      "true",
+      Array.from((screen.getByRole("combobox", { name: "Background" }) as HTMLSelectElement).options)
+        .map((option) => option.value),
+    ).toEqual(["", "true", "false"]);
+  });
+
+  it("uses only installed harnesses discovered in the agent detail", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(
+      agentDetailFixture({
+        harness: "cursor",
+        harnesses: [
+          { ...agentDetailFixture().harnesses[0], harness: "claude", label: "Claude Code", installed: true },
+          { ...agentDetailFixture().harnesses[0], harness: "cursor", label: "Cursor", installed: false },
+        ],
+      }),
     );
 
-    const memory = screen.getByRole("group", { name: "Memory" });
-    expect(
-      within(memory).getAllByRole("button").map((button) => button.textContent),
-    ).toEqual(["Unset", "user", "project", "local"]);
+    const harness = screen.getByRole("combobox", { name: "Harness" });
+    expect(Array.from((harness as HTMLSelectElement).options).map((option) => option.value)).toEqual([
+      "",
+      "claude",
+      "cursor",
+    ]);
+    expect(screen.getByRole("option", { name: /not an installed harness/ })).toBeInTheDocument();
+  });
+
+  it("shows an empty harness dropdown when no installed harnesses are discovered", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    renderDetail(agentDetailFixture({ harnesses: [] }));
+
+    const harness = screen.getByRole("combobox", { name: "Harness" });
+    expect(harness).toHaveValue("");
+    expect(screen.getByRole("option", { name: "(no installed harnesses discovered)" })).toBeInTheDocument();
   });
 
   it("shows the max_turns default as a placeholder instead of prefilling the field", () => {
@@ -402,14 +429,34 @@ describe("AgentDetailContent", () => {
     });
 
     renderDetail(
-      agentDetailFixture({ color: "cyan", background: "true", maxTurns: "30" }),
+      agentDetailFixture({
+        color: "cyan",
+        background: "true",
+        memory: "user",
+        spawning: "false",
+        trustProject: "true",
+        maxTurns: "30",
+      }),
     );
 
-    const isolation = screen.getByRole("group", { name: "Isolation" });
-    fireEvent.click(within(isolation).getByRole("button", { name: "worktree" }));
-
-    const background = screen.getByRole("group", { name: "Background" });
-    fireEvent.click(within(background).getByRole("button", { name: "Unset" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Harness" }), {
+      target: { value: "claude" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Memory" }), {
+      target: { value: "project" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Isolation" }), {
+      target: { value: "worktree" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Background" }), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Spawning" }), {
+      target: { value: "true" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Trust Project" }), {
+      target: { value: "false" },
+    });
 
     fireEvent.change(screen.getByRole("textbox", { name: "Max Turns" }), {
       target: { value: "12" },
@@ -424,8 +471,12 @@ describe("AgentDetailContent", () => {
       expect(put).toBeDefined();
       expect(JSON.parse(put![1].body)).toMatchObject({
         color: "cyan",
+        harness: "claude",
+        memory: "project",
         isolation: "worktree",
         maxTurns: "12",
+        spawning: "true",
+        trustProject: "false",
         // An explicit empty string is what clears the key; omitting it would carry
         // the file's current value forward instead.
         background: "",

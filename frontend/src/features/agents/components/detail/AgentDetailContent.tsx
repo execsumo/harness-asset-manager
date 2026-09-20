@@ -19,7 +19,6 @@ import { useToast } from "../../../../components/Toast";
 import { DetailBindingIdentity, type DetailBindingTone } from "../../../../components/detail/DetailBindingIdentity";
 import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
-import { FrontmatterSegmentedField } from "../../../../components/detail/editing/FrontmatterSegmentedField";
 import {
   useAdoptAgentMutation,
   useDeleteAgentMutation,
@@ -52,6 +51,43 @@ import {
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
+
+function FrontmatterChoiceSelect({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const isKnown = options.includes(value);
+  return (
+    <select
+      className="frontmatter-editor__input"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      disabled={disabled}
+      aria-label={label}
+    >
+      <option value="">(none)</option>
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+      {value && !isKnown ? (
+        <option value={value}>
+          {value} — not a valid {label.toLowerCase()}
+        </option>
+      ) : null}
+    </select>
+  );
+}
 
 function parseMcpServerRefs(value: string): string[] {
   return value
@@ -275,6 +311,11 @@ export function AgentDetailContent({
       .filter(Boolean);
   };
 
+  const installedHarnesses = useMemo(
+    () => detail.harnesses.filter((harness) => harness.installed),
+    [detail.harnesses],
+  );
+
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
       {
@@ -296,25 +337,13 @@ export function AgentDetailContent({
         value: colorStr,
         onChange: setColorStr,
         renderInput: ({ disabled }) => (
-          <select
-            className="frontmatter-editor__input"
+          <FrontmatterChoiceSelect
+            label="Color"
             value={colorStr}
-            onChange={(event) => setColorStr(event.target.value)}
+            options={COLOR_VALUES}
+            onChange={setColorStr}
             disabled={disabled}
-            aria-label="Color"
-          >
-            <option value="">(none)</option>
-            {COLOR_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-            {/* Same escape hatch the effort picker offers: surface a hand-authored
-                value rather than silently rewriting it on the next save. */}
-            {colorStr && !(COLOR_VALUES as readonly string[]).includes(colorStr) ? (
-              <option value={colorStr}>{colorStr} — not a valid color</option>
-            ) : null}
-          </select>
+          />
         ),
       },
       {
@@ -329,7 +358,27 @@ export function AgentDetailContent({
         label: "Harness",
         value: harnessStr,
         onChange: setHarnessStr,
-        placeholder: "Target harness identifier",
+        renderInput: ({ disabled }) => (
+          <select
+            className="frontmatter-editor__input"
+            value={harnessStr}
+            onChange={(event) => setHarnessStr(event.target.value)}
+            disabled={disabled}
+            aria-label="Harness"
+          >
+            <option value="">
+              {installedHarnesses.length > 0 ? "(none)" : "(no installed harnesses discovered)"}
+            </option>
+            {installedHarnesses.map((harness) => (
+              <option key={harness.harness} value={harness.harness}>
+                {harness.label}
+              </option>
+            ))}
+            {harnessStr && !installedHarnesses.some((harness) => harness.harness === harnessStr) ? (
+              <option value={harnessStr}>{harnessStr} — not an installed harness</option>
+            ) : null}
+          </select>
+        ),
       },
       {
         key: "model",
@@ -344,23 +393,13 @@ export function AgentDetailContent({
         value: effortStr,
         onChange: setEffortStr,
         renderInput: ({ disabled }) => (
-          <select
-            className="frontmatter-editor__input"
+          <FrontmatterChoiceSelect
+            label="Effort"
             value={effortStr}
-            onChange={(event) => setEffortStr(event.target.value)}
+            options={EFFORT_VALUES}
+            onChange={setEffortStr}
             disabled={disabled}
-            aria-label="Effort"
-          >
-            <option value="">(none)</option>
-            {EFFORT_VALUES.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-            {effortStr && !(EFFORT_VALUES as readonly string[]).includes(effortStr) ? (
-              <option value={effortStr}>{effortStr} — not a valid effort</option>
-            ) : null}
-          </select>
+          />
         ),
       },
       {
@@ -392,7 +431,7 @@ export function AgentDetailContent({
         value: memoryStr,
         onChange: setMemoryStr,
         renderInput: ({ disabled }) => (
-          <FrontmatterSegmentedField
+          <FrontmatterChoiceSelect
             label="Memory"
             value={memoryStr}
             options={MEMORY_VALUES}
@@ -408,7 +447,7 @@ export function AgentDetailContent({
         value: isolationStr,
         onChange: setIsolationStr,
         renderInput: ({ disabled }) => (
-          <FrontmatterSegmentedField
+          <FrontmatterChoiceSelect
             label="Isolation"
             value={isolationStr}
             options={ISOLATION_VALUES}
@@ -424,7 +463,7 @@ export function AgentDetailContent({
         value: backgroundStr,
         onChange: setBackgroundStr,
         renderInput: ({ disabled }) => (
-          <FrontmatterSegmentedField
+          <FrontmatterChoiceSelect
             label="Background"
             value={backgroundStr}
             options={BACKGROUND_VALUES}
@@ -480,7 +519,15 @@ export function AgentDetailContent({
         label: "Spawning",
         value: spawningStr,
         onChange: setSpawningStr,
-        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Spawning" value={spawningStr} options={["true", "false"]} onChange={setSpawningStr} disabled={disabled} />,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Spawning"
+            value={spawningStr}
+            options={BACKGROUND_VALUES}
+            onChange={setSpawningStr}
+            disabled={disabled}
+          />
+        ),
       },
       {
         key: "trust-project",
@@ -488,7 +535,15 @@ export function AgentDetailContent({
         label: "Trust Project",
         value: trustProjectStr,
         onChange: setTrustProjectStr,
-        renderInput: ({ disabled }) => <FrontmatterSegmentedField label="Trust Project" value={trustProjectStr} options={["true", "false"]} onChange={setTrustProjectStr} disabled={disabled} />,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Trust Project"
+            value={trustProjectStr}
+            options={BACKGROUND_VALUES}
+            onChange={setTrustProjectStr}
+            disabled={disabled}
+          />
+        ),
       },
       {
         key: "deny-tools",
@@ -503,6 +558,7 @@ export function AgentDetailContent({
       description,
       roleStr,
       harnessStr,
+      installedHarnesses,
       colorStr,
       modelStr,
       effortStr,

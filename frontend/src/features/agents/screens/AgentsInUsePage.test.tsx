@@ -218,8 +218,9 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument());
       expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
       expect(screen.getByRole("heading", { name: "Document" })).toBeInTheDocument();
-      expect(screen.getByText("Cursor")).toBeInTheDocument();
-      expect(screen.getByText("Windsurf")).toBeInTheDocument();
+      const harnesses = within(screen.getByLabelText("Harness access for Test Agent Real Name"));
+      expect(harnesses.getByText("Cursor")).toBeInTheDocument();
+      expect(harnesses.getByText("Windsurf")).toBeInTheDocument();
 
       // Edit mode is the default, so all frontmatter keys and fields are visible.
       expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
@@ -239,7 +240,11 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
       
-      await waitFor(() => expect(screen.getByText("Windsurf")).toBeInTheDocument());
+      await waitFor(() =>
+        expect(
+          within(screen.getByLabelText("Harness access for Test Agent Real Name")).getByText("Windsurf"),
+        ).toBeInTheDocument(),
+      );
       // Windsurf is unsupported, so there should be a span (not button) with "Enable" and opacity 0.5
       // UiTooltip is rendered
       const windsurfEnable = screen.getByText((content, element) => {
@@ -265,7 +270,11 @@ describe("AgentsInUsePage", () => {
       await waitFor(() => expect(screen.getByText("Test Agent")).toBeInTheDocument());
       fireEvent.click(screen.getByText("Test Agent"));
       
-      await waitFor(() => expect(screen.getByText("Cursor")).toBeInTheDocument());
+      await waitFor(() =>
+        expect(
+          within(screen.getByLabelText("Harness access for Test Agent Real Name")).getByText("Cursor"),
+        ).toBeInTheDocument(),
+      );
       const buttons = screen.getAllByRole("button", { name: "Enable" });
       const cursorButton = buttons.find(b => b.className.includes("action-pill--accent"))!;
       fireEvent.click(cursorButton);
