@@ -16,6 +16,21 @@ from .parser import parse_agent_file, parse_hermes_extras, render_agent_document
 _SLUG_SAFE = re.compile(r"[^a-z0-9._-]+")
 
 
+def _unreadable_reason(error: Exception) -> str:
+    """Spell out the recovery for a store file we cannot read.
+
+    An unreadable file drops the agent from the inventory, which makes its bindings
+    look like they point at nothing. Nothing here deletes or rewrites it, so the
+    issue row has to say that -- otherwise the only visible fact is that the agent
+    disappeared.
+    """
+    return (
+        f"{error} -- the file is left exactly as it is and no binding to it was "
+        "removed; fix the frontmatter at that path, or delete the file to drop the "
+        "agent for good"
+    )
+
+
 def slugify(name: str) -> str:
     slug = _SLUG_SAFE.sub("-", name.strip().lower()).strip("-.")
     if not slug:
@@ -68,9 +83,9 @@ class AgentStore:
             try:
                 agents.append(self._load_agent(path))
             except AgentParseError as error:
-                issues.append(AgentIssue(name=path.stem, reason=str(error)))
+                issues.append(AgentIssue(name=path.stem, reason=_unreadable_reason(error)))
             except OSError as error:
-                issues.append(AgentIssue(name=path.stem, reason=str(error)))
+                issues.append(AgentIssue(name=path.stem, reason=_unreadable_reason(error)))
         return tuple(agents), tuple(issues)
 
     def get(self, slug: str) -> AgentDefinition | None:
@@ -197,41 +212,53 @@ class AgentStore:
             else:
                 next_hermes.pop("model", None)
 
-        atomic_write_text(
-            current.path,
-            render_agent_document(
-                name=name if name is not None else current.name,
-                description=description if description is not None else current.description,
-                prompt=prompt if prompt is not None else current.prompt,
-                tools=tools if tools is not None else current.tools,
-                skills=skills if skills is not None else current.skills,
-                # An omitted edit carries the current value forward; an explicit empty
-                # string clears the key (render drops it instead of writing null).
-                color=color if color is not None else current.color,
-                model=model if model is not None else current.model,
-                effort=effort if effort is not None else current.effort,
-                max_turns=max_turns if max_turns is not None else current.max_turns,
-                isolation=isolation if isolation is not None else current.isolation,
-                disallowed_tools=(
-                    disallowed_tools
-                    if disallowed_tools is not None
-                    else current.disallowed_tools
-                ),
-                background=background if background is not None else current.background,
-                role=role if role is not None else current.role,
-                harness=harness if harness is not None else current.harness,
-                memory=memory if memory is not None else current.memory,
-                mode=mode if mode is not None else current.mode,
-                spawning=spawning if spawning is not None else current.spawning,
-                trust_project=trust_project if trust_project is not None else current.trust_project,
-                deny_tools=deny_tools if deny_tools is not None else current.deny_tools,
-                base_metadata=current.metadata if metadata is None else None,
-                extra_metadata=metadata,
+        # Rendered before the write, so a value that cannot be expressed as YAML
+        # raises here and the file on disk is still the working one.
+        document = render_agent_document(
+            name=name if name is not None else current.name,
+            description=description if description is not None else current.description,
+            prompt=prompt if prompt is not None else current.prompt,
+            tools=tools if tools is not None else current.tools,
+            skills=skills if skills is not None else current.skills,
+            # An omitted edit carries the current value forward; an explicit empty
+            # string clears the key (render drops it instead of writing null).
+            color=color if color is not None else current.color,
+            model=model if model is not None else current.model,
+            effort=effort if effort is not None else current.effort,
+            max_turns=max_turns if max_turns is not None else current.max_turns,
+            isolation=isolation if isolation is not None else current.isolation,
+            disallowed_tools=(
+                disallowed_tools
+                if disallowed_tools is not None
+                else current.disallowed_tools
             ),
+            background=background if background is not None else current.background,
+            role=role if role is not None else current.role,
+            harness=harness if harness is not None else current.harness,
+            memory=memory if memory is not None else current.memory,
+            mode=mode if mode is not None else current.mode,
+            spawning=spawning if spawning is not None else current.spawning,
+            trust_project=trust_project if trust_project is not None else current.trust_project,
+            deny_tools=deny_tools if deny_tools is not None else current.deny_tools,
+            base_metadata=current.metadata if metadata is None else None,
+            extra_metadata=metadata,
         )
+        previous_document = current.path.read_text(encoding="utf-8")
+        atomic_write_text(current.path, document)
         self.write_hermes_extras(slug, next_hermes)
+        try:
+            updated = self._load_agent(current.path)
+        except AgentParseError:
+            # Belt and braces behind the render-time check: the store must never be
+            # left holding a file nothing can read. An unreadable agent drops out of
+            # the inventory and leaves its bindings pointing at a file the product
+            # will not show, so put the working copy back and report the failure.
+            atomic_write_text(current.path, previous_document)
+            self.write_hermes_extras(slug, dict(current.hermes_extras))
+            raise
+        # Only a save that produced a readable agent rebaselines the binding ledger.
         self._notify_write(slug)
-        return self._load_agent(current.path)
+        return updated
 
     def write_raw(self, slug: str, document: str) -> None:
         """Adopt path: keep the harness file's bytes verbatim rather than re-rendering."""

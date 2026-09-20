@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 from pathlib import Path
 from typing import Mapping
 
@@ -58,7 +59,12 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
     write are ``RETIRED_KEYS`` and attempts to smuggle standard contract fields through
     the custom metadata channel.
     """
-    metadata, prompt = split_frontmatter(document)
+    try:
+        metadata, prompt = split_frontmatter(document)
+    except AgentParseError as error:
+        # Name the file: this message is what the Needs Review row shows, and an
+        # agent whose frontmatter will not parse can only be fixed at its path.
+        raise AgentParseError(f"{path}: {error}") from error
     return AgentDefinition(
         slug=slug,
         name=_required_str(metadata, "name", slug),
@@ -245,7 +251,31 @@ def render_agent_document(
     for key in ordered:
         lines.extend(_render_entry(key, metadata[key]))
     lines.append("---")
-    return "\n".join(lines) + "\n\n" + prompt.strip() + "\n"
+    document = "\n".join(lines) + "\n\n" + prompt.strip() + "\n"
+    _verify_round_trip(document, ordered)
+    return document
+
+
+def _verify_round_trip(document: str, expected_keys: list[str]) -> None:
+    """Refuse to hand back frontmatter that will not parse.
+
+    Every writer renders first and writes second, so raising here turns a bad edit
+    into a message instead of replacing a working agent file with one nothing can
+    read. Without it a single unquotable value made the agent vanish from the list
+    and left its binding stranded under Needs Review.
+    """
+    try:
+        metadata, _ = split_frontmatter(document)
+    except AgentParseError as error:
+        raise AgentParseError(
+            f"refusing to write unparseable agent frontmatter: {error}"
+        ) from error
+    missing = [key for key in expected_keys if key not in metadata]
+    if missing:
+        raise AgentParseError(
+            "refusing to write agent frontmatter that does not round-trip; "
+            f"these keys did not survive: {', '.join(missing)}"
+        )
 
 
 def _is_unset_optional_collection(key: str, value: object) -> bool:
@@ -253,25 +283,83 @@ def _is_unset_optional_collection(key: str, value: object) -> bool:
     return key in _OPTIONAL_COLLECTION_KEYS and value in (None, "", [], {}, ())
 
 
+def _quoted(text: str) -> str:
+    """Emit ``text`` as a YAML double-quoted scalar.
+
+    JSON string syntax is a subset of YAML's double-quoted style and ``json.dumps``
+    already escapes everything that needs it, so it is the shortest correct emitter
+    for the values a plain scalar cannot carry.
+    """
+    return json.dumps(text, ensure_ascii=False)
+
+
+def _plain_scalar_survives(text: str, *, key: str | None) -> bool:
+    """Whether ``text`` can be written unquoted without changing what YAML reads back.
+
+    Contract fields are deliberately unquoted so ``maxTurns: 30`` and
+    ``background: true`` come back as the int and bool Claude Code expects. That is
+    only safe for text YAML resolves to itself. A description containing ``": "``
+    parses as a nested mapping ("mapping values are not allowed here") and a ``#``
+    silently truncates the value into a comment -- so rather than maintain a list of
+    dangerous characters, emit the candidate line and ask the parser.
+    """
+    if text != text.strip() or "\n" in text:
+        return False
+    probe = f"- {text}\n" if key is None else f"{key}: {text}\n"
+    try:
+        loaded = _yaml.load(probe)
+    except YAMLError:
+        return False
+    if key is None:
+        if not isinstance(loaded, list) or len(loaded) != 1:
+            return False
+        parsed = loaded[0]
+    else:
+        if not isinstance(loaded, dict) or len(loaded) != 1:
+            return False
+        parsed = next(iter(loaded.values()))
+    if isinstance(parsed, bool):
+        # ``str(True)`` is ``"True"``; only the YAML spellings survive unquoted.
+        return text in ("true", "false")
+    if parsed is None:
+        # Includes the empty string, which must be quoted or it reads back as null.
+        return False
+    return str(parsed) == text
+
+
+def _scalar(value: object, *, key: str | None) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    text = value if isinstance(value, str) else str(value)
+    return text if _plain_scalar_survives(text, key=key) else _quoted(text)
+
+
+def _render_key(key: str) -> str:
+    """Custom frontmatter keys come from the user too, so they get the same check."""
+    try:
+        loaded = _yaml.load(f"{key}: 0\n")
+    except YAMLError:
+        return _quoted(key)
+    if isinstance(loaded, dict) and list(loaded) == [key]:
+        return key
+    return _quoted(key)
+
+
 def _render_entry(key: str, value: object) -> list[str]:
+    rendered_key = _render_key(key)
     if isinstance(value, (list, tuple)):
         if not value:
-            return [f"{key}: []"]
-        return [f"{key}:"] + [f"  - {item}" for item in value]
+            return [f"{rendered_key}: []"]
+        return [f"{rendered_key}:"] + [f"  - {_scalar(item, key=None)}" for item in value]
     if isinstance(value, dict):
         stream = io.StringIO()
         _rt_yaml.dump({key: value}, stream)
         return stream.getvalue().rstrip("\n").splitlines()
     if value is None:
-        return [f"{key}:"]
-    if isinstance(value, str):
-        # Quote the empty string so it round-trips as "" rather than becoming null.
-        return [f'{key}: ""'] if value == "" else [f"{key}: {value}"]
-    if isinstance(value, bool):
-        return [f"{key}: {'true' if value else 'false'}"]
-    if isinstance(value, (int, float)):
-        return [f"{key}: {value}"]
-    return [f"{key}: {value}"]
+        return [f"{rendered_key}:"]
+    return [f"{rendered_key}: {_scalar(value, key=rendered_key)}"]
 
 
 def split_frontmatter(document: str) -> tuple[dict, str]:

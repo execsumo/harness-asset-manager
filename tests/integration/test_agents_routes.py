@@ -122,6 +122,76 @@ class AgentEffortContractTests(unittest.TestCase):
             self.assertNotIn("maximum", detail["document"])
 
 
+class AgentEditDurabilityTests(unittest.TestCase):
+    """A save must never be able to write an agent the product can no longer read."""
+
+    WAGS_DESCRIPTION = (
+        "Wags - the Chief of Staff. Use for any task big enough to need "
+        "coordinating: multi-file features, risky refactors, anything with an "
+        "unclear shape."
+    )
+
+    def test_editing_in_a_colon_keeps_the_agent_readable(self) -> None:
+        """The reported failure end to end: save, 500, agent gone from the list.
+
+        The description reopens the YAML mapping when written unquoted, so the
+        rendered file stopped parsing, the response was a bodyless 500, and the
+        agent dropped out of the inventory with only its binding left behind.
+        """
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Wags", "description": "coordinates", "prompt": "Be the chief."},
+            )
+            harness.post_json("/api/agents/wags/enable", {"harness": "claude"})
+
+            updated = harness.put_json(
+                "/api/agents/wags", {"description": self.WAGS_DESCRIPTION}
+            )
+
+            self.assertEqual(updated["description"], self.WAGS_DESCRIPTION)
+            listing = harness.get_json("/api/agents")
+            self.assertIn("wags", [entry["ref"] for entry in listing["entries"]])
+            self.assertEqual(listing["issues"], [])
+
+    def test_editing_an_unmanaged_agent_keeps_its_file_readable(self) -> None:
+        with AppTestHarness(fixture_factory=_seed_unmanaged_claude_agent) as harness:
+            updated = harness.put_json(
+                "/api/agents/claude/stray",
+                {"name": "Stray", "description": self.WAGS_DESCRIPTION},
+            )
+
+            self.assertEqual(updated["description"], self.WAGS_DESCRIPTION)
+            listing = harness.get_json("/api/agents")
+            self.assertEqual(listing["issues"], [])
+            entry = next(e for e in listing["entries"] if e["ref"] == "claude/stray")
+            self.assertEqual(entry["description"], self.WAGS_DESCRIPTION)
+
+    def test_an_unreadable_store_file_reports_its_path_and_survives(self) -> None:
+        """Recovery contract, through the API: report it, keep it, do not orphan it."""
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/agents",
+                {"name": "Wags", "description": "coordinates", "prompt": "Be the chief."},
+            )
+            harness.post_json("/api/agents/wags/enable", {"harness": "claude"})
+            store_path = Path(harness.get_json("/api/agents/wags")["storePath"])
+            binding = harness.spec.home / ".claude" / "agents" / "wags.md"
+            broken = "---\nname: wags\ndescription: needs coordinating: things\n---\n\nbody\n"
+            store_path.write_text(broken, encoding="utf-8")
+
+            listing = harness.get_json("/api/agents")
+
+            self.assertNotIn("wags", [entry["ref"] for entry in listing["entries"]])
+            reasons = [issue["reason"] for issue in listing["issues"] if issue["name"] == "wags"]
+            self.assertEqual(len(reasons), 1)
+            self.assertIn(str(store_path), reasons[0])
+            self.assertIn("invalid YAML frontmatter", reasons[0])
+            self.assertIn("left exactly as it is", reasons[0])
+            self.assertEqual(store_path.read_text(encoding="utf-8"), broken)
+            self.assertTrue(binding.is_symlink())
+
+
 class AgentsListIsReadOnlyTests(unittest.TestCase):
     """Listing agents resolves skill display names, and that must not write.
 
