@@ -94,7 +94,7 @@ describe("useMcpManagementController handleMultiSelectTag", () => {
     hoisted.setTagsMutate.mockResolvedValue({});
   });
 
-  it("merges tags into selected managed servers and clears selection", async () => {
+  it("merges tags and keeps the selection", async () => {
     const { result } = renderHook(() => useMcpManagementController());
 
     act(() => {
@@ -119,7 +119,7 @@ describe("useMcpManagementController handleMultiSelectTag", () => {
       tags: ["starred", "database", "analytics"],
     });
 
-    expect(result.current.multiSelectedNames.size).toBe(0);
+    expect(result.current.multiSelectedNames.size).toBe(2);
     expect(result.current.actionErrorMessage).toBe("");
   });
 
@@ -135,7 +135,7 @@ describe("useMcpManagementController handleMultiSelectTag", () => {
     });
 
     expect(hoisted.setTagsMutate).not.toHaveBeenCalled();
-    expect(result.current.multiSelectedNames.size).toBe(0);
+    expect(result.current.multiSelectedNames.size).toBe(1);
   });
 
   it("handles per-server failures and sets error message", async () => {
@@ -161,7 +161,7 @@ describe("useMcpManagementController handleMultiSelectTag", () => {
     });
 
     expect(result.current.actionErrorMessage).toContain("server-a");
-    expect(result.current.multiSelectedNames.size).toBe(0);
+    expect(result.current.multiSelectedNames.size).toBe(2);
   });
 });
 
@@ -193,7 +193,7 @@ describe("useMcpManagementController handleMultiSelectStar", () => {
 
     // server-b already had "starred", so should not have a second mutate call for it
     expect(hoisted.setTagsMutate).toHaveBeenCalledTimes(1);
-    expect(result.current.multiSelectedNames.size).toBe(0);
+    expect(result.current.multiSelectedNames.size).toBe(2);
   });
 
   it("reports failures and preserves the selection for retry", async () => {

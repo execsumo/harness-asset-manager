@@ -295,14 +295,13 @@ export default function HooksInUsePage() {
       setPendingSelectedAction(disable ? "disable-all" : "enable-all");
       try {
         await Promise.all(ids.map((id) => handleToggleHarness(id, harness, disable, true)));
-        clearSelected();
       } catch {
         // The controller has already surfaced the mutation failure.
       } finally {
         setPendingSelectedAction(null);
       }
     },
-    [clearSelected, copy, entries, handleToggleHarness, inventory?.columns, selectedIds],
+    [copy, entries, handleToggleHarness, inventory?.columns, selectedIds],
   );
 
   return (

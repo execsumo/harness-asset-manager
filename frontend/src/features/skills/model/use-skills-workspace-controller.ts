@@ -308,7 +308,6 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     setActionErrorMessage("");
     try {
       await task(rows);
-      setMultiSelectedRefs(new Set());
     } catch (error) {
       setActionErrorMessage(error instanceof Error ? error.message : "Unable to complete the bulk action.");
     } finally {
@@ -511,7 +510,6 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
           }
         }
       }
-      setMultiSelectedRefs(new Set());
     } finally {
       setMultiSelectPending(null);
     }
@@ -544,7 +542,6 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
         if (failedRefs.length > 0) {
           setActionErrorMessage(`Failed to add tags for: ${failedRefs.join(", ")}`);
         }
-        setMultiSelectedRefs(new Set());
       } finally {
         setMultiSelectPending(null);
       }
@@ -593,7 +590,6 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
         toast(`Agents updated for ${attachAgentsState.skillRefs.length} skills.`);
       }
       setAttachAgentsState(null);
-      setMultiSelectedRefs(new Set());
     } catch (err) {
       setActionErrorMessage(err instanceof Error ? err.message : "Unable to update agents.");
     } finally {

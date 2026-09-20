@@ -178,6 +178,25 @@ describe("useSkillsWorkspaceController > onSetSkillAllHarnesses", () => {
   });
 });
 
+describe("useSkillsWorkspaceController > bulk selection", () => {
+  it("keeps selected skills after a harness bulk action", async () => {
+    const { result } = renderHook(() => useSkillsWorkspaceController(), { wrapper });
+
+    act(() => {
+      result.current.context.onToggleMultiSelect("shared:test-skill");
+      result.current.context.onToggleMultiSelect("shared:other-skill");
+    });
+
+    await act(async () => {
+      await result.current.context.onMultiSelectEnableAll();
+    });
+
+    expect(result.current.context.multiSelectedRefs).toEqual(
+      new Set(["shared:test-skill", "shared:other-skill"]),
+    );
+  });
+});
+
 describe("useSkillsWorkspaceController > onMultiSelectTag", () => {
   beforeEach(() => {
     hoisted.setTagsCalls.length = 0;
@@ -213,8 +232,8 @@ describe("useSkillsWorkspaceController > onMultiSelectTag", () => {
       },
     ]);
 
-    // Multi-selection should be cleared
-    expect(result.current.context.multiSelectedRefs.size).toBe(0);
+    // Bulk actions keep the selection so another action can be applied immediately.
+    expect(result.current.context.multiSelectedRefs.size).toBe(2);
     expect(result.current.actionErrorMessage).toBe("");
   });
 
@@ -231,7 +250,7 @@ describe("useSkillsWorkspaceController > onMultiSelectTag", () => {
     });
 
     expect(hoisted.setTagsCalls).toHaveLength(0);
-    expect(result.current.context.multiSelectedRefs.size).toBe(0);
+    expect(result.current.context.multiSelectedRefs.size).toBe(1);
   });
 
   it("continues on per-ref failure and surfaces error summary listing failed refs", async () => {
@@ -257,6 +276,6 @@ describe("useSkillsWorkspaceController > onMultiSelectTag", () => {
     ]);
 
     expect(result.current.actionErrorMessage).toContain("shared:test-skill");
-    expect(result.current.context.multiSelectedRefs.size).toBe(0);
+    expect(result.current.context.multiSelectedRefs.size).toBe(2);
   });
 });

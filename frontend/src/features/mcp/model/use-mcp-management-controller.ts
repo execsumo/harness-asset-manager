@@ -264,8 +264,6 @@ export function useMcpManagementController() {
             })
             .join("; ");
           setActionErrorMessage(detail);
-        } else {
-          setMultiSelectedNames(new Set());
         }
       } finally {
         setMultiSelectPending(null);
@@ -319,7 +317,6 @@ export function useMcpManagementController() {
         if (failedNames.length > 0) {
           setActionErrorMessage(`Failed to add tags for: ${failedNames.join(", ")}`);
         }
-        setMultiSelectedNames(new Set());
       } finally {
         setMultiSelectPending(null);
       }

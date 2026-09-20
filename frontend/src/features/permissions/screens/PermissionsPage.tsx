@@ -220,8 +220,6 @@ export default function PermissionsPage() {
             })
             .join("; ");
           setBulkErrorMessage(detail);
-        } else {
-          setCheckedIds(new Set());
         }
       } finally {
         setBulkPending(null);
@@ -288,7 +286,6 @@ export default function PermissionsPage() {
         if (failedIds.length > 0) {
           setBulkErrorMessage(`Failed to add tags for: ${failedIds.join(", ")}`);
         }
-        setCheckedIds(new Set());
       } finally {
         setBulkPending(null);
       }

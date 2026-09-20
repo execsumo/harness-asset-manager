@@ -365,14 +365,13 @@ export default function AgentsInUsePage() {
       setPendingSelectedAction(disable ? "disable-all" : "enable-all");
       try {
         await Promise.all(refs.map((ref) => handleToggleHarness(ref, harness, disable, true)));
-        clearSelected();
       } catch {
         // The controller has already surfaced the mutation failure.
       } finally {
         setPendingSelectedAction(null);
       }
     },
-    [clearSelected, entries, handleToggleHarness, inventory?.columns, selectedRefs],
+    [entries, handleToggleHarness, inventory?.columns, selectedRefs],
   );
 
   return (

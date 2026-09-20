@@ -184,19 +184,19 @@ export default function SlashCommandsPage() {
   );
   const selectedManagedCount = selectedManagedEntries.length;
   const handleBulkEnableAll = useCallback(async (): Promise<void> => {
-    if (await controller.handleBulkEnableAll(selectedManagedNames)) setSelectedRefs(new Set());
+    await controller.handleBulkEnableAll(selectedManagedNames);
   }, [controller, selectedManagedNames]);
   const handleBulkDisableAll = useCallback(async (): Promise<void> => {
-    if (await controller.handleBulkDisableAll(selectedManagedNames)) setSelectedRefs(new Set());
+    await controller.handleBulkDisableAll(selectedManagedNames);
   }, [controller, selectedManagedNames]);
   const handleBulkEnableHarness = useCallback(async (harness: SlashTargetId): Promise<void> => {
-    if (await controller.handleBulkEnableHarness(harness, selectedManagedNames)) setSelectedRefs(new Set());
+    await controller.handleBulkEnableHarness(harness, selectedManagedNames);
   }, [controller, selectedManagedNames]);
   const handleBulkDisableHarness = useCallback(async (harness: SlashTargetId): Promise<void> => {
-    if (await controller.handleBulkDisableHarness(harness, selectedManagedNames)) setSelectedRefs(new Set());
+    await controller.handleBulkDisableHarness(harness, selectedManagedNames);
   }, [controller, selectedManagedNames]);
   const handleBulkDelete = useCallback(async (): Promise<void> => {
-    if (await controller.handleBulkDelete(selectedManagedNames)) setSelectedRefs(new Set());
+    await controller.handleBulkDelete(selectedManagedNames);
   }, [controller, selectedManagedNames]);
   const bulkHarnessOptions = controller.data?.targets
     .filter((target) => target.enabled)
