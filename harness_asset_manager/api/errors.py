@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from harness_asset_manager.api.guards import is_loopback_client, is_loopback_host
 from harness_asset_manager.application.agents.model import AgentParseError
 from harness_asset_manager.errors import MarketplaceUpstreamError, MutationError
 
@@ -98,19 +99,41 @@ def install_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def handle_unexpected_error(_request: Request, exc: Exception) -> JSONResponse:
+    async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
         """Last resort: a 500 still has to say something the user can act on.
 
         Without this the server returns Starlette's bodyless "Internal Server Error"
         and the banner can only render the status line. This is a local-first tool
         operating on the user's own files, so the exception text -- paths included --
-        is exactly what makes the failure diagnosable.
+        is exactly what makes the failure diagnosable at the machine it happened on.
+
+        An unhandled exception is by definition one nobody vetted the wording of, so
+        that text only goes to a caller sitting at this machine. A tailnet peer gets
+        the status and a pointer to the log, which has the full text either way.
         """
-        _log.exception("unhandled error serving %s", _request.url.path)
+        _log.exception("unhandled error serving %s", request.url.path)
         return JSONResponse(
             status_code=500,
             content=_error_payload(
-                message=f"{type(exc).__name__}: {exc}",
+                message=(
+                    f"{type(exc).__name__}: {exc}"
+                    if _is_local_client(request)
+                    else "Internal server error. The details are in the "
+                    "harness-asset-manager server log on the host."
+                ),
                 status=500,
             ),
         )
+
+
+def _is_local_client(request: Request) -> bool:
+    """The same "genuine local client" test :class:`ApiTokenGuard` applies.
+
+    ``tailscale serve`` proxies to 127.0.0.1, so a loopback peer on its own does not
+    mean the user is at this machine -- the forwarded ``Host`` is what separates the
+    two. Deriving both answers the same way keeps the body a remote caller sees from
+    depending on which layer decided they were remote.
+    """
+    return is_loopback_client(request.client) and is_loopback_host(
+        request.headers.get("host", "")
+    )

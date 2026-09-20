@@ -6,6 +6,8 @@ import unittest
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
+from fastapi.routing import APIRoute
+
 from harness_asset_manager.cli.main import main
 from harness_asset_manager.paths import resolve_app_paths
 from harness_asset_manager.runtime.token import resolve_api_token, rotate_api_token
@@ -463,3 +465,98 @@ class ApiTokenPressureTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+async def asgi_request_expecting_server_error(app, method: str, path: str, **kwargs):
+    """Capture a 500 response body despite Starlette re-raising after it.
+
+    Starlette deliberately re-raises once an ``Exception`` handler has responded, so
+    the server still logs it. Swallowing that here is what lets the test read the body
+    a caller would actually receive.
+    """
+
+    async def swallow(scope, receive, send):
+        try:
+            await app(scope, receive, send)
+        except RuntimeError:
+            pass
+
+    return await asgi_request(swallow, method, path, **kwargs)
+
+
+class UnhandledErrorDetailTests(unittest.IsolatedAsyncioTestCase):
+    """An unhandled exception's text is diagnostic locally and noise-with-paths remotely."""
+
+    SECRET_PATH = "/home/someone/.claude/agents/private-client-work.md"
+
+    def _app_that_explodes(self, harness):
+        """Install a route that raises, ahead of the SPA catch-all that serves the UI."""
+        app = harness.server.server.config.app
+        secret_path = self.SECRET_PATH
+
+        async def _explode() -> None:
+            raise RuntimeError(f"{secret_path} could not be parsed")
+
+        app.router.routes.insert(
+            0, APIRoute("/api/zz-explode-for-test", _explode, methods=["GET"])
+        )
+        return app
+
+    async def test_a_local_caller_gets_the_exception_text(self) -> None:
+        with AppTestHarness() as harness:
+            app = self._app_that_explodes(harness)
+
+            status, _, body = await asgi_request_expecting_server_error(
+                app,
+                "GET",
+                "/api/zz-explode-for-test",
+                headers={"Host": "127.0.0.1"},
+            )
+
+            self.assertEqual(status, 500)
+            payload = json.loads(body)
+            self.assertEqual(payload["code"], "internal_error")
+            self.assertIn(self.SECRET_PATH, payload["error"])
+            self.assertIn("RuntimeError", payload["error"])
+
+    async def test_a_tailnet_caller_gets_the_status_and_a_pointer_to_the_log(self) -> None:
+        """``tailscale serve`` proxies from loopback, so the Host is what marks it remote."""
+        with AppTestHarness(trusted_hosts=("my-mac.tailnet.ts.net",)) as harness:
+            app = self._app_that_explodes(harness)
+
+            status, _, body = await asgi_request_expecting_server_error(
+                app,
+                "GET",
+                "/api/zz-explode-for-test",
+                headers={
+                    "Host": "my-mac.tailnet.ts.net",
+                    "Tailscale-User-Login": "alice@example.com",
+                },
+                client=("100.64.0.5", 54321),
+            )
+
+            self.assertEqual(status, 500)
+            payload = json.loads(body)
+            self.assertEqual(payload["code"], "internal_error")
+            self.assertNotIn(self.SECRET_PATH, payload["error"])
+            self.assertNotIn("RuntimeError", payload["error"])
+            self.assertIn("server log", payload["error"])
+
+    async def test_a_proxied_caller_from_loopback_is_still_treated_as_remote(self) -> None:
+        """The peer alone is not evidence: Serve forwards from 127.0.0.1 too."""
+        with AppTestHarness(trusted_hosts=("my-mac.tailnet.ts.net",)) as harness:
+            app = self._app_that_explodes(harness)
+
+            status, _, body = await asgi_request_expecting_server_error(
+                app,
+                "GET",
+                "/api/zz-explode-for-test",
+                headers={
+                    "Host": "my-mac.tailnet.ts.net",
+                    "Tailscale-User-Login": "alice@example.com",
+                },
+                client=("127.0.0.1", 54321),
+            )
+
+            self.assertEqual(status, 500)
+            self.assertNotIn(self.SECRET_PATH, json.loads(body)["error"])
