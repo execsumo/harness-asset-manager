@@ -351,9 +351,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
                     continue
                 if target.name != package_dir:
                     continue
-                if self._canonical_store_root is not None and not _link_target_is_under(
-                    candidate, self._canonical_store_root
-                ):
+                if not _link_target_is_under(candidate, self._canonical_store_root):
                     continue
                 return candidate
         return default
