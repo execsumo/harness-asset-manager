@@ -174,7 +174,9 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByLabelText("Effort"), {
       target: { value: "high" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "project" }));
+    fireEvent.change(screen.getByLabelText("Memory"), {
+      target: { value: "project" },
+    });
 
     // Submit the form
     const submitBtn = screen.getByRole("button", { name: "Create Agent" });
@@ -269,6 +271,25 @@ describe("CreateAgentDialog", () => {
         hermesModel: "test/model",
       }),
     );
+  });
+
+  it("renders every fixed-vocabulary field as the same dropdown the detail sheet uses", () => {
+    // These five used to be split between hand-rolled <select>s (Color, Effort) and a
+    // segmented button group (Isolation, Background, Memory), so the same frontmatter
+    // key looked different depending on whether you were creating or editing an agent.
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+
+    for (const label of ["Color", "Effort", "Isolation", "Background", "Memory"]) {
+      expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
+    }
+
+    const memory = screen.getByRole("combobox", { name: "Memory" }) as HTMLSelectElement;
+    expect(Array.from(memory.options).map((option) => option.value)).toEqual([
+      "",
+      "user",
+      "project",
+      "local",
+    ]);
   });
 
   it("surfaces a partial harness failure in the response rather than swallowing it", async () => {

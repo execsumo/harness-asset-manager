@@ -9,7 +9,7 @@ import { useSkillsListQuery } from "../../skills/public";
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { DetailBindingIdentity } from "../../../components/detail/DetailBindingIdentity";
-import { FrontmatterSegmentedField } from "../../../components/detail/editing/FrontmatterSegmentedField";
+import { FrontmatterChoiceSelect } from "../../../components/detail/editing/FrontmatterChoiceSelect";
 import {
   AgentSkillsFieldEditor,
   deriveSkillTagOptions,
@@ -318,19 +318,14 @@ export function CreateAgentDialog({
 
                     <label className="form-field agent-frontmatter-grid__color">
                       <span className="form-field__label">Color</span>
-                      <select
-                        className="form-field__input"
+                      <FrontmatterChoiceSelect
+                        label="Color"
                         value={color}
-                        onChange={(e) => setColor(e.target.value)}
+                        options={COLOR_VALUES}
+                        onChange={setColor}
                         disabled={isPending}
-                      >
-                        <option value="">(none)</option>
-                        {COLOR_VALUES.map((val) => (
-                          <option key={val} value={val}>
-                            {val}
-                          </option>
-                        ))}
-                      </select>
+                        className="form-field__input"
+                      />
                     </label>
 
                     <label className="form-field agent-frontmatter-grid__description">
@@ -375,19 +370,14 @@ export function CreateAgentDialog({
 
                     <label className="form-field agent-frontmatter-grid__effort">
                       <span className="form-field__label">Effort</span>
-                      <select
-                        className="form-field__input"
+                      <FrontmatterChoiceSelect
+                        label="Effort"
                         value={effort}
-                        onChange={(e) => setEffort(e.target.value)}
+                        options={EFFORT_VALUES}
+                        onChange={setEffort}
                         disabled={isPending}
-                      >
-                        <option value="">(none)</option>
-                        {EFFORT_VALUES.map((val) => (
-                          <option key={val} value={val}>
-                            {val}
-                          </option>
-                        ))}
-                      </select>
+                        className="form-field__input"
+                      />
                     </label>
 
                   </div>
@@ -440,38 +430,41 @@ export function CreateAgentDialog({
                       />
                     </div>
 
-                    <div className="form-field agent-frontmatter-grid__isolation">
+                    <label className="form-field agent-frontmatter-grid__isolation">
                       <span className="form-field__label">Isolation</span>
-                      <FrontmatterSegmentedField
+                      <FrontmatterChoiceSelect
                         label="Isolation"
                         value={isolation}
                         options={ISOLATION_VALUES}
                         onChange={setIsolation}
                         disabled={isPending}
+                        className="form-field__input"
                       />
-                    </div>
+                    </label>
 
-                    <div className="form-field agent-frontmatter-grid__background">
+                    <label className="form-field agent-frontmatter-grid__background">
                       <span className="form-field__label">Background</span>
-                      <FrontmatterSegmentedField
+                      <FrontmatterChoiceSelect
                         label="Background"
                         value={background}
                         options={BACKGROUND_VALUES}
                         onChange={setBackground}
                         disabled={isPending}
+                        className="form-field__input"
                       />
-                    </div>
+                    </label>
 
-                    <div className="form-field agent-frontmatter-grid__memory">
+                    <label className="form-field agent-frontmatter-grid__memory">
                       <span className="form-field__label">Memory</span>
-                      <FrontmatterSegmentedField
+                      <FrontmatterChoiceSelect
                         label="Memory"
                         value={memory}
                         options={MEMORY_VALUES}
                         onChange={setMemory}
                         disabled={isPending}
+                        className="form-field__input"
                       />
-                    </div>
+                    </label>
                   </div>
 
                   <div className="dialog-form-fields dialog-form-fields--split">
