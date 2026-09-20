@@ -185,7 +185,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
 
     def enable_shared_package(self, package_path: Path, *, scope: str | None = None) -> None:
         resolved_target = package_path.resolve()
-        link = self._binding_path(package_path.name, scope=scope)
+        link = self._binding_path(package_path.name, scope=scope, include_discovery=False)
         if link.is_symlink():
             self._self_heal_or_raise(link, resolved_target, package_path.name, "enable_shared_package")
             return
@@ -195,7 +195,7 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         link.symlink_to(resolved_target)
 
     def disable_shared_package(self, package_dir: str, *, scope: str | None = None) -> None:
-        link = self._binding_path(package_dir, scope=scope)
+        link = self._binding_path(package_dir, scope=scope, include_discovery=True)
         if not link.exists() and not link.is_symlink():
             return
         if not link.is_symlink():
@@ -238,8 +238,14 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
                 backup.rename(existing_dir)
             raise MutationError(f"unable to finish adoption of {existing_dir}: {error}") from error
 
-    def has_binding(self, package_dir: str, *, scope: str | None = None) -> bool:
-        candidate = self._binding_path(package_dir, scope=scope)
+    def has_binding(
+        self,
+        package_dir: str,
+        *,
+        scope: str | None = None,
+        include_discovery: bool = True,
+    ) -> bool:
+        candidate = self._binding_path(package_dir, scope=scope, include_discovery=include_discovery)
         return candidate.exists() or candidate.is_symlink()
 
     def prepare_materialize(
@@ -303,19 +309,52 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         elif path.is_dir():
             shutil.rmtree(path)
 
-    def _binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
+    def _binding_path(
+        self,
+        package_dir: str,
+        *,
+        scope: str | None = None,
+        include_discovery: bool = True,
+    ) -> Path:
         default = self._default_binding_path(package_dir, scope=scope)
         if default.exists() or default.is_symlink():
             return default
         if scope is not None:
             return default
-        if self._layout != "categorized" or not self.managed_root.is_dir():
-            return default
-        for category_dir in sorted(self.managed_root.iterdir(), key=lambda path: path.name):
-            if not category_dir.is_dir() or category_dir.name.startswith("."):
+        roots = (self.managed_root,)
+        if include_discovery:
+            roots += tuple(
+                root.path
+                for root in self._discovery_roots
+                if root.scope != "canonical" and root.binding_scope is None
+            )
+        for root in roots:
+            if not root.is_dir():
                 continue
-            candidate = category_dir / package_dir
-            if candidate.is_symlink():
+            if self._layout == "categorized":
+                for category_dir in sorted(root.iterdir(), key=lambda path: path.name):
+                    if not category_dir.is_dir() or category_dir.name.startswith("."):
+                        continue
+                    candidate = category_dir / package_dir
+                    if candidate.is_symlink():
+                        return candidate
+                continue
+            candidate = root / package_dir
+            if candidate.exists() or candidate.is_symlink():
+                return candidate
+            for candidate in root.iterdir():
+                if not candidate.is_symlink() or candidate.name == package_dir:
+                    continue
+                try:
+                    target = candidate.resolve(strict=False)
+                except OSError:
+                    continue
+                if target.name != package_dir:
+                    continue
+                if self._canonical_store_root is not None and not _link_target_is_under(
+                    candidate, self._canonical_store_root
+                ):
+                    continue
                 return candidate
         return default
 

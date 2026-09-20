@@ -268,6 +268,19 @@ def seed_managed_linked_fixture(spec: FakeHomeSpec) -> None:
     codex_link.symlink_to(target)
 
 
+def seed_discovery_bound_fixture(spec: FakeHomeSpec) -> None:
+    seed_shared_only_fixture(spec)
+    target = spec.skills_store_root / "shared-audit"
+    discovery_root = spec.home / ".gemini" / "skills"
+    discovery_root.mkdir(parents=True, exist_ok=True)
+    (discovery_root / "shared-audit").symlink_to(target)
+
+
+def seed_alias_bound_fixture(spec: FakeHomeSpec) -> None:
+    seed_shared_only_fixture(spec)
+    (spec.agy_root / "agtx-shared-audit").symlink_to(spec.skills_store_root / "shared-audit")
+
+
 def _package_revision(path: Path) -> str:
     revision, _ = fingerprint_package(path)
     return revision

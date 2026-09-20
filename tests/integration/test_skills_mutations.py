@@ -10,6 +10,8 @@ from harness_asset_manager.application.skills.package import fingerprint_package
 from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
 from tests.support.fake_home import (
+    seed_alias_bound_fixture,
+    seed_discovery_bound_fixture,
     seed_shared_only_fixture,
     seed_skill_package,
     seed_store_manifest,
@@ -376,6 +378,48 @@ class SkillsMutationTests(unittest.TestCase):
 
             self.assertTrue(result["ok"])
             self.assertFalse((harness.spec.codex_root / "shared-audit").exists())
+
+    def test_per_harness_toggle_removes_discovery_root_binding(self) -> None:
+        with AppTestHarness(fixture_factory=seed_discovery_bound_fixture) as harness:
+            skills = harness.get_json("/api/skills")
+            shared_entry = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
+            discovery_link = harness.spec.home / ".gemini" / "skills" / "shared-audit"
+
+            disabled = harness.post_json(
+                f"/api/skills/{shared_entry['skillRef']}/disable",
+                {"harness": "agy"},
+            )
+
+            self.assertTrue(disabled["ok"])
+            self.assertFalse(discovery_link.exists())
+
+            enabled = harness.post_json(
+                f"/api/skills/{shared_entry['skillRef']}/enable",
+                {"harness": "agy"},
+            )
+            self.assertTrue(enabled["ok"])
+            self.assertTrue((harness.spec.agy_root / "shared-audit").is_symlink())
+
+            disabled_again = harness.post_json(
+                f"/api/skills/{shared_entry['skillRef']}/disable",
+                {"harness": "agy"},
+            )
+            self.assertTrue(disabled_again["ok"])
+            self.assertFalse((harness.spec.agy_root / "shared-audit").exists())
+
+    def test_toggle_handles_binding_name_different_from_package_dir(self) -> None:
+        with AppTestHarness(fixture_factory=seed_alias_bound_fixture) as harness:
+            skills = harness.get_json("/api/skills")
+            shared_entry = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
+            alias = harness.spec.agy_root / "agtx-shared-audit"
+
+            disabled = harness.post_json(
+                f"/api/skills/{shared_entry['skillRef']}/disable",
+                {"harness": "agy"},
+            )
+
+            self.assertTrue(disabled["ok"])
+            self.assertFalse(alias.exists())
 
     def test_set_skill_harnesses_enables_every_live_harness(self) -> None:
         with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:

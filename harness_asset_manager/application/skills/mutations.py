@@ -124,7 +124,10 @@ class SkillsMutationService:
         # interactable. Enabling on an unavailable harness would write a
         # symlink into a folder no runtime reads, which is misleading.
         for adapter in self.read_models.enabled_installed_adapters():
-            has_binding = adapter.has_binding(entry.package_dir)
+            has_binding = adapter.has_binding(
+                entry.package_dir,
+                include_discovery=target == "disabled",
+            )
             if target == "enabled" and has_binding:
                 continue
             if target == "disabled" and not has_binding:
@@ -491,7 +494,7 @@ class SkillsMutationService:
         # inventory: a harness disabled in Settings is deliberately omitted from
         # scans, but its existing link still has to block a destructive operation.
         for adapter in self.read_models.all_adapters():
-            if not adapter.has_binding(entry.package_dir or ""):
+            if not adapter.has_binding(entry.package_dir or "", include_discovery=False):
                 continue
             target = BindingTarget(adapter.harness)
             seen.add((target.harness, target.scope))
@@ -509,7 +512,7 @@ class SkillsMutationService:
                 continue
             adapter = self.read_models.find_adapter(str(target))
             if adapter is None or not adapter.has_binding(
-                entry.package_dir or "", scope=target.scope
+                entry.package_dir or "", scope=target.scope, include_discovery=False
             ):
                 continue
             seen.add(key)
