@@ -852,3 +852,103 @@ class StaleTargetHealingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AliasedBindingResolutionTests(unittest.TestCase):
+    """A binding link is not required to carry the package's own name.
+
+    agtx binds ``shared-audit`` as ``agtx-shared-audit``, and the per-harness toggle
+    has to find that link. Resolving it is also what authorises unlinking it, so each
+    of these pins a limit on how far that search is allowed to reach.
+    """
+
+    def _seed(self, temp_dir: str):
+        spec = create_fake_home_spec(Path(temp_dir))
+        package = seed_skill_package(spec.skills_store_root, "shared-audit", "Shared Audit")
+        return spec, package
+
+    def test_alias_is_not_followed_without_a_canonical_store_root(self) -> None:
+        """Without a data dir there is no way to tell our link from the user's.
+
+        ``_is_harness_asset_manager_hermes_binding`` is deliberately permissive in the
+        same situation, but it only classifies a binding. This answer reaches
+        ``disable_shared_package``, which unlinks whatever it is handed, so guessing
+        here would delete a link on the strength of its target's basename alone.
+        """
+        with TemporaryDirectory() as temp_dir:
+            spec, package = self._seed(temp_dir)
+            spec.agy_root.mkdir(parents=True, exist_ok=True)
+            alias = spec.agy_root / "agtx-shared-audit"
+            alias.symlink_to(package)
+
+            adapter = _adapter("agy", spec)
+
+            self.assertFalse(adapter.has_binding("shared-audit"))
+            adapter.disable_shared_package("shared-audit")
+            self.assertTrue(alias.is_symlink())
+
+    def test_alias_outside_the_canonical_store_is_left_alone(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec, _package = self._seed(temp_dir)
+            elsewhere = seed_skill_package(Path(temp_dir) / "elsewhere", "shared-audit", "Impostor")
+            spec.agy_root.mkdir(parents=True, exist_ok=True)
+            alias = spec.agy_root / "agtx-shared-audit"
+            alias.symlink_to(elsewhere)
+
+            adapter = _adapter("agy", spec, data_dir=spec.xdg_data_home / APP_NAME)
+
+            self.assertFalse(adapter.has_binding("shared-audit"))
+            self.assertTrue(alias.is_symlink())
+
+    def test_the_alias_that_wins_is_decided_by_name_not_directory_order(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec, package = self._seed(temp_dir)
+            spec.agy_root.mkdir(parents=True, exist_ok=True)
+            # Created in reverse, so a scan that trusted directory order would answer
+            # with the second one.
+            (spec.agy_root / "zz-shared-audit").symlink_to(package)
+            (spec.agy_root / "aa-shared-audit").symlink_to(package)
+
+            adapter = _adapter("agy", spec, data_dir=spec.xdg_data_home / APP_NAME)
+            adapter.disable_shared_package("shared-audit")
+
+            self.assertFalse((spec.agy_root / "aa-shared-audit").is_symlink())
+            self.assertTrue((spec.agy_root / "zz-shared-audit").is_symlink())
+
+    def test_a_categorized_harness_resolves_an_alias_too(self) -> None:
+        """Hermes is the only categorized layout, and it was skipped entirely.
+
+        The categorized branch returned to the next root before the alias search ran,
+        so an aliased Hermes link could not be toggled off.
+        """
+        with TemporaryDirectory() as temp_dir:
+            spec, package = self._seed(temp_dir)
+            category = spec.hermes_skills_root / "harnessam"
+            category.mkdir(parents=True, exist_ok=True)
+            alias = category / "agtx-shared-audit"
+            alias.symlink_to(package)
+
+            adapter = _adapter("hermes", spec, data_dir=spec.xdg_data_home / APP_NAME)
+
+            self.assertTrue(adapter.has_binding("shared-audit"))
+            adapter.disable_shared_package("shared-audit")
+            self.assertFalse(alias.is_symlink())
+
+    def test_a_real_directory_in_another_category_is_not_claimed_by_the_scan(self) -> None:
+        """Searching the other categories only ever answers with a link.
+
+        The default category is matched before this scan runs and keeps its own
+        behaviour. Everywhere else a real directory is the user's own copy, so the
+        scan walks past it rather than handing it to ``disable_shared_package``.
+        """
+        with TemporaryDirectory() as temp_dir:
+            spec, _package = self._seed(temp_dir)
+            local_copy = seed_skill_package(
+                spec.hermes_skills_root / "user-authored", "shared-audit", "Local Copy"
+            )
+
+            adapter = _adapter("hermes", spec, data_dir=spec.xdg_data_home / APP_NAME)
+
+            self.assertFalse(adapter.has_binding("shared-audit"))
+            adapter.disable_shared_package("shared-audit")
+            self.assertTrue((local_copy / "SKILL.md").is_file())

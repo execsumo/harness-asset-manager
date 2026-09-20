@@ -331,32 +331,79 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         for root in roots:
             if not root.is_dir():
                 continue
-            if self._layout == "categorized":
-                for category_dir in sorted(root.iterdir(), key=lambda path: path.name):
-                    if not category_dir.is_dir() or category_dir.name.startswith("."):
-                        continue
-                    candidate = category_dir / package_dir
-                    if candidate.is_symlink():
-                        return candidate
-                continue
-            candidate = root / package_dir
-            if candidate.exists() or candidate.is_symlink():
-                return candidate
-            for candidate in root.iterdir():
-                if not candidate.is_symlink() or candidate.name == package_dir:
-                    continue
-                try:
-                    target = candidate.resolve(strict=False)
-                except OSError:
-                    continue
-                if target.name != package_dir:
-                    continue
-                if self._canonical_store_root is not None and not _link_target_is_under(
-                    candidate, self._canonical_store_root
-                ):
-                    continue
-                return candidate
+            directories = self._binding_directories(root)
+            for directory in directories:
+                candidate = directory / package_dir
+                if self._is_existing_binding(candidate):
+                    return candidate
+            # Only once nothing holds the package under its own name does a link
+            # named something else become the best explanation for the binding.
+            for directory in directories:
+                alias = self._aliased_binding(directory, package_dir)
+                if alias is not None:
+                    return alias
         return default
+
+    def _binding_directories(self, root: Path) -> tuple[Path, ...]:
+        """Every directory under ``root`` where a binding for this harness can sit."""
+        if self._layout != "categorized":
+            return (root,)
+        try:
+            entries = sorted(root.iterdir(), key=lambda path: path.name)
+        except OSError:
+            return ()
+        return tuple(
+            category_dir
+            for category_dir in entries
+            if category_dir.is_dir() and not category_dir.name.startswith(".")
+        )
+
+    def _is_existing_binding(self, candidate: Path) -> bool:
+        """Whether ``candidate`` is this harness's own binding rather than user content.
+
+        Only the search across categories asks this; the default binding path is
+        matched before it and keeps its own behaviour. Out in the other categories a
+        real directory is the user's own copy, and claiming it here would turn a
+        silent no-op into a refusal to touch it.
+        """
+        if self._layout == "categorized":
+            return candidate.is_symlink()
+        return candidate.exists() or candidate.is_symlink()
+
+    def _aliased_binding(self, directory: Path, package_dir: str) -> Path | None:
+        """Find a link in ``directory`` that binds ``package_dir`` under another name.
+
+        A harness -- or a plugin acting for one -- can name the link whatever it
+        likes: agtx binds ``shared-audit`` as ``agtx-shared-audit``. The toggle has to
+        recognise that link or disabling it silently does nothing.
+
+        Resolving an alias is what later authorises deleting it, so a link only
+        qualifies when its target is under the canonical store -- and
+        ``_link_target_is_under`` answers False when that root is unknown, which fails
+        this closed. The permissive ``canonical_store_root is None`` fallback that
+        ``_is_harness_asset_manager_hermes_binding`` allows is safe there because it
+        only classifies a binding; the answer here reaches ``disable_shared_package``,
+        which unlinks whatever comes back.
+        """
+        try:
+            entries = sorted(directory.iterdir(), key=lambda path: path.name)
+        except OSError:
+            return None
+        # Sorted, so which link wins is a property of the names on disk rather than
+        # of directory order, when a package somehow carries more than one alias.
+        for candidate in entries:
+            if not candidate.is_symlink() or candidate.name == package_dir:
+                continue
+            try:
+                target = candidate.resolve(strict=False)
+            except OSError:
+                continue
+            if target.name != package_dir:
+                continue
+            if not _link_target_is_under(candidate, self._canonical_store_root):
+                continue
+            return candidate
+        return None
 
     def _default_binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
         root = self.managed_root if scope is None else self._scoped_binding_root(scope)
