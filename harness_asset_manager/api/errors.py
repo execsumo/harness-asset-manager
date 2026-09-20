@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from harness_asset_manager.application.agents.model import AgentParseError
 from harness_asset_manager.errors import MarketplaceUpstreamError, MutationError
+
+_log = logging.getLogger(__name__)
 
 
 def _status_code(status: int) -> str:
@@ -55,6 +60,18 @@ def install_error_handlers(app: FastAPI) -> None:
             content=_error_payload(message=str(exc), status=exc.status, code=exc.code),
         )
 
+    @app.exception_handler(AgentParseError)
+    async def handle_agent_parse_error(_request: Request, exc: AgentParseError) -> JSONResponse:
+        """A file we cannot parse is the user's to fix, so say which file and why.
+
+        This used to fall through to the unhandled-exception path and reach the UI as
+        a bare 500 with no body -- the one failure where the message *is* the fix.
+        """
+        return JSONResponse(
+            status_code=422,
+            content=_error_payload(message=str(exc), status=422, code="invalid_frontmatter"),
+        )
+
     @app.exception_handler(MarketplaceUpstreamError)
     async def handle_marketplace_upstream_error(_request: Request, exc: MarketplaceUpstreamError) -> JSONResponse:
         return JSONResponse(
@@ -78,4 +95,22 @@ def install_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content=_error_payload(message=message, status=422),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(_request: Request, exc: Exception) -> JSONResponse:
+        """Last resort: a 500 still has to say something the user can act on.
+
+        Without this the server returns Starlette's bodyless "Internal Server Error"
+        and the banner can only render the status line. This is a local-first tool
+        operating on the user's own files, so the exception text -- paths included --
+        is exactly what makes the failure diagnosable.
+        """
+        _log.exception("unhandled error serving %s", _request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content=_error_payload(
+                message=f"{type(exc).__name__}: {exc}",
+                status=500,
+            ),
         )

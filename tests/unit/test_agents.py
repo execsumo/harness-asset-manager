@@ -124,6 +124,72 @@ class AgentParserTests(unittest.TestCase):
         parsed = parse_agent_document(doc, slug="skills-agent", path=Path("skills-agent.md"))
         self.assertEqual(parsed.skills, ("code-review", "frontend-debugging"))
 
+    def test_a_value_yaml_cannot_carry_plainly_is_quoted_and_round_trips(self) -> None:
+        """The regression: an unquoted ``": "`` reopened the mapping mid-description.
+
+        Rendering produced ``description: Wags -- ... coordinating: multi-file ...``,
+        which no longer parsed, so the save wrote a file that dropped the agent from
+        the inventory and stranded its binding under Needs Review.
+        """
+        description = (
+            "Wags - the Chief of Staff. Use for any task big enough to need "
+            "coordinating: multi-file features, risky refactors."
+        )
+        doc = render_agent_document(
+            name="wags",
+            description=description,
+            prompt="body",
+            base_metadata={"name": "wags", "description": description},
+        )
+        parsed = parse_agent_document(doc, slug="wags", path=Path("wags.md"))
+        self.assertEqual(parsed.description, description)
+
+    def test_hostile_scalars_survive_a_render_parse_round_trip(self) -> None:
+        hostile = {
+            "colon": "a: b",
+            "hash": "trailing # hash",
+            "anchor": "*starred",
+            "brace": "{not a map}",
+            "newline": "two\nlines",
+            "padded": "  padded  ",
+            "empty": "",
+        }
+        rendered = render_agent_document(
+            name="Edge",
+            description="edges",
+            prompt="body",
+            base_metadata=dict(hostile),
+        )
+        parsed = parse_agent_document(rendered, slug="edge", path=Path("edge.md"))
+        for key, value in hostile.items():
+            self.assertEqual(parsed.metadata[key], value, key)
+
+    def test_a_key_yaml_cannot_carry_plainly_is_quoted_too(self) -> None:
+        rendered = render_agent_document(
+            name="Edge",
+            description="edges",
+            prompt="body",
+            base_metadata={"weird: key": "value"},
+        )
+        parsed = parse_agent_document(rendered, slug="edge", path=Path("edge.md"))
+        self.assertEqual(parsed.metadata["weird: key"], "value")
+
+    def test_unquoted_scalar_types_still_round_trip_as_themselves(self) -> None:
+        """Quoting is applied only where a plain scalar would change meaning."""
+        rendered = render_agent_document(
+            name="Edge",
+            description="edges",
+            prompt="body",
+            max_turns="30",
+            background="true",
+            base_metadata={},
+        )
+        self.assertIn("maxTurns: 30\n", rendered)
+        self.assertIn("background: true\n", rendered)
+        parsed = parse_agent_document(rendered, slug="edge", path=Path("edge.md"))
+        self.assertEqual(parsed.max_turns, "30")
+        self.assertEqual(parsed.background, "true")
+
     def test_missing_frontmatter_is_an_error(self) -> None:
         with self.assertRaises(AgentParseError):
             parse_agent_document("no frontmatter here", slug="x", path=Path("x.md"))
@@ -372,6 +438,63 @@ class AgentsFixture(unittest.TestCase):
 
         self.assertIn("mcpServers:\n  - context7\n  - github", agent.path.read_text(encoding="utf-8"))
         self.assertEqual(agent.metadata["mcpServers"], ["context7", "github"])
+
+
+class UnreadableStoreFileTests(AgentsFixture):
+    """What the product owes a user whose agent file no longer parses."""
+
+    def test_an_unreadable_store_file_is_reported_not_removed(self) -> None:
+        """Recovery contract for the file this bug already left on disk.
+
+        The agent drops out of the inventory because nothing can read it, and its
+        binding is a link into the store, so the only thing left to report is the
+        issue. It has to carry the path, the YAML complaint, and the fact that
+        neither the file nor the binding was touched.
+        """
+        agent = self.store.create(name="wags", description="coordinates", prompt="body")
+        self.mutations.enable("wags", "claude")
+        binding = self.harness_dir / "wags.md"
+        self.assertTrue(binding.is_symlink())
+
+        broken = "---\nname: wags\ndescription: needs coordinating: many things\n---\n\nbody\n"
+        agent.path.write_text(broken, encoding="utf-8")
+
+        agents, issues = self.store.scan()
+
+        self.assertEqual([a.slug for a in agents], [])
+        self.assertEqual([i.name for i in issues], ["wags"])
+        reason = issues[0].reason
+        self.assertIn(str(agent.path), reason)
+        self.assertIn("invalid YAML frontmatter", reason)
+        self.assertIn("left exactly as it is", reason)
+        # Nothing reaps it: the file and the binding both survive the scan.
+        self.assertEqual(agent.path.read_text(encoding="utf-8"), broken)
+        self.assertTrue(binding.is_symlink())
+
+    def test_repairing_the_file_restores_the_agent(self) -> None:
+        """The defined way out: fix the frontmatter and the agent comes back."""
+        agent = self.store.create(name="wags", description="coordinates", prompt="body")
+        self.mutations.enable("wags", "claude")
+        agent.path.write_text(
+            "---\nname: wags\ndescription: needs coordinating: many things\n---\n\nbody\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(self.store.scan()[0], ())
+
+        agent.path.write_text(
+            render_agent_document(
+                name="wags",
+                description="needs coordinating: many things",
+                prompt="body",
+                base_metadata={"name": "wags"},
+            ),
+            encoding="utf-8",
+        )
+
+        agents, issues = self.store.scan()
+        self.assertEqual([a.slug for a in agents], ["wags"])
+        self.assertEqual(agents[0].description, "needs coordinating: many things")
+        self.assertEqual(issues, ())
 
 
 class CodexAgentTests(unittest.TestCase):
