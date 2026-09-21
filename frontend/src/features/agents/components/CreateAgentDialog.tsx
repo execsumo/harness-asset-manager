@@ -13,7 +13,10 @@ import { useSkillsListQuery } from "../../skills/public";
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { DetailBindingIdentity } from "../../../components/detail/DetailBindingIdentity";
-import { FrontmatterChoiceSelect } from "../../../components/detail/editing/FrontmatterChoiceSelect";
+import {
+  FrontmatterChoiceSelect,
+  type FrontmatterChoiceOption,
+} from "../../../components/detail/editing/FrontmatterChoiceSelect";
 import {
   AgentSkillsFieldEditor,
   deriveSkillTagOptions,
@@ -159,6 +162,19 @@ export function CreateAgentDialog({
   const isPending = createMutation.isPending;
 
   const columns = inventoryQuery.data?.columns ?? [];
+  // Every known harness stays selectable, with the uninstalled ones marked -- the same
+  // vocabulary, from the same inventory, that Agent Details offers. Agents are authored
+  // on one machine for another, so filtering to what happens to be installed here would
+  // make a cross-device target unpickable rather than merely unusual.
+  const harnessOptions = useMemo<FrontmatterChoiceOption[]>(
+    () =>
+      columns.map((column) => ({
+        value: column.harness,
+        label: column.label,
+        note: column.installed ? undefined : "not installed here",
+      })),
+    [columns],
+  );
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
   const selectedHermesProvider = hermesProviders.find((provider) => provider.id === hermesProvider);
   const hermesModels = Array.from(new Set([
@@ -358,13 +374,14 @@ export function CreateAgentDialog({
 
                     <label className="form-field">
                       <span className="form-field__label">Harness</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="Target harness identifier"
+                      <FrontmatterChoiceSelect
+                        label="Harness"
                         value={harness}
-                        onChange={(e) => setHarness(e.target.value)}
+                        options={harnessOptions}
+                        onChange={setHarness}
                         disabled={isPending}
+                        clearLabel={harnessOptions.length > 0 ? "(none)" : "(no harnesses discovered)"}
+                        className="form-field__input"
                       />
                     </label>
 
