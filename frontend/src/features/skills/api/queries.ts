@@ -5,6 +5,7 @@ import { ScopedReconciliationTracker } from "../../../lib/async/scoped-reconcili
 import { queryPolicy } from "../../../lib/query";
 import {
   attachAgents,
+  createSkill,
   deleteSkill,
   disableSkill,
   enableSkill,
@@ -30,7 +31,14 @@ import { invalidateSkillsQueries } from "./invalidation";
 import { SKILLS_GC_TIME_MS, SKILLS_STALE_TIME_MS, skillsKeys } from "./keys";
 import { mapSkillDetail, mapSkillsPage } from "./mappers";
 import type { HarnessCellState } from "../model/types";
-import type { AttachAgentsRequestDto, SetSkillHarnessesResultDto, SkillDetailDto, SkillsPageDto } from "./types";
+import type {
+  AttachAgentsRequestDto,
+  CreateSkillRequest,
+  CreateSkillResponseDto,
+  SetSkillHarnessesResultDto,
+  SkillDetailDto,
+  SkillsPageDto,
+} from "./types";
 
 export { invalidateSkillsQueries } from "./invalidation";
 export { skillsKeys } from "./keys";
@@ -233,6 +241,18 @@ export function useSetSkillHarnessesMutation() {
         queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
         queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
       ]);
+    },
+  });
+}
+
+export function useCreateSkillMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CreateSkillRequest): Promise<CreateSkillResponseDto> => createSkill(request),
+    onSuccess: async () => {
+      // A new package changes the list and nothing else yet, but it can land bound to
+      // harnesses, so the whole skills scope is refreshed rather than the list alone.
+      await invalidateSkillsQueries(queryClient);
     },
   });
 }

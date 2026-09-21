@@ -5,7 +5,9 @@ import unittest
 from harness_asset_manager.application.skills.conformance import (
     DESCRIPTION_MAX_LENGTH,
     NAME_MAX_LENGTH,
+    NAME_PATTERN,
     check_skill_conformance,
+    slugify_skill_name,
 )
 
 
@@ -78,6 +80,29 @@ class SkillConformanceTests(unittest.TestCase):
         ):
             self.assertGreater(len(issue.message), 30, issue.code)
             self.assertTrue(issue.message.endswith("."), issue.code)
+
+
+class SlugifySkillNameTests(unittest.TestCase):
+    def test_a_typed_name_folds_to_the_spec_form(self) -> None:
+        self.assertEqual(slugify_skill_name("Release Notes Writer"), "release-notes-writer")
+        self.assertEqual(slugify_skill_name("  PDF   toolkit!  "), "pdf-toolkit")
+        self.assertEqual(slugify_skill_name("already-fine"), "already-fine")
+
+    def test_a_name_with_nothing_sluggable_returns_empty(self) -> None:
+        """The caller reports this instead of writing an unnameable package."""
+        self.assertEqual(slugify_skill_name("---"), "")
+        self.assertEqual(slugify_skill_name("   "), "")
+
+    def test_a_long_name_is_truncated_without_a_trailing_hyphen(self) -> None:
+        slug = slugify_skill_name(" ".join(["word"] * 40))
+        self.assertLessEqual(len(slug), NAME_MAX_LENGTH)
+        self.assertFalse(slug.endswith("-"))
+
+    def test_every_slug_it_produces_is_conformant(self) -> None:
+        for name in ("Release Notes Writer", "PDF toolkit!", "a" * 200, "Ünïcodé skill 42"):
+            slug = slugify_skill_name(name)
+            self.assertTrue(NAME_PATTERN.match(slug), name)
+            self.assertEqual(codes(name=slug, package_dir=slug), [], name)
 
 
 if __name__ == "__main__":

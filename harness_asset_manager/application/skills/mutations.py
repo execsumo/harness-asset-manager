@@ -8,6 +8,7 @@ from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.binding_targets import BindingTarget
 
+from .conformance import DESCRIPTION_MAX_LENGTH, slugify_skill_name
 from .contracts import SkillsHarnessAdapter
 from .document_utils import read_skill_document_and_metadata, render_skill_document
 from .identity import SourceDescriptor
@@ -185,6 +186,89 @@ class SkillsMutationService:
 
         self.read_models.invalidate()
         return {"ok": True}
+
+    def create_skill(
+        self,
+        *,
+        name: str,
+        description: str,
+        body: str = "",
+        metadata: list[dict[str, str]] | None = None,
+        harnesses: Iterable[str] = (),
+    ) -> dict[str, object]:
+        """Author a brand-new skill package in the shared store and bind it where asked.
+
+        The package directory and the frontmatter `name` are written from the same slug
+        on purpose: the specification requires them to match, so a skill created here
+        opens with an empty standards check.
+
+        Binding happens in this call rather than in a follow-up request, for the reason
+        agent creation gives: a second call that failed would leave a skill nobody asked
+        for, bound to nothing, with no undo. A harness that cannot take it is reported as
+        a named failure instead — the package is already in the store by then.
+        """
+        slug = slugify_skill_name(name)
+        if not slug:
+            raise MutationError(f"cannot derive a skill name from {name!r}", status=400)
+        if not description.strip():
+            raise MutationError("description is required", status=400)
+        if len(description.strip()) > DESCRIPTION_MAX_LENGTH:
+            raise MutationError(
+                f"description is {len(description.strip())} characters; the specification "
+                f"allows {DESCRIPTION_MAX_LENGTH}",
+                status=400,
+            )
+
+        entries: list[dict[str, str]] = [
+            {"key": "name", "value": slug},
+            {"key": "description", "value": description.strip()},
+        ]
+        for entry in metadata or []:
+            key = str(entry.get("key", "")).strip()
+            # `name` and `description` are owned by the fields above; a duplicate key
+            # here would render twice and the second one would win on the next read.
+            if not key or key in {"name", "description"}:
+                continue
+            entries.append({"key": key, "value": str(entry.get("value", ""))})
+
+        document = render_skill_document(body=body, metadata=entries)
+
+        with TemporaryDirectory(prefix="skill-create-") as work_dir:
+            staged = Path(work_dir) / slug
+            staged.mkdir()
+            atomic_write_text(staged / "SKILL.md", document)
+            try:
+                ingested = self.read_models.store.ingest(
+                    source_path=staged,
+                    declared_name=slug,
+                    source_kind="shared-store",
+                    source_locator=f"shared-store:{slug}",
+                )
+            except ValueError as error:
+                raise MutationError(str(error), status=409) from error
+
+        bound: list[str] = []
+        failures: list[dict[str, str]] = []
+        for harness in dict.fromkeys(harnesses):
+            try:
+                target = BindingTarget.parse(harness)
+                adapter = self.read_models.require_enabled_adapter(str(target))
+                adapter.enable_shared_package(ingested, scope=target.scope)
+            except Exception as error:  # noqa: BLE001 - aggregate partial failures
+                failures.append({"harness": harness, "error": str(error)})
+                continue
+            self._record_binding(ingested.name, target, bound=True)
+            bound.append(str(target))
+
+        self.read_models.invalidate()
+        return {
+            "ok": not failures,
+            "skillRef": f"shared:{ingested.name}",
+            "name": slug,
+            "packageDir": ingested.name,
+            "boundHarnesses": bound,
+            "harnessFailures": failures,
+        }
 
     def manage_skill(self, skill_ref: str) -> dict[str, bool]:
         entry = self.queries.require_entry(skill_ref)

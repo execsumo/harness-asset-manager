@@ -280,7 +280,7 @@ export function CreateAgentDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content agent-dialog-content">
+        <Dialog.Content className="dialog-content create-dialog">
           <div className="dialog-header dialog-header--split">
             <div>
               <Dialog.Title className="dialog-title">Create Agent</Dialog.Title>
@@ -299,8 +299,8 @@ export function CreateAgentDialog({
             </Dialog.Close>
           </div>
 
-          <form onSubmit={handleSubmit} className="dialog-form agent-dialog-form">
-            <div className="dialog-form-body agent-dialog-body ui-scrollbar">
+          <form onSubmit={handleSubmit} className="dialog-form create-dialog__form">
+            <div className="dialog-form-body create-dialog__body ui-scrollbar">
               {error && (
                 <ErrorBanner message={error} onDismiss={() => setError(null)} />
               )}
@@ -546,7 +546,7 @@ export function CreateAgentDialog({
                       </datalist>
                     </label>
                   </div>
-                  <p className="agent-dialog-harness-hint">
+                  <p className="create-dialog__hint">
                     Hermes profile skills and agents are verified supported targets. Hermes uses the
                     shared Model field unless Hermes Model overrides it; provider choices come from
                     Hermes configuration and can still be entered manually. HAM-managed Bots are addressed as hermes -p
@@ -575,7 +575,7 @@ export function CreateAgentDialog({
                 </label>
               </section>
 
-              <fieldset className="agent-target-picker">
+              <fieldset className="asset-target-picker">
                 <legend className="detail-sheet__section-heading">Harnesses</legend>
                 <div className="detail-sheet__bindings">
                   {columns.map((col) => {
@@ -584,7 +584,7 @@ export function CreateAgentDialog({
                     return (
                       <div
                         key={col.harness}
-                        className="detail-sheet__binding-row agent-target-binding-row"
+                        className="detail-sheet__binding-row"
                         data-state={checked ? "enabled" : "disabled"}
                       >
                         <DetailBindingIdentity
@@ -617,14 +617,14 @@ export function CreateAgentDialog({
                   })}
                 </div>
                 {selectedHarnesses.length === 0 ? (
-                  <p className="agent-dialog-harness-hint" role="status">
+                  <p className="create-dialog__hint" role="status">
                     This agent won't be available in any harness yet. Pick one above, or set defaults in Settings → Auto-adopt.
                   </p>
                 ) : null}
               </fieldset>
             </div>
 
-            <div className="dialog-footer agent-dialog-footer">
+            <div className="dialog-footer create-dialog__footer">
               <Dialog.Close asChild>
                 <button type="button" className="action-pill action-pill--md" disabled={isPending}>
                   Cancel

@@ -1,5 +1,7 @@
 import type {
   BulkManageResult,
+  CreateSkillRequest,
+  CreateSkillResponseDto,
   DisableSkillRequest,
   EnableSkillRequest,
   OkResponse,
@@ -18,6 +20,10 @@ import { fetchJson, postJson, putJson } from "../../../api/http";
 
 export async function fetchSkillsPage(): Promise<SkillsPageDto> {
   return fetchJson<SkillsPageDto>("/skills");
+}
+
+export async function createSkill(request: CreateSkillRequest): Promise<CreateSkillResponseDto> {
+  return postJson<CreateSkillResponseDto>("/skills", request);
 }
 
 export async function fetchSkillDetail(skillRef: string): Promise<SkillDetailDto> {

@@ -421,6 +421,119 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertTrue(disabled["ok"])
             self.assertFalse(alias.exists())
 
+    def test_create_skill_writes_a_conformant_package_and_binds_chosen_harnesses(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            result = harness.post_json(
+                "/api/skills",
+                {
+                    "name": "Release Notes Writer",
+                    "description": "Draft release notes from a changelog.",
+                    "body": "# Release Notes Writer\n\nSummarise each merged PR.",
+                    "metadata": [{"key": "license", "value": "MIT"}],
+                    "harnesses": ["claude"],
+                },
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["skillRef"], "shared:release-notes-writer")
+            self.assertEqual(result["name"], "release-notes-writer")
+            self.assertEqual(result["boundHarnesses"], ["claude"])
+            self.assertEqual(result["harnessFailures"], [])
+
+            document = (
+                harness.spec.skills_store_root / "release-notes-writer" / "SKILL.md"
+            ).read_text(encoding="utf-8")
+            self.assertIn("name: release-notes-writer", document)
+            self.assertIn("description: Draft release notes from a changelog.", document)
+            self.assertIn("license: MIT", document)
+            self.assertIn("Summarise each merged PR.", document)
+            self.assertTrue((harness.spec.claude_root / "release-notes-writer").is_symlink())
+
+            rows = harness.get_json("/api/skills")["rows"]
+            created = next(row for row in rows if row["skillRef"] == "shared:release-notes-writer")
+            self.assertEqual(created["displayStatus"], "Managed")
+            # The package directory and `name` are written from the same slug, so a
+            # skill authored here opens with nothing for the standards check to say.
+            self.assertEqual(created["conformance"], [])
+
+    def test_create_skill_without_harnesses_lands_in_the_store_unbound(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            result = harness.post_json(
+                "/api/skills",
+                {"name": "quiet-skill", "description": "Bound to nothing yet."},
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["boundHarnesses"], [])
+            self.assertTrue((harness.spec.skills_store_root / "quiet-skill" / "SKILL.md").is_file())
+            self.assertFalse((harness.spec.claude_root / "quiet-skill").exists())
+
+    def test_create_skill_reports_an_unbindable_harness_without_losing_the_package(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            result = harness.post_json(
+                "/api/skills",
+                {
+                    "name": "partial-skill",
+                    "description": "One good target, one bad one.",
+                    "harnesses": ["claude", "not-a-harness"],
+                },
+            )
+
+            self.assertFalse(result["ok"])
+            self.assertEqual(result["boundHarnesses"], ["claude"])
+            self.assertEqual([f["harness"] for f in result["harnessFailures"]], ["not-a-harness"])
+            self.assertTrue((harness.spec.skills_store_root / "partial-skill" / "SKILL.md").is_file())
+            self.assertTrue((harness.spec.claude_root / "partial-skill").is_symlink())
+
+    def test_create_skill_rejects_a_duplicate_package_directory(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            harness.post_json(
+                "/api/skills",
+                {"name": "audit-helper", "description": "The first one."},
+            )
+
+            harness.post_json(
+                "/api/skills",
+                {"name": "Audit Helper", "description": "Slugs to the same directory."},
+                expected_status=409,
+            )
+
+    def test_create_skill_rejects_an_unusable_name_or_a_missing_description(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            harness.post_json(
+                "/api/skills",
+                {"name": "---", "description": "Nothing survives the slug."},
+                expected_status=400,
+            )
+            harness.post_json(
+                "/api/skills",
+                {"name": "no-description", "description": "   "},
+                expected_status=400,
+            )
+
+    def test_create_skill_ignores_metadata_that_would_duplicate_a_known_key(self) -> None:
+        with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
+            harness.post_json(
+                "/api/skills",
+                {
+                    "name": "single-name",
+                    "description": "The real description.",
+                    "metadata": [
+                        {"key": "name", "value": "impostor"},
+                        {"key": "description", "value": "impostor"},
+                        {"key": "", "value": "dropped"},
+                    ],
+                },
+            )
+
+            document = (
+                harness.spec.skills_store_root / "single-name" / "SKILL.md"
+            ).read_text(encoding="utf-8")
+            self.assertEqual(document.count("name:"), 1)
+            self.assertEqual(document.count("description:"), 1)
+            self.assertIn("The real description.", document)
+            self.assertNotIn("impostor", document)
+
     def test_set_skill_harnesses_enables_every_live_harness(self) -> None:
         with AppTestHarness(fixture_factory=seed_shared_only_fixture) as harness:
             skills = harness.get_json("/api/skills")

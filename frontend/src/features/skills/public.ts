@@ -1,4 +1,5 @@
 export {
+  useCreateSkillMutation,
   useDeleteSkillMutation,
   useManageAllSkillsMutation,
   useManageSkillMutation,

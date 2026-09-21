@@ -157,6 +157,36 @@ class UpdateSkillDocumentRequest(BaseModel):
     metadata: list[SkillMetadataEntryResponse] | dict[str, str] | None = None
 
 
+class CreateSkillRequest(BaseModel):
+    """A skill authored in Harness Asset Manager rather than adopted from disk."""
+
+    name: str
+    description: str = ""
+    body: str = ""
+    metadata: list[SkillMetadataEntryResponse] = Field(default_factory=list)
+    harnesses: list[str] = Field(default_factory=list)
+
+
+class CreateSkillFailureResponse(BaseModel):
+    harness: str
+    error: str
+
+
+class CreateSkillResponse(BaseModel):
+    """The created skill, plus every harness it could not be bound to.
+
+    ``ok`` is false when a binding failed; the package still exists, which is why the
+    client reports the failures instead of treating the whole create as lost.
+    """
+
+    ok: bool
+    skillRef: str
+    name: str
+    packageDir: str
+    boundHarnesses: list[str] = Field(default_factory=list)
+    harnessFailures: list[CreateSkillFailureResponse] = Field(default_factory=list)
+
+
 class SetSkillTagsRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
@@ -212,6 +242,9 @@ __all__ = [
     "AttachAgentsResponse",
     "BulkManageFailureResponse",
     "BulkManageResultResponse",
+    "CreateSkillFailureResponse",
+    "CreateSkillRequest",
+    "CreateSkillResponse",
     "DisableSkillRequest",
     "EnableSkillRequest",
     "HarnessCellResponse",

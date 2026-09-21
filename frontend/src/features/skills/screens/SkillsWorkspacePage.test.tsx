@@ -194,6 +194,21 @@ describe("Skills unified inventory page", () => {
     }
   });
 
+  it("opens the create dialog from the Add Skill action in the page header", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Skill" }));
+
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Create Skill");
+  });
+
+  it("offers adoption, not creation, in the review view", () => {
+    renderPage("/skills?status=untracked");
+
+    expect(screen.queryByRole("button", { name: "Add Skill" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /adopt all eligible/i })).toBeInTheDocument();
+  });
+
   it("deep-link status=untracked renders only untracked rows", () => {
     renderPage("/skills?status=untracked");
 
