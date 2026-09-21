@@ -7,6 +7,8 @@ from harness_asset_manager.api.schemas import (
     AttachAgentsRequest,
     AttachAgentsResponse,
     BulkManageResultResponse,
+    CreateSkillRequest,
+    CreateSkillResponse,
     DisableSkillRequest,
     EnableSkillRequest,
     OkResponse,
@@ -27,6 +29,20 @@ router = APIRouter(prefix="/api/skills")
 @router.get("", response_model=SkillsPageResponse)
 def list_skills(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     return container.skills_queries.list_skills()
+
+
+@router.post("", response_model=CreateSkillResponse)
+def create_skill(
+    body: CreateSkillRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    return container.skills_mutations.create_skill(
+        name=body.name,
+        description=body.description,
+        body=body.body,
+        metadata=[{"key": entry.key, "value": entry.value} for entry in body.metadata],
+        harnesses=body.harnesses,
+    )
 
 
 @router.get("/{skill_ref}/source-status", response_model=SkillSourceStatusResponse)

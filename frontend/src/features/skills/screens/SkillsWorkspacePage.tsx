@@ -12,6 +12,7 @@ import { PageHeader } from "../../../components/PageHeader";
 import { useToast } from "../../../components/Toast";
 import { useCommonCopy } from "../../../i18n";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
+import { CreateSkillDialog } from "../components/dialogs/CreateSkillDialog";
 import { SkillDetailModal } from "../components/detail/SkillDetailModal";
 import { SkillAgentFilterBar } from "../components/tags/SkillAgentFilterBar";
 import { SkillTagFilterBar } from "../components/tags/SkillTagFilterBar";
@@ -86,6 +87,7 @@ export default function SkillsWorkspacePage() {
   const { filters, updateFilters } = useSkillsInUseSession();
   const [selectedUntrackedRefs, setSelectedUntrackedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [pendingUntrackedAction, setPendingUntrackedAction] = useState<"adopt" | "delete" | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const copy = useSkillsCopy();
   const common = useCommonCopy();
   const { toast } = useToast();
@@ -382,14 +384,24 @@ export default function SkillsWorkspacePage() {
                 {copy.review.adoptAllEligible}
               </button>
             ) : (
-              <button
-                type="button"
-                className="action-pill action-pill--md"
-                onClick={() => toast(copy.inUse.importFolderComingSoon)}
-              >
-                <FolderPlus size={14} />
-                {copy.inUse.importFolder}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="action-pill action-pill--md"
+                  onClick={() => toast(copy.inUse.importFolderComingSoon)}
+                >
+                  <FolderPlus size={14} />
+                  {copy.inUse.importFolder}
+                </button>
+                <button
+                  type="button"
+                  className="action-pill action-pill--md action-pill--accent"
+                  onClick={() => setCreateDialogOpen(true)}
+                >
+                  <Plus size={16} />
+                  {copy.create.button}
+                </button>
+              </>
             )
           }
         />
@@ -546,6 +558,8 @@ export default function SkillsWorkspacePage() {
         onConfirm={onConfirmAttachAgents}
         isPending={multiSelectPending === "attach-agents"}
       />
+
+      <CreateSkillDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       <SkillDetailModal
         open={isDesktopDetailOpen || Boolean(selectedSkillRef)}

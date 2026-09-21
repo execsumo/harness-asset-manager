@@ -1145,7 +1145,8 @@ export interface paths {
         /** List Skills */
         get: operations["list_skills_api_skills_get"];
         put?: never;
-        post?: never;
+        /** Create Skill */
+        post: operations["create_skill_api_skills_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2161,6 +2162,56 @@ export interface components {
             tools?: string[];
             /** Trustproject */
             trustProject?: string | null;
+        };
+        /** CreateSkillFailureResponse */
+        CreateSkillFailureResponse: {
+            /** Error */
+            error: string;
+            /** Harness */
+            harness: string;
+        };
+        /**
+         * CreateSkillRequest
+         * @description A skill authored in Harness Asset Manager rather than adopted from disk.
+         */
+        CreateSkillRequest: {
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Harnesses */
+            harnesses?: string[];
+            /** Metadata */
+            metadata?: components["schemas"]["SkillMetadataEntryResponse"][];
+            /** Name */
+            name: string;
+        };
+        /**
+         * CreateSkillResponse
+         * @description The created skill, plus every harness it could not be bound to.
+         *
+         *     ``ok`` is false when a binding failed; the package still exists, which is why the
+         *     client reports the failures instead of treating the whole create as lost.
+         */
+        CreateSkillResponse: {
+            /** Boundharnesses */
+            boundHarnesses?: string[];
+            /** Harnessfailures */
+            harnessFailures?: components["schemas"]["CreateSkillFailureResponse"][];
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /** Packagedir */
+            packageDir: string;
+            /** Skillref */
+            skillRef: string;
         };
         /** DisableHookRequest */
         DisableHookRequest: {
@@ -9679,6 +9730,84 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillsPageResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    create_skill_api_skills_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSkillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateSkillResponse"];
                 };
             };
             /** @description Bad Request */

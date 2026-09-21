@@ -422,6 +422,58 @@
   background: var(--color-surface);
 }
 
+/* Create dialogs — fixed chrome, scrolling body, pinned footer, so a long
+   contract form never scrolls its own actions out of reach. Shared by every
+   asset's create dialog: the form a user fills in to author an agent and the one
+   they fill in to author a skill are the same surface, so they are one rule set
+   rather than two that drift. */
+.create-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 92vw;
+  max-width: 620px;
+  max-height: calc(100vh - 48px);
+  padding: var(--space-6);
+  overflow: hidden;
+}
+
+.create-dialog__form {
+  min-height: 0;
+}
+
+/* Breathing room between the content and the overlay scrollbar. */
+.create-dialog__body {
+  padding-right: var(--space-2);
+}
+
+.create-dialog__footer {
+  margin-top: var(--space-5);
+}
+
+/* One line under a group saying what it decides — the binding hint, the note
+   under the harness picker. */
+.create-dialog__hint {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: var(--leading-normal);
+}
+
+/* A fieldset, not a <section>, so the harness toggles are announced as one
+   group. It stays display:block — a grid/flex fieldset takes its legend out
+   of the normal flow in some engines. */
+.asset-target-picker {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  margin: 0;
+}
+
+.asset-target-picker > legend {
+  margin-bottom: var(--space-3);
+}
+
 .dialog-footer {
   display: flex;
   align-items: center;

@@ -40,6 +40,21 @@ class ConformanceIssue:
     message: str
 
 
+def slugify_skill_name(name: str) -> str:
+    """Fold a typed name into the ``name`` form the specification allows.
+
+    Creation is the one place HAM can hand out conformant names for free: the package
+    directory and the frontmatter `name` are both written from this slug, so a skill
+    authored here starts with an empty standards check rather than a
+    ``name_directory_mismatch`` nobody asked for.
+
+    Returns ``""`` when nothing survives the fold — the caller reports that instead of
+    writing a package directory the rules above would immediately flag.
+    """
+    collapsed = re.sub(r"[^a-z0-9]+", "-", name.strip().lower())
+    return collapsed.strip("-")[:NAME_MAX_LENGTH].strip("-")
+
+
 def check_skill_conformance(
     *,
     name: str,
@@ -120,4 +135,5 @@ __all__ = [
     "NAME_PATTERN",
     "ConformanceIssue",
     "check_skill_conformance",
+    "slugify_skill_name",
 ]

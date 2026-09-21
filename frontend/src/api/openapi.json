@@ -1994,6 +1994,105 @@
         "title": "CreateAgentRequest",
         "type": "object"
       },
+      "CreateSkillFailureResponse": {
+        "properties": {
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "harness": {
+            "title": "Harness",
+            "type": "string"
+          }
+        },
+        "required": [
+          "harness",
+          "error"
+        ],
+        "title": "CreateSkillFailureResponse",
+        "type": "object"
+      },
+      "CreateSkillRequest": {
+        "description": "A skill authored in Harness Asset Manager rather than adopted from disk.",
+        "properties": {
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "harnesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Harnesses",
+            "type": "array"
+          },
+          "metadata": {
+            "items": {
+              "$ref": "#/components/schemas/SkillMetadataEntryResponse"
+            },
+            "title": "Metadata",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateSkillRequest",
+        "type": "object"
+      },
+      "CreateSkillResponse": {
+        "description": "The created skill, plus every harness it could not be bound to.\n\n``ok`` is false when a binding failed; the package still exists, which is why the\nclient reports the failures instead of treating the whole create as lost.",
+        "properties": {
+          "boundHarnesses": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Boundharnesses",
+            "type": "array"
+          },
+          "harnessFailures": {
+            "items": {
+              "$ref": "#/components/schemas/CreateSkillFailureResponse"
+            },
+            "title": "Harnessfailures",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "packageDir": {
+            "title": "Packagedir",
+            "type": "string"
+          },
+          "skillRef": {
+            "title": "Skillref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "skillRef",
+          "name",
+          "packageDir"
+        ],
+        "title": "CreateSkillResponse",
+        "type": "object"
+      },
       "DisableHookRequest": {
         "properties": {
           "harness": {
@@ -14244,6 +14343,92 @@
           }
         },
         "summary": "List Skills"
+      },
+      "post": {
+        "operationId": "create_skill_api_skills_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSkillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSkillResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Create Skill"
       }
     },
     "/api/skills/attach-agents": {

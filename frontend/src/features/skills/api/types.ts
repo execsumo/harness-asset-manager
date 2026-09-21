@@ -31,6 +31,8 @@ export type SkillDetailDto = components["schemas"]["SkillDetailResponse"] & {
   linkedTargets?: string[];
 };
 export type UpdateSkillDocumentRequest = components["schemas"]["UpdateSkillDocumentRequest"];
+export type CreateSkillRequest = components["schemas"]["CreateSkillRequest"];
+export type CreateSkillResponseDto = components["schemas"]["CreateSkillResponse"];
 export type SetSkillTagsRequest = components["schemas"]["SetSkillTagsRequest"];
 export type SkillTagsResponse = components["schemas"]["SkillTagsResponse"];
 export type BulkManageFailure = components["schemas"]["BulkManageFailureResponse"];

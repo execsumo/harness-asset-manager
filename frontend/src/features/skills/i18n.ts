@@ -27,6 +27,23 @@ const englishSkillsCopy = {
       off: "Off",
     },
   },
+  create: {
+    button: "Add Skill",
+    title: "Create Skill",
+    subtitle: "Name the skill, say when an agent should reach for it, then pick the harnesses it is linked into.",
+    close: "Close create skill dialog",
+    documentHeading: "SKILL.md",
+    bodyLabel: "Body",
+    bodyPlaceholder: "Markdown instructions an agent follows once the skill applies...",
+    bodyHint: "The markdown under the frontmatter. Scripts and resources are added to the package folder afterwards.",
+    noHarnessHint:
+      "This skill won't be linked into any harness yet. Pick one above, or set defaults in Settings → Auto-adopt.",
+    submit: "Create Skill",
+    created: (name: string) => `Successfully created skill ${name}`,
+    createdWithFailures: (name: string, harnesses: readonly string[]) =>
+      `Created skill ${name}, but failed to link it into: ${harnesses.join(", ")}`,
+    failed: "An error occurred while creating the skill.",
+  },
   review: {
     title: "Skills to review",
     subtitle: (count: number) =>

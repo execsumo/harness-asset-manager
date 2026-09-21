@@ -252,7 +252,8 @@ Use Skills as shared local packages instead of maintaining separate copies per h
 
 Typical flow:
 
-1. Review a Skill found in a harness or install one from the marketplace.
+1. Review a Skill found in a harness, install one from the marketplace, or write a new one
+   with **Add Skill**.
 2. Adopt it into the Harness Asset Manager inventory.
 3. Check what the package holds — `scripts/`, `references/`, `assets/` — before enabling it.
 4. Enable it only where it should be available.
@@ -342,6 +343,18 @@ Harness Asset Manager treats managed Skills as portable by default: once a Skill
 Hermes Agent Skills use the categorized Hermes layout under `~/.hermes/skills/<category>/<skill>/SKILL.md`. Shared Skills enabled for Hermes are linked under the `harnessam` category by default. Each Hermes **Bot** additionally has its own independent Skill set under `<hermes-root>/profiles/<bot>/skills/harnessam/`, recorded as `hermes:<profile>`; a Skill a Bot created for itself is surfaced as an adoption candidate attributed to that Bot. See [Hermes Bots (Profiles)](#hermes-bots-profiles). The legacy `harness-asset-manager` category remains readable so existing links continue to work. Harness Asset Manager excludes bundled Skills tracked by `.bundled_manifest` and official/builtin optional Skills recorded in Hermes hub provenance. Other valid Hermes Skill directories—including local or self-learned Skills with no `.hub/lock.json` entry—are surfaced as unmanaged and can be adopted; external hub provenance is retained when available. Hermes-owned bundled and official optional folders remain untouched until explicitly adopted or managed.
 
 Claude Code plugin skills from installed plugins in `~/.claude/plugins/installed_plugins.json` are discovered directly from active plugin installation roots. Plugin skills are surfaced in the inventory as unmanaged with plugin provenance (`claude:plugin:<id>@<version>:<skill>`) and treated as strictly read-only external sources. Adopting a plugin skill copies the package into Harness Asset Manager's canonical store and links it into `~/.claude/skills/`, leaving the underlying plugin installation cache completely untouched.
+
+**Add Skill** on the Skills page authors a new package in the shared store without leaving
+Harness Asset Manager — the counterpart to **Add Agent** on the Agents page. The dialog asks for
+the frontmatter through the same structured editor the Skill detail view uses, raw-YAML toggle
+and free-form keys included, so the fields a Skill is created with and the fields it is edited
+with are one surface. The typed name is folded to the specification's form and used for both the
+package directory and `name:` — shown as `<slug>/SKILL.md` while you type — which is why a Skill
+created here opens with a clean standards check. A name that collides with a package already in
+the store is refused before the request. Harnesses are picked in the dialog and bound in the same
+call that writes the package, pre-selected from **Settings → Auto-adopt**; a harness that cannot
+take the link is named in the result rather than losing the Skill. Scripts and resources are added
+to the package folder afterwards.
 
 Every managed Skill is checked against the [Agent Skills specification](https://agentskills.io/specification)
 — `name` charset and length, `name` matching its package directory, `description` presence and
