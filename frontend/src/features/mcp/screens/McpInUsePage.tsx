@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 
-import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
+import {
+  BulkActionBar,
+  type BulkHarnessState,
+  type MultiSelectAction,
+} from "../../../components/BulkActionBar";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -92,6 +96,7 @@ export default function McpInUsePage() {
     () => new Set(),
   );
   const [adoptingSelected, setAdoptingSelected] = useState(false);
+  const [bulkHarnessPending, setBulkHarnessPending] = useState<MultiSelectAction | null>(null);
   const [chooseConfigName, setChooseConfigName] = useState<string | null>(null);
   const setTagsMutation = useSetMcpServerTagsMutation();
 
@@ -476,7 +481,13 @@ export default function McpInUsePage() {
           Boolean(entry && column && entry.kind === "managed" && matrixCellFor(entry, column, copy).action === "enable"),
         );
       if (selectedEntries.length === 0) return;
+      setBulkHarnessPending("enable-all");
       try {
+        if (selectedEntries.length === 1 && selectedEntries[0].installConfigStatus.missingRequired.length === 0) {
+          await handleEnableInHarness(selectedEntries[0].name, harness, undefined, true);
+          handleClearMultiSelect();
+          return;
+        }
         await requestBulkEnable(
           selectedEntries,
           (entry) => {
@@ -496,6 +507,8 @@ export default function McpInUsePage() {
         );
       } catch {
         // The controller has already surfaced the mutation failure.
+      } finally {
+        setBulkHarnessPending(null);
       }
     },
     [
@@ -519,11 +532,14 @@ export default function McpInUsePage() {
         return Boolean(entry && column && entry.kind === "managed" && matrixCellFor(entry, column, copy).action === "disable");
       });
       if (names.length === 0) return;
+      setBulkHarnessPending("disable-all");
       try {
         await Promise.all(names.map((name) => handleDisableInHarness(name, harness, true)));
         handleClearMultiSelect();
       } catch {
         // The controller has already surfaced the mutation failure.
+      } finally {
+        setBulkHarnessPending(null);
       }
     },
     [copy, findEntry, handleClearMultiSelect, handleDisableInHarness, inventory?.columns, multiSelectedNames],
@@ -728,7 +744,7 @@ export default function McpInUsePage() {
 
       <BulkActionBar
         selectedCount={selectedManagedCount + selectedUntrackedCount}
-        pending={multiSelectPending}
+        pending={multiSelectPending ?? bulkHarnessPending}
         onClear={() => {
           handleClearMultiSelect();
           setSelectedUntrackedNames(new Set());

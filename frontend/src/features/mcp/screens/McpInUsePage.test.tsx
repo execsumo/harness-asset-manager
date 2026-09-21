@@ -390,6 +390,30 @@ describe("McpInUsePage", () => {
     expect(screen.getByRole("button", { name: /uninstall 1 selected/i })).toBeInTheDocument();
   });
 
+  it("keeps harness bulk actions disabled until the selected mutation settles", async () => {
+    let resolveEnable!: (response: Response) => void;
+    const pendingEnable = new Promise<Response>((resolve) => {
+      resolveEnable = resolve;
+    });
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/mcp/servers/exa/enable")) return pendingEnable;
+      if (url.includes("/api/mcp/servers")) return okJson(inventoryFixture());
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Exa Search")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("checkbox", { name: /select exa search/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Harnesses" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Claude" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Applying" })).toBeDisabled());
+    resolveEnable(okJson({ ok: true }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Harnesses" })).not.toBeInTheDocument());
+  });
+
   it("uses the shared confirm dialog for bulk uninstall", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();

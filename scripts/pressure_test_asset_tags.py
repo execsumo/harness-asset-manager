@@ -141,13 +141,12 @@ def run_pressure_test() -> None:
         assert err_long["code"] == "invalid_tag"
 
         unmanaged_row = next(r for r in page["rows"] if r["displayStatus"] == "Unmanaged")
-        err_unmanaged = harness.put_json(
+        unmanaged_tags = harness.put_json(
             f"/api/skills/{unmanaged_row['skillRef']}/tags",
             {"tags": ["test"]},
-            expected_status=400,
         )
-        assert "managed" in err_unmanaged["error"].lower()
-        print("✓ Validation rejected empty string, oversized tags, and unmanaged skills with HTTP 400 and proper envelope")
+        assert unmanaged_tags["tags"] == ["test"]
+        print("✓ Validation rejected empty and oversized tags; unmanaged skill tags remain supported")
 
         # 9. Verify store on disk
         tags_file = harness.container.paths.asset_tags_path
