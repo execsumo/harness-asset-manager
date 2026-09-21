@@ -173,6 +173,52 @@ class HermesProvisioningTests(unittest.TestCase):
                 ),
             )
 
+    def test_provider_options_include_explicit_auth_pool_providers(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True)
+            (hermes_root / "config.yaml").write_text(
+                "model:\n  provider: nvidia\n  default: nvidia/model\n"
+                "providers:\n  groq:\n    model: qwen/model\n",
+                encoding="utf-8",
+            )
+            (hermes_root / "auth.json").write_text(
+                '{"credential_pool": {'
+                '"openrouter": [{"source": "manual"}], '
+                '"openai-codex": [{"source": "manual:device_code"}], '
+                '"copilot": [{"source": "gh_cli"}], '
+                '"stale": [{"source": "env:STALE_API_KEY"}]'
+                "}}",
+                encoding="utf-8",
+            )
+
+            with mock.patch.dict("os.environ", {}, clear=True):
+                self.assertEqual(
+                    hermes_provider_options(hermes_root),
+                    (
+                        {"id": "nvidia", "models": ["nvidia/model"]},
+                        {"id": "groq", "models": ["qwen/model"]},
+                        {"id": "openrouter", "models": []},
+                        {"id": "openai-codex", "models": []},
+                    ),
+                )
+
+    def test_provider_options_include_live_env_pool_entries(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True)
+            (hermes_root / "config.yaml").write_text("model: {}\n", encoding="utf-8")
+            (hermes_root / "auth.json").write_text(
+                '{"credential_pool": {"openrouter": [{"source": "env:OPENROUTER_API_KEY"}]}}',
+                encoding="utf-8",
+            )
+
+            with mock.patch.dict("os.environ", {"OPENROUTER_API_KEY": "configured"}, clear=True):
+                self.assertEqual(
+                    hermes_provider_options(hermes_root),
+                    ({"id": "openrouter", "models": []},),
+                )
+
     def test_config_yaml_mirrors_version_and_absent_when_root_missing(self) -> None:
         with TemporaryDirectory() as temp:
             hermes_root = Path(temp) / ".hermes"

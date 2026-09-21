@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import copy
+import json
 import logging
 import os
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from pathlib import Path
 
 from harness_asset_manager.application.agents.model import AgentDefinition
@@ -182,20 +183,23 @@ def hermes_provider_options(hermes_root: Path) -> tuple[dict[str, object], ...]:
 
     This is intentionally a read-only view of the root config: selecting an option
     does not make a Bot inherit the root profile. Built-in providers appear when
-    they are selected by the root model block; custom providers come from the
-    root ``providers`` mapping.
+    they are selected by the root model block or have an explicit credential in
+    Hermes' auth pool; custom providers come from the root ``providers`` mapping.
     """
     config_file = hermes_root / "config.yaml"
-    if not config_file.is_file():
-        return ()
-    try:
-        document = load_config_document(config_file.read_text(encoding="utf-8"), file_format="yaml")
-    except Exception:
-        return ()
-    return _provider_options_from_document(document)
+    document: Mapping[str, object] = {}
+    if config_file.is_file():
+        try:
+            document = load_config_document(config_file.read_text(encoding="utf-8"), file_format="yaml")
+        except Exception:
+            pass
+    return _provider_options_from_document(document, _auth_provider_names(hermes_root))
 
 
-def _provider_options_from_document(document: Mapping[str, object]) -> tuple[dict[str, object], ...]:
+def _provider_options_from_document(
+    document: Mapping[str, object],
+    extra_provider_names: Iterable[str] = (),
+) -> tuple[dict[str, object], ...]:
     model_config = document.get("model")
     configured_provider = None
     configured_model = None
@@ -208,6 +212,7 @@ def _provider_options_from_document(document: Mapping[str, object]) -> tuple[dic
     if configured_provider:
         names.append(configured_provider)
     names.extend(str(name) for name in provider_map if str(name) not in names)
+    names.extend(name for name in extra_provider_names if name not in names)
 
     options: list[dict[str, object]] = []
     for name in names:
@@ -228,6 +233,47 @@ def _provider_options_from_document(document: Mapping[str, object]) -> tuple[dic
                         models.append(model_id)
         options.append({"id": name, "models": models})
     return tuple(options)
+
+
+def _auth_provider_names(hermes_root: Path) -> tuple[str, ...]:
+    """Return providers with explicit credentials in Hermes' auth store.
+
+    The root config only contains the active model and named custom endpoints.
+    OAuth and pooled API-key providers live in ``auth.json`` instead. Ambient
+    credentials borrowed from another CLI (for example GitHub's ``gh`` token)
+    are deliberately excluded, matching Hermes' explicit-provider semantics.
+    """
+    auth_file = hermes_root / "auth.json"
+    if not auth_file.is_file():
+        return ()
+    try:
+        auth_store = json.loads(auth_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ()
+    pool = auth_store.get("credential_pool") if isinstance(auth_store, Mapping) else None
+    if not isinstance(pool, Mapping):
+        return ()
+
+    names: list[str] = []
+    for provider, entries in pool.items():
+        if not isinstance(provider, str) or not isinstance(entries, list):
+            continue
+        if any(_is_explicit_auth_entry(entry) for entry in entries):
+            names.append(provider)
+    return tuple(names)
+
+
+def _is_explicit_auth_entry(entry: object) -> bool:
+    if not isinstance(entry, Mapping):
+        return False
+    source = _config_string(entry.get("source"))
+    if not source:
+        return False
+    source_lower = source.lower()
+    if source_lower.startswith("env:"):
+        env_name = source.split(":", 1)[1].strip()
+        return bool(env_name and os.environ.get(env_name, "").strip())
+    return source_lower in {"device_code", "loopback_pkce", "hermes_pkce", "manual"} or source_lower.startswith("manual:")
 
 
 def _provider_for_model(document: Mapping[str, object], model: str | None) -> str | None:
