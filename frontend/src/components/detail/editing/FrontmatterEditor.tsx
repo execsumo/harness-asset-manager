@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 export interface KnownFieldConfig {
   key: string;
@@ -10,6 +10,12 @@ export interface KnownFieldConfig {
   placeholder?: string;
   helpText?: string;
   serialize?: (value: string) => string | null;
+  /**
+   * Heading this field sits under in structured mode, matched to a
+   * `FrontmatterFieldGroup.id`. Fields without one render in a leading ungrouped
+   * block, so an editor that declares no groups looks exactly as it did before.
+   */
+  group?: string;
   renderInput?: (props: { disabled?: boolean }) => ReactNode;
   /** Keep a field available to raw-YAML serialization without showing it in structured mode. */
   hidden?: boolean;
@@ -19,6 +25,14 @@ export interface KnownFieldConfig {
    * its accessible name, so the group must name itself instead.
    */
   wrapInLabel?: boolean;
+}
+
+/** A heading in the structured editor, with the fields that name it in `group`. */
+export interface FrontmatterFieldGroup {
+  id: string;
+  title: string;
+  /** One line under the heading saying what the group decides. */
+  hint?: string;
 }
 
 export interface OtherFrontmatterEntry {
@@ -31,6 +45,11 @@ export interface OtherFrontmatterEntry {
 
 export interface FrontmatterEditorProps {
   knownFields: KnownFieldConfig[];
+  /**
+   * Rendered in this order, each holding the fields whose `group` is its `id`.
+   * Omit it and every field stays in one undifferentiated block.
+   */
+  fieldGroups?: FrontmatterFieldGroup[];
   otherEntries: OtherFrontmatterEntry[];
   onChangeOtherEntries: (entries: OtherFrontmatterEntry[]) => void;
   rawYaml: string;
@@ -153,6 +172,7 @@ export function parseFrontmatterFromYaml(
 
 export function FrontmatterEditor({
   knownFields,
+  fieldGroups,
   otherEntries,
   onChangeOtherEntries,
   rawYaml,
@@ -163,6 +183,8 @@ export function FrontmatterEditor({
   validationError,
   disabled,
 }: FrontmatterEditorProps) {
+  const groupTitleId = useId();
+
   const handleToggleMode = (nextMode: "structured" | "raw") => {
     if (nextMode === mode) return;
 
@@ -214,6 +236,50 @@ export function FrontmatterEditor({
     onChangeOtherEntries(otherEntries.filter((_, idx) => idx !== index));
   };
 
+  const renderField = (field: KnownFieldConfig) => {
+    const Field = field.wrapInLabel === false ? "div" : "label";
+    return (
+      <Field
+        key={field.key}
+        className="frontmatter-editor__field"
+        data-frontmatter-key={field.key}
+      >
+        <span className="frontmatter-editor__label">{field.label}</span>
+        {field.renderInput ? (
+          field.renderInput({ disabled: disabled || field.disabled })
+        ) : (
+          <input
+            type="text"
+            className="frontmatter-editor__input"
+            value={field.value}
+            onChange={(e) => field.onChange(e.target.value)}
+            disabled={disabled || field.disabled}
+            placeholder={field.placeholder}
+            aria-label={field.label}
+          />
+        )}
+        {field.helpText ? (
+          // Every control names itself with its own `aria-label`, so this sits in the
+          // label element as visible guidance without widening any accessible name.
+          <span className="frontmatter-editor__help">{field.helpText}</span>
+        ) : null}
+      </Field>
+    );
+  };
+
+  const visibleFields = knownFields.filter((field) => !field.hidden);
+  const groupIds = new Set((fieldGroups ?? []).map((group) => group.id));
+  // A field naming a group nobody declared would otherwise vanish from the editor.
+  const ungroupedFields = visibleFields.filter(
+    (field) => !field.group || !groupIds.has(field.group),
+  );
+  const populatedGroups = (fieldGroups ?? [])
+    .map((group) => ({
+      group,
+      fields: visibleFields.filter((field) => field.group === group.id),
+    }))
+    .filter((entry) => entry.fields.length > 0);
+
   return (
     <div className="frontmatter-editor">
       <div className="frontmatter-editor__header">
@@ -258,33 +324,33 @@ export function FrontmatterEditor({
         />
       ) : (
         <>
-          <div className="frontmatter-editor__known-fields">
-            {knownFields.filter((field) => !field.hidden).map((field) => {
-              const Field = field.wrapInLabel === false ? "div" : "label";
-              return (
-                <Field
-                  key={field.key}
-                  className="frontmatter-editor__field"
-                  data-frontmatter-key={field.key}
-                >
-                  <span className="frontmatter-editor__label">{field.label}</span>
-                  {field.renderInput ? (
-                    field.renderInput({ disabled: disabled || field.disabled })
-                  ) : (
-                    <input
-                      type="text"
-                      className="frontmatter-editor__input"
-                      value={field.value}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      disabled={disabled || field.disabled}
-                      placeholder={field.placeholder}
-                      aria-label={field.label}
-                    />
-                  )}
-                </Field>
-              );
-            })}
-          </div>
+          {ungroupedFields.length > 0 ? (
+            <div className="frontmatter-editor__known-fields">
+              {ungroupedFields.map(renderField)}
+            </div>
+          ) : null}
+
+          {populatedGroups.map(({ group, fields }) => (
+            <section
+              key={group.id}
+              className="frontmatter-editor__group"
+              data-frontmatter-group={group.id}
+              aria-labelledby={`${groupTitleId}-${group.id}`}
+            >
+              <span
+                className="frontmatter-editor__group-title"
+                id={`${groupTitleId}-${group.id}`}
+              >
+                {group.title}
+              </span>
+              {group.hint ? (
+                <p className="frontmatter-editor__group-hint">{group.hint}</p>
+              ) : null}
+              <div className="frontmatter-editor__known-fields">
+                {fields.map(renderField)}
+              </div>
+            </section>
+          ))}
 
           <div className="frontmatter-editor__other-section">
             <span className="frontmatter-editor__other-title">Other frontmatter</span>

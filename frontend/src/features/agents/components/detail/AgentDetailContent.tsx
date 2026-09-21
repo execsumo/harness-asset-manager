@@ -12,6 +12,7 @@ import { DocumentSection } from "../../../../components/detail/editing/DocumentS
 import {
   FrontmatterEditor,
   parseFrontmatterFromYaml,
+  type FrontmatterFieldGroup,
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
@@ -56,6 +57,24 @@ import {
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
+
+/**
+ * The four questions a reader of an agent file actually asks, in the order they ask
+ * them: what is this, what runs it, what can it reach for, and how does it run. The
+ * flat list this replaced interleaved all four -- a block list, a turn budget and an
+ * MCP list shared one row -- so finding a field meant scanning all eighteen.
+ *
+ * The groups are a reading order, not a contract: the file is still written in
+ * `AGENT_CONTRACT_KEYS` order by the backend renderer.
+ */
+const AGENT_FRONTMATTER_GROUPS: FrontmatterFieldGroup[] = [
+  { id: "identity", title: "Identity", hint: "What this agent is called and how it presents." },
+  // Not plain "Model": the group is announced by name, and a heading identical to a
+  // field label inside it makes "Model" ambiguous to a screen reader and to a test.
+  { id: "model", title: "Harness & Model", hint: "Which harness runs it, and with what model." },
+  { id: "capabilities", title: "Capabilities", hint: "What it may reach for." },
+  { id: "execution", title: "Execution", hint: "The envelope it runs in." },
+];
 
 function parseMcpServerRefs(value: string): string[] {
   return value
@@ -303,15 +322,18 @@ export function AgentDetailContent({
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
+      // Identity ------------------------------------------------------------
       {
         key: "name",
         label: "Agent Name",
+        group: "identity",
         value: name,
         onChange: setName,
       },
       {
         key: "role",
         label: "Role",
+        group: "identity",
         value: roleStr,
         onChange: setRoleStr,
         placeholder: "Describe this agent's role",
@@ -319,6 +341,7 @@ export function AgentDetailContent({
       {
         key: "color",
         label: "Color",
+        group: "identity",
         value: colorStr,
         onChange: setColorStr,
         renderInput: ({ disabled }) => (
@@ -334,13 +357,16 @@ export function AgentDetailContent({
       {
         key: "description",
         label: "Description",
+        group: "identity",
         value: description,
         onChange: setDescription,
         placeholder: "Describe the agent's purpose and functionality",
       },
+      // Model ---------------------------------------------------------------
       {
         key: "harness",
         label: "Harness",
+        group: "model",
         value: harnessStr,
         onChange: setHarnessStr,
         renderInput: ({ disabled }) => (
@@ -357,6 +383,7 @@ export function AgentDetailContent({
       {
         key: "model",
         label: "Model",
+        group: "model",
         value: modelStr,
         onChange: setModelStr,
         placeholder: "Model identifier — empty clears the key",
@@ -364,6 +391,7 @@ export function AgentDetailContent({
       {
         key: "effort",
         label: "Effort",
+        group: "model",
         value: effortStr,
         onChange: setEffortStr,
         renderInput: ({ disabled }) => (
@@ -376,77 +404,12 @@ export function AgentDetailContent({
           />
         ),
       },
-      {
-        key: "disallowedTools",
-        label: "Disallowed Tools (comma-separated)",
-        value: disallowedToolsStr,
-        onChange: setDisallowedToolsStr,
-        placeholder: "e.g. Write, Edit, Agent(Explore)",
-      },
-      {
-        key: "maxTurns",
-        label: "Max Turns",
-        value: maxTurnsStr,
-        onChange: setMaxTurnsStr,
-        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
-      },
-      {
-        key: "mcpServers",
-        label: "MCP Servers",
-        value: mcpServersStr,
-        onChange: setMcpServersStr,
-        placeholder: "Comma-separated server references",
-        serialize: serializeMcpServerRefs,
-      },
-      {
-        key: "memory",
-        label: "Memory",
-        value: memoryStr,
-        onChange: setMemoryStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Memory"
-            value={memoryStr}
-            options={MEMORY_VALUES}
-            onChange={setMemoryStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "isolation",
-        label: "Isolation",
-        value: isolationStr,
-        onChange: setIsolationStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Isolation"
-            value={isolationStr}
-            options={ISOLATION_VALUES}
-            onChange={setIsolationStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "background",
-        label: "Background",
-        value: backgroundStr,
-        onChange: setBackgroundStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Background"
-            value={backgroundStr}
-            options={BACKGROUND_VALUES}
-            onChange={setBackgroundStr}
-            disabled={disabled}
-          />
-        ),
-      },
+      // Capabilities --------------------------------------------------------
       {
         key: "skills",
         wrapInLabel: false,
         label: "Skills",
+        group: "capabilities",
         value: skills.join(", "),
         onChange: (val) => setSkills(parseSkillSlugs(val)),
         serialize: () => {
@@ -464,20 +427,54 @@ export function AgentDetailContent({
         ),
       },
       {
+        key: "mcpServers",
+        label: "MCP Servers",
+        group: "capabilities",
+        value: mcpServersStr,
+        onChange: setMcpServersStr,
+        placeholder: "Comma-separated server references",
+        helpText: "Comma-separated. Written as an mcpServers list.",
+        serialize: serializeMcpServerRefs,
+      },
+      {
+        // The two block lists are different keys, not duplicates, so they sit
+        // side by side with the key each one writes spelled out.
+        key: "disallowedTools",
+        label: "Disallowed Tools",
+        group: "capabilities",
+        value: disallowedToolsStr,
+        onChange: setDisallowedToolsStr,
+        placeholder: "e.g. Write, Edit, Agent(Explore)",
+        helpText: "Comma-separated. Written as disallowedTools.",
+      },
+      {
+        key: "deny-tools",
+        label: "Deny Tools",
+        group: "capabilities",
+        value: denyToolsStr,
+        onChange: setDenyToolsStr,
+        placeholder: "e.g. web_search, shell",
+        helpText: "Comma-separated. Written as deny-tools.",
+      },
+      {
         // Keep tools available when switching to raw YAML, but do not expose it in
         // the structured editor per the Claude-facing layout.
         key: "tools",
         hidden: true,
         label: "Tools (comma-separated)",
+        group: "capabilities",
         value: toolsStr,
         onChange: setToolsStr,
         placeholder: "e.g. bash, edit, grep",
       },
+      // Execution -----------------------------------------------------------
       {
         key: "mode",
         label: "Mode",
+        group: "execution",
         value: modeStr,
         onChange: setModeStr,
+        helpText: `${MODE_DEFAULT} when the key is absent.`,
         renderInput: ({ disabled }) => (
           <select className="frontmatter-editor__input" value={modeStr} onChange={(event) => setModeStr(event.target.value)} disabled={disabled} aria-label="Mode">
             {MODE_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}
@@ -485,10 +482,28 @@ export function AgentDetailContent({
         ),
       },
       {
+        key: "background",
+        label: "Background",
+        group: "execution",
+        value: backgroundStr,
+        onChange: setBackgroundStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Background"
+            value={backgroundStr}
+            options={BACKGROUND_VALUES}
+            onChange={setBackgroundStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
         key: "spawning",
         label: "Spawning",
+        group: "execution",
         value: spawningStr,
         onChange: setSpawningStr,
+        helpText: `${SPAWNING_DEFAULT} when the key is absent.`,
         renderInput: ({ disabled }) => (
           <FrontmatterChoiceSelect
             label="Spawning"
@@ -500,10 +515,28 @@ export function AgentDetailContent({
         ),
       },
       {
+        key: "isolation",
+        label: "Isolation",
+        group: "execution",
+        value: isolationStr,
+        onChange: setIsolationStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Isolation"
+            value={isolationStr}
+            options={ISOLATION_VALUES}
+            onChange={setIsolationStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
         key: "trust-project",
         label: "Trust Project",
+        group: "execution",
         value: trustProjectStr,
         onChange: setTrustProjectStr,
+        helpText: `${TRUST_PROJECT_DEFAULT} when the key is absent.`,
         renderInput: ({ disabled }) => (
           <FrontmatterChoiceSelect
             label="Trust Project"
@@ -515,11 +548,28 @@ export function AgentDetailContent({
         ),
       },
       {
-        key: "deny-tools",
-        label: "Deny Tools (comma-separated)",
-        value: denyToolsStr,
-        onChange: setDenyToolsStr,
-        placeholder: "e.g. web_search, shell",
+        key: "memory",
+        label: "Memory",
+        group: "execution",
+        value: memoryStr,
+        onChange: setMemoryStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Memory"
+            value={memoryStr}
+            options={MEMORY_VALUES}
+            onChange={setMemoryStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        key: "maxTurns",
+        label: "Max Turns",
+        group: "execution",
+        value: maxTurnsStr,
+        onChange: setMaxTurnsStr,
+        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
       },
     ],
     [
@@ -923,6 +973,7 @@ export function AgentDetailContent({
                 <div className="agent-frontmatter-editor">
                   <FrontmatterEditor
                     knownFields={knownFields}
+                    fieldGroups={AGENT_FRONTMATTER_GROUPS}
                     otherEntries={otherEntries}
                     onChangeOtherEntries={setOtherEntries}
                     rawYaml={rawYaml}

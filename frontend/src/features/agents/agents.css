@@ -67,62 +67,26 @@
   opacity: 0.5;
 }
 
-/* Keep the structured agent frontmatter grouped by purpose. Tools stays available
-   to raw YAML serialization but is hidden from this structured surface. */
+/* Structured agent frontmatter. Each group in AGENT_FRONTMATTER_GROUPS lays its own
+   fields out on a three-column grid in DOM order, so reading order, tab order and
+   visual order are the same thing. The named grid areas this replaced fixed the
+   visual order independently of the DOM, which sent the keyboard back and forth
+   across the form; they also had to be restated in full for the narrow layout.
+
+   Tools stays available to raw YAML serialization but is hidden from this surface. */
 .agent-frontmatter-editor .frontmatter-editor__known-fields {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-template-areas:
-    "name role color"
-    "description description description"
-    "harness model effort"
-    "disallowed-tools max-turns mcp-servers"
-    "mode deny-tools deny-tools"
-    "skills skills skills"
-    "memory isolation background"
-    "spawning trust-project trust-project";
 }
 
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="name"] { grid-area: name; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="role"] { grid-area: role; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="color"] { grid-area: color; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="description"] { grid-area: description; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="harness"] { grid-area: harness; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="model"] { grid-area: model; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="effort"] { grid-area: effort; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="disallowedTools"] { grid-area: disallowed-tools; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="maxTurns"] { grid-area: max-turns; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="mcpServers"] { grid-area: mcp-servers; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="memory"] { grid-area: memory; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="isolation"] { grid-area: isolation; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="background"] { grid-area: background; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="mode"] { grid-area: mode; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="deny-tools"] { grid-area: deny-tools; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="skills"] { grid-area: skills; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="spawning"] { grid-area: spawning; }
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="trust-project"] { grid-area: trust-project; }
+/* The two fields whose control is a paragraph or a token list, not a one-line value. */
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="description"],
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="skills"] {
+  grid-column: 1 / -1;
+}
 
 @media (max-width: 560px) {
   .agent-frontmatter-editor .frontmatter-editor__known-fields {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "name"
-      "role"
-      "color"
-      "description"
-      "harness"
-      "model"
-      "effort"
-      "disallowed-tools"
-      "max-turns"
-      "mcp-servers"
-      "mode"
-      "deny-tools"
-      "skills"
-      "memory"
-      "isolation"
-      "background"
-      "spawning"
-      "trust-project";
   }
 }
 

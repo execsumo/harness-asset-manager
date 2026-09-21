@@ -304,7 +304,52 @@ describe("AgentDetailContent", () => {
     expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
   });
 
-  it("lists the structured frontmatter fields in the agent contract order", () => {
+  it("groups the structured frontmatter fields by what each one decides", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    const { container } = renderDetail(agentDetailFixture());
+
+    const groups = Array.from(
+      container.querySelectorAll<HTMLElement>(".frontmatter-editor__group"),
+    ).map((node) => ({
+      title: node.querySelector(".frontmatter-editor__group-title")?.textContent,
+      labels: Array.from(
+        node.querySelectorAll(".frontmatter-editor__label"),
+      ).map((label) => label.textContent),
+    }));
+
+    // Reading order is the order the questions get asked: what is this, what runs
+    // it, what can it reach for, how does it run. Every field belongs to exactly one
+    // of them, so no group's fields are interleaved with another's.
+    expect(groups).toEqual([
+      {
+        title: "Identity",
+        labels: ["Agent Name", "Role", "Color", "Description"],
+      },
+      {
+        title: "Harness & Model",
+        labels: ["Harness", "Model", "Effort"],
+      },
+      {
+        title: "Capabilities",
+        labels: ["Skills", "MCP Servers", "Disallowed Tools", "Deny Tools"],
+      },
+      {
+        title: "Execution",
+        labels: [
+          "Mode",
+          "Background",
+          "Spawning",
+          "Isolation",
+          "Trust Project",
+          "Memory",
+          "Max Turns",
+        ],
+      },
+    ]);
+  });
+
+  it("keeps every contract field in exactly one group and hides tools", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
@@ -313,29 +358,31 @@ describe("AgentDetailContent", () => {
       container.querySelectorAll(".frontmatter-editor__known-fields .frontmatter-editor__label"),
     ).map((node) => node.textContent);
 
-    // The editor and the renderer read top to bottom in the same order, so a field
-    // never appears in one place before the key it follows in the file.
-    expect(labels).toEqual([
-      "Agent Name",
-      "Role",
-      "Color",
-      "Description",
-      "Harness",
-      "Model",
-      "Effort",
-      "Disallowed Tools (comma-separated)",
-      "Max Turns",
-      "MCP Servers",
-      "Memory",
-      "Isolation",
-      "Background",
-      "Skills",
-      "Mode",
-      "Spawning",
-      "Trust Project",
-      "Deny Tools (comma-separated)",
-    ]);
+    // Nothing renders outside a group, so a field added without one cannot quietly
+    // land in an unlabelled block above the headings.
+    const groupedLabels = Array.from(
+      container.querySelectorAll(
+        ".frontmatter-editor__group .frontmatter-editor__known-fields .frontmatter-editor__label",
+      ),
+    ).map((node) => node.textContent);
+    expect(groupedLabels).toEqual(labels);
+    expect(new Set(labels).size).toBe(labels.length);
     expect(labels).not.toContain("Tools (comma-separated)");
+  });
+
+  it("spells out which key each of the two block-list fields writes", () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
+
+    const { container } = renderDetail(agentDetailFixture());
+
+    const helpFor = (key: string) =>
+      container
+        .querySelector(`[data-frontmatter-key="${key}"] .frontmatter-editor__help`)
+        ?.textContent;
+
+    // "Disallowed Tools" and "Deny Tools" are different keys, not a duplicate row.
+    expect(helpFor("disallowedTools")).toContain("disallowedTools");
+    expect(helpFor("deny-tools")).toContain("deny-tools");
   });
 
   it("offers color as a dropdown with an empty option that clears the key", () => {
