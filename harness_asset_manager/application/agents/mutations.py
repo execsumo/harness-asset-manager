@@ -9,6 +9,7 @@ from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 
 from .adapters import GENERATED_MARKER, AgentHarnessAdapter, parse_codex_agent
+from .hermes_profile import ensure_profile
 from .inventory import TargetResolver
 from .ledger import AgentBindingLedger, build_record
 from .model import (
@@ -56,6 +57,7 @@ class AgentMutationService:
         skills_queries: SkillsQueryService | None = None,
         skills_mutations: SkillsMutationService | None = None,
         resolve_all: TargetResolver | None = None,
+        hermes_root: Path | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
@@ -64,6 +66,7 @@ class AgentMutationService:
         self.asset_tags = asset_tags
         self.skills_queries = skills_queries
         self.skills_mutations = skills_mutations
+        self.hermes_root = hermes_root
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -552,6 +555,9 @@ class AgentMutationService:
     # -- ledger -------------------------------------------------------------
 
     def _enable(self, adapter: AgentHarnessAdapter, harness: str, agent: AgentDefinition) -> None:
+        if harness == "hermes" and self.hermes_root is not None:
+            # Hermes consumes a Bot/Profile, not the conventional agents/*.md file.
+            ensure_profile(agent, self.hermes_root)
         adapter.enable(agent)
         self.ledger.upsert(
             agent.slug,

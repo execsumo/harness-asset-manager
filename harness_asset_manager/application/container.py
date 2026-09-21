@@ -505,6 +505,7 @@ def build_backend_container(
         skills_queries=skills_queries,
         skills_mutations=skills_mutations,
         resolve_all=resolve_all_agents_snapshot,
+        hermes_root=_hermes_root(harness_kernel.context),
     )
 
 

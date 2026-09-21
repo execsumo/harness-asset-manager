@@ -440,6 +440,43 @@ class AgentsFixture(unittest.TestCase):
         self.assertEqual(agent.metadata["mcpServers"], ["context7", "github"])
 
 
+class HermesBindingTests(unittest.TestCase):
+    def test_enable_provisions_a_hermes_bot_before_binding(self) -> None:
+        with TemporaryDirectory() as temp:
+            root = Path(temp)
+            store_root = root / "data" / "agents"
+            hermes_root = root / ".hermes"
+            harness_dir = hermes_root / "agents"
+            store_root.mkdir(parents=True)
+            harness_dir.mkdir(parents=True)
+            target = AgentTarget(
+                id="hermes",
+                label="Hermes Agent",
+                logo_key="hermes",
+                root_path=hermes_root,
+                output_dir=harness_dir,
+                file_glob="*.md",
+                render_format="markdown",
+                docs_url="",
+                installed=True,
+            )
+            store = AgentStore(store_root)
+            adapter = AgentHarnessAdapter(target, store_root)
+            ledger = AgentBindingLedger(root / "data" / "bindings.json", home=root)
+            mutations = AgentMutationService(
+                store,
+                lambda: ((target,), {"hermes": adapter}),
+                ledger,
+                hermes_root=hermes_root,
+            )
+
+            store.create(name="Wags", description="coordinates", prompt="delegate")
+            mutations.enable("wags", "hermes")
+
+            self.assertTrue((hermes_root / "profiles" / "wags" / "SOUL.md").is_file())
+            self.assertTrue((harness_dir / "wags.md").is_symlink())
+
+
 class UnreadableStoreFileTests(AgentsFixture):
     """What the product owes a user whose agent file no longer parses."""
 
