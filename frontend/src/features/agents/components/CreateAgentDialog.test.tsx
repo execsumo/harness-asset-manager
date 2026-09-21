@@ -105,7 +105,7 @@ describe("CreateAgentDialog", () => {
       "Effort",
       "Skills",
       "MCP Servers",
-      "Disallowed Tools (comma-separated)",
+      "Disallowed Tools",
       "Background",
       "Isolation",
       "Memory",
@@ -113,6 +113,22 @@ describe("CreateAgentDialog", () => {
       "Hermes Provider",
       "Hermes Model",
     ]);
+  });
+
+  it("puts the format and the key a field writes in a help line, not in its label", () => {
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+
+    const hintFor = (label: string) =>
+      document
+        .querySelector(`.form-field__input[aria-label="${label}"]`)
+        ?.parentElement?.querySelector(".form-field__hint")?.textContent;
+
+    expect(hintFor("MCP Servers")).toContain("mcpServers");
+    expect(hintFor("Disallowed Tools")).toContain("disallowedTools");
+
+    // The help line sits inside the label element, so each input carries its own
+    // aria-label to keep that guidance out of the accessible name.
+    expect(screen.getByRole("textbox", { name: "Disallowed Tools" })).toBeInTheDocument();
   });
 
   it("preselects harnesses from configured auto-adopt defaults", () => {

@@ -520,10 +520,14 @@ select.form-field__input,
   box-shadow: var(--focus-ring-danger);
 }
 
+/* Format or default a field cannot show in its own control -- which key it writes,
+   what a harness assumes when it is absent. Matches .frontmatter-editor__help so the
+   same guidance reads alike in the create dialog and in Agent Details. */
 .form-field__hint {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   line-height: var(--leading-normal);
+  opacity: 0.8;
 }
 
 .form-field__error {
