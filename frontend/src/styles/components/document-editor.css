@@ -84,10 +84,40 @@
   min-width: 0;
 }
 
+/* A named block of related fields. The dashed rule matches .frontmatter-editor__other-section
+   so every division inside the card -- the groups and the custom-key list -- reads alike. */
+.frontmatter-editor__group {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
+}
+
+.frontmatter-editor__group-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
+.frontmatter-editor__group-hint {
+  margin: -4px 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  opacity: 0.8;
+}
+
 .frontmatter-editor__label {
   font-size: var(--font-size-xs);
   font-weight: var(--weight-medium);
   color: var(--color-text-muted);
+}
+
+/* Format or default a field cannot show in its own control -- which key it writes,
+   what a harness assumes when it is absent. */
+.frontmatter-editor__help {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  opacity: 0.8;
 }
 
 .frontmatter-editor__input {
