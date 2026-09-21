@@ -2226,6 +2226,39 @@
         "title": "HarnessColumnResponse",
         "type": "object"
       },
+      "HermesOptionsResponse": {
+        "properties": {
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/HermesProviderOptionResponse"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "title": "HermesOptionsResponse",
+        "type": "object"
+      },
+      "HermesProviderOptionResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "HermesProviderOptionResponse",
+        "type": "object"
+      },
       "HookApplyConfigResponse": {
         "properties": {
           "failed": {
@@ -7317,6 +7350,87 @@
           }
         },
         "summary": "Adopt All Agents",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/hermes-options": {
+      "get": {
+        "operationId": "hermes_options_api_agents_hermes_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HermesOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Hermes Options",
         "tags": [
           "Agents"
         ]

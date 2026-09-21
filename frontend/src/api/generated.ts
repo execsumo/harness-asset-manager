@@ -39,6 +39,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/hermes-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hermes Options */
+        get: operations["hermes_options_api_agents_hermes_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/agents/{agent_ref}": {
         parameters: {
             query?: never;
@@ -2250,6 +2267,18 @@ export interface components {
             /** Logokey */
             logoKey?: string | null;
         };
+        /** HermesOptionsResponse */
+        HermesOptionsResponse: {
+            /** Providers */
+            providers?: components["schemas"]["HermesProviderOptionResponse"][];
+        };
+        /** HermesProviderOptionResponse */
+        HermesProviderOptionResponse: {
+            /** Id */
+            id: string;
+            /** Models */
+            models?: string[];
+        };
         /** HookApplyConfigResponse */
         HookApplyConfigResponse: {
             /** Failed */
@@ -3961,6 +3990,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdoptAllAgentsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    hermes_options_api_agents_hermes_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HermesOptionsResponse"];
                 };
             };
             /** @description Bad Request */
