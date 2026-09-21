@@ -51,6 +51,9 @@ vi.mock("../api/queries", () => ({
   useAgentsInventoryQuery: () => ({
     data: mockInventoryData,
   }),
+  useHermesOptionsQuery: () => ({
+    data: { providers: [{ id: "test-provider", models: ["test/model"] }] },
+  }),
 }));
 
 vi.mock("../../settings/public", () => ({

@@ -8,6 +8,7 @@ from unittest import mock
 from harness_asset_manager.application.agents.hermes_profile import (
     detach_profile,
     ensure_profile,
+    hermes_provider_options,
 )
 from harness_asset_manager.application.agents.model import AgentDefinition
 from harness_asset_manager.config_document import load_config_document
@@ -116,6 +117,7 @@ class HermesProvisioningTests(unittest.TestCase):
         *,
         hermes_provider: str | None = None,
         hermes_model: str | None = None,
+        model: str | None = None,
     ) -> AgentDefinition:
         return AgentDefinition(
             slug=slug,
@@ -124,6 +126,7 @@ class HermesProvisioningTests(unittest.TestCase):
             prompt="You are a test agent.",
             tools=(),
             path=Path("/dummy"),
+            model=model,
             hermes_provider=hermes_provider,
             hermes_model=hermes_model,
         )
@@ -152,6 +155,23 @@ class HermesProvisioningTests(unittest.TestCase):
 
             for subdir in ("memories", "sessions", "skills", "skins", "logs", "plans", "workspace", "cron", "home"):
                 self.assertTrue((home / subdir).is_dir())
+
+    def test_provider_options_include_root_model_and_custom_models(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True)
+            (hermes_root / "config.yaml").write_text(
+                "model:\n  provider: openai-codex\n  default: gpt-5.6-luna\n"
+                "providers:\n  groq:\n    model: qwen3\n"
+            )
+
+            self.assertEqual(
+                hermes_provider_options(hermes_root),
+                (
+                    {"id": "openai-codex", "models": ["gpt-5.6-luna"]},
+                    {"id": "groq", "models": ["qwen3"]},
+                ),
+            )
 
     def test_config_yaml_mirrors_version_and_absent_when_root_missing(self) -> None:
         with TemporaryDirectory() as temp:
@@ -190,6 +210,72 @@ class HermesProvisioningTests(unittest.TestCase):
             self.assertIn("# my comment", content)
             self.assertIn("custom_key: 123", content)
             self.assertIn("_config_version: 42", content)
+
+    def test_generic_model_fills_hermes_default_without_an_override(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            agent = self._create_agent("test-agent", model="gpt-5.6-sol")
+
+            ensure_profile(agent, hermes_root)
+
+            document = load_config_document(
+                (hermes_root / "profiles" / "test-agent" / "config.yaml").read_text(),
+                file_format="yaml",
+            )
+            self.assertEqual(document["model"], {"default": "gpt-5.6-sol"})
+
+    def test_generic_model_infers_a_unique_configured_provider(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True)
+            (hermes_root / "config.yaml").write_text(
+                "model:\n  provider: openai-codex\n  default: gpt-5.6-luna\n"
+            )
+
+            ensure_profile(self._create_agent("test-agent", model="gpt-5.6-luna"), hermes_root)
+
+            document = load_config_document(
+                (hermes_root / "profiles" / "test-agent" / "config.yaml").read_text(),
+                file_format="yaml",
+            )
+            self.assertEqual(document["model"], {"provider": "openai-codex", "default": "gpt-5.6-luna"})
+
+    def test_explicit_hermes_model_overrides_generic_model(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            agent = self._create_agent(
+                "test-agent", model="generic-model", hermes_model="hermes-model"
+            )
+
+            ensure_profile(agent, hermes_root)
+
+            document = load_config_document(
+                (hermes_root / "profiles" / "test-agent" / "config.yaml").read_text(),
+                file_format="yaml",
+            )
+            self.assertEqual(document["model"]["default"], "hermes-model")
+
+    def test_selected_custom_provider_is_seeded_without_its_api_key(self) -> None:
+        with TemporaryDirectory() as temp:
+            hermes_root = Path(temp) / ".hermes"
+            hermes_root.mkdir(parents=True)
+            (hermes_root / "config.yaml").write_text(
+                "providers:\n  local:\n    base_url: http://localhost:1234/v1\n"
+                "    api_key: secret\n    model: local-model\n"
+            )
+            agent = self._create_agent(
+                "test-agent", hermes_provider="local", hermes_model="local-model"
+            )
+
+            ensure_profile(agent, hermes_root)
+
+            document = load_config_document(
+                (hermes_root / "profiles" / "test-agent" / "config.yaml").read_text(),
+                file_format="yaml",
+            )
+            self.assertEqual(document["providers"]["local"]["base_url"], "http://localhost:1234/v1")
+            self.assertEqual(document["providers"]["local"]["model"], "local-model")
+            self.assertNotIn("api_key", document["providers"]["local"])
 
     def test_model_settings_write_bare_values_and_preserve_existing_config(self) -> None:
         with TemporaryDirectory() as temp:

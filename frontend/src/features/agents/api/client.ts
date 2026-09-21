@@ -7,7 +7,12 @@ import type {
   AgentAdoptConflict,
   AdoptAllResponse,
   AgentDetailDto,
+  HermesOptionsDto,
 } from "./types";
+
+export async function fetchHermesOptions(): Promise<HermesOptionsDto> {
+  return fetchJson<HermesOptionsDto>("/agents/hermes-options");
+}
 
 export async function fetchAgentsInventory(): Promise<AgentInventoryDto> {
   return fetchJson<AgentInventoryDto>("/agents");

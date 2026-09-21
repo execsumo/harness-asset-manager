@@ -90,6 +90,15 @@ export interface AgentRepairDto {
   detail: string;
 }
 
+export interface HermesProviderOptionDto {
+  id: string;
+  models: string[];
+}
+
+export interface HermesOptionsDto {
+  providers: HermesProviderOptionDto[];
+}
+
 export interface AgentInventoryDto {
   columns: Array<{ harness: string; label: string; logoKey: string | null; installed: boolean }>;
   entries: AgentInventoryEntryDto[];

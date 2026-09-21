@@ -77,6 +77,15 @@ class AgentInventoryResponse(BaseModel):
     recentRepairs: list[AgentRepairResponse] = Field(default_factory=list)
 
 
+class HermesProviderOptionResponse(BaseModel):
+    id: str
+    models: list[str] = Field(default_factory=list)
+
+
+class HermesOptionsResponse(BaseModel):
+    providers: list[HermesProviderOptionResponse] = Field(default_factory=list)
+
+
 class AgentHarnessRequest(BaseModel):
     harness: str
 
@@ -270,6 +279,8 @@ __all__ = [
     "AgentDetailResponse",
     "AgentEntryResponse",
     "AgentHarnessDetailResponse",
+    "HermesOptionsResponse",
+    "HermesProviderOptionResponse",
     "AgentHarnessRequest",
     "AgentInventoryResponse",
     "AgentIssueResponse",

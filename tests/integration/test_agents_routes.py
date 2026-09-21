@@ -41,6 +41,29 @@ def _seed_pi_shared_fixture(spec: FakeHomeSpec) -> None:
     write_cli_stub(spec.bin_dir / "pi", "pi")
 
 
+class HermesProviderOptionsRouteTests(unittest.TestCase):
+    def test_lists_configured_providers_and_models_without_secrets(self) -> None:
+        with AppTestHarness() as harness:
+            harness.spec.hermes_config_path.write_text(
+                "model:\n  provider: openai-codex\n  default: gpt-5.6-luna\n"
+                "providers:\n  groq:\n    model: qwen3\n    api_key: secret\n",
+                encoding="utf-8",
+            )
+
+            payload = harness.get_json("/api/agents/hermes-options")
+
+            self.assertEqual(
+                payload,
+                {
+                    "providers": [
+                        {"id": "openai-codex", "models": ["gpt-5.6-luna"]},
+                        {"id": "groq", "models": ["qwen3"]},
+                    ]
+                },
+            )
+            self.assertNotIn("secret", str(payload))
+
+
 class AgentEffortContractTests(unittest.TestCase):
     """`effort` is a fixed vocabulary; every path that writes it must enforce it.
 

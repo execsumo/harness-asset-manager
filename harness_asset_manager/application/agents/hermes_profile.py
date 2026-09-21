@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import copy
 import logging
 import os
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from harness_asset_manager.application.agents.model import AgentDefinition
@@ -106,6 +107,7 @@ def ensure_profile(
     root_config_file = hermes_root / "config.yaml"
 
     root_version = None
+    root_doc: dict[str, object] = {}
     if root_config_file.is_file():
         try:
             root_doc = load_config_document(
@@ -125,9 +127,30 @@ def ensure_profile(
         config_doc["_config_version"] = root_version
 
     provider = agent.hermes_provider.strip() if agent.hermes_provider else None
-    model = agent.hermes_model.strip() if agent.hermes_model else None
-    provider_owned = bool(previous and previous.hermes_provider and previous.hermes_provider.strip())
-    model_owned = bool(previous and previous.hermes_model and previous.hermes_model.strip())
+    explicit_model = agent.hermes_model.strip() if agent.hermes_model else None
+    # The shared frontmatter model is the portable default; Hermes-specific model
+    # metadata remains an override for agents that need a different route.
+    model = explicit_model or (agent.model.strip() if agent.model else None)
+    inferred_provider = _provider_for_model(root_doc, model)
+    if provider is None:
+        provider = inferred_provider
+    provider_owned = bool(
+        previous
+        and (
+            (previous.hermes_provider and previous.hermes_provider.strip())
+            or _provider_for_model(
+                root_doc,
+                previous.hermes_model or previous.model,
+            )
+        )
+    )
+    model_owned = bool(
+        previous
+        and (
+            (previous.hermes_model and previous.hermes_model.strip())
+            or (not previous.hermes_model and previous.model and previous.model.strip())
+        )
+    )
     provider_touched = provider is not None or provider_owned
     model_touched = model is not None or model_owned
     if provider_touched or model_touched:
@@ -149,8 +172,106 @@ def ensure_profile(
         if isinstance(model_config, MutableMapping) and not model_config:
             del config_doc["model"]
 
+    _seed_configured_provider(config_doc, root_doc, provider)
     rendered_config = dump_config_document(config_doc, file_format="yaml")
     atomic_write_text(config_file, rendered_config, follow_symlinks=False)
+
+
+def hermes_provider_options(hermes_root: Path) -> tuple[dict[str, object], ...]:
+    """Return configured Hermes providers and the model ids they advertise.
+
+    This is intentionally a read-only view of the root config: selecting an option
+    does not make a Bot inherit the root profile. Built-in providers appear when
+    they are selected by the root model block; custom providers come from the
+    root ``providers`` mapping.
+    """
+    config_file = hermes_root / "config.yaml"
+    if not config_file.is_file():
+        return ()
+    try:
+        document = load_config_document(config_file.read_text(encoding="utf-8"), file_format="yaml")
+    except Exception:
+        return ()
+    return _provider_options_from_document(document)
+
+
+def _provider_options_from_document(document: Mapping[str, object]) -> tuple[dict[str, object], ...]:
+    model_config = document.get("model")
+    configured_provider = None
+    configured_model = None
+    if isinstance(model_config, Mapping):
+        configured_provider = _config_string(model_config.get("provider"))
+        configured_model = _config_string(model_config.get("default")) or _config_string(model_config.get("model"))
+    providers = document.get("providers")
+    provider_map = providers if isinstance(providers, Mapping) else {}
+    names: list[str] = []
+    if configured_provider:
+        names.append(configured_provider)
+    names.extend(str(name) for name in provider_map if str(name) not in names)
+
+    options: list[dict[str, object]] = []
+    for name in names:
+        models: list[str] = []
+        if name == configured_provider and configured_model:
+            models.append(configured_model)
+        definition = provider_map.get(name)
+        if isinstance(definition, Mapping):
+            for key in ("default", "model"):
+                value = _config_string(definition.get(key))
+                if value and value not in models:
+                    models.append(value)
+            declared = definition.get("models")
+            if isinstance(declared, (list, tuple)):
+                for value in declared:
+                    model_id = _config_string(value)
+                    if model_id and model_id not in models:
+                        models.append(model_id)
+        options.append({"id": name, "models": models})
+    return tuple(options)
+
+
+def _provider_for_model(document: Mapping[str, object], model: str | None) -> str | None:
+    if not model:
+        return None
+    matches = []
+    for option in _provider_options_from_document(document):
+        advertised_models = option.get("models")
+        if isinstance(advertised_models, list) and any(
+            isinstance(value, str) and value == model for value in advertised_models
+        ):
+            matches.append(str(option["id"]))
+    return matches[0] if len(matches) == 1 else None
+
+
+def _config_string(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _seed_configured_provider(
+    config_doc: MutableMapping[str, object],
+    root_doc: Mapping[str, object],
+    provider: str | None,
+) -> None:
+    """Copy a selected custom provider definition without copying credentials."""
+    if not provider:
+        return
+    root_providers = root_doc.get("providers")
+    if not isinstance(root_providers, Mapping):
+        return
+    definition = root_providers.get(provider)
+    if not isinstance(definition, Mapping):
+        return
+    profile_providers = config_doc.get("providers")
+    if profile_providers is None:
+        profile_providers = new_subtree("yaml")
+        config_doc["providers"] = profile_providers
+    if not isinstance(profile_providers, MutableMapping):
+        return
+    if provider not in profile_providers:
+        safe_definition = copy.deepcopy(dict(definition))
+        for key in ("api_key", "apiKey", "token", "secret", "password"):
+            safe_definition.pop(key, None)
+        profile_providers[provider] = safe_definition
 
 
 def _set_or_clear_model_key(

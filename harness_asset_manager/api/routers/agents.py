@@ -30,6 +30,8 @@ from harness_asset_manager.api.schemas.agents import (
     AutoEnabledSkillResponse,
     AutoEnableFailureResponse,
     CreateAgentRequest,
+    HermesOptionsResponse,
+    HermesProviderOptionResponse,
     SetAgentHarnessesRequest,
     SetAgentHarnessesResultResponse,
     SetAgentTagsRequest,
@@ -53,11 +55,23 @@ from harness_asset_manager.application.agents import (
     validate_memory,
     validate_mode,
 )
-from harness_asset_manager.application.agents.hermes_profile import ensure_profile
+from harness_asset_manager.application.agents.hermes_profile import (
+    ensure_profile,
+    hermes_provider_options,
+)
 from harness_asset_manager.application.agents.parser import split_frontmatter
 from harness_asset_manager.errors import MutationError
 
 router = APIRouter(prefix="/api/agents", tags=["Agents"])
+
+
+@router.get("/hermes-options", response_model=HermesOptionsResponse)
+def hermes_options(
+    container: BackendContainer = Depends(get_container),
+) -> HermesOptionsResponse:
+    return HermesOptionsResponse(
+        providers=[HermesProviderOptionResponse(**option) for option in hermes_provider_options(container.hermes_root)]
+    )
 
 
 @router.get("", response_model=AgentInventoryResponse)

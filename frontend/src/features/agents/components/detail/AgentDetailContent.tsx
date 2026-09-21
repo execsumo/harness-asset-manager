@@ -26,6 +26,7 @@ import {
 import {
   useAdoptAgentMutation,
   useDeleteAgentMutation,
+  useHermesOptionsQuery,
   useSetAgentTagsMutation,
   useUnmanageAgentMutation,
   useUpdateAgentMutation,
@@ -104,6 +105,7 @@ export function AgentDetailContent({
   const adoptMutation = useAdoptAgentMutation();
   const unmanageMutation = useUnmanageAgentMutation();
   const skillsListQuery = useSkillsListQuery();
+  const hermesOptionsQuery = useHermesOptionsQuery();
 
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
   const [conflictPending, setConflictPending] = useState(false);
@@ -225,6 +227,14 @@ export function AgentDetailContent({
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
+  const selectedHermesProvider = hermesProviders.find((provider) => provider.id === hermesProviderStr);
+  const hermesModels = Array.from(new Set([
+    detail.model,
+    detail.hermesModel,
+    hermesModelStr,
+    ...(selectedHermesProvider ? selectedHermesProvider.models : hermesProviders.flatMap((provider) => provider.models)),
+  ].filter((value): value is string => Boolean(value))));
 
   useEffect(() => {
     setName(detail.name);
@@ -933,29 +943,42 @@ export function AgentDetailContent({
                       <input
                         type="text"
                         className="frontmatter-editor__input"
+                        list={`hermes-provider-options-${detail.ref}`}
                         value={hermesProviderStr}
                         onChange={(event) => setHermesProviderStr(event.target.value)}
                         disabled={updateMutation.isPending}
-                        placeholder="Provider name from your Hermes setup"
+                        placeholder="Auto / choose a configured provider"
                         aria-label="Hermes Provider"
                       />
+                      <datalist id={`hermes-provider-options-${detail.ref}`}>
+                        {hermesProviders.map((provider) => (
+                          <option key={provider.id} value={provider.id} />
+                        ))}
+                      </datalist>
                     </label>
                     <label className="frontmatter-editor__field">
                       <span className="hermes-profile-editor__label">Hermes Model</span>
                       <input
                         type="text"
                         className="frontmatter-editor__input"
+                        list={`hermes-model-options-${detail.ref}`}
                         value={hermesModelStr}
                         onChange={(event) => setHermesModelStr(event.target.value)}
                         disabled={updateMutation.isPending}
-                        placeholder="Model id from your Hermes setup"
+                        placeholder={detail.model ? `Uses Model above (${detail.model})` : "Uses Hermes default or enter a model id"}
                         aria-label="Hermes Model"
                       />
+                      <datalist id={`hermes-model-options-${detail.ref}`}>
+                        {hermesModels.map((modelId) => (
+                          <option key={modelId} value={modelId} />
+                        ))}
+                      </datalist>
                     </label>
                   </div>
                   <p className="frontmatter-editor__note">
-                    Hermes profile skills and agents are verified supported targets. Values are
-                    passed through to Hermes. HAM-managed Bots are addressed as hermes -p
+                    Hermes profile skills and agents are verified supported targets. Hermes uses the
+                    shared Model field unless Hermes Model overrides it; provider choices come from
+                    Hermes configuration and can still be entered manually. HAM-managed Bots are addressed as hermes -p
                     &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
                     sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>

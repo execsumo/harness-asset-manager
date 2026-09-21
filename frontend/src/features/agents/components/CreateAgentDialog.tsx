@@ -3,7 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, X } from "lucide-react";
 
-import { useCreateAgentMutation, useAgentsInventoryQuery } from "../api/queries";
+import {
+  useCreateAgentMutation,
+  useAgentsInventoryQuery,
+  useHermesOptionsQuery,
+} from "../api/queries";
 import { useSettingsQuery } from "../../settings/public";
 import { useSkillsListQuery } from "../../skills/public";
 import { useToast } from "../../../components/Toast";
@@ -71,6 +75,7 @@ export function CreateAgentDialog({
   const createMutation = useCreateAgentMutation();
   const settingsQuery = useSettingsQuery();
   const inventoryQuery = useAgentsInventoryQuery();
+  const hermesOptionsQuery = useHermesOptionsQuery();
   const skillsListQuery = useSkillsListQuery();
 
   // Settings can still be in flight when the dialog opens, so the harness preselection
@@ -154,6 +159,13 @@ export function CreateAgentDialog({
   const isPending = createMutation.isPending;
 
   const columns = inventoryQuery.data?.columns ?? [];
+  const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
+  const selectedHermesProvider = hermesProviders.find((provider) => provider.id === hermesProvider);
+  const hermesModels = Array.from(new Set([
+    model,
+    hermesModel,
+    ...(selectedHermesProvider ? selectedHermesProvider.models : hermesProviders.flatMap((provider) => provider.models)),
+  ].filter(Boolean)));
 
   function toggleHarness(harnessId: string) {
     setSelectedHarnesses((current) =>
@@ -473,11 +485,18 @@ export function CreateAgentDialog({
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder="Provider name from your Hermes setup"
+                        list="hermes-provider-options"
+                        placeholder="Auto / choose a configured provider"
                         value={hermesProvider}
                         onChange={(e) => setHermesProvider(e.target.value)}
                         disabled={isPending}
+                        aria-label="Hermes Provider"
                       />
+                      <datalist id="hermes-provider-options">
+                        {hermesProviders.map((provider) => (
+                          <option key={provider.id} value={provider.id} />
+                        ))}
+                      </datalist>
                     </label>
 
                     <label className="form-field">
@@ -485,16 +504,24 @@ export function CreateAgentDialog({
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder="Model id from your Hermes setup"
+                        list="hermes-model-options"
+                        placeholder={model.trim() ? `Uses Model above (${model.trim()})` : "Uses Hermes default or enter a model id"}
                         value={hermesModel}
                         onChange={(e) => setHermesModel(e.target.value)}
                         disabled={isPending}
+                        aria-label="Hermes Model"
                       />
+                      <datalist id="hermes-model-options">
+                        {hermesModels.map((modelId) => (
+                          <option key={modelId} value={modelId} />
+                        ))}
+                      </datalist>
                     </label>
                   </div>
                   <p className="agent-dialog-harness-hint">
-                    Hermes profile skills and agents are verified supported targets. Hermes settings
-                    are passed through as entered. HAM-managed Bots are addressed as hermes -p
+                    Hermes profile skills and agents are verified supported targets. Hermes uses the
+                    shared Model field unless Hermes Model overrides it; provider choices come from
+                    Hermes configuration and can still be entered manually. HAM-managed Bots are addressed as hermes -p
                     &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
                     sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>
