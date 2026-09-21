@@ -293,7 +293,7 @@ export function CreateAgentDialog({
                 <h3 className="detail-sheet__section-heading">Frontmatter</h3>
                 <div className="dialog-fieldset">
                   <div className="dialog-form-fields agent-frontmatter-grid">
-                    <label className="form-field agent-frontmatter-grid__name">
+                    <label className="form-field">
                       <span className="form-field__label">
                         Agent Name
                         <span className="form-field__required">Required</span>
@@ -316,7 +316,7 @@ export function CreateAgentDialog({
                       ) : null}
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__role">
+                    <label className="form-field">
                       <span className="form-field__label">Role</span>
                       <input
                         type="text"
@@ -328,7 +328,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__color">
+                    <label className="form-field">
                       <span className="form-field__label">Color</span>
                       <FrontmatterChoiceSelect
                         label="Color"
@@ -356,7 +356,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__harness">
+                    <label className="form-field">
                       <span className="form-field__label">Harness</span>
                       <input
                         type="text"
@@ -368,7 +368,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__model">
+                    <label className="form-field">
                       <span className="form-field__label">Model</span>
                       <input
                         type="text"
@@ -380,7 +380,7 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__effort">
+                    <label className="form-field">
                       <span className="form-field__label">Effort</span>
                       <FrontmatterChoiceSelect
                         label="Effort"
@@ -391,46 +391,13 @@ export function CreateAgentDialog({
                         className="form-field__input"
                       />
                     </label>
-
                   </div>
 
+                  {/* Capabilities, then Execution -- the same order, and the same
+                      order within each, as the structured editor in Agent Details.
+                      Fields this dialog does not offer (deny-tools, mode, spawning,
+                      trust-project) are skipped, not reordered around. */}
                   <div className="dialog-form-fields agent-frontmatter-grid__additional">
-                    <label className="form-field agent-frontmatter-grid__disallowed-tools">
-                      <span className="form-field__label">Disallowed Tools (comma-separated)</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="e.g. Write, Edit, Agent(Explore)"
-                        value={disallowedTools}
-                        onChange={(e) => setDisallowedTools(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
-
-                    <label className="form-field agent-frontmatter-grid__max-turns">
-                      <span className="form-field__label">Max Turns</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
-                        value={maxTurns}
-                        onChange={(e) => setMaxTurns(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
-
-                    <label className="form-field agent-frontmatter-grid__mcp-servers">
-                      <span className="form-field__label">MCP Servers</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="Comma-separated server references"
-                        value={mcpServers}
-                        onChange={(e) => setMcpServers(e.target.value)}
-                        disabled={isPending}
-                      />
-                    </label>
-
                     <div className="form-field agent-frontmatter-grid__skills">
                       <span className="form-field__label">Skills</span>
                       <AgentSkillsFieldEditor
@@ -442,19 +409,31 @@ export function CreateAgentDialog({
                       />
                     </div>
 
-                    <label className="form-field agent-frontmatter-grid__isolation">
-                      <span className="form-field__label">Isolation</span>
-                      <FrontmatterChoiceSelect
-                        label="Isolation"
-                        value={isolation}
-                        options={ISOLATION_VALUES}
-                        onChange={setIsolation}
-                        disabled={isPending}
+                    <label className="form-field">
+                      <span className="form-field__label">MCP Servers</span>
+                      <input
+                        type="text"
                         className="form-field__input"
+                        placeholder="Comma-separated server references"
+                        value={mcpServers}
+                        onChange={(e) => setMcpServers(e.target.value)}
+                        disabled={isPending}
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__background">
+                    <label className="form-field">
+                      <span className="form-field__label">Disallowed Tools (comma-separated)</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder="e.g. Write, Edit, Agent(Explore)"
+                        value={disallowedTools}
+                        onChange={(e) => setDisallowedTools(e.target.value)}
+                        disabled={isPending}
+                      />
+                    </label>
+
+                    <label className="form-field">
                       <span className="form-field__label">Background</span>
                       <FrontmatterChoiceSelect
                         label="Background"
@@ -466,7 +445,19 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field agent-frontmatter-grid__memory">
+                    <label className="form-field">
+                      <span className="form-field__label">Isolation</span>
+                      <FrontmatterChoiceSelect
+                        label="Isolation"
+                        value={isolation}
+                        options={ISOLATION_VALUES}
+                        onChange={setIsolation}
+                        disabled={isPending}
+                        className="form-field__input"
+                      />
+                    </label>
+
+                    <label className="form-field">
                       <span className="form-field__label">Memory</span>
                       <FrontmatterChoiceSelect
                         label="Memory"
@@ -475,6 +466,18 @@ export function CreateAgentDialog({
                         onChange={setMemory}
                         disabled={isPending}
                         className="form-field__input"
+                      />
+                    </label>
+
+                    <label className="form-field">
+                      <span className="form-field__label">Max Turns</span>
+                      <input
+                        type="text"
+                        className="form-field__input"
+                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
+                        value={maxTurns}
+                        onChange={(e) => setMaxTurns(e.target.value)}
+                        disabled={isPending}
                       />
                     </label>
                   </div>

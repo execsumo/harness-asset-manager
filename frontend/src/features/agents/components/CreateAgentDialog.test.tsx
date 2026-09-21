@@ -83,6 +83,38 @@ describe("CreateAgentDialog", () => {
     vi.restoreAllMocks();
   });
 
+  it("orders the frontmatter fields the way Agent Details reads them", () => {
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+
+    const labels = Array.from(
+      document.querySelectorAll(".dialog-fieldset .form-field__label"),
+      // The label span also carries a "Required" badge; only the field name matters here.
+      (node) => node.firstChild?.textContent?.trim(),
+    );
+
+    // Identity, Harness & Model, Capabilities, Execution -- the AGENT_FRONTMATTER_GROUPS
+    // order from AgentDetailContent, minus the four fields this dialog does not offer.
+    // A field added to one surface and not the other shows up here as a mismatch.
+    expect(labels).toEqual([
+      "Agent Name",
+      "Role",
+      "Color",
+      "Description",
+      "Harness",
+      "Model",
+      "Effort",
+      "Skills",
+      "MCP Servers",
+      "Disallowed Tools (comma-separated)",
+      "Background",
+      "Isolation",
+      "Memory",
+      "Max Turns",
+      "Hermes Provider",
+      "Hermes Model",
+    ]);
+  });
+
   it("preselects harnesses from configured auto-adopt defaults", () => {
     mockSettingsData = {
       autoAdoptHarnesses: { agents: ["claude", "cursor"] },
