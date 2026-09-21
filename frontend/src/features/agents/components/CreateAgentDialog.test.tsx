@@ -209,7 +209,7 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("Describe this agent's role"), {
       target: { value: "Systems designer" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Target harness identifier"), {
+    fireEvent.change(screen.getByLabelText("Harness"), {
       target: { value: "claude" },
     });
     fireEvent.change(
@@ -330,7 +330,7 @@ describe("CreateAgentDialog", () => {
     // key looked different depending on whether you were creating or editing an agent.
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
 
-    for (const label of ["Color", "Effort", "Isolation", "Background", "Memory"]) {
+    for (const label of ["Harness", "Color", "Effort", "Isolation", "Background", "Memory"]) {
       expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
     }
 
@@ -340,6 +340,22 @@ describe("CreateAgentDialog", () => {
       "user",
       "project",
       "local",
+    ]);
+  });
+
+  it("offers Harness as the discovered harnesses, marking the uninstalled ones", () => {
+    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
+
+    const harness = screen.getByRole("combobox", { name: "Harness" }) as HTMLSelectElement;
+    const options = Array.from(harness.options).map((option) => [option.value, option.text]);
+
+    // Hermes is in the inventory but not installed here. It stays pickable and marked:
+    // an agent is often authored on one machine for another.
+    expect(options).toEqual([
+      ["", "(none)"],
+      ["claude", "Claude"],
+      ["cursor", "Cursor"],
+      ["hermes", "Hermes — not installed here"],
     ]);
   });
 
