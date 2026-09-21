@@ -395,40 +395,20 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* Agent frontmatter follows the same six-row contract in both create and edit
-   surfaces. The description and skills intentionally span the full row. */
+/* Agent frontmatter. Both blocks lay their fields out on a three-column grid in DOM
+   order, so reading order, tab order and visual order are the same thing -- and the
+   DOM order is the one the structured editor in Agent Details reads in. The named
+   grid areas this replaced fixed the visual order independently of the DOM, which
+   sent the keyboard back and forth across the form. */
 .agent-frontmatter-grid,
 .agent-frontmatter-grid__additional {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.agent-frontmatter-grid__name { grid-area: name; }
-.agent-frontmatter-grid__role { grid-area: role; }
-.agent-frontmatter-grid__color { grid-area: color; }
-.agent-frontmatter-grid__description { grid-area: description; }
-.agent-frontmatter-grid__harness { grid-area: harness; }
-.agent-frontmatter-grid__model { grid-area: model; }
-.agent-frontmatter-grid__effort { grid-area: effort; }
-.agent-frontmatter-grid__disallowed-tools { grid-area: disallowed-tools; }
-.agent-frontmatter-grid__max-turns { grid-area: max-turns; }
-.agent-frontmatter-grid__mcp-servers { grid-area: mcp-servers; }
-.agent-frontmatter-grid__memory { grid-area: memory; }
-.agent-frontmatter-grid__isolation { grid-area: isolation; }
-.agent-frontmatter-grid__background { grid-area: background; }
-.agent-frontmatter-grid__skills { grid-area: skills; }
-
-.agent-frontmatter-grid {
-  grid-template-areas:
-    "name role color"
-    "description description description"
-    "harness model effort";
-}
-
-.agent-frontmatter-grid__additional {
-  grid-template-areas:
-    "disallowed-tools max-turns mcp-servers"
-    "memory isolation background"
-    "skills skills skills";
+/* The two fields whose control is a paragraph or a token list, not a one-line value. */
+.agent-frontmatter-grid__description,
+.agent-frontmatter-grid__skills {
+  grid-column: 1 / -1;
 }
 
 /* Card around a group of related fields — same surface as .frontmatter-editor. */
@@ -560,28 +540,6 @@ select.form-field__input,
   .agent-frontmatter-grid,
   .agent-frontmatter-grid__additional {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .agent-frontmatter-grid {
-    grid-template-areas:
-      "name"
-      "role"
-      "color"
-      "description"
-      "harness"
-      "model"
-      "effort";
-  }
-
-  .agent-frontmatter-grid__additional {
-    grid-template-areas:
-      "disallowed-tools"
-      "max-turns"
-      "mcp-servers"
-      "memory"
-      "isolation"
-      "background"
-      "skills";
   }
 }
 
