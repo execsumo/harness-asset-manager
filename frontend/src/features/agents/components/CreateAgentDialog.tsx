@@ -409,6 +409,10 @@ export function CreateAgentDialog({
                       />
                     </div>
 
+                    {/* The format and the key a field writes belong in a help line, not
+                        crammed into its label -- the same split the structured editor in
+                        Agent Details makes. Each input names itself with its own
+                        `aria-label` so the help line does not widen the accessible name. */}
                     <label className="form-field">
                       <span className="form-field__label">MCP Servers</span>
                       <input
@@ -418,11 +422,13 @@ export function CreateAgentDialog({
                         value={mcpServers}
                         onChange={(e) => setMcpServers(e.target.value)}
                         disabled={isPending}
+                        aria-label="MCP Servers"
                       />
+                      <span className="form-field__hint">Comma-separated. Written as an mcpServers list.</span>
                     </label>
 
                     <label className="form-field">
-                      <span className="form-field__label">Disallowed Tools (comma-separated)</span>
+                      <span className="form-field__label">Disallowed Tools</span>
                       <input
                         type="text"
                         className="form-field__input"
@@ -430,7 +436,9 @@ export function CreateAgentDialog({
                         value={disallowedTools}
                         onChange={(e) => setDisallowedTools(e.target.value)}
                         disabled={isPending}
+                        aria-label="Disallowed Tools"
                       />
+                      <span className="form-field__hint">Comma-separated. Written as disallowedTools.</span>
                     </label>
 
                     <label className="form-field">
@@ -474,7 +482,7 @@ export function CreateAgentDialog({
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder={`${MAX_TURNS_DEFAULT} (default)`}
+                        placeholder={`${MAX_TURNS_DEFAULT} — the default when the key is absent`}
                         value={maxTurns}
                         onChange={(e) => setMaxTurns(e.target.value)}
                         disabled={isPending}
