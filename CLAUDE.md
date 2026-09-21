@@ -107,21 +107,37 @@ npm run validate
 That is equivalent to:
 
 ```bash
-npm run lint:backend        # ruff — the gate this suite used to omit
-npm run typecheck:backend   # pyright
+npm run lint:backend          # ruff
+npm run typecheck:backend     # pyright
+npm run audit:backend         # pip-audit
 bash scripts/test_backend.sh
+npm run audit:check           # npm dependency audit
+npm run version:sync          # VERSION files agree
+npm run release-targets:check
 npm run lint:frontend
 npm run typecheck
-npm test
+npm run codegen:check         # OpenAPI client is not stale
+npm run test:coverage         # vitest + the coverage ratchet
 npm run build
 ```
 
-**Do not skip `lint:backend`.** Ruff selects only `I` (import order) and `F`
-(pyflakes), so it is a small gate — but it is the *first* step of every
-`backend-compat` job, and this suite historically left it out. That is exactly how
-three commits, one of them a release, reached `main` red: an import-order nit
-failed CI before pyright, pip-audit, or the backend tests ever ran. `npm run
-lint:backend:fix` auto-fixes the whole class of finding.
+**That list is enforced, not aspirational.**
+`tests/unit/test_validation_suite_parity.py` parses `.github/workflows/ci.yml` and
+fails if any step in `backend-compat` or `frontend-validate` is missing from
+`validate`. Add a step to CI without adding it here and the parity test names the
+command it would otherwise only have caught after a push.
+
+The ratchet exists because this suite drifted from CI twice. First `lint:backend`
+was missing, and an import-order nit failed CI before pyright, pip-audit, or the
+backend tests ever ran — three commits, one of them a release, reached `main` red.
+Then `codegen:check` was missing, and a new endpoint shipped with a stale generated
+OpenAPI client. Both times `validate` passed locally and CI did not.
+`npm run lint:backend:fix` auto-fixes the whole ruff class of finding.
+
+Two notes on running it locally. `audit:backend` and `audit:check` hit the network,
+so the suite needs connectivity. And `codegen:check` compares the working tree
+against the index, so if it regenerates the client you have uncommitted codegen
+output to stage — that is the signal working, not a flake.
 
 CI no longer lets one failing check hide the others — every validation step runs
 and reports independently once dependencies install — but a red check is still a

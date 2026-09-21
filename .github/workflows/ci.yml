@@ -82,9 +82,7 @@ jobs:
 
       - name: Python dependency audit
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
-        run: |
-          ./.venv/bin/pip install pip-audit
-          ./.venv/bin/pip-audit
+        run: ./.venv/bin/pip-audit
 
       - name: Backend compatibility tests
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}

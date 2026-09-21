@@ -9,7 +9,7 @@
     "install:dev": "bash scripts/install-dev.sh",
     "start:dev": "bash scripts/start-dev.sh",
     "stop:dev": "bash scripts/stop-dev.sh",
-    "version:sync": "python3 scripts/sync_version.py --check",
+    "version:sync": "./.venv/bin/python scripts/sync_version.py --check",
     "build:release": "./.venv/bin/python scripts/build_release.py",
     "build": "VITE_API_BASE=/api vite build",
     "lint:frontend": "eslint frontend/src",
@@ -21,9 +21,10 @@
     "test:coverage": "NODE_ENV=test vitest run --coverage",
     "release-targets:check": "node scripts/check_release_targets_js.cjs",
     "audit:check": "node scripts/audit_gate.cjs",
+    "audit:backend": "./.venv/bin/pip-audit",
     "codegen:openapi": "./.venv/bin/python scripts/dump_openapi.py && openapi-typescript frontend/src/api/openapi.json -o frontend/src/api/generated.ts",
     "codegen:check": "npm run codegen:openapi && git diff --exit-code frontend/src/api/openapi.json frontend/src/api/generated.ts",
-    "validate": "npm run lint:backend && npm run typecheck:backend && bash scripts/test_backend.sh && npm run lint:frontend && npm run typecheck && npm test && npm run build"
+    "validate": "npm run lint:backend && npm run typecheck:backend && npm run audit:backend && bash scripts/test_backend.sh && npm run audit:check && npm run version:sync && npm run release-targets:check && npm run lint:frontend && npm run typecheck && npm run codegen:check && npm run test:coverage && npm run build"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
