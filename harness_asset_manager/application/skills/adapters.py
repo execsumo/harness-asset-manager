@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import filecmp
 import json
 import shutil
 from concurrent.futures import Executor, ThreadPoolExecutor
@@ -285,14 +286,25 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         if backup_link.exists():
             backup_link.unlink()
 
-    def prepare_remove(self, package_dir: str, *, scope: str | None = None) -> None:
+    def prepare_remove(
+        self, package_dir: str, *, scope: str | None = None, package_path: Path | None = None
+    ) -> None:
         link = self._binding_path(package_dir, scope=scope)
         if not link.exists() and not link.is_symlink():
             return
-        if not link.is_symlink():
+        if link.is_symlink():
+            return
+        if not _is_identical_copy(link, package_path):
             raise MutationError(f"not a symlink at {link}; will not delete real directory")
 
-    def remove_binding(self, package_dir: str, *, scope: str | None = None) -> None:
+    def remove_binding(
+        self, package_dir: str, *, scope: str | None = None, package_path: Path | None = None
+    ) -> None:
+        link = self._binding_path(package_dir, scope=scope)
+        if link.is_dir() and not link.is_symlink() and _is_identical_copy(link, package_path):
+            # A byte-identical copy of the package being deleted holds no work of its own.
+            shutil.rmtree(link)
+            return
         self.disable_shared_package(package_dir, scope=scope)
 
     def prepare_remove_local_copy(self, path: Path) -> None:
@@ -1066,3 +1078,18 @@ def _is_stale_target(target: Path, package_name: str, data_dir: Path) -> bool:
 
 
 __all__ = ["FileTreeSkillsAdapter", "build_skills_adapters", "scan_all_adapters"]
+
+
+def _is_identical_copy(candidate: Path, package_path: Path | None) -> bool:
+    if package_path is None or not candidate.is_dir() or not package_path.is_dir():
+        return False
+
+    def differs(cmp: filecmp.dircmp[str]) -> bool:
+        if cmp.left_only or cmp.right_only or cmp.funny_files:
+            return True
+        _, mismatch, errors = filecmp.cmpfiles(cmp.left, cmp.right, cmp.common_files, shallow=False)
+        if mismatch or errors:
+            return True
+        return any(differs(sub) for sub in cmp.subdirs.values())
+
+    return not differs(filecmp.dircmp(candidate, package_path))

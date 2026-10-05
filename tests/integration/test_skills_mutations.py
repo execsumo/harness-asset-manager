@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import threading
 import unittest
 from pathlib import Path
@@ -830,6 +831,24 @@ class SkillsMutationTests(unittest.TestCase):
             self.assertIn("disabled harnesses still have bindings", result["error"])
             self.assertTrue((harness.spec.skills_store_root / "shared-audit").is_dir())
             self.assertTrue((harness.spec.opencode_root / "shared-audit").exists())
+
+    def test_delete_removes_identical_real_directory_copy(self) -> None:
+        def seed(spec):
+            seed_shared_only_fixture(spec)
+            target = spec.skills_store_root / "shared-audit"
+            (spec.codex_root / "shared-audit").symlink_to(target)
+            shutil.copytree(target, spec.claude_root / "shared-audit")
+
+        with AppTestHarness(fixture_factory=seed) as harness:
+            skills = harness.get_json("/api/skills")
+            shared_entry = next(row for row in skills["rows"] if row["name"] == "Shared Audit")
+
+            result = harness.post_json(f"/api/skills/{shared_entry['skillRef']}/delete")
+
+            self.assertTrue(result["ok"])
+            self.assertFalse((harness.spec.skills_store_root / "shared-audit").exists())
+            self.assertFalse((harness.spec.codex_root / "shared-audit").exists())
+            self.assertFalse((harness.spec.claude_root / "shared-audit").exists())
 
     def test_delete_aborts_before_mutation_when_any_target_is_real_directory(self) -> None:
         with AppTestHarness(fixture_factory=seed_delete_preflight_failure_fixture) as harness:
