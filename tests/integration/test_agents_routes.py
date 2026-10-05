@@ -1624,6 +1624,27 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(resp_drop["skills"], [])
             self.assertTrue(claude_skill_link.is_symlink())
 
+    def test_agent_skills_auto_enable_into_the_hermes_bot_profile(self) -> None:
+        with AppTestHarness(mixed=True) as harness:
+            harness.post_json(
+                "/api/agents",
+                {
+                    "name": "Reviewer",
+                    "description": "Reviews code",
+                    "prompt": "Review code.",
+                    "skills": ["shared-audit"],
+                },
+            )
+
+            resp = harness.post_json("/api/agents/reviewer/enable", {"harness": "hermes"})
+
+            self.assertTrue(resp.get("ok", True))
+            profile_link = (
+                harness.spec.home / ".hermes" / "profiles" / "reviewer" / "skills" / "harnessam" / "shared-audit"
+            )
+            self.assertTrue(profile_link.is_symlink())
+            self.assertFalse((harness.spec.hermes_skills_root / "harnessam" / "shared-audit").exists())
+
     def test_a_failing_auto_enable_still_saves_the_agent_and_reports_the_failure(self) -> None:
         """A save that half-applies must say so rather than reporting success.
 

@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Iterable, Literal, cast
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
+from harness_asset_manager.harness.binding_targets import BindingTarget
+from harness_asset_manager.harness.hermes_profiles import hermes_profile_name
 
 from .adapters import GENERATED_MARKER, AgentHarnessAdapter, parse_codex_agent
 from .hermes_profile import ensure_profile
@@ -320,8 +322,9 @@ class AgentMutationService:
             return [], []
 
         enabled_harnesses: list[str] = []
+        agent_slug = agent_ref
         if "/" in agent_ref:
-            harness_id, separator, slug = agent_ref.partition("/")
+            harness_id, separator, agent_slug = agent_ref.partition("/")
             for target in self.targets:
                 if target.id == harness_id and target.installed and target.supports_agents:
                     enabled_harnesses.append(harness_id)
@@ -341,6 +344,13 @@ class AgentMutationService:
         for harness in enabled_harnesses:
             try:
                 adapter = self.skills_mutations.read_models.require_enabled_adapter(harness)
+                # Hermes runs an agent as its own Bot/Profile, so the agent's skills
+                # belong in that profile's skills dir, not the default profile's.
+                target = (
+                    BindingTarget(harness, hermes_profile_name(agent_slug))
+                    if harness == "hermes"
+                    else BindingTarget(harness)
+                )
             except Exception as error:  # noqa: BLE001
                 for slug in attached_skills:
                     failed.append((f"shared:{slug}", harness, str(error)))
@@ -348,8 +358,8 @@ class AgentMutationService:
 
             for slug in attached_skills:
                 skill_ref = f"shared:{slug}"
-                if not adapter.has_binding(slug):
-                    projected.append((skill_ref, harness))
+                if not adapter.has_binding(slug, scope=target.scope, include_discovery=False):
+                    projected.append((skill_ref, str(target)))
 
         return projected, failed
 
