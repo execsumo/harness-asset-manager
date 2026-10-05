@@ -456,9 +456,9 @@ class SkillsMutationService:
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
         for _target, adapter, scope in enabled_bindings:
-            adapter.prepare_remove(entry.package_dir, scope=scope)
+            adapter.prepare_remove(entry.package_dir, scope=scope, package_path=entry.package_path)
         for _target, adapter, scope in enabled_bindings:
-            adapter.remove_binding(entry.package_dir, scope=scope)
+            adapter.remove_binding(entry.package_dir, scope=scope, package_path=entry.package_path)
         try:
             self.read_models.store.delete(entry.package_dir)
         except ValueError as error:
