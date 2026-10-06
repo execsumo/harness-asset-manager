@@ -1,12 +1,14 @@
-# harness-asset-manager
+# HAM
+
+**Harness Asset Manager**
 
 <p align="center">
   <img src="assets/harness_asset_manager_logo.svg" alt="Harness Asset Manager" width="520" />
 </p>
 
 <p align="center">
-  <strong>A local-first control center for AI extensions.</strong><br />
-  Use, review, and discover Skills, Agents, MCP servers, slash commands, hooks, and CLI tools across agent harnesses.
+  <strong>One control plane for your AI harnesses.</strong><br />
+  Manage Skills, Agents, MCP servers, slash commands, hooks, permissions, and CLI tools without maintaining the same setup eight different ways.
 </p>
 
 <p align="center">
@@ -19,9 +21,13 @@
 
 ![skill-market-overview](./assets/harness-asset-manager-skill-unification.svg)
 
-## What it does for you
+## What HAM does
 
-AI extensions are scattered across harness-specific folders, MCP config files, slash command locations, and marketplace sources. **Harness Asset Manager** provides a single local control surface for managing, reviewing, and discovering extensions across all your AI coding tools and agent frameworks.
+Every AI harness wants its own copy of the same things: Skills in one folder, agents in another, MCP servers in a config file, commands somewhere else. It works until you use more than one harness.
+
+**HAM turns that sprawl into one local source of truth.** Manage an extension once, decide where it should be active, and let HAM handle the harness-specific plumbing. It normalizes what can be normalized, preserves native behavior where it matters, detects drift instead of hiding it, and keeps conflicts reviewable.
+
+The goal is not another abstraction layer for its own sake. It's simple: **configure your AI tooling once, then use the right harness for the job.**
 
 ### Single Source of Truth & Cross-Harness Sync
 
@@ -31,7 +37,7 @@ AI extensions are scattered across harness-specific folders, MCP config files, s
 
 ### Key Capabilities
 
-| Asset Family | What Harness Asset Manager does |
+| Asset Family | What HAM does |
 |---|---|
 | **Skills** | Adopt local Skill folders into one shared inventory, then enable or disable them per harness using managed symlinks. |
 | **Agents** | Store subagents as Markdown files with YAML frontmatter, symlinked (or rendered for Codex) across harnesses with automated drift repair and safe conflict resolution. |
