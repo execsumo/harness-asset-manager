@@ -7028,6 +7028,20 @@
             ],
             "title": "Maxturns"
           },
+          "mcpServers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mcpservers"
+          },
           "memory": {
             "anyOf": [
               {

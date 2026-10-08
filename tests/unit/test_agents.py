@@ -1353,6 +1353,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             harness="claude",
             tools=("Read",),
             skills=("code-review",),
+            mcp_servers=("exa",),
             color="cyan",
             model="opus",
             effort="high",

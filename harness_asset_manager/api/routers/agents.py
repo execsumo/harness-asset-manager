@@ -132,6 +132,7 @@ def create_agent(
     container: BackendContainer = Depends(get_container),
 ) -> AgentDetailResponse:
     validated_skills = container.agents_mutations.validate_skills(body.skills)
+    validated_mcp_servers = container.agents_mutations.validate_mcp_servers(body.mcpServers)
     agent = container.agents_store.create(
         name=body.name,
         description=body.description,
@@ -177,6 +178,8 @@ def create_agent(
             AgentMutationFailureResponse(harness=harness, error=error)
             for harness, error in rejected
         )
+    if validated_mcp_servers:
+        container.agents_mutations.set_mcp_bindings(agent.slug, validated_mcp_servers)
     container.invalidation.invalidate_all()
     return _require_detail(container, agent.slug, harness_failures=harness_failures)
 
@@ -235,6 +238,11 @@ def update_agent(
     validated_skills = (
         container.agents_mutations.validate_skills(body.skills)
         if body.skills is not None
+        else None
+    )
+    validated_mcp_servers = (
+        container.agents_mutations.validate_mcp_servers(body.mcpServers)
+        if body.mcpServers is not None
         else None
     )
     validated_color = validate_color(body.color)
@@ -325,6 +333,8 @@ def update_agent(
                         error=f"Hermes profile configuration failed: {error}",
                     )
                 )
+        if validated_mcp_servers is not None:
+            container.agents_mutations.set_mcp_bindings(agent_ref, validated_mcp_servers)
 
     skills_changed = validated_skills is not None and validated_skills != prev_skills
     auto_enabled_pairs: list[tuple[str, str]] = []

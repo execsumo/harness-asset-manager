@@ -189,6 +189,7 @@ class UpdateAgentRequest(BaseModel):
     prompt: str | None = None
     tools: list[str] | None = None
     skills: list[str] | None = None
+    mcpServers: list[str] | None = None
     # Contract fields: omitted carries the file's current value forward, an explicit
     # empty string clears the key.
     color: str | None = None

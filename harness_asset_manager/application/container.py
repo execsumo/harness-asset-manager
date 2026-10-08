@@ -506,7 +506,17 @@ def build_backend_container(
         skills_mutations=skills_mutations,
         resolve_all=resolve_all_agents_snapshot,
         hermes_root=_hermes_root(harness_kernel.context),
+        mcp_store=mcp_store,
+        mcp_mutations=mcp_mutations,
     )
+
+    def _agent_refs_bound_to_mcp_server(name: str) -> tuple[str, ...]:
+        agents, _issues = agents_store.scan()
+        return tuple(
+            agent.slug for agent in agents if any(binding.name == name for binding in agent.mcp_servers)
+        )
+
+    mcp_mutations.set_agent_bindings_lookup(_agent_refs_bound_to_mcp_server)
 
 
     skills_auto_adopt = SkillsAutoAdoptService(

@@ -215,6 +215,16 @@ class HarnessDefinition:
     support_tier: SupportTier = "best_effort"
     family_support_tiers: Mapping[FamilyKey, SupportTier] = field(default_factory=dict)
     bindings: Mapping[FamilyKey, BindingProfile] = field(default_factory=dict)
+    # Whether a subagent on this harness can carry its own inline, isolated MCP
+    # server definition (connects on subagent start, disconnects on end, invisible
+    # to the main session) rather than only a harness-wide main-session server.
+    # Verified from upstream docs, dated 2026-10-07: Claude Code and Codex both
+    # support this; every other harness defaults to "unsupported" here because no
+    # harness besides those two has documented, verified per-agent MCP isolation —
+    # binding a server "to an agent" on an unsupported harness must fall back to
+    # the existing harness-level enable path instead of claiming isolation that
+    # does not exist.
+    mcp_agent_binding: Literal["inline", "unsupported"] = "unsupported"
 
     def supports_family(self, family: FamilyKey) -> bool:
         return family in self.bindings

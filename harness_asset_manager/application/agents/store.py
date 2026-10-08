@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from dataclasses import replace
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Mapping
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.portable_paths import is_sync_artifact
 
-from .model import AgentDefinition, AgentIssue, AgentParseError
+from .model import AgentDefinition, AgentIssue, AgentParseError, McpAgentBinding
 from .parser import parse_agent_file, parse_hermes_extras, render_agent_document
 
 _SLUG_SAFE = re.compile(r"[^a-z0-9._-]+")
@@ -65,6 +66,19 @@ class AgentStore:
         """Return the optional Hermes profile metadata sidecar for a stored agent."""
         self.path_for(slug)
         return self.agents_root / f".{slug}.hermes.toml"
+
+    def mcp_bindings_path(self, slug: str) -> Path:
+        """Return the per-agent MCP binding bookkeeping sidecar for a stored agent.
+
+        Unlike ``codex_extras``/``hermes_extras`` this is not a harness-authored
+        format -- it is HAM's own bookkeeping of which canonical MCP servers this
+        agent requested and how each was realized. It has to live outside the
+        frontmatter contract because a ``harness_fallback`` binding writes nothing
+        into the agent file at all (there is nothing to isolate), so the file alone
+        cannot round-trip the binding.
+        """
+        self.path_for(slug)
+        return self.agents_root / f".{slug}.mcp.json"
 
     def scan(self) -> tuple[tuple[AgentDefinition, ...], tuple[AgentIssue, ...]]:
         agents: list[AgentDefinition] = []
@@ -179,6 +193,7 @@ class AgentStore:
         prompt: str | None = None,
         tools: tuple[str, ...] | None = None,
         skills: tuple[str, ...] | None = None,
+        mcp_inline: Mapping[str, dict[str, object]] | None = None,
         color: str | None = None,
         model: str | None = None,
         effort: str | None = None,
@@ -220,6 +235,7 @@ class AgentStore:
             prompt=prompt if prompt is not None else current.prompt,
             tools=tools if tools is not None else current.tools,
             skills=skills if skills is not None else current.skills,
+            mcp_inline=mcp_inline,
             # An omitted edit carries the current value forward; an explicit empty
             # string clears the key (render drops it instead of writing null).
             color=color if color is not None else current.color,
@@ -286,6 +302,17 @@ class AgentStore:
         elif path.exists():
             path.unlink()
 
+    def write_mcp_bindings(self, slug: str, bindings: tuple[McpAgentBinding, ...]) -> None:
+        """Persist the per-agent MCP binding bookkeeping outside shared Markdown."""
+        path = self.mcp_bindings_path(slug)
+        if bindings:
+            atomic_write_text(
+                path,
+                json.dumps({"bindings": [b.to_dict() for b in bindings]}, indent=2) + "\n",
+            )
+        elif path.exists():
+            path.unlink()
+
     def write_codex_agent(
         self,
         slug: str,
@@ -315,6 +342,9 @@ class AgentStore:
         hermes_path = self.hermes_extras_path(slug)
         if hermes_path.exists():
             hermes_path.unlink()
+        mcp_bindings_path = self.mcp_bindings_path(slug)
+        if mcp_bindings_path.exists():
+            mcp_bindings_path.unlink()
 
     def _notify_write(self, slug: str) -> None:
         if self._on_store_write is not None:
@@ -345,12 +375,29 @@ class AgentStore:
             hermes_extras = raw
 
         provider, hermes_model = parse_hermes_extras(hermes_extras)
+
+        mcp_servers: tuple[McpAgentBinding, ...] = ()
+        mcp_bindings_path = self.mcp_bindings_path(path.stem)
+        if mcp_bindings_path.is_file():
+            try:
+                raw = json.loads(mcp_bindings_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as error:
+                raise AgentParseError(
+                    f"invalid MCP binding bookkeeping for {path.stem}: {error}"
+                ) from error
+            if not isinstance(raw, dict) or not isinstance(raw.get("bindings"), list):
+                raise AgentParseError(f"MCP binding bookkeeping for {path.stem} must be an object with a 'bindings' list")
+            mcp_servers = tuple(
+                McpAgentBinding.from_dict(item) for item in raw["bindings"] if isinstance(item, Mapping)
+            )
+
         return replace(
             agent,
             codex_extras=codex_extras,
             hermes_extras=hermes_extras,
             hermes_provider=provider,
             hermes_model=hermes_model,
+            mcp_servers=mcp_servers,
         )
 
 

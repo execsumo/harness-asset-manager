@@ -1,5 +1,6 @@
 from .catalog import (
     harness_definitions_for_family,
+    mcp_agent_binding_capability,
     supported_harness_definitions,
     supported_harness_ids,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "SubtreePath",
     "SubtreePathResolver",
     "harness_definitions_for_family",
+    "mcp_agent_binding_capability",
     "resolve_context",
     "supported_harness_definitions",
     "supported_harness_ids",

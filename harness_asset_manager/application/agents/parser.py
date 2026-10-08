@@ -99,6 +99,7 @@ def render_agent_document(
     tools: tuple[str, ...] = (),
     skills: tuple[str, ...] = (),
     mcp_servers: tuple[str, ...] = (),
+    mcp_inline: Mapping[str, dict[str, object]] | None = None,
     color: str | None = None,
     model: str | None = None,
     effort: str | None = None,
@@ -122,6 +123,10 @@ def render_agent_document(
     with the user's ordered key/value pairs.
     When ``base_metadata`` is supplied (any edit where extra_metadata is not explicitly set)
     the original frontmatter is the starting point and only the edited keys are replaced.
+
+    ``mcp_servers`` is the legacy bare name list (kept for existing callers). ``mcp_inline``
+    is the real per-agent MCP contract: a harness capable of true per-agent isolation
+    (Claude Code, Codex) gets the resolved per-entry dict keyed by server name instead.
     """
     if extra_metadata is not None:
         metadata: dict[str, object] = {
@@ -134,6 +139,12 @@ def render_agent_document(
             metadata["skills"] = list(skills)
         if mcp_servers:
             metadata["mcpServers"] = list(mcp_servers)
+        if mcp_inline:
+            # A true per-agent inline MCP binding (Claude Code/Codex): the resolved
+            # per-entry dict, keyed by server name, takes the contract position
+            # instead of the bare name list -- this is what a harness actually
+            # connects, not a reference HAM alone understands.
+            metadata["mcpServers"] = dict(mcp_inline)
         # Written unquoted, so `maxTurns: 30` and `background: true` come back out of
         # YAML as the int and bool Claude Code expects rather than as strings.
         for scalar_key, scalar_value in (
@@ -178,9 +189,6 @@ def render_agent_document(
                 metadata[k] = v
                 custom_keys.append(k)
 
-        if mcp_servers and "mcpServers" not in custom_keys:
-            custom_keys.append("mcpServers")
-
         ordered = [k for k in CONTRACT_KEYS if k in metadata]
         ordered.extend(custom_keys)
     else:
@@ -205,6 +213,16 @@ def render_agent_document(
 
         if mcp_servers:
             metadata["mcpServers"] = list(mcp_servers)
+
+        if mcp_inline is not None:
+            # Explicit call to set/clear the inline MCP payload: unlike the bare
+            # ``mcp_servers`` name list above, an empty dict here is a real
+            # instruction (every inline binding was removed), so it clears the key
+            # rather than leaving a stale previous payload in place.
+            if mcp_inline:
+                metadata["mcpServers"] = dict(mcp_inline)
+            elif "mcpServers" in metadata:
+                del metadata["mcpServers"]
 
         # Contract fields: an explicit empty string clears the key; None leaves a
         # configured base value untouched, but drops a base YAML null as unset.

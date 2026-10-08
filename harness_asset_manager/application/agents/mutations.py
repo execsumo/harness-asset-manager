@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import dataclass
+from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Literal, cast
 
 from harness_asset_manager.atomic_files import atomic_write_text
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.binding_targets import BindingTarget
+from harness_asset_manager.harness.catalog import mcp_agent_binding_capability
 from harness_asset_manager.harness.hermes_profiles import hermes_profile_name
 
+from ..mcp.mappers import get_mapper
+from ..mcp.store import McpServerStore
 from .adapters import GENERATED_MARKER, AgentHarnessAdapter, parse_codex_agent
 from .hermes_profile import ensure_profile
 from .inventory import TargetResolver
@@ -19,18 +23,30 @@ from .model import (
     AgentAdoptionValidationError,
     AgentDefinition,
     AgentTarget,
+    McpAgentBinding,
 )
 from .parser import parse_agent_document, render_agent_document, split_frontmatter
 from .store import AgentStore
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
+    from harness_asset_manager.application.mcp.mutations import McpMutationService
     from harness_asset_manager.application.skills import (
         SkillsMutationService,
         SkillsQueryService,
     )
 
 ConflictResolution = Literal["keep_store", "replace_store"]
+
+# Agent-harness ids (``AgentTarget.id`` / ``AgentDefinition.harness``) do not always
+# match the MCP mapper key for the same harness (the agents catalog calls Claude
+# Code's harness id "claude", Antigravity's "agy"; the MCP mapper dict keys them
+# "claude-code" and "antigravity-cli"). Harnesses absent here use the same id in
+# both places.
+_MCP_MAPPER_BY_AGENT_HARNESS: dict[str, str] = {
+    "claude": "claude-code",
+    "agy": "antigravity-cli",
+}
 
 
 @dataclass(frozen=True)
@@ -60,6 +76,8 @@ class AgentMutationService:
         skills_mutations: SkillsMutationService | None = None,
         resolve_all: TargetResolver | None = None,
         hermes_root: Path | None = None,
+        mcp_store: McpServerStore | None = None,
+        mcp_mutations: McpMutationService | None = None,
     ) -> None:
         self.store = store
         self._resolve = resolve
@@ -69,6 +87,12 @@ class AgentMutationService:
         self.skills_queries = skills_queries
         self.skills_mutations = skills_mutations
         self.hermes_root = hermes_root
+        # Canonical MCP server lookup and the harness-level enable path, used by
+        # ``validate_mcp_servers``/``set_mcp_bindings`` below. Optional like the
+        # skills dependencies above, so a container that does not wire MCP support
+        # degrades to refusing those two calls rather than failing to construct.
+        self.mcp_store = mcp_store
+        self.mcp_mutations = mcp_mutations
 
     @property
     def targets(self) -> tuple[AgentTarget, ...]:
@@ -311,6 +335,116 @@ class AgentMutationService:
                         code="invalid_skill",
                     )
         return tuple(deduped)
+
+    # -- MCP agent-level binding --------------------------------------------
+
+    def validate_mcp_servers(self, names: Iterable[str] | None) -> tuple[str, ...]:
+        """Validate, normalize, and dedupe MCP server names while preserving order.
+
+        Every name must resolve to a canonical, managed ``McpServerSpec`` in the
+        MCP store. Unknown names raise ``MutationError`` with status=400,
+        code="invalid_mcp_server" -- mirrors ``validate_skills``.
+        """
+        if names is None:
+            return ()
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for raw in names:
+            bare = raw.strip()
+            if bare and bare not in seen:
+                seen.add(bare)
+                deduped.append(bare)
+
+        if self.mcp_store is not None:
+            for name in deduped:
+                if self.mcp_store.get_managed(name) is None:
+                    raise MutationError(
+                        f"MCP server '{name}' is unknown or not managed in harnessAM",
+                        status=400,
+                        code="invalid_mcp_server",
+                    )
+        return tuple(deduped)
+
+    def _bound_harnesses(self, agent: AgentDefinition) -> tuple[str, ...]:
+        """Which harness(es) this agent's MCP bindings should be realized for.
+
+        An agent pinned to one harness (``harness:`` in its frontmatter) binds only
+        there. A portable agent (no pin) is realized for every harness it is
+        currently enabled on, so a server bound to it follows wherever the agent
+        itself is actually live.
+        """
+        if agent.harness:
+            return (agent.harness,)
+        return tuple(
+            target.id
+            for target in self.targets
+            if (adapter := self.adapters.get(target.id)) is not None and adapter.is_enabled(agent.slug)
+        )
+
+    def set_mcp_bindings(self, slug: str, names: tuple[str, ...]) -> tuple[McpAgentBinding, ...]:
+        """Bind canonical MCP servers to one agent, replacing its current set.
+
+        For each requested server and each harness the agent is realized for
+        (``_bound_harnesses``): a harness with verified per-agent MCP isolation
+        (Claude Code, Codex -- see ``harness.catalog.mcp_agent_binding_capability``)
+        gets the resolved server config rendered inline into that agent's own file,
+        isolated from the harness's main session. Every other harness has no such
+        isolation, so the server is instead enabled at the harness level (visible to
+        the whole harness, not just this agent) and the binding is recorded as a
+        ``harness_fallback`` -- bookkeeping only, never claiming an isolation the
+        harness cannot provide.
+        """
+        agent = self._require_agent(slug)
+        if self.mcp_store is None:
+            raise MutationError("MCP server store is not configured", status=500)
+
+        bound_harnesses = self._bound_harnesses(agent)
+        bindings: list[McpAgentBinding] = []
+        claude_inline: dict[str, dict[str, object]] = {}
+        codex_inline: dict[str, dict[str, object]] = {}
+
+        for name in names:
+            spec = self.mcp_store.get_managed(name)
+            if spec is None:
+                raise MutationError(
+                    f"MCP server '{name}' is unknown or not managed in harnessAM",
+                    status=400,
+                    code="invalid_mcp_server",
+                )
+            inlined = False
+            for harness in bound_harnesses:
+                if mcp_agent_binding_capability(harness) == "inline":
+                    mapper_key = _MCP_MAPPER_BY_AGENT_HARNESS.get(harness, harness)
+                    resolved = get_mapper(mapper_key).spec_to_dict(spec)
+                    if harness == "codex":
+                        codex_inline[name] = resolved
+                    else:
+                        claude_inline[name] = resolved
+                    inlined = True
+                else:
+                    if self.mcp_mutations is not None:
+                        self.mcp_mutations.enable_server(name, harness)
+            bindings.append(McpAgentBinding(name=name, mode="inline" if inlined else "harness_fallback"))
+
+        if "codex" in bound_harnesses:
+            extras = dict(agent.codex_extras)
+            if codex_inline:
+                extras["mcp_servers"] = codex_inline
+            else:
+                extras.pop("mcp_servers", None)
+            self.store.write_codex_extras(slug, extras)
+            codex_adapter = self.adapters.get("codex")
+            if codex_adapter is not None and codex_adapter.is_enabled(slug):
+                # Re-render immediately: Codex's agent file is generated, not
+                # symlinked, so the live copy would otherwise keep serving the
+                # pre-binding config until the next unrelated enable.
+                codex_adapter.enable(dataclass_replace(agent, codex_extras=extras))
+
+        if "claude" in bound_harnesses:
+            self.store.update(slug, mcp_inline=claude_inline)
+
+        self.store.write_mcp_bindings(slug, tuple(bindings))
+        return tuple(bindings)
 
     def project_auto_enable_bindings(
         self,

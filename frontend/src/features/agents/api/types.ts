@@ -18,6 +18,7 @@ export const AGENT_CONTRACT_KEYS = [
   "tools",
   "disallowedTools",
   "skills",
+  "mcpServers",
   "memory",
   // The envelope it runs in
   "maxTurns",

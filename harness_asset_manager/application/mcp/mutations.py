@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable
 
 from harness_asset_manager.errors import MutationError
 
@@ -53,6 +53,19 @@ class McpMutationService:
         self._availability_cache = availability_cache if availability_cache is not None else {}
         self.asset_tags = asset_tags
         self.harness_application = McpHarnessApplication(read_models)
+        # Set after construction (``set_agent_bindings_lookup``) once the agents
+        # store exists -- the container builds MCP support before agents support,
+        # and this is the one place a server's agent-level bindings need checking:
+        # before a canonical server is removed outright.
+        self._agent_bindings_lookup: Callable[[str], tuple[str, ...]] | None = None
+
+    def set_agent_bindings_lookup(self, lookup: Callable[[str], tuple[str, ...]]) -> None:
+        self._agent_bindings_lookup = lookup
+
+    def _agent_refs_still_bound(self, name: str) -> tuple[str, ...]:
+        if self._agent_bindings_lookup is None:
+            return ()
+        return self._agent_bindings_lookup(name)
 
     def _record_binding(self, name: str, harness: str, *, bound: bool) -> None:
         """Persist binding intent alongside the binding on disk.
@@ -122,6 +135,14 @@ class McpMutationService:
     def uninstall_server(self, name: str) -> dict[str, object]:
         if self.store.get_managed(name) is None:
             raise MutationError(f"unknown server: {name}", status=404)
+        agent_refs = self._agent_refs_still_bound(name)
+        if agent_refs:
+            raise MutationError(
+                f"cannot remove '{name}': still bound to agent(s) {', '.join(agent_refs)}; "
+                "unbind it from them first",
+                status=409,
+                code="mcp_server_in_use",
+            )
         bound_harnesses = self._harnesses_in_states(name, {"managed", "drifted"})
         return self.harness_application.disable_many(
             name,

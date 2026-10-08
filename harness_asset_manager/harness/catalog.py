@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from harness_asset_manager.env_names import (
     AGY_ROOT_ENV,
@@ -117,6 +118,23 @@ def supported_harness_ids() -> tuple[str, ...]:
     return tuple(definition.harness for definition in SUPPORTED_HARNESS_DEFINITIONS)
 
 
+def mcp_agent_binding_capability(harness: str) -> Literal["inline", "unsupported"]:
+    """Whether ``harness`` can carry a true, isolated per-agent MCP server.
+
+    Unknown harness ids default to ``"unsupported"`` too — the same default the
+    catalog entries themselves carry, so a caller never has to special-case a
+    harness that was removed or renamed.
+    """
+    return next(
+        (
+            definition.mcp_agent_binding
+            for definition in SUPPORTED_HARNESS_DEFINITIONS
+            if definition.harness == harness
+        ),
+        "unsupported",
+    )
+
+
 def core_harness_ids(family: FamilyKey | None = None) -> tuple[str, ...]:
     """The harnesses this tool is built for — see ``SupportTier``.
 
@@ -143,6 +161,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         logo_key="claude",
         install_probe="claude",
         support_tier="core",
+        mcp_agent_binding="inline",
         bindings={
             "configs": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".claude" / "settings.json",
@@ -201,6 +220,7 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
         logo_key="codex",
         install_probe="codex",
         support_tier="core",
+        mcp_agent_binding="inline",
         bindings={
             "configs": ConfigSubtreeBindingProfile(
                 config_path_resolver=lambda context: context.home / ".codex" / "config.toml",
@@ -644,6 +664,7 @@ __all__ = [
     "SUPPORTED_HARNESS_DEFINITIONS",
     "core_harness_ids",
     "harness_definitions_for_family",
+    "mcp_agent_binding_capability",
     "supported_harness_definitions",
     "supported_harness_ids",
 ]

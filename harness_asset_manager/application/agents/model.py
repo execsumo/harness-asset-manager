@@ -31,6 +31,7 @@ CONTRACT_KEYS: tuple[str, ...] = (
     "tools",
     "disallowedTools",
     "skills",
+    "mcpServers",
     "memory",
     "maxTurns",
     "isolation",
@@ -190,6 +191,34 @@ class AgentSkill:
     name: str
 
 
+# Whether a per-agent MCP binding actually isolates the server to this agent
+# ("inline" — Claude Code/Codex only, see harness.catalog.mcp_agent_binding_capability)
+# or had to fall back to enabling the server at the harness level because the
+# harness has no verified per-agent isolation ("harness_fallback"). This is
+# bookkeeping only for the fallback case: the agent's own file carries nothing,
+# the server is simply on for the whole harness, and this record is what lets the
+# UI/API say "bound via harness-level fallback" instead of silently claiming an
+# isolation the harness cannot provide.
+McpAgentBindingMode = Literal["inline", "harness_fallback"]
+
+
+@dataclass(frozen=True)
+class McpAgentBinding:
+    name: str
+    mode: McpAgentBindingMode
+
+    def to_dict(self) -> dict[str, str]:
+        return {"name": self.name, "mode": self.mode}
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, object]) -> "McpAgentBinding":
+        mode = str(payload.get("mode", "harness_fallback"))
+        return cls(
+            name=str(payload.get("name", "")),
+            mode="inline" if mode == "inline" else "harness_fallback",
+        )
+
+
 @dataclass(frozen=True)
 class AgentDefinition:
     """A subagent: a markdown file with `name`, `description`, and a prompt body.
@@ -219,6 +248,13 @@ class AgentDefinition:
     hermes_provider: str | None = None
     hermes_model: str | None = None
     skills: tuple[str, ...] = ()
+    # Per-agent MCP bindings: bookkeeping for which canonical MCP servers this agent
+    # requested and how each was actually realized (inline isolation or harness-level
+    # fallback). Lives in a sidecar next to the store file, not in frontmatter --
+    # unlike ``codex_extras``/``hermes_extras`` this covers every harness, because a
+    # "harness_fallback" binding has nothing to parse back out of frontmatter: there
+    # is nothing written there to isolate. Loaded by ``AgentStore._load_agent``.
+    mcp_servers: tuple[McpAgentBinding, ...] = ()
     # Contract fields: parsed and rendered as their own Claude Code frontmatter keys,
     # never treated as custom metadata. Held as strings even where the file spells
     # them as YAML scalars so that "" can mean "clear the key" through the edit path.
@@ -426,6 +462,8 @@ __all__ = [
     "AgentSkill",
     "AgentTarget",
     "BindingState",
+    "McpAgentBinding",
+    "McpAgentBindingMode",
     "validate_background",
     "validate_color",
     "validate_effort",

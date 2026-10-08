@@ -3832,6 +3832,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Mcpservers */
+            mcpServers?: string[] | null;
             /** Memory */
             memory?: string | null;
             /** Metadata */
