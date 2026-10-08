@@ -281,6 +281,12 @@ SUPPORTED_HARNESS_DEFINITIONS: tuple[HarnessDefinition, ...] = (
                 subtree_path=(),
                 exclusion_keys=frozenset(["skills", "prompts", "trackingId"]),
             ),
+            "mcp": ConfigSubtreeBindingProfile(
+                config_path_resolver=lambda context: context.home / ".pi" / "agent" / "mcp.json",
+                file_format="json",
+                subtree_path=("mcpServers",),
+                codec="pi",
+            ),
             # Pi's global resource directory is ~/.pi/agent. Skills are loaded
             # from its skills subdirectory using the Agent Skills format.
             "skills": FileTreeBindingProfile(

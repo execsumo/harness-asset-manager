@@ -94,6 +94,22 @@ class CursorMapper(_TypedMcpServersMapper):
     observed_harness = "cursor"
 
 
+class PiMapper(_TypedMcpServersMapper):
+    observed_harness = "pi"
+
+    def spec_to_dict(self, spec: McpServerSpec) -> dict[str, object]:
+        if spec.transport == "sse":
+            raise MutationError("Pi does not support SSE MCP servers", status=400)
+        return super().spec_to_dict(spec)
+
+    def dict_to_spec(
+        self, name: str, raw: Mapping[str, object], *, source: McpSource | None = None
+    ) -> McpServerSpec:
+        if raw.get("type") == "sse" or raw.get("transport") == "sse":
+            raise MutationError(f"unsupported Pi MCP entry '{name}': SSE is not supported", status=400)
+        return super().dict_to_spec(name, raw, source=source)
+
+
 class DroidMapper(_TypedMcpServersMapper):
     """Factory Droid's ~/.factory/mcp.json mcpServers entries."""
 
@@ -366,6 +382,7 @@ _MAPPERS: dict[str, TransportMapper] = {
     "cursor": CursorMapper(),
     "droid": DroidMapper(),
     "opencode": OpenCodeMapper(),
+    "pi": PiMapper(),
     "codex": CodexMapper(),
     "hermes": HermesMapper(),
     "antigravity-cli": AntigravityCliMapper(),
@@ -386,6 +403,7 @@ __all__ = [
     "DroidMapper",
     "HermesMapper",
     "OpenCodeMapper",
+    "PiMapper",
     "TransportMapper",
     "get_mapper",
 ]

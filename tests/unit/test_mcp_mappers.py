@@ -7,8 +7,10 @@ from harness_asset_manager.application.mcp import (
     CodexMapper,
     CursorMapper,
     OpenCodeMapper,
+    PiMapper,
 )
 from harness_asset_manager.application.mcp.store import McpServerSpec, McpSource
+from harness_asset_manager.errors import MutationError
 
 
 def _stdio() -> McpServerSpec:
@@ -88,6 +90,37 @@ class CursorMapperTests(unittest.TestCase):
         self.assertEqual(d["url"], "https://mcp.example.com")
         round_trip = mapper.dict_to_spec("remote", d)
         self.assertEqual(round_trip.transport, "http")
+
+
+class PiMapperTests(unittest.TestCase):
+    def test_stdio_preserves_pi_fields(self) -> None:
+        mapper = PiMapper()
+        spec = mapper.dict_to_spec(
+            "exa",
+            {
+                "command": "npx",
+                "args": ["-y", "exa-mcp-server"],
+                "env": {"EXA_API_KEY": "secret"},
+                "cwd": "/tmp",
+                "enabled": False,
+                "exposure": "deferred",
+            },
+        )
+        payload = mapper.spec_to_dict(spec)
+        self.assertEqual(payload["type"], "stdio")
+        self.assertEqual(payload["cwd"], "/tmp")
+        self.assertEqual(payload["enabled"], False)
+        self.assertEqual(payload["exposure"], "deferred")
+        self.assertEqual(payload["env"], {"EXA_API_KEY": "secret"})
+
+    def test_http_round_trip_and_rejects_sse(self) -> None:
+        mapper = PiMapper()
+        spec = _http()
+        payload = mapper.spec_to_dict(spec)
+        self.assertEqual(payload["type"], "http")
+        self.assertEqual(mapper.dict_to_spec("remote", payload).url, spec.url)
+        with self.assertRaisesRegex(MutationError, "SSE"):
+            mapper.dict_to_spec("legacy", {"url": "https://mcp.example.com", "type": "sse"})
 
 
 class OpenCodeMapperTests(unittest.TestCase):

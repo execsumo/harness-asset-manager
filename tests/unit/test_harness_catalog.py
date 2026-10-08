@@ -139,6 +139,15 @@ class PiHarnessCatalogTests(unittest.TestCase):
                 frozenset({"skills", "prompts", "trackingId"}),
             )
 
+            mcp = definition.binding_for("mcp")
+            self.assertIsInstance(mcp, ConfigSubtreeBindingProfile)
+            self.assertEqual(
+                mcp.resolve_config_path(context),
+                Path("/tmp/pi-home/.pi/agent/mcp.json"),
+            )
+            self.assertEqual(mcp.subtree_path, ("mcpServers",))
+            self.assertEqual(mcp.codec, "pi")
+
 
 class FactoryDroidHarnessCatalogTests(unittest.TestCase):
     def test_droid_configs_bind_the_personal_settings_file(self) -> None:

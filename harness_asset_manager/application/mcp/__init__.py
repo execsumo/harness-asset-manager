@@ -22,6 +22,7 @@ from .mappers import (
     CodexMapper,
     CursorMapper,
     OpenCodeMapper,
+    PiMapper,
     TransportMapper,
     get_mapper,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "McpReadModelSnapshot",
     "McpServerSpec",
     "OpenCodeMapper",
+    "PiMapper",
     "ServerIdentityGroup",
     "TransportMapper",
     "build_identity_plan",
