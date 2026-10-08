@@ -1115,36 +1115,19 @@ class McpRoutesTests(unittest.TestCase):
             self.assertTrue(result["ok"])
             self.assertEqual(result["server"]["url"], "https://claude.example")
 
-    def test_adopt_silently_enriches_when_marketplace_match_exists(self) -> None:
-        from harness_asset_manager.application.mcp.enrichment import MarketplaceLink
-
+    def test_adopt_does_not_enrich_from_marketplace(self) -> None:
         with AppTestHarness() as harness:
             payload = {"command": "uvx", "args": ["context7-mcp"]}
             cursor_cfg = harness.spec.home / ".cursor" / "mcp.json"
             cursor_cfg.parent.mkdir(parents=True, exist_ok=True)
             cursor_cfg.write_text(json.dumps({"mcpServers": {"context7": payload}}))
 
-            # Seed enrichment cache with a marketplace link for "context7".
-            enrichment = harness.container.mcp_mutations.enrichment
-            assert enrichment is not None
-            enrichment._cache["context7"] = MarketplaceLink(  # noqa: SLF001
-                qualified_name="@upstash/context7",
-                display_name="Context7",
-                icon_url="https://icon.example/ctx7.png",
-                external_url="https://registry.modelcontextprotocol.io/?q=%40upstash%2Fcontext7",
-                description="Docs MCP",
-                is_remote=False,
-                is_verified=True,
-            )
-            enrichment._popular_warmed = True  # noqa: SLF001 — skip network warm
-
             result = harness.post_json("/api/mcp/unmanaged/adopt", {"name": "context7"})
             assert isinstance(result, dict)
             self.assertTrue(result["ok"])
-            # Silent enrichment: displayName and source upgraded automatically.
-            self.assertEqual(result["server"]["displayName"], "Context7")
-            self.assertEqual(result["server"]["source"]["kind"], "marketplace")
-            self.assertEqual(result["server"]["source"]["locator"], "@upstash/context7")
+            self.assertEqual(result["server"]["displayName"], "context7")
+            self.assertEqual(result["server"]["source"]["kind"], "adopted")
+            self.assertEqual(result["server"]["source"]["locator"], "cursor:context7")
 
     def test_disable_drifted_harness_removes_entry(self) -> None:
         with AppTestHarness() as harness:

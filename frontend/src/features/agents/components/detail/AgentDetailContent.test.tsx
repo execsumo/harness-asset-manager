@@ -7,6 +7,14 @@ import { AgentDetailContent } from "./AgentDetailContent";
 import { MAX_TURNS_DEFAULT } from "../../api/types";
 import type { AgentDetailDto } from "../../api/types";
 
+vi.mock("../../../mcp/public", () => ({
+  useMcpInventoryQuery: () => ({
+    data: {
+      entries: [{ kind: "managed", name: "dossier", displayName: "Dossier", spec: {} }],
+    },
+  }),
+}));
+
 function renderDetail(detail: AgentDetailDto) {
   return renderWithAppProviders(
     <AgentDetailContent
@@ -96,6 +104,26 @@ describe("AgentDetailContent", () => {
         value: "(1 entry)",
         rawValue: { PreToolUse: [{ matcher: "Bash" }] },
       });
+    });
+  });
+
+  it("saves per-agent MCP bindings through the MCP binding contract", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(okJson({})));
+
+    renderDetail(agentDetailFixture());
+    const mcpServersField = screen.getByRole("combobox", { name: "MCP Servers" });
+    fireEvent.change(mcpServersField, { target: { value: "dossier" } });
+    fireEvent.keyDown(mcpServersField, { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      const putCall = fetchMock.mock.calls.find(
+        ([input, init]) => String(input).includes("/api/agents/chief") && init?.method === "PUT",
+      );
+      expect(putCall).toBeDefined();
+      const request = JSON.parse(String(putCall?.[1]?.body));
+      expect(request.mcpServers).toEqual(["dossier"]);
+      expect(request.metadata).not.toContainEqual(expect.objectContaining({ key: "mcpServers" }));
     });
   });
 
@@ -324,7 +352,7 @@ describe("AgentDetailContent", () => {
     expect(groups).toEqual([
       {
         title: "Identity",
-        labels: ["Agent Name", "Role", "Color", "Description"],
+        labels: ["Agent Name", "Role", "Description"],
       },
       {
         title: "Harness & Model",
@@ -336,20 +364,12 @@ describe("AgentDetailContent", () => {
       },
       {
         title: "Execution",
-        labels: [
-          "Mode",
-          "Background",
-          "Spawning",
-          "Isolation",
-          "Trust Project",
-          "Memory",
-          "Max Turns",
-        ],
+        labels: ["Memory", "Max Turns"],
       },
     ]);
   });
 
-  it("keeps every contract field in exactly one group and hides tools", () => {
+  it("keeps every visible field in exactly one group and hides tools", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
@@ -385,40 +405,34 @@ describe("AgentDetailContent", () => {
     expect(helpFor("deny-tools")).toContain("deny-tools");
   });
 
-  it("offers color as a dropdown with an empty option that clears the key", () => {
+  it("hides retired Color and keeps only the shared Hermes Model field", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
-    renderDetail(agentDetailFixture({ color: "cyan" }));
+    renderDetail(agentDetailFixture({ color: "cyan", hermesProvider: "old-provider", hermesModel: "old/model" }));
 
-    const color = screen.getByRole("combobox", { name: "Color" });
-    expect(color).toHaveValue("cyan");
-    expect(
-      Array.from((color as HTMLSelectElement).options).map((option) => option.value),
-    ).toEqual(["", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"]);
+    expect(screen.queryByRole("combobox", { name: "Color" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Hermes Provider" }).tagName).toBe("SELECT");
+    expect(screen.queryByRole("textbox", { name: "Hermes Model" })).not.toBeInTheDocument();
   });
 
-  it("renders fixed contract fields as dropdowns and preserves existing values", () => {
+  it("hides retired execution fields, including Trust Project", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(
       agentDetailFixture({
+        mode: "interactive",
         background: "true",
         isolation: "worktree",
         memory: "project",
-        spawning: "false",
+        spawning: "true",
         trustProject: "true",
       }),
     );
 
-    expect(screen.getByRole("combobox", { name: "Background" })).toHaveValue("true");
-    expect(screen.getByRole("combobox", { name: "Isolation" })).toHaveValue("worktree");
+    for (const label of ["Mode", "Background", "Isolation", "Spawning", "Trust Project", "Color"]) {
+      expect(screen.queryByRole("combobox", { name: label })).not.toBeInTheDocument();
+    }
     expect(screen.getByRole("combobox", { name: "Memory" })).toHaveValue("project");
-    expect(screen.getByRole("combobox", { name: "Spawning" })).toHaveValue("false");
-    expect(screen.getByRole("combobox", { name: "Trust Project" })).toHaveValue("true");
-    expect(
-      Array.from((screen.getByRole("combobox", { name: "Background" }) as HTMLSelectElement).options)
-        .map((option) => option.value),
-    ).toEqual(["", "true", "false"]);
   });
 
   it("offers every known harness and marks the ones not installed here", () => {
@@ -499,9 +513,11 @@ describe("AgentDetailContent", () => {
     renderDetail(
       agentDetailFixture({
         color: "cyan",
+        mode: "interactive",
         background: "true",
+        isolation: "worktree",
         memory: "user",
-        spawning: "false",
+        spawning: "true",
         trustProject: "true",
         maxTurns: "30",
       }),
@@ -513,19 +529,6 @@ describe("AgentDetailContent", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Memory" }), {
       target: { value: "project" },
     });
-    fireEvent.change(screen.getByRole("combobox", { name: "Isolation" }), {
-      target: { value: "worktree" },
-    });
-    fireEvent.change(screen.getByRole("combobox", { name: "Background" }), {
-      target: { value: "" },
-    });
-    fireEvent.change(screen.getByRole("combobox", { name: "Spawning" }), {
-      target: { value: "true" },
-    });
-    fireEvent.change(screen.getByRole("combobox", { name: "Trust Project" }), {
-      target: { value: "false" },
-    });
-
     fireEvent.change(screen.getByRole("textbox", { name: "Max Turns" }), {
       target: { value: "12" },
     });
@@ -537,18 +540,16 @@ describe("AgentDetailContent", () => {
         (call) => String(call[0]).includes("/api/agents/chief") && call[1]?.method === "PUT",
       );
       expect(put).toBeDefined();
-      expect(JSON.parse(put![1].body)).toMatchObject({
-        color: "cyan",
+      const request = JSON.parse(put![1].body);
+      expect(request).toMatchObject({
         harness: "claude",
         memory: "project",
-        isolation: "worktree",
         maxTurns: "12",
-        spawning: "true",
-        trustProject: "false",
-        // An explicit empty string is what clears the key; omitting it would carry
-        // the file's current value forward instead.
-        background: "",
       });
+      expect(request.hermesModel).toBe("");
+      for (const key of ["mode", "background", "isolation", "spawning", "trustProject", "color"]) {
+        expect(request).not.toHaveProperty(key);
+      }
     });
   });
 

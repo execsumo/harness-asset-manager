@@ -34,16 +34,10 @@ import {
 } from "../../api/queries";
 import { AdoptConflictDialog } from "../AdoptConflictDialog";
 import { useSkillsListQuery } from "../../../skills/public";
+import { useMcpInventoryQuery } from "../../../mcp/public";
 import {
   AGENT_CONTRACT_KEYS,
-  BACKGROUND_VALUES,
-  MODE_DEFAULT,
-  MODE_VALUES,
-  SPAWNING_DEFAULT,
-  TRUST_PROJECT_DEFAULT,
-  COLOR_VALUES,
   EFFORT_VALUES,
-  ISOLATION_VALUES,
   MAX_TURNS_DEFAULT,
   MEMORY_VALUES,
 } from "../../api/types";
@@ -124,6 +118,7 @@ export function AgentDetailContent({
   const adoptMutation = useAdoptAgentMutation();
   const unmanageMutation = useUnmanageAgentMutation();
   const skillsListQuery = useSkillsListQuery();
+  const mcpInventoryQuery = useMcpInventoryQuery();
   const hermesOptionsQuery = useHermesOptionsQuery();
 
   const [conflict, setConflict] = useState<AgentAdoptConflict | null>(null);
@@ -143,6 +138,13 @@ export function AgentDetailContent({
         tags: row.tags ?? [],
       }));
   }, [knownSkills, skillsListQuery.data?.rows]);
+
+  const managedMcpServers = useMemo<AdoptedSkillOption[]>(
+    () => (mcpInventoryQuery.data?.entries ?? [])
+      .filter((entry) => entry.kind === "managed" && entry.spec !== null)
+      .map((entry) => ({ slug: entry.name, name: entry.displayName })),
+    [mcpInventoryQuery.data?.entries],
+  );
 
   const effectiveTagOptions = useMemo<SkillTagOption[]>(() => {
     if (tagOptionsProp !== undefined) {
@@ -225,35 +227,22 @@ export function AgentDetailContent({
   const [harnessStr, setHarnessStr] = useState(detail.harness ?? "");
   const [toolsStr, setToolsStr] = useState(detail.tools.join(", "));
   const [skills, setSkills] = useState<string[]>(initialSkills);
-  const [colorStr, setColorStr] = useState(detail.color ?? "");
   const [modelStr, setModelStr] = useState(detail.model ?? "");
   const [hermesProviderStr, setHermesProviderStr] = useState(detail.hermesProvider ?? "");
-  const [hermesModelStr, setHermesModelStr] = useState(detail.hermesModel ?? "");
   const [effortStr, setEffortStr] = useState(detail.effort ?? "");
   const [maxTurnsStr, setMaxTurnsStr] = useState(detail.maxTurns ?? "");
-  const [isolationStr, setIsolationStr] = useState(detail.isolation ?? "");
-  const [backgroundStr, setBackgroundStr] = useState(detail.background ?? "");
   const [memoryStr, setMemoryStr] = useState(detail.memory ?? "");
   const [disallowedToolsStr, setDisallowedToolsStr] = useState((detail.disallowedTools ?? []).join(", "));
   const [mcpServersStr, setMcpServersStr] = useState(
-    detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
+    (detail.mcpServers ?? []).map((binding) => binding.name).join(", "),
   );
-  const [modeStr, setModeStr] = useState(detail.mode ?? MODE_DEFAULT);
-  const [spawningStr, setSpawningStr] = useState(detail.spawning ?? SPAWNING_DEFAULT);
-  const [trustProjectStr, setTrustProjectStr] = useState(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
   const [denyToolsStr, setDenyToolsStr] = useState((detail.denyTools ?? []).join(", "));
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
   const [saveError, setSaveError] = useState<string | null>(null);
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
-  const selectedHermesProvider = hermesProviders.find((provider) => provider.id === hermesProviderStr);
-  const hermesModels = Array.from(new Set([
-    detail.model,
-    detail.hermesModel,
-    hermesModelStr,
-    ...(selectedHermesProvider ? selectedHermesProvider.models : hermesProviders.flatMap((provider) => provider.models)),
-  ].filter((value): value is string => Boolean(value))));
+  const hermesProviderOptions = hermesProviders.map((provider) => provider.id);
 
   useEffect(() => {
     setName(detail.name);
@@ -262,22 +251,13 @@ export function AgentDetailContent({
     setHarnessStr(detail.harness ?? "");
     setToolsStr(detail.tools.join(", "));
     setSkills((detail.skills || []).map((s) => s.slug));
-    setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
     setHermesProviderStr(detail.hermesProvider ?? "");
-    setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
-    setIsolationStr(detail.isolation ?? "");
-    setBackgroundStr(detail.background ?? "");
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
-    setMcpServersStr(
-      detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
-    );
-    setModeStr(detail.mode ?? MODE_DEFAULT);
-    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
-    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
+    setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
     setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(
       (detail.configuration || [])
@@ -337,22 +317,6 @@ export function AgentDetailContent({
         value: roleStr,
         onChange: setRoleStr,
         placeholder: "Describe this agent's role",
-      },
-      {
-        key: "color",
-        label: "Color",
-        group: "identity",
-        value: colorStr,
-        onChange: setColorStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Color"
-            value={colorStr}
-            options={COLOR_VALUES}
-            onChange={setColorStr}
-            disabled={disabled}
-          />
-        ),
       },
       {
         key: "description",
@@ -433,8 +397,23 @@ export function AgentDetailContent({
         value: mcpServersStr,
         onChange: setMcpServersStr,
         placeholder: "Comma-separated server references",
-        helpText: "Comma-separated. Written as an mcpServers list.",
+        helpText: detail.mcpServers?.length
+          ? detail.mcpServers
+              .map(({ name, mode }) => `${name}: ${mode === "inline" ? "inline per-agent" : "harness-level fallback"}`)
+              .join("; ")
+          : "Claude/Codex bind inline; other harnesses use a harness-level fallback.",
         serialize: serializeMcpServerRefs,
+        renderInput: ({ disabled }) => (
+          <AgentSkillsFieldEditor
+            skills={parseMcpServerRefs(mcpServersStr)}
+            knownSkills={managedMcpServers}
+            onChange={(servers) => setMcpServersStr(servers.join(", "))}
+            disabled={disabled}
+            placeholder="Add MCP server..."
+            itemLabel="MCP server"
+            inputLabel="MCP Servers"
+          />
+        ),
       },
       {
         // The two block lists are different keys, not duplicates, so they sit
@@ -469,85 +448,6 @@ export function AgentDetailContent({
       },
       // Execution -----------------------------------------------------------
       {
-        key: "mode",
-        label: "Mode",
-        group: "execution",
-        value: modeStr,
-        onChange: setModeStr,
-        helpText: `${MODE_DEFAULT} when the key is absent.`,
-        renderInput: ({ disabled }) => (
-          <select className="frontmatter-editor__input" value={modeStr} onChange={(event) => setModeStr(event.target.value)} disabled={disabled} aria-label="Mode">
-            {MODE_VALUES.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
-        ),
-      },
-      {
-        key: "background",
-        label: "Background",
-        group: "execution",
-        value: backgroundStr,
-        onChange: setBackgroundStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Background"
-            value={backgroundStr}
-            options={BACKGROUND_VALUES}
-            onChange={setBackgroundStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "spawning",
-        label: "Spawning",
-        group: "execution",
-        value: spawningStr,
-        onChange: setSpawningStr,
-        helpText: `${SPAWNING_DEFAULT} when the key is absent.`,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Spawning"
-            value={spawningStr}
-            options={BACKGROUND_VALUES}
-            onChange={setSpawningStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "isolation",
-        label: "Isolation",
-        group: "execution",
-        value: isolationStr,
-        onChange: setIsolationStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Isolation"
-            value={isolationStr}
-            options={ISOLATION_VALUES}
-            onChange={setIsolationStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "trust-project",
-        label: "Trust Project",
-        group: "execution",
-        value: trustProjectStr,
-        onChange: setTrustProjectStr,
-        helpText: `${TRUST_PROJECT_DEFAULT} when the key is absent.`,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Trust Project"
-            value={trustProjectStr}
-            options={BACKGROUND_VALUES}
-            onChange={setTrustProjectStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
         key: "memory",
         label: "Memory",
         group: "execution",
@@ -578,22 +478,16 @@ export function AgentDetailContent({
       roleStr,
       harnessStr,
       harnessOptions,
-      colorStr,
       modelStr,
       effortStr,
       skills,
       adoptedSkills,
       effectiveTagOptions,
       maxTurnsStr,
-      isolationStr,
-      backgroundStr,
       memoryStr,
       disallowedToolsStr,
       mcpServersStr,
       toolsStr,
-      modeStr,
-      spawningStr,
-      trustProjectStr,
       denyToolsStr,
     ],
   );
@@ -606,23 +500,13 @@ export function AgentDetailContent({
     if (toolsStr !== detail.tools.join(", ")) return true;
     if (prompt !== detail.prompt) return true;
 
-    if (colorStr !== (detail.color ?? "")) return true;
     if (modelStr !== (detail.model ?? "")) return true;
     if (hermesProviderStr !== (detail.hermesProvider ?? "")) return true;
-    if (hermesModelStr !== (detail.hermesModel ?? "")) return true;
     if (effortStr !== (detail.effort ?? "")) return true;
     if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
-    if (isolationStr !== (detail.isolation ?? "")) return true;
-    if (backgroundStr !== (detail.background ?? "")) return true;
     if (memoryStr !== (detail.memory ?? "")) return true;
     if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
-    if (
-      mcpServersStr !==
-      (detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "")
-    ) return true;
-    if (modeStr !== (detail.mode ?? MODE_DEFAULT)) return true;
-    if (spawningStr !== (detail.spawning ?? SPAWNING_DEFAULT)) return true;
-    if (trustProjectStr !== (detail.trustProject ?? TRUST_PROJECT_DEFAULT)) return true;
+    if (mcpServersStr !== (detail.mcpServers ?? []).map((binding) => binding.name).join(", ")) return true;
     if (denyToolsStr !== (detail.denyTools ?? []).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
@@ -640,7 +524,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, colorStr, modelStr, hermesProviderStr, hermesModelStr, effortStr, maxTurnsStr, isolationStr, backgroundStr, memoryStr, disallowedToolsStr, mcpServersStr, modeStr, spawningStr, trustProjectStr, denyToolsStr]);
+  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, hermesProviderStr, effortStr, maxTurnsStr, memoryStr, disallowedToolsStr, mcpServersStr, denyToolsStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -649,22 +533,13 @@ export function AgentDetailContent({
     setHarnessStr(detail.harness ?? "");
     setToolsStr(detail.tools.join(", "));
     setSkills(initialSkills);
-    setColorStr(detail.color ?? "");
     setModelStr(detail.model ?? "");
     setHermesProviderStr(detail.hermesProvider ?? "");
-    setHermesModelStr(detail.hermesModel ?? "");
     setEffortStr(detail.effort ?? "");
     setMaxTurnsStr(detail.maxTurns ?? "");
-    setIsolationStr(detail.isolation ?? "");
-    setBackgroundStr(detail.background ?? "");
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
-    setMcpServersStr(
-      detail.configuration.find((entry) => entry.key === "mcpServers")?.value ?? "",
-    );
-    setModeStr(detail.mode ?? MODE_DEFAULT);
-    setSpawningStr(detail.spawning ?? SPAWNING_DEFAULT);
-    setTrustProjectStr(detail.trustProject ?? TRUST_PROJECT_DEFAULT);
+    setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
     setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
@@ -681,18 +556,12 @@ export function AgentDetailContent({
     let finalHarness = harnessStr;
     let finalToolsStr = toolsStr;
     let finalSkills = skills;
-    let finalColor = colorStr;
     let finalModel = modelStr;
     let finalEffort = effortStr;
     let finalMaxTurns = maxTurnsStr;
-    let finalIsolation = isolationStr;
-    let finalBackground = backgroundStr;
     let finalMemory = memoryStr;
     let finalDisallowedToolsStr = disallowedToolsStr;
-    let finalMcpServersStr = mcpServersStr;
-    let finalMode = modeStr;
-    let finalSpawning = spawningStr;
-    let finalTrustProject = trustProjectStr;
+    const finalMcpServersStr = mcpServersStr;
     let finalDenyToolsStr = denyToolsStr;
     let finalOther = otherEntries;
 
@@ -708,18 +577,11 @@ export function AgentDetailContent({
       finalHarness = parsed.known.harness ?? harnessStr;
       finalToolsStr = parsed.known.tools ?? toolsStr;
       finalSkills = parseSkillSlugs(parsed.known.skills ?? "");
-      finalColor = parsed.known.color ?? "";
       finalModel = parsed.known.model ?? "";
       finalEffort = parsed.known.effort ?? "";
       finalMaxTurns = parsed.known.maxTurns ?? "";
-      finalIsolation = parsed.known.isolation ?? "";
-      finalBackground = parsed.known.background ?? "";
       finalMemory = parsed.known.memory ?? "";
       finalDisallowedToolsStr = parsed.known.disallowedTools ?? "";
-      finalMcpServersStr = parsed.known.mcpServers ?? "";
-      finalMode = parsed.known.mode ?? MODE_DEFAULT;
-      finalSpawning = parsed.known.spawning ?? SPAWNING_DEFAULT;
-      finalTrustProject = parsed.known["trust-project"] ?? TRUST_PROJECT_DEFAULT;
       finalDenyToolsStr = parsed.known["deny-tools"] ?? "";
       finalOther = parsed.other;
       setName(finalName);
@@ -728,18 +590,12 @@ export function AgentDetailContent({
       setHarnessStr(finalHarness);
       setToolsStr(finalToolsStr);
       setSkills(finalSkills);
-      setColorStr(finalColor);
       setModelStr(finalModel);
       setEffortStr(finalEffort);
       setMaxTurnsStr(finalMaxTurns);
-      setIsolationStr(finalIsolation);
-      setBackgroundStr(finalBackground);
       setMemoryStr(finalMemory);
       setDisallowedToolsStr(finalDisallowedToolsStr);
       setMcpServersStr(finalMcpServersStr);
-      setModeStr(finalMode);
-      setSpawningStr(finalSpawning);
-      setTrustProjectStr(finalTrustProject);
       setDenyToolsStr(finalDenyToolsStr);
       setOtherEntries(finalOther);
     }
@@ -763,12 +619,6 @@ export function AgentDetailContent({
           ? { rawValue: e.rawValue }
           : {}),
       })),
-      ...(parseMcpServerRefs(finalMcpServersStr).length > 0
-        ? [{
-            key: "mcpServers",
-            value: JSON.stringify(parseMcpServerRefs(finalMcpServersStr)),
-          }]
-        : []),
     ];
 
     try {
@@ -782,20 +632,15 @@ export function AgentDetailContent({
           harness: finalHarness.trim(),
           ...(toolsList ? { tools: toolsList } : {}),
           skills: finalSkills,
-          color: finalColor.trim(),
+          mcpServers: parseMcpServerRefs(finalMcpServersStr),
           model: finalModel.trim(),
           effort: finalEffort.trim(),
           maxTurns: finalMaxTurns.trim(),
-          isolation: finalIsolation.trim(),
-          background: finalBackground.trim(),
           memory: finalMemory.trim(),
           disallowedTools: finalDisallowedToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
-          mode: finalMode.trim(),
-          spawning: finalSpawning.trim(),
-          trustProject: finalTrustProject.trim(),
           denyTools: finalDenyToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
           hermesProvider: hermesProviderStr.trim(),
-          hermesModel: hermesModelStr.trim(),
+          hermesModel: "",
           metadata: metadataPayload,
         },
       });
@@ -991,45 +836,18 @@ export function AgentDetailContent({
                   <div className="frontmatter-editor__known-fields">
                     <label className="frontmatter-editor__field">
                       <span className="hermes-profile-editor__label">Hermes Provider</span>
-                      <input
-                        type="text"
-                        className="frontmatter-editor__input"
-                        list={`hermes-provider-options-${detail.ref}`}
+                      <FrontmatterChoiceSelect
+                        label="Hermes Provider"
                         value={hermesProviderStr}
-                        onChange={(event) => setHermesProviderStr(event.target.value)}
+                        options={hermesProviderOptions}
+                        onChange={setHermesProviderStr}
                         disabled={updateMutation.isPending}
-                        placeholder="Auto / choose a configured provider"
-                        aria-label="Hermes Provider"
                       />
-                      <datalist id={`hermes-provider-options-${detail.ref}`}>
-                        {hermesProviders.map((provider) => (
-                          <option key={provider.id} value={provider.id} />
-                        ))}
-                      </datalist>
-                    </label>
-                    <label className="frontmatter-editor__field">
-                      <span className="hermes-profile-editor__label">Hermes Model</span>
-                      <input
-                        type="text"
-                        className="frontmatter-editor__input"
-                        list={`hermes-model-options-${detail.ref}`}
-                        value={hermesModelStr}
-                        onChange={(event) => setHermesModelStr(event.target.value)}
-                        disabled={updateMutation.isPending}
-                        placeholder={detail.model ? `Uses Model above (${detail.model})` : "Uses Hermes default or enter a model id"}
-                        aria-label="Hermes Model"
-                      />
-                      <datalist id={`hermes-model-options-${detail.ref}`}>
-                        {hermesModels.map((modelId) => (
-                          <option key={modelId} value={modelId} />
-                        ))}
-                      </datalist>
                     </label>
                   </div>
                   <p className="frontmatter-editor__note">
-                    Hermes profile skills and agents are verified supported targets. Hermes uses the
-                    shared Model field unless Hermes Model overrides it; provider choices come from
-                    Hermes configuration and can still be entered manually. HAM-managed Bots are addressed as hermes -p
+                    Hermes profile skills and agents are verified supported targets. Hermes always uses
+                    the shared Model field; provider choices come from Hermes configuration. HAM-managed Bots are addressed as hermes -p
                     &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
                     sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>

@@ -145,21 +145,14 @@ def render_agent_document(
             # instead of the bare name list -- this is what a harness actually
             # connects, not a reference HAM alone understands.
             metadata["mcpServers"] = dict(mcp_inline)
-        # Written unquoted, so `maxTurns: 30` and `background: true` come back out of
-        # YAML as the int and bool Claude Code expects rather than as strings.
+        # Written unquoted, so `maxTurns: 30` comes back out of YAML as an int.
         for scalar_key, scalar_value in (
-            ("color", color),
             ("role", role),
             ("harness", harness),
             ("model", model),
             ("effort", effort),
             ("maxTurns", max_turns),
-            ("isolation", isolation),
-            ("background", background),
             ("memory", memory),
-            ("mode", mode),
-            ("spawning", spawning),
-            ("trust-project", trust_project),
         ):
             if scalar_value:
                 metadata[scalar_key] = scalar_value
@@ -229,16 +222,10 @@ def render_agent_document(
         for contract_key, contract_value in (
             ("role", role),
             ("harness", harness),
-            ("color", color),
             ("model", model),
             ("effort", effort),
             ("maxTurns", max_turns),
-            ("isolation", isolation),
-            ("background", background),
             ("memory", memory),
-            ("mode", mode),
-            ("spawning", spawning),
-            ("trust-project", trust_project),
         ):
             if contract_value is None:
                 # YAML ``null`` is the parsed form of an empty optional field. It

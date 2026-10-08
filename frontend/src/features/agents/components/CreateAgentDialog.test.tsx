@@ -62,6 +62,14 @@ vi.mock("../../settings/public", () => ({
   }),
 }));
 
+vi.mock("../../mcp/public", () => ({
+  useMcpInventoryQuery: () => ({
+    data: {
+      entries: [{ kind: "managed", name: "dossier", displayName: "Dossier", spec: {} }],
+    },
+  }),
+}));
+
 vi.mock("../../skills/public", () => ({
   useSkillsListQuery: () => ({
     data: {
@@ -92,13 +100,10 @@ describe("CreateAgentDialog", () => {
       (node) => node.firstChild?.textContent?.trim(),
     );
 
-    // Identity, Harness & Model, Capabilities, Execution -- the AGENT_FRONTMATTER_GROUPS
-    // order from AgentDetailContent, minus the four fields this dialog does not offer.
-    // A field added to one surface and not the other shows up here as a mismatch.
+    // The dialog follows the detail editor's order, omitting detail-only fields.
     expect(labels).toEqual([
       "Agent Name",
       "Role",
-      "Color",
       "Description",
       "Harness",
       "Model",
@@ -106,12 +111,9 @@ describe("CreateAgentDialog", () => {
       "Skills",
       "MCP Servers",
       "Disallowed Tools",
-      "Background",
-      "Isolation",
       "Memory",
       "Max Turns",
       "Hermes Provider",
-      "Hermes Model",
     ]);
   });
 
@@ -120,12 +122,12 @@ describe("CreateAgentDialog", () => {
 
     const hintFor = (label: string) =>
       document
-        .querySelector(`.form-field__input[aria-label="${label}"]`)
-        ?.parentElement?.querySelector(".form-field__hint")?.textContent;
+        .querySelector(`[aria-label="${label}"]`)
+        ?.closest(".form-field")
+        ?.querySelector(".form-field__hint")?.textContent;
 
-    expect(hintFor("MCP Servers")).toContain("mcpServers");
+    expect(hintFor("MCP Servers")).toContain("Claude/Codex");
     expect(hintFor("Disallowed Tools")).toContain("disallowedTools");
-
     // The help line sits inside the label element, so each input carries its own
     // aria-label to keep that guidance out of the accessible name.
     expect(screen.getByRole("textbox", { name: "Disallowed Tools" })).toBeInTheDocument();
@@ -191,7 +193,7 @@ describe("CreateAgentDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("carries contract fields and selected harnesses in the create body, and omits unset keys", () => {
+  it("carries contract fields and selected harnesses in the create body, and omits unset keys", async () => {
     mockSettingsData = {
       autoAdoptHarnesses: { agents: ["claude"] },
     };
@@ -219,15 +221,15 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("System instructions..."), {
       target: { value: "Think deeply about architectures." },
     });
-    fireEvent.change(screen.getByLabelText("Color"), {
-      target: { value: "purple" },
-    });
     fireEvent.change(screen.getByLabelText("Effort"), {
       target: { value: "high" },
     });
     fireEvent.change(screen.getByLabelText("Memory"), {
       target: { value: "project" },
     });
+    const mcpServersField = screen.getByRole("combobox", { name: "MCP Servers" });
+    fireEvent.change(mcpServersField, { target: { value: "Dossier" } });
+    fireEvent.mouseDown(await screen.findByRole("option", { name: /Dossier.*dossier/ }));
 
     // Submit the form
     const submitBtn = screen.getByRole("button", { name: "Create Agent" });
@@ -242,9 +244,9 @@ describe("CreateAgentDialog", () => {
       prompt: "Think deeply about architectures.",
       role: "Systems designer",
       harness: "claude",
-      color: "purple",
       effort: "high",
       memory: "project",
+      mcpServers: ["dossier"],
       harnesses: ["claude"],
     });
 
@@ -255,6 +257,9 @@ describe("CreateAgentDialog", () => {
     expect(payload).not.toHaveProperty("disallowedTools");
     expect(payload).not.toHaveProperty("maxTurns");
     expect(payload).not.toHaveProperty("isolation");
+    expect(payload).not.toHaveProperty("background");
+    expect(payload).not.toHaveProperty("mode");
+    expect(payload).not.toHaveProperty("spawning");
   });
 
   it("blocks a duplicate name before any fetch", () => {
@@ -288,7 +293,7 @@ describe("CreateAgentDialog", () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it("sends Hermes provider and model as free-text profile settings", () => {
+  it("offers Hermes providers as a dropdown and only sends the shared Model", () => {
     mockSettingsData = { autoAdoptHarnesses: { agents: [] } };
     mockMutateAsync.mockResolvedValueOnce({ name: "Hermes Agent", ok: true, harnessFailures: [] });
 
@@ -307,30 +312,23 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("System instructions..."), {
       target: { value: "Use the configured profile." },
     });
-    fireEvent.change(screen.getByLabelText("Hermes Provider"), {
-      target: { value: "test-provider" },
-    });
-    fireEvent.change(screen.getByLabelText("Hermes Model"), {
-      target: { value: "test/model" },
-    });
+    const provider = screen.getByRole("combobox", { name: "Hermes Provider" }) as HTMLSelectElement;
+    expect(Array.from(provider.options).map((option) => option.value)).toEqual(["", "test-provider"]);
+    fireEvent.change(provider, { target: { value: "test-provider" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Create Agent" }));
 
     expect(mockMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hermesProvider: "test-provider",
-        hermesModel: "test/model",
-      }),
+      expect.objectContaining({ hermesProvider: "test-provider" }),
     );
+    expect(mockMutateAsync.mock.calls[0][0]).not.toHaveProperty("hermesModel");
   });
 
-  it("renders every fixed-vocabulary field as the same dropdown the detail sheet uses", () => {
-    // These five used to be split between hand-rolled <select>s (Color, Effort) and a
-    // segmented button group (Isolation, Background, Memory), so the same frontmatter
-    // key looked different depending on whether you were creating or editing an agent.
+  it("renders the remaining fixed-vocabulary fields as dropdowns", () => {
+    // The surviving pickers share the same native select behavior.
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
 
-    for (const label of ["Harness", "Color", "Effort", "Isolation", "Background", "Memory"]) {
+    for (const label of ["Harness", "Effort", "Memory", "Hermes Provider"]) {
       expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
     }
 

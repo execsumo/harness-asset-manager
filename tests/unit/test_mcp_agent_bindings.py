@@ -44,6 +44,18 @@ class McpAgentBindingCapabilityTests(unittest.TestCase):
 
 
 class InlineBindingRenderTests(unittest.TestCase):
+    def test_agent_detail_exposes_saved_mcp_bindings(self) -> None:
+        with AppTestHarness() as harness:
+            harness.container.mcp_store.upsert_from_spec(_spec("exa"))
+            agent = harness.container.agents_store.create(
+                name="Researcher", description="", prompt="Search.", harness="claude"
+            )
+            detail = harness.put_json(
+                f"/api/agents/{agent.slug}", {"mcpServers": ["exa"]}
+            )
+
+            self.assertEqual(detail["mcpServers"], [{"name": "exa", "mode": "inline"}])
+
     def test_inline_binding_renders_mapper_resolved_dict_for_claude_agent(self) -> None:
         with AppTestHarness() as harness:
             spec = _spec("exa")

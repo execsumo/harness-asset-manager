@@ -185,10 +185,10 @@ class AgentParserTests(unittest.TestCase):
             base_metadata={},
         )
         self.assertIn("maxTurns: 30\n", rendered)
-        self.assertIn("background: true\n", rendered)
+        self.assertNotIn("background:", rendered)
         parsed = parse_agent_document(rendered, slug="edge", path=Path("edge.md"))
         self.assertEqual(parsed.max_turns, "30")
-        self.assertEqual(parsed.background, "true")
+        self.assertIsNone(parsed.background)
 
     def test_missing_frontmatter_is_an_error(self) -> None:
         with self.assertRaises(AgentParseError):
@@ -1302,8 +1302,8 @@ class ContractFieldRoundTripTests(unittest.TestCase):
         )
         return agent, rendered
 
-    def test_bool_and_int_scalars_keep_their_yaml_spelling(self) -> None:
-        """``str(True)`` is ``"True"`` — a value neither the file nor the picker uses."""
+    def test_retired_background_is_omitted_while_max_turns_keeps_its_yaml_type(self) -> None:
+        """A retired field is dropped; active numeric fields keep their YAML type."""
         agent, rendered = self._round_trip(
             "---\n"
             "name: A\n"
@@ -1314,19 +1314,46 @@ class ContractFieldRoundTripTests(unittest.TestCase):
         )
         self.assertEqual(agent.max_turns, "30")
         self.assertEqual(agent.background, "true")
-        self.assertIn("background: true", rendered)
+        self.assertNotIn("background:", rendered)
         self.assertIn("maxTurns: 30", rendered)
         reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
-        self.assertEqual(reparsed.background, "true")
+        self.assertIsNone(reparsed.background)
         self.assertEqual(reparsed.max_turns, "30")
         self.assertEqual(reparsed.extra_metadata, ())
 
-    def test_isolation_none_is_the_literal_string_not_a_null(self) -> None:
-        agent, rendered = self._round_trip(
-            "---\nname: A\ndescription: d\nisolation: worktree\n---\n\nbody\n"
+    def test_retired_execution_fields_are_omitted_on_rewrite(self) -> None:
+        document = (
+            "---\nname: A\ndescription: d\nmode: interactive\nbackground: true\n"
+            "isolation: worktree\nspawning: true\ntrust-project: false\ncolor: cyan\n---\n\nbody\n"
         )
-        self.assertEqual(agent.isolation, "worktree")
-        self.assertIn("isolation: worktree", rendered)
+        agent = parse_agent_document(document, slug="a", path=Path("a.md"))
+        rendered_documents = (
+            render_agent_document(
+                name=agent.name,
+                description=agent.description,
+                prompt=agent.prompt,
+                mode=agent.mode,
+                background=agent.background,
+                isolation=agent.isolation,
+                spawning=agent.spawning,
+                trust_project=agent.trust_project,
+                base_metadata=agent.metadata,
+            ),
+            render_agent_document(
+                name=agent.name,
+                description=agent.description,
+                prompt=agent.prompt,
+                mode=agent.mode,
+                background=agent.background,
+                isolation=agent.isolation,
+                spawning=agent.spawning,
+                trust_project=agent.trust_project,
+                extra_metadata=[],
+            ),
+        )
+        for rendered in rendered_documents:
+            for key in ("mode", "background", "isolation", "spawning", "trust-project", "color"):
+                self.assertNotIn(f"{key}:", rendered)
 
     def test_role_harness_and_memory_round_trip(self) -> None:
         agent, rendered = self._round_trip(
@@ -1369,8 +1396,14 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             for line in rendered.splitlines()
             if line and not line.startswith((" ", "-", "---"))
         ]
-        self.assertEqual(keys[: len(CONTRACT_KEYS)], list(CONTRACT_KEYS))
-        self.assertEqual(keys[len(CONTRACT_KEYS)], "permissionMode")
+        self.assertEqual(
+            keys[:-1],
+            [
+                "name", "description", "role", "harness", "model", "effort",
+                "tools", "disallowedTools", "skills", "mcpServers", "memory", "maxTurns",
+                "deny-tools", "permissionMode",
+            ],
+        )
 
     def test_an_explicit_empty_string_clears_the_key(self) -> None:
         rendered = render_agent_document(

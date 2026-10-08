@@ -11,7 +11,6 @@ from .availability import (
     availability_cache_key,
 )
 from .config_choice import observed_spec_from_scans
-from .enrichment import McpEnrichmentService
 from .harness_application import McpHarnessApplication
 from .install_intent import ManagedMcpRecord, registry_record_from_detail
 from .install_state import resolve_enable_managed_spec
@@ -19,7 +18,7 @@ from .marketplace.catalog import McpMarketplaceCatalog
 from .planner import McpAdoptionPlanner
 from .read_models import McpReadModelService
 from .redaction import redacted_spec_dict
-from .store import McpServerSpec, McpServerStore, McpSource
+from .store import McpServerSpec, McpServerStore
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
@@ -39,7 +38,6 @@ class McpMutationService:
         read_models: McpReadModelService,
         planner: McpAdoptionPlanner,
         marketplace_catalog: McpMarketplaceCatalog,
-        enrichment: McpEnrichmentService | None = None,
         availability_probe: McpAvailabilityProbe | None = None,
         availability_cache: AvailabilityCache | None = None,
         asset_tags: AssetTagService | None = None,
@@ -48,7 +46,6 @@ class McpMutationService:
         self.read_models = read_models
         self.planner = planner
         self.marketplace = marketplace_catalog
-        self.enrichment = enrichment
         self.availability_probe = availability_probe or McpAvailabilityProbe()
         self._availability_cache = availability_cache if availability_cache is not None else {}
         self.asset_tags = asset_tags
@@ -282,18 +279,6 @@ class McpMutationService:
 
     # Adoption -------------------------------------------------------------
 
-    def _apply_enrichment(self, spec: McpServerSpec) -> McpServerSpec:
-        if self.enrichment is None:
-            return spec
-        link = self.enrichment.lookup(spec.name)
-        if link is None:
-            return spec
-        return replace(
-            spec,
-            display_name=link.display_name or spec.display_name,
-            source=McpSource.marketplace(link.qualified_name),
-        )
-
     def adopt(
         self,
         name: str,
@@ -325,7 +310,6 @@ class McpMutationService:
             )
         if target_spec.name != name:
             target_spec = replace(target_spec, name=name)
-        target_spec = self._apply_enrichment(target_spec)
 
         target_harnesses = set(harnesses) if harnesses else {s.harness for s in group.sightings}
         target_record = ManagedMcpRecord(spec=target_spec)

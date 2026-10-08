@@ -384,7 +384,6 @@ def build_backend_container(
         read_models=mcp_read_models,
         planner=mcp_planner,
         marketplace_catalog=mcp_catalog,
-        enrichment=mcp_enrichment,
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
         asset_tags=asset_tags,

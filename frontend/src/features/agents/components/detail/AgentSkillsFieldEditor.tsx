@@ -63,6 +63,8 @@ export interface AgentSkillsFieldEditorProps {
   onChange: (skills: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  itemLabel?: string;
+  inputLabel?: string;
 }
 
 export function AgentSkillsFieldEditor({
@@ -72,6 +74,8 @@ export function AgentSkillsFieldEditor({
   onChange,
   disabled = false,
   placeholder = "Add skill...",
+  itemLabel = "skill",
+  inputLabel = "Attach skill",
 }: AgentSkillsFieldEditorProps) {
   const [inputVal, setInputVal] = useState("");
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -154,7 +158,7 @@ export function AgentSkillsFieldEditor({
     const slugToAdd = matched ? matched.slug : raw;
 
     if (normalizedExisting.has(slugToAdd.toLowerCase())) {
-      setError("Skill already attached");
+      setError(`${itemLabel[0].toUpperCase()}${itemLabel.slice(1)} already attached`);
       return;
     }
 
@@ -241,7 +245,7 @@ export function AgentSkillsFieldEditor({
                     e.stopPropagation();
                     handleRemove(slug);
                   }}
-                  aria-label={`Remove skill ${displayName}`}
+                  aria-label={`Remove ${itemLabel} ${displayName}`}
                 >
                   <X size={11} />
                 </button>
@@ -266,7 +270,7 @@ export function AgentSkillsFieldEditor({
             onKeyDown={handleKeyDown}
             placeholder={skills.length === 0 ? placeholder : ""}
             disabled={disabled}
-            aria-label="Attach skill"
+            aria-label={inputLabel}
             aria-expanded={suggestOpen && suggestions.length > 0}
             role="combobox"
           />

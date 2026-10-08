@@ -9,6 +9,7 @@ import {
   useHermesOptionsQuery,
 } from "../api/queries";
 import { useSettingsQuery } from "../../settings/public";
+import { useMcpInventoryQuery } from "../../mcp/public";
 import { useSkillsListQuery } from "../../skills/public";
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
@@ -24,10 +25,7 @@ import {
   type SkillTagOption,
 } from "./detail/AgentSkillsFieldEditor";
 import {
-  BACKGROUND_VALUES,
-  COLOR_VALUES,
   EFFORT_VALUES,
-  ISOLATION_VALUES,
   MAX_TURNS_DEFAULT,
   MEMORY_VALUES,
   type AgentCreateRequest,
@@ -58,18 +56,14 @@ export function CreateAgentDialog({
   const [description, setDescription] = useState("");
   const [role, setRole] = useState("");
   const [harness, setHarness] = useState("");
-  const [color, setColor] = useState("");
   const [model, setModel] = useState("");
   const [hermesProvider, setHermesProvider] = useState("");
-  const [hermesModel, setHermesModel] = useState("");
   const [effort, setEffort] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [disallowedTools, setDisallowedTools] = useState("");
-  const [mcpServers, setMcpServers] = useState("");
-  const [background, setBackground] = useState("");
+  const [mcpServers, setMcpServers] = useState<string[]>([]);
   const [memory, setMemory] = useState("");
   const [maxTurns, setMaxTurns] = useState("");
-  const [isolation, setIsolation] = useState("");
   const [prompt, setPrompt] = useState("");
   const [selectedHarnesses, setSelectedHarnesses] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +71,7 @@ export function CreateAgentDialog({
   const { toast } = useToast();
   const createMutation = useCreateAgentMutation();
   const settingsQuery = useSettingsQuery();
+  const mcpInventoryQuery = useMcpInventoryQuery();
   const inventoryQuery = useAgentsInventoryQuery();
   const hermesOptionsQuery = useHermesOptionsQuery();
   const skillsListQuery = useSkillsListQuery();
@@ -95,18 +90,14 @@ export function CreateAgentDialog({
     setDescription("");
     setRole("");
     setHarness("");
-    setColor("");
     setModel("");
     setHermesProvider("");
-    setHermesModel("");
     setEffort("");
     setSkills([]);
     setDisallowedTools("");
-    setMcpServers("");
-    setBackground("");
+    setMcpServers([]);
     setMemory("");
     setMaxTurns("");
-    setIsolation("");
     setPrompt("");
     setError(null);
   }, [open]);
@@ -126,6 +117,13 @@ export function CreateAgentDialog({
     }
     return set;
   }, [inventoryQuery.data?.entries]);
+
+  const managedMcpServers = useMemo<AdoptedSkillOption[]>(
+    () => (mcpInventoryQuery.data?.entries ?? [])
+      .filter((entry) => entry.kind === "managed" && entry.spec !== null)
+      .map((entry) => ({ slug: entry.name, name: entry.displayName })),
+    [mcpInventoryQuery.data?.entries],
+  );
 
   const adoptedSkills = useMemo<AdoptedSkillOption[]>(() => {
     if (!skillsListQuery.data?.rows) return [];
@@ -176,12 +174,7 @@ export function CreateAgentDialog({
     [columns],
   );
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
-  const selectedHermesProvider = hermesProviders.find((provider) => provider.id === hermesProvider);
-  const hermesModels = Array.from(new Set([
-    model,
-    hermesModel,
-    ...(selectedHermesProvider ? selectedHermesProvider.models : hermesProviders.flatMap((provider) => provider.models)),
-  ].filter(Boolean)));
+  const hermesProviderOptions = hermesProviders.map((provider) => provider.id);
 
   function toggleHarness(harnessId: string) {
     setSelectedHarnesses((current) =>
@@ -209,17 +202,11 @@ export function CreateAgentDialog({
       payload.harness = harness.trim();
     }
 
-    if (color) {
-      payload.color = color;
-    }
     if (model.trim()) {
       payload.model = model.trim();
     }
     if (hermesProvider.trim()) {
       payload.hermesProvider = hermesProvider.trim();
-    }
-    if (hermesModel.trim()) {
-      payload.hermesModel = hermesModel.trim();
     }
     if (effort) {
       payload.effort = effort;
@@ -230,9 +217,6 @@ export function CreateAgentDialog({
     if (maxTurns.trim()) {
       payload.maxTurns = maxTurns.trim();
     }
-    if (isolation) {
-      payload.isolation = isolation;
-    }
     const disallowed = disallowedTools
       .split(",")
       .map((s) => s.trim())
@@ -240,15 +224,8 @@ export function CreateAgentDialog({
     if (disallowed.length > 0) {
       payload.disallowedTools = disallowed;
     }
-    const mcpServerRefs = mcpServers
-      .split(",")
-      .map((server) => server.trim())
-      .filter(Boolean);
-    if (mcpServerRefs.length > 0) {
-      payload.mcpServers = mcpServerRefs;
-    }
-    if (background) {
-      payload.background = background;
+    if (mcpServers.length > 0) {
+      payload.mcpServers = mcpServers;
     }
     if (memory) {
       payload.memory = memory;
@@ -344,18 +321,6 @@ export function CreateAgentDialog({
                       />
                     </label>
 
-                    <label className="form-field">
-                      <span className="form-field__label">Color</span>
-                      <FrontmatterChoiceSelect
-                        label="Color"
-                        value={color}
-                        options={COLOR_VALUES}
-                        onChange={setColor}
-                        disabled={isPending}
-                        className="form-field__input"
-                      />
-                    </label>
-
                     <label className="form-field agent-frontmatter-grid__description">
                       <span className="form-field__label">
                         Description
@@ -412,8 +377,7 @@ export function CreateAgentDialog({
 
                   {/* Capabilities, then Execution -- the same order, and the same
                       order within each, as the structured editor in Agent Details.
-                      Fields this dialog does not offer (deny-tools, mode, spawning,
-                      trust-project) are skipped, not reordered around. */}
+                      The detail-only deny-tools field is skipped, not reordered around. */}
                   <div className="dialog-form-fields agent-frontmatter-grid__additional">
                     <div className="form-field agent-frontmatter-grid__skills">
                       <span className="form-field__label">Skills</span>
@@ -432,16 +396,16 @@ export function CreateAgentDialog({
                         `aria-label` so the help line does not widen the accessible name. */}
                     <label className="form-field">
                       <span className="form-field__label">MCP Servers</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        placeholder="Comma-separated server references"
-                        value={mcpServers}
-                        onChange={(e) => setMcpServers(e.target.value)}
+                      <AgentSkillsFieldEditor
+                        skills={mcpServers}
+                        knownSkills={managedMcpServers}
+                        onChange={setMcpServers}
                         disabled={isPending}
-                        aria-label="MCP Servers"
+                        placeholder="Add MCP server..."
+                        itemLabel="MCP server"
+                        inputLabel="MCP Servers"
                       />
-                      <span className="form-field__hint">Comma-separated. Written as an mcpServers list.</span>
+                      <span className="form-field__hint">Claude/Codex bind inline; other harnesses use a harness-level fallback.</span>
                     </label>
 
                     <label className="form-field">
@@ -456,30 +420,6 @@ export function CreateAgentDialog({
                         aria-label="Disallowed Tools"
                       />
                       <span className="form-field__hint">Comma-separated. Written as disallowedTools.</span>
-                    </label>
-
-                    <label className="form-field">
-                      <span className="form-field__label">Background</span>
-                      <FrontmatterChoiceSelect
-                        label="Background"
-                        value={background}
-                        options={BACKGROUND_VALUES}
-                        onChange={setBackground}
-                        disabled={isPending}
-                        className="form-field__input"
-                      />
-                    </label>
-
-                    <label className="form-field">
-                      <span className="form-field__label">Isolation</span>
-                      <FrontmatterChoiceSelect
-                        label="Isolation"
-                        value={isolation}
-                        options={ISOLATION_VALUES}
-                        onChange={setIsolation}
-                        disabled={isPending}
-                        className="form-field__input"
-                      />
                     </label>
 
                     <label className="form-field">
@@ -510,46 +450,20 @@ export function CreateAgentDialog({
                   <div className="dialog-form-fields dialog-form-fields--split">
                     <label className="form-field">
                       <span className="form-field__label">Hermes Provider</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        list="hermes-provider-options"
-                        placeholder="Auto / choose a configured provider"
+                      <FrontmatterChoiceSelect
+                        label="Hermes Provider"
                         value={hermesProvider}
-                        onChange={(e) => setHermesProvider(e.target.value)}
+                        options={hermesProviderOptions}
+                        onChange={setHermesProvider}
                         disabled={isPending}
-                        aria-label="Hermes Provider"
+                        className="form-field__input"
                       />
-                      <datalist id="hermes-provider-options">
-                        {hermesProviders.map((provider) => (
-                          <option key={provider.id} value={provider.id} />
-                        ))}
-                      </datalist>
                     </label>
 
-                    <label className="form-field">
-                      <span className="form-field__label">Hermes Model</span>
-                      <input
-                        type="text"
-                        className="form-field__input"
-                        list="hermes-model-options"
-                        placeholder={model.trim() ? `Uses Model above (${model.trim()})` : "Uses Hermes default or enter a model id"}
-                        value={hermesModel}
-                        onChange={(e) => setHermesModel(e.target.value)}
-                        disabled={isPending}
-                        aria-label="Hermes Model"
-                      />
-                      <datalist id="hermes-model-options">
-                        {hermesModels.map((modelId) => (
-                          <option key={modelId} value={modelId} />
-                        ))}
-                      </datalist>
-                    </label>
                   </div>
                   <p className="create-dialog__hint">
-                    Hermes profile skills and agents are verified supported targets. Hermes uses the
-                    shared Model field unless Hermes Model overrides it; provider choices come from
-                    Hermes configuration and can still be entered manually. HAM-managed Bots are addressed as hermes -p
+                    Hermes profile skills and agents are verified supported targets. Hermes always uses
+                    the shared Model field; provider choices come from Hermes configuration. HAM-managed Bots are addressed as hermes -p
                     &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
                     sharing this profile's skills with a Codex app-server subprocess are out of scope.
                   </p>

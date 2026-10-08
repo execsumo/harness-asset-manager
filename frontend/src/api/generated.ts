@@ -1716,6 +1716,8 @@ export interface components {
             isolation?: string | null;
             /** Maxturns */
             maxTurns?: string | null;
+            /** Mcpservers */
+            mcpServers?: components["schemas"]["AgentMcpBindingResponse"][];
             /** Memory */
             memory?: string | null;
             /** Mode */
@@ -1818,6 +1820,16 @@ export interface components {
             name: string;
             /** Reason */
             reason: string;
+        };
+        /** AgentMcpBindingResponse */
+        AgentMcpBindingResponse: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "inline" | "harness_fallback";
+            /** Name */
+            name: string;
         };
         /** AgentMutationFailureResponse */
         AgentMutationFailureResponse: {

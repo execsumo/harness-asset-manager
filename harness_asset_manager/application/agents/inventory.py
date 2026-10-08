@@ -187,6 +187,7 @@ class AgentInventoryService:
                 (key, _format_config_value(value)) for key, value in agent.extra_metadata
             ),
             skills=self._resolve_agent_skills(agent.skills),
+            mcp_servers=agent.mcp_servers,
             color=agent.color,
             model=agent.model,
             effort=agent.effort,

@@ -23,6 +23,7 @@ from harness_asset_manager.api.schemas.agents import (
     AgentHarnessRequest,
     AgentInventoryResponse,
     AgentIssueResponse,
+    AgentMcpBindingResponse,
     AgentMutationFailureResponse,
     AgentRepairResponse,
     AgentSkillResponse,
@@ -531,6 +532,10 @@ def _detail(
         tags=list(detail.tags),
         skills=[
             AgentSkillResponse(slug=s.slug, name=s.name) for s in detail.skills
+        ],
+        mcpServers=[
+            AgentMcpBindingResponse(name=binding.name, mode=binding.mode)
+            for binding in detail.mcp_servers
         ],
         color=detail.color,
         model=detail.model,

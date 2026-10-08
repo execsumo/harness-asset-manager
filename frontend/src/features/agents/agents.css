@@ -80,7 +80,8 @@
 
 /* The two fields whose control is a paragraph or a token list, not a one-line value. */
 .agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="description"],
-.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="skills"] {
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="skills"],
+.agent-frontmatter-editor .frontmatter-editor__field[data-frontmatter-key="mcpServers"] {
   grid-column: 1 / -1;
 }
 

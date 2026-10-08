@@ -28,6 +28,11 @@ class AgentSkillResponse(BaseModel):
     name: str
 
 
+class AgentMcpBindingResponse(BaseModel):
+    name: str
+    mode: Literal["inline", "harness_fallback"]
+
+
 class AutoEnabledSkillResponse(BaseModel):
     skillRef: str
     harness: str
@@ -244,6 +249,7 @@ class AgentDetailResponse(BaseModel):
     canEdit: bool = True
     tags: list[str] = Field(default_factory=list)
     skills: list[AgentSkillResponse] = Field(default_factory=list)
+    mcpServers: list[AgentMcpBindingResponse] = Field(default_factory=list)
     color: str | None = None
     model: str | None = None
     effort: str | None = None
@@ -286,6 +292,7 @@ __all__ = [
     "AgentInventoryResponse",
     "AgentIssueResponse",
     "AgentMutationFailureResponse",
+    "AgentMcpBindingResponse",
     "AgentRepairResponse",
     "AgentSkillResponse",
     "AgentTagsResponse",

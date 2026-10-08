@@ -51,9 +51,12 @@ RETIRED_KEYS = frozenset(
         "harnesses",
         "allowed_subagents",
         "max_turns",
+        "isolation",
+        "background",
         "mode",
         "spawning",
         "trust-project",
+        "color",
         "deny-tools",
     }
 )
@@ -374,6 +377,7 @@ class AgentDetail:
     # Frontmatter beyond name/description, verbatim and in file order.
     configuration: tuple[tuple[str, str], ...] = ()
     skills: tuple[AgentSkill, ...] = ()
+    mcp_servers: tuple[McpAgentBinding, ...] = ()
     color: str | None = None
     model: str | None = None
     effort: str | None = None

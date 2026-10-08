@@ -600,6 +600,13 @@
             ],
             "title": "Maxturns"
           },
+          "mcpServers": {
+            "items": {
+              "$ref": "#/components/schemas/AgentMcpBindingResponse"
+            },
+            "title": "Mcpservers",
+            "type": "array"
+          },
           "memory": {
             "anyOf": [
               {
@@ -935,6 +942,28 @@
           "reason"
         ],
         "title": "AgentIssueResponse",
+        "type": "object"
+      },
+      "AgentMcpBindingResponse": {
+        "properties": {
+          "mode": {
+            "enum": [
+              "inline",
+              "harness_fallback"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "mode"
+        ],
+        "title": "AgentMcpBindingResponse",
         "type": "object"
       },
       "AgentMutationFailureResponse": {

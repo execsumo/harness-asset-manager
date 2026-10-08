@@ -171,6 +171,7 @@ export interface AgentUpdateRequest {
   harness?: string;
   tools?: string[];
   skills?: string[];
+  mcpServers?: string[];
   /** Omitted carries the current value forward; an explicit empty string clears the key. */
   color?: string;
   model?: string;
@@ -217,6 +218,7 @@ export interface AgentDetailDto {
   canEdit: boolean;
   tags?: string[];
   skills?: AgentSkillDto[];
+  mcpServers?: Array<{ name: string; mode: "inline" | "harness_fallback" }>;
   color?: string | null;
   model?: string | null;
   effort?: string | null;

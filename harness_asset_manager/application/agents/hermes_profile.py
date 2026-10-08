@@ -128,10 +128,8 @@ def ensure_profile(
         config_doc["_config_version"] = root_version
 
     provider = agent.hermes_provider.strip() if agent.hermes_provider else None
-    explicit_model = agent.hermes_model.strip() if agent.hermes_model else None
-    # The shared frontmatter model is the portable default; Hermes-specific model
-    # metadata remains an override for agents that need a different route.
-    model = explicit_model or (agent.model.strip() if agent.model else None)
+    # The shared frontmatter model is the only model source for Hermes profiles.
+    model = agent.model.strip() if agent.model else None
     inferred_provider = _provider_for_model(root_doc, model)
     if provider is None:
         provider = inferred_provider

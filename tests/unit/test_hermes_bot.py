@@ -286,7 +286,7 @@ class HermesProvisioningTests(unittest.TestCase):
             )
             self.assertEqual(document["model"], {"provider": "openai-codex", "default": "gpt-5.6-luna"})
 
-    def test_explicit_hermes_model_overrides_generic_model(self) -> None:
+    def test_shared_model_wins_over_legacy_hermes_model(self) -> None:
         with TemporaryDirectory() as temp:
             hermes_root = Path(temp) / ".hermes"
             agent = self._create_agent(
@@ -299,7 +299,7 @@ class HermesProvisioningTests(unittest.TestCase):
                 (hermes_root / "profiles" / "test-agent" / "config.yaml").read_text(),
                 file_format="yaml",
             )
-            self.assertEqual(document["model"]["default"], "hermes-model")
+            self.assertEqual(document["model"]["default"], "generic-model")
 
     def test_selected_custom_provider_is_seeded_without_its_api_key(self) -> None:
         with TemporaryDirectory() as temp:
@@ -341,7 +341,7 @@ class HermesProvisioningTests(unittest.TestCase):
                 self._create_agent(
                     "test-agent",
                     hermes_provider="chosen-provider",
-                    hermes_model="chosen/model",
+                    model="chosen/model",
                 ),
                 hermes_root,
             )

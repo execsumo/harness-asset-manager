@@ -453,7 +453,7 @@ chips, and URL-backed tag filters.
 
 Agents are Markdown files with YAML frontmatter and the system prompt as the body. They live in Harness Asset Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
 
-Harness Asset Manager's standard agent frontmatter contract includes `name`, `description`, `role`, `harness`, `color`, `model`, `effort`, `tools`, `disallowedTools`, `skills`, `memory`, `maxTurns`, `isolation`, `background`, `mode`, `spawning`, `trust-project`, and `deny-tools`. `mode` accepts `background` or `interactive` and defaults to `background`; `spawning` defaults to `false`; and `trust-project` defaults to `true`. The detail editor exposes these fields directly, grouped under **Identity**, **Harness & Model**, **Capabilities** and **Execution** rather than as one flat list, so a field is found by what it decides instead of by scanning all eighteen; the file itself is still written in contract order. The Create Agent dialog asks for the same fields in the same order (it does not offer `deny-tools`, `mode`, `spawning` or `trust-project`), so the two surfaces read alike. `skills` accepts only adopted HAM Skills and offers them as suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
+Harness Asset Manager's standard agent frontmatter contract includes `name`, `description`, `role`, `harness`, `model`, `effort`, `tools`, `disallowedTools`, `skills`, `memory`, `maxTurns`, and `deny-tools`. The detail editor groups supported fields under **Identity**, **Harness & Model**, **Capabilities** and **Execution**. Legacy `color`, `mode`, `background`, `isolation`, `spawning`, and `trust-project` keys are no longer shown or written; they are removed from an agent file the next time it is saved. The Create Agent dialog follows the same field order, while omitting the detail-only `deny-tools` field. `skills` accepts only adopted HAM Skills and offers them as suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
 
 `effort` is a **fixed vocabulary** — Claude Code's `low`, `medium`, `high`, `xhigh`, `max`, or empty to clear the key — so the editor offers a picker rather than a text box, and the API rejects anything else with a 400. That keeps a typo, a raw-YAML edit, or a hand-edited file from writing a value Claude Code does not understand. `model` is deliberately free text — its value set is open-ended. `harness` is a picker too, but of a discovered vocabulary rather than a fixed one: both the detail editor and the Create Agent dialog list every harness in the inventory and mark the ones not installed on this machine, since an agent is often authored here for a machine elsewhere.
 
@@ -647,7 +647,7 @@ rather than the ones you selected for Hermes.
 
 #### Provider and model
 
-A Bot may carry its own Hermes model routing, written into its profile `config.yaml`:
+A Bot may select a configured Hermes provider; its model always comes from the shared agent `model` field. HAM writes that routing into its profile `config.yaml`:
 
 ```yaml
 model:
@@ -657,11 +657,10 @@ model:
 
 HAM writes the **bare** model id in `model.default` with the provider in its own key,
 matching the shape a working install actually uses; it never synthesises a
-`<provider>/<id>` string. No model id or provider name is hardcoded anywhere in HAM —
-these are free-text values you supply, and a test greps the package to keep it that
-way. The choice lives in a `.<slug>.hermes.toml` sidecar beside the agent, so a
-Hermes-only setting never leaks into the shared Markdown that Claude, Cursor and the
-rest read; an agent that sets nothing writes no sidecar at all.
+`<provider>/<id>` string. Model ids are free text; provider choices come from the
+configured Hermes providers. The provider choice lives in a `.<slug>.hermes.toml`
+sidecar beside the agent, so Hermes-only settings never leak into the shared Markdown
+that Claude, Cursor and the rest read; an agent that sets no provider writes no sidecar.
 
 Writes go through the same `config_document` round-trip every other config binding
 uses, so an existing profile config keeps its comments and formatting, and clearing a
