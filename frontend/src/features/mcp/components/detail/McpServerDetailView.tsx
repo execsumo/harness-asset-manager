@@ -14,7 +14,7 @@ import type {
 } from "../../api/management-types";
 import { useMcpServerDetailQuery, useSetMcpServerTagsMutation } from "../../api/management-queries";
 import { useMcpCopy, type McpCopy } from "../../i18n";
-import { formatDisplayHeaders } from "../../model/display-secrets";
+import { formatDisplayHeaders, maskMcpPayloadPreview } from "../../model/display-secrets";
 import type { McpInstallConfigValues } from "../../model/install-config";
 import { mcpStatusReason } from "../../model/mcp-status";
 import { mcpServerSourceLinks, resolveMcpRegistryName } from "../../model/mcp-source-links";
@@ -274,6 +274,14 @@ export function McpServerDetailView({
             <DetailSection heading={copy.detail.connection}>
               <ConnectionBlock spec={spec} copy={copy} />
             </DetailSection>
+
+            {spec ? (
+              <DetailSection heading={copy.detail.fullSpec}>
+                <pre className="mcp-needs-review-row__preview ui-scrollbar">
+                  {JSON.stringify(maskMcpPayloadPreview(spec), null, 2)}
+                </pre>
+              </DetailSection>
+            ) : null}
 
             <DetailSection heading={copy.detail.bindings}>
               <McpBindingMatrix

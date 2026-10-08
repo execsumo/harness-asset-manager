@@ -143,6 +143,8 @@ describe("McpServerDetailView", () => {
     expect(screen.queryByRole("button", { name: "Check" })).not.toBeInTheDocument();
     expect(screen.getByText("EXA_API_KEY")).toBeInTheDocument();
     expect(screen.getByText("long-random-literal-value-xxxx")).toBeInTheDocument();
+    const specPreview = screen.getByRole("heading", { name: "Full MCP spec" }).parentElement?.querySelector("pre");
+    expect(specPreview?.textContent).toBe(JSON.stringify(detailFixture().spec, null, 2));
   });
 
   it("shows marketplace source links instead of transport and source chips", async () => {
@@ -331,8 +333,11 @@ describe("McpServerDetailView", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Exa Search" })).toBeInTheDocument());
     expect(screen.queryByText(/live-secret-token/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Authorization/)).toHaveTextContent("••••••••");
-    expect(screen.getByText(/X-Client-Name/)).toHaveTextContent("harness-asset-manager");
+    const connection = screen.getByRole("heading", { name: "Connection" }).parentElement;
+    expect(connection).toHaveTextContent("Authorization");
+    expect(connection).toHaveTextContent("••••••••");
+    expect(connection).toHaveTextContent("X-Client-Name");
+    expect(connection).toHaveTextContent("harness-asset-manager");
   });
 
   it("masks secret-like headers in config choice previews", async () => {

@@ -65,6 +65,7 @@ const englishMcpCopy = {
     differentConfigsBody: "Choose which config Harness Asset Manager should manage, then apply it to current bindings.",
     resolveConfig: "Resolve config",
     connection: "Connection",
+    fullSpec: "Full MCP spec",
     bindings: "Bindings",
     environment: "Environment",
     uninstall: "Uninstall",
