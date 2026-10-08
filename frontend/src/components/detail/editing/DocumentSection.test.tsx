@@ -19,7 +19,8 @@ describe("DocumentSection", () => {
       />,
     );
 
-    expect(screen.getByText("Document")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Document" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Document" })).toBeInTheDocument();
     expect(screen.getByText("Preview markdown")).toBeInTheDocument();
     expect(screen.queryByText("Frontmatter inputs")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Document body")).not.toBeInTheDocument();

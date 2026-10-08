@@ -332,44 +332,7 @@ describe("AgentDetailContent", () => {
     expect(screen.getByRole("option", { name: /not a valid effort/ })).toBeInTheDocument();
   });
 
-  it("groups the structured frontmatter fields by what each one decides", () => {
-    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
-
-    const { container } = renderDetail(agentDetailFixture());
-
-    const groups = Array.from(
-      container.querySelectorAll<HTMLElement>(".frontmatter-editor__group"),
-    ).map((node) => ({
-      title: node.querySelector(".frontmatter-editor__group-title")?.textContent,
-      labels: Array.from(
-        node.querySelectorAll(".frontmatter-editor__label"),
-      ).map((label) => label.textContent),
-    }));
-
-    // Reading order is the order the questions get asked: what is this, what runs
-    // it, what can it reach for, how does it run. Every field belongs to exactly one
-    // of them, so no group's fields are interleaved with another's.
-    expect(groups).toEqual([
-      {
-        title: "Identity",
-        labels: ["Agent Name", "Role", "Description"],
-      },
-      {
-        title: "Harness & Model",
-        labels: ["Harness", "Model", "Effort"],
-      },
-      {
-        title: "Capabilities",
-        labels: ["Skills", "MCP Servers", "Disallowed Tools"],
-      },
-      {
-        title: "Execution",
-        labels: ["Memory", "Max Turns"],
-      },
-    ]);
-  });
-
-  it("keeps every visible field in exactly one group and hides tools", () => {
+  it("renders structured fields without category headers or sublines", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
@@ -378,26 +341,44 @@ describe("AgentDetailContent", () => {
       container.querySelectorAll(".frontmatter-editor__known-fields .frontmatter-editor__label"),
     ).map((node) => node.textContent);
 
-    // Nothing renders outside a group, so a field added without one cannot quietly
-    // land in an unlabelled block above the headings.
-    const groupedLabels = Array.from(
-      container.querySelectorAll(
-        ".frontmatter-editor__group .frontmatter-editor__known-fields .frontmatter-editor__label",
-      ),
-    ).map((node) => node.textContent);
-    expect(groupedLabels).toEqual(labels);
-    expect(new Set(labels).size).toBe(labels.length);
-    expect(labels).not.toContain("Tools (comma-separated)");
+    expect(labels).toEqual([
+      "Agent Name",
+      "Role",
+      "Description",
+      "Provider (Hermes)",
+      "Model",
+      "Effort",
+      "Max Turns",
+      "Memory",
+      "Disallowed Tools",
+      "Skills",
+      "MCP Servers",
+    ]);
+    expect(container.querySelector(".frontmatter-editor__group")).toBeNull();
+    expect(container.querySelector(".frontmatter-editor__group-hint")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Document" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Frontmatter")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveProperty("tagName", "TEXTAREA");
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveAttribute("rows", "3");
+    expect(
+      container.querySelector('[data-frontmatter-key="disallowedTools"] .frontmatter-editor__help'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-frontmatter-key="mcpServers"] .frontmatter-editor__help'),
+    ).toBeNull();
   });
 
-  it("spells out which key the Disallowed Tools field writes", () => {
+  it("keeps tools hidden from structured editing", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
 
-    expect(
-      container.querySelector('[data-frontmatter-key="disallowedTools"] .frontmatter-editor__help')?.textContent,
-    ).toContain("disallowedTools");
+    const labels = Array.from(
+      container.querySelectorAll(".frontmatter-editor__known-fields .frontmatter-editor__label"),
+    ).map((node) => node.textContent);
+
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels).not.toContain("Tools (comma-separated)");
   });
 
   it("hides retired Color and keeps only the shared Hermes Model field", () => {
@@ -406,7 +387,7 @@ describe("AgentDetailContent", () => {
     renderDetail(agentDetailFixture({ color: "cyan", hermesProvider: "old-provider", hermesModel: "old/model" }));
 
     expect(screen.queryByRole("combobox", { name: "Color" })).not.toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Hermes Provider" }).tagName).toBe("SELECT");
+    expect(screen.getByRole("combobox", { name: "Provider (Hermes)" }).tagName).toBe("SELECT");
     expect(screen.queryByRole("textbox", { name: "Hermes Model" })).not.toBeInTheDocument();
   });
 
@@ -430,7 +411,7 @@ describe("AgentDetailContent", () => {
     expect(screen.getByRole("combobox", { name: "Memory" })).toHaveValue("project");
   });
 
-  it("offers every known harness and marks the ones not installed here", () => {
+  it("hides the Harness field while preserving its authored value", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     renderDetail(
@@ -443,44 +424,8 @@ describe("AgentDetailContent", () => {
       }),
     );
 
-    const harness = screen.getByRole("combobox", { name: "Harness" });
-    expect(Array.from((harness as HTMLSelectElement).options).map((option) => option.value)).toEqual([
-      "",
-      "claude",
-      "cursor",
-    ]);
-    // Agents get authored on one machine for another, so an uninstalled harness stays
-    // selectable -- it is labelled, not withheld.
-    expect(screen.getByRole("option", { name: "Cursor — not installed here" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Claude Code" })).toBeInTheDocument();
-    expect(harness).toHaveValue("cursor");
-  });
-
-  it("keeps a harness value that matches no known harness selectable", () => {
-    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
-
-    renderDetail(
-      agentDetailFixture({
-        harness: "typo-harness",
-        harnesses: [
-          { ...agentDetailFixture().harnesses[0], harness: "claude", label: "Claude Code", installed: true },
-        ],
-      }),
-    );
-
-    const harness = screen.getByRole("combobox", { name: "Harness" });
-    expect(harness).toHaveValue("typo-harness");
-    expect(screen.getByRole("option", { name: /not a valid harness/ })).toBeInTheDocument();
-  });
-
-  it("shows an empty harness dropdown when no harnesses are discovered", () => {
-    fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
-
-    renderDetail(agentDetailFixture({ harnesses: [] }));
-
-    const harness = screen.getByRole("combobox", { name: "Harness" });
-    expect(harness).toHaveValue("");
-    expect(screen.getByRole("option", { name: "(no harnesses discovered)" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Harness" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Provider (Hermes)" })).toBeInTheDocument();
   });
 
   it("shows the max_turns default as a placeholder instead of prefilling the field", () => {
@@ -507,6 +452,7 @@ describe("AgentDetailContent", () => {
 
     renderDetail(
       agentDetailFixture({
+        harness: "claude",
         color: "cyan",
         mode: "interactive",
         background: "true",
@@ -518,9 +464,6 @@ describe("AgentDetailContent", () => {
       }),
     );
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Harness" }), {
-      target: { value: "claude" },
-    });
     fireEvent.change(screen.getByRole("combobox", { name: "Memory" }), {
       target: { value: "project" },
     });
@@ -538,6 +481,7 @@ describe("AgentDetailContent", () => {
       const request = JSON.parse(put![1].body);
       expect(request).toMatchObject({
         harness: "claude",
+        hermesProvider: "",
         memory: "project",
         maxTurns: "12",
       });

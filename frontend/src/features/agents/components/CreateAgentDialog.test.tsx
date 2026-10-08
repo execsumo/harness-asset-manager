@@ -94,30 +94,33 @@ describe("CreateAgentDialog", () => {
   it("orders the frontmatter fields the way Agent Details reads them", () => {
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
 
+    expect(screen.queryByRole("heading", { name: "Frontmatter" })).not.toBeInTheDocument();
+    expect(document.querySelector(".agent-frontmatter-grid__description textarea")).toHaveAttribute("rows", "3");
+
     const labels = Array.from(
       document.querySelectorAll(".dialog-fieldset .form-field__label"),
       // The label span also carries a "Required" badge; only the field name matters here.
       (node) => node.firstChild?.textContent?.trim(),
     );
 
-    // The dialog follows the detail editor's order, omitting detail-only fields.
+    // Provider fills the former Harness slot; the old Harness editor is gone.
+    expect(screen.queryByRole("combobox", { name: "Harness" })).not.toBeInTheDocument();
     expect(labels).toEqual([
       "Agent Name",
       "Role",
       "Description",
-      "Harness",
+      "Provider (Hermes)",
       "Model",
       "Effort",
+      "Max Turns",
+      "Memory",
+      "Disallowed Tools",
       "Skills",
       "MCP Servers",
-      "Disallowed Tools",
-      "Memory",
-      "Max Turns",
-      "Hermes Provider",
     ]);
   });
 
-  it("puts the format and the key a field writes in a help line, not in its label", () => {
+  it("omits MCP and Disallowed Tools sublines", () => {
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
 
     const hintFor = (label: string) =>
@@ -126,10 +129,8 @@ describe("CreateAgentDialog", () => {
         ?.closest(".form-field")
         ?.querySelector(".form-field__hint")?.textContent;
 
-    expect(hintFor("MCP Servers")).toContain("Claude/Codex");
-    expect(hintFor("Disallowed Tools")).toContain("disallowedTools");
-    // The help line sits inside the label element, so each input carries its own
-    // aria-label to keep that guidance out of the accessible name.
+    expect(hintFor("MCP Servers")).toBeUndefined();
+    expect(hintFor("Disallowed Tools")).toBeUndefined();
     expect(screen.getByRole("textbox", { name: "Disallowed Tools" })).toBeInTheDocument();
   });
 
@@ -211,9 +212,6 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("Describe this agent's role"), {
       target: { value: "Systems designer" },
     });
-    fireEvent.change(screen.getByLabelText("Harness"), {
-      target: { value: "claude" },
-    });
     fireEvent.change(
       screen.getByPlaceholderText("Describe the agent's purpose and functionality..."),
       { target: { value: "Designs systems" } },
@@ -243,7 +241,6 @@ describe("CreateAgentDialog", () => {
       description: "Designs systems",
       prompt: "Think deeply about architectures.",
       role: "Systems designer",
-      harness: "claude",
       effort: "high",
       memory: "project",
       mcpServers: ["dossier"],
@@ -251,6 +248,7 @@ describe("CreateAgentDialog", () => {
     });
 
     // Unset contract keys are omitted entirely, not sent as empty strings
+    expect(payload).not.toHaveProperty("harness");
     expect(payload).not.toHaveProperty("model");
     expect(payload).not.toHaveProperty("tools");
     expect(payload).not.toHaveProperty("skills");
@@ -298,10 +296,6 @@ describe("CreateAgentDialog", () => {
     mockMutateAsync.mockResolvedValueOnce({ name: "Hermes Agent", ok: true, harnessFailures: [] });
 
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
-    expect(screen.getByText(/HAM-managed Bots are addressed as hermes -p <name>/i)).toBeInTheDocument();
-    expect(screen.getByText(/do not install PATH wrapper scripts/i)).toBeInTheDocument();
-    expect(screen.getByText(/External CLI backends/i)).toBeInTheDocument();
-    expect(screen.getByText(/Codex app-server subprocess/i)).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("e.g. Code Reviewer"), {
       target: { value: "Hermes Agent" },
     });
@@ -312,7 +306,7 @@ describe("CreateAgentDialog", () => {
     fireEvent.change(screen.getByPlaceholderText("System instructions..."), {
       target: { value: "Use the configured profile." },
     });
-    const provider = screen.getByRole("combobox", { name: "Hermes Provider" }) as HTMLSelectElement;
+    const provider = screen.getByRole("combobox", { name: "Provider (Hermes)" }) as HTMLSelectElement;
     expect(Array.from(provider.options).map((option) => option.value)).toEqual(["", "test-provider"]);
     fireEvent.change(provider, { target: { value: "test-provider" } });
 
@@ -328,7 +322,7 @@ describe("CreateAgentDialog", () => {
     // The surviving pickers share the same native select behavior.
     render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
 
-    for (const label of ["Harness", "Effort", "Memory", "Hermes Provider"]) {
+    for (const label of ["Provider (Hermes)", "Effort", "Memory"]) {
       expect(screen.getByRole("combobox", { name: label })).toBeInTheDocument();
     }
 
@@ -338,22 +332,6 @@ describe("CreateAgentDialog", () => {
       "user",
       "project",
       "local",
-    ]);
-  });
-
-  it("offers Harness as the discovered harnesses, marking the uninstalled ones", () => {
-    render(<CreateAgentDialog open={true} onOpenChange={vi.fn()} />);
-
-    const harness = screen.getByRole("combobox", { name: "Harness" }) as HTMLSelectElement;
-    const options = Array.from(harness.options).map((option) => [option.value, option.text]);
-
-    // Hermes is in the inventory but not installed here. It stays pickable and marked:
-    // an agent is often authored on one machine for another.
-    expect(options).toEqual([
-      ["", "(none)"],
-      ["claude", "Claude"],
-      ["cursor", "Cursor"],
-      ["hermes", "Hermes — not installed here"],
     ]);
   });
 

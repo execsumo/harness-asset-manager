@@ -4,7 +4,6 @@ import {
   FrontmatterEditor,
   parseFrontmatterFromYaml,
   serializeFrontmatterToYaml,
-  type FrontmatterFieldGroup,
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "./FrontmatterEditor";
@@ -43,6 +42,7 @@ describe("FrontmatterEditor", () => {
       />,
     );
 
+    expect(screen.queryByText("Frontmatter")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("my-skill");
     expect(screen.getByLabelText("Description")).toHaveValue("my description");
     expect(screen.getByLabelText("Key for entry 1")).toHaveValue("author");
@@ -69,6 +69,7 @@ describe("FrontmatterEditor", () => {
       />,
     );
 
+    expect(screen.queryByText("Other frontmatter")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add field" }));
     expect(onChangeOtherEntries).toHaveBeenCalledWith([
       { id: "1", key: "author", value: "Jane" },
@@ -205,85 +206,14 @@ skills:
     expect(screen.getByLabelText("Value for entry 1").tagName).toBe("INPUT");
   });
 
-  it("renders grouped fields under their heading in declaration order", () => {
-    const knownFields: KnownFieldConfig[] = [
-      { key: "name", label: "Name", group: "identity", value: "a", onChange: vi.fn() },
-      { key: "model", label: "Model", group: "runtime", value: "b", onChange: vi.fn() },
-      { key: "role", label: "Role", group: "identity", value: "c", onChange: vi.fn() },
-      // Hidden fields stay serializable without claiming a slot in their group.
-      { key: "tools", label: "Tools", group: "runtime", hidden: true, value: "d", onChange: vi.fn() },
-    ];
-    const fieldGroups: FrontmatterFieldGroup[] = [
-      { id: "identity", title: "Identity", hint: "What it is." },
-      { id: "runtime", title: "Runtime" },
-      { id: "empty", title: "Nothing here" },
-    ];
-
-    const { container } = render(
-      <FrontmatterEditor
-        knownFields={knownFields}
-        fieldGroups={fieldGroups}
-        otherEntries={[]}
-        onChangeOtherEntries={vi.fn()}
-        rawYaml=""
-        onChangeRawYaml={vi.fn()}
-        mode="structured"
-        onModeChange={vi.fn()}
-      />,
-    );
-
-    const sections = Array.from(
-      container.querySelectorAll<HTMLElement>(".frontmatter-editor__group"),
-    );
-    // A group nobody has a field for is a heading over nothing, so it is dropped.
-    expect(sections.map((s) => s.dataset.frontmatterGroup)).toEqual(["identity", "runtime"]);
-    expect(
-      Array.from(sections[0].querySelectorAll(".frontmatter-editor__label")).map(
-        (node) => node.textContent,
-      ),
-    ).toEqual(["Name", "Role"]);
-    expect(sections[0].querySelector(".frontmatter-editor__group-hint")?.textContent).toBe(
-      "What it is.",
-    );
-    expect(sections[1].querySelector(".frontmatter-editor__group-hint")).toBeNull();
-    expect(screen.queryByLabelText("Tools")).not.toBeInTheDocument();
-  });
-
-  it("keeps a field whose group was never declared visible", () => {
-    const knownFields: KnownFieldConfig[] = [
-      { key: "name", label: "Name", group: "identity", value: "a", onChange: vi.fn() },
-      { key: "orphan", label: "Orphan", group: "nope", value: "b", onChange: vi.fn() },
-      { key: "plain", label: "Plain", value: "c", onChange: vi.fn() },
-    ];
-
-    render(
-      <FrontmatterEditor
-        knownFields={knownFields}
-        fieldGroups={[{ id: "identity", title: "Identity" }]}
-        otherEntries={[]}
-        onChangeOtherEntries={vi.fn()}
-        rawYaml=""
-        onChangeRawYaml={vi.fn()}
-        mode="structured"
-        onModeChange={vi.fn()}
-      />,
-    );
-
-    // Mistyping a group id must not silently delete the field from the editor --
-    // it falls back to the ungrouped block that editors declaring no groups use.
-    expect(screen.getByLabelText("Orphan")).toHaveValue("b");
-    expect(screen.getByLabelText("Plain")).toHaveValue("c");
-    expect(screen.getByLabelText("Name")).toHaveValue("a");
-  });
-
   it("shows help text under a field without changing its accessible name", () => {
     const knownFields: KnownFieldConfig[] = [
       {
-        key: "disallowedTools",
-        label: "Disallowed Tools",
-        value: "Write",
+        key: "role",
+        label: "Role",
+        value: "reviewer",
         onChange: vi.fn(),
-        helpText: "Comma-separated. Written as disallowedTools.",
+        helpText: "Extra field guidance.",
       },
     ];
 
@@ -300,10 +230,10 @@ skills:
     );
 
     expect(container.querySelector(".frontmatter-editor__help")?.textContent).toBe(
-      "Comma-separated. Written as disallowedTools.",
+      "Extra field guidance.",
     );
     // The hint lives inside the wrapping label, so the control has to keep naming
     // itself or the help text would be read as part of the field's name.
-    expect(screen.getByLabelText("Disallowed Tools")).toHaveValue("Write");
+    expect(screen.getByLabelText("Role")).toHaveValue("reviewer");
   });
 });

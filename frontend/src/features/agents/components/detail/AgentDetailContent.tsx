@@ -12,7 +12,6 @@ import { DocumentSection } from "../../../../components/detail/editing/DocumentS
 import {
   FrontmatterEditor,
   parseFrontmatterFromYaml,
-  type FrontmatterFieldGroup,
   type KnownFieldConfig,
   type OtherFrontmatterEntry,
 } from "../../../../components/detail/editing/FrontmatterEditor";
@@ -22,7 +21,6 @@ import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
 import {
   FrontmatterChoiceSelect,
-  type FrontmatterChoiceOption,
 } from "../../../../components/detail/editing/FrontmatterChoiceSelect";
 import {
   useAdoptAgentMutation,
@@ -52,24 +50,6 @@ import {
 } from "./AgentSkillsFieldEditor";
 
 const MarkdownDocument = lazy(() => import("../../../../components/MarkdownDocument"));
-
-/**
- * The four questions a reader of an agent file actually asks, in the order they ask
- * them: what is this, what runs it, what can it reach for, and how does it run. The
- * flat list this replaced interleaved all four -- a block list, a turn budget and an
- * MCP list shared one row -- so finding a field meant scanning all eighteen.
- *
- * The groups are a reading order, not a contract: the file is still written in
- * `AGENT_CONTRACT_KEYS` order by the backend renderer.
- */
-const AGENT_FRONTMATTER_GROUPS: FrontmatterFieldGroup[] = [
-  { id: "identity", title: "Identity", hint: "What this agent is called and how it presents." },
-  // Not plain "Model": the group is announced by name, and a heading identical to a
-  // field label inside it makes "Model" ambiguous to a screen reader and to a test.
-  { id: "model", title: "Harness & Model", hint: "Which harness runs it, and with what model." },
-  { id: "capabilities", title: "Capabilities", hint: "What it may reach for." },
-  { id: "execution", title: "Execution", hint: "The envelope it runs in." },
-];
 
 function parseMcpServerRefs(value: string): string[] {
   return value
@@ -291,30 +271,18 @@ export function AgentDetailContent({
   // Every known harness stays selectable, with the uninstalled ones marked. Agents are
   // authored on one machine for another, so filtering to what happens to be installed
   // here would make a cross-device target unpickable rather than merely unusual.
-  const harnessOptions = useMemo<FrontmatterChoiceOption[]>(
-    () =>
-      detail.harnesses.map((harness) => ({
-        value: harness.harness,
-        label: harness.label,
-        note: harness.installed ? undefined : "not installed here",
-      })),
-    [detail.harnesses],
-  );
-
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
       // Identity ------------------------------------------------------------
       {
         key: "name",
         label: "Agent Name",
-        group: "identity",
         value: name,
         onChange: setName,
       },
       {
         key: "role",
         label: "Role",
-        group: "identity",
         value: roleStr,
         onChange: setRoleStr,
         placeholder: "Describe this agent's role",
@@ -322,33 +290,40 @@ export function AgentDetailContent({
       {
         key: "description",
         label: "Description",
-        group: "identity",
         value: description,
         onChange: setDescription,
         placeholder: "Describe the agent's purpose and functionality",
+        renderInput: ({ disabled }) => (
+          <textarea
+            className="frontmatter-editor__input frontmatter-editor__textarea"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            disabled={disabled}
+            placeholder="Describe the agent's purpose and functionality"
+            rows={3}
+            aria-label="Description"
+          />
+        ),
       },
-      // Model ---------------------------------------------------------------
+      // Keep legacy harness frontmatter round-trippable while this slot edits Hermes provider.
       {
         key: "harness",
-        label: "Harness",
-        group: "model",
+        label: "Provider (Hermes)",
         value: harnessStr,
         onChange: setHarnessStr,
         renderInput: ({ disabled }) => (
           <FrontmatterChoiceSelect
-            label="Harness"
-            value={harnessStr}
-            options={harnessOptions}
-            onChange={setHarnessStr}
+            label="Provider (Hermes)"
+            value={hermesProviderStr}
+            options={hermesProviderOptions}
+            onChange={setHermesProviderStr}
             disabled={disabled}
-            clearLabel={harnessOptions.length > 0 ? "(none)" : "(no harnesses discovered)"}
           />
         ),
       },
       {
         key: "model",
         label: "Model",
-        group: "model",
         value: modelStr,
         onChange: setModelStr,
         placeholder: "Model identifier — empty clears the key",
@@ -356,7 +331,6 @@ export function AgentDetailContent({
       {
         key: "effort",
         label: "Effort",
-        group: "model",
         value: effortStr,
         onChange: setEffortStr,
         renderInput: ({ disabled }) => (
@@ -371,10 +345,38 @@ export function AgentDetailContent({
       },
       // Capabilities --------------------------------------------------------
       {
+        key: "maxTurns",
+        label: "Max Turns",
+        value: maxTurnsStr,
+        onChange: setMaxTurnsStr,
+        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
+      },
+      {
+        key: "memory",
+        label: "Memory",
+        value: memoryStr,
+        onChange: setMemoryStr,
+        renderInput: ({ disabled }) => (
+          <FrontmatterChoiceSelect
+            label="Memory"
+            value={memoryStr}
+            options={MEMORY_VALUES}
+            onChange={setMemoryStr}
+            disabled={disabled}
+          />
+        ),
+      },
+      {
+        key: "disallowedTools",
+        label: "Disallowed Tools",
+        value: disallowedToolsStr,
+        onChange: setDisallowedToolsStr,
+        placeholder: "e.g. Write, Edit, Agent(Explore)",
+      },
+      {
         key: "skills",
         wrapInLabel: false,
         label: "Skills",
-        group: "capabilities",
         value: skills.join(", "),
         onChange: (val) => setSkills(parseSkillSlugs(val)),
         serialize: () => {
@@ -394,15 +396,9 @@ export function AgentDetailContent({
       {
         key: "mcpServers",
         label: "MCP Servers",
-        group: "capabilities",
         value: mcpServersStr,
         onChange: setMcpServersStr,
         placeholder: "Comma-separated server references",
-        helpText: detail.mcpServers?.length
-          ? detail.mcpServers
-              .map(({ name, mode }) => `${name}: ${mode === "inline" ? "inline per-agent" : "harness-level fallback"}`)
-              .join("; ")
-          : "Claude/Codex bind inline; other harnesses use a harness-level fallback.",
         serialize: serializeMcpServerRefs,
         renderInput: ({ disabled }) => (
           <AgentSkillsFieldEditor
@@ -417,51 +413,14 @@ export function AgentDetailContent({
         ),
       },
       {
-        // The two block lists are different keys, not duplicates, so they sit
-        // side by side with the key each one writes spelled out.
-        key: "disallowedTools",
-        label: "Disallowed Tools",
-        group: "capabilities",
-        value: disallowedToolsStr,
-        onChange: setDisallowedToolsStr,
-        placeholder: "e.g. Write, Edit, Agent(Explore)",
-        helpText: "Comma-separated. Written as disallowedTools.",
-      },
-      {
         // Keep tools available when switching to raw YAML, but do not expose it in
         // the structured editor per the Claude-facing layout.
         key: "tools",
         hidden: true,
         label: "Tools (comma-separated)",
-        group: "capabilities",
         value: toolsStr,
         onChange: setToolsStr,
         placeholder: "e.g. bash, edit, grep",
-      },
-      // Execution -----------------------------------------------------------
-      {
-        key: "memory",
-        label: "Memory",
-        group: "execution",
-        value: memoryStr,
-        onChange: setMemoryStr,
-        renderInput: ({ disabled }) => (
-          <FrontmatterChoiceSelect
-            label="Memory"
-            value={memoryStr}
-            options={MEMORY_VALUES}
-            onChange={setMemoryStr}
-            disabled={disabled}
-          />
-        ),
-      },
-      {
-        key: "maxTurns",
-        label: "Max Turns",
-        group: "execution",
-        value: maxTurnsStr,
-        onChange: setMaxTurnsStr,
-        placeholder: `${MAX_TURNS_DEFAULT} — the default when the key is absent`,
       },
     ],
     [
@@ -469,7 +428,8 @@ export function AgentDetailContent({
       description,
       roleStr,
       harnessStr,
-      harnessOptions,
+      hermesProviderStr,
+      hermesProviderOptions,
       modelStr,
       effortStr,
       skills,
@@ -803,7 +763,6 @@ export function AgentDetailContent({
                 <div className="agent-frontmatter-editor">
                   <FrontmatterEditor
                     knownFields={knownFields}
-                    fieldGroups={AGENT_FRONTMATTER_GROUPS}
                     otherEntries={otherEntries}
                     onChangeOtherEntries={setOtherEntries}
                     rawYaml={rawYaml}
@@ -813,29 +772,6 @@ export function AgentDetailContent({
                     validationError={null}
                     disabled={updateMutation.isPending}
                   />
-                </div>
-                <div className="frontmatter-editor hermes-profile-editor">
-                  <div className="frontmatter-editor__header">
-                    <span className="frontmatter-editor__title">Hermes Profile</span>
-                  </div>
-                  <div className="frontmatter-editor__known-fields">
-                    <label className="frontmatter-editor__field">
-                      <span className="hermes-profile-editor__label">Hermes Provider</span>
-                      <FrontmatterChoiceSelect
-                        label="Hermes Provider"
-                        value={hermesProviderStr}
-                        options={hermesProviderOptions}
-                        onChange={setHermesProviderStr}
-                        disabled={updateMutation.isPending}
-                      />
-                    </label>
-                  </div>
-                  <p className="frontmatter-editor__note">
-                    Hermes profile skills and agents are verified supported targets. Hermes always uses
-                    the shared Model field; provider choices come from Hermes configuration. HAM-managed Bots are addressed as hermes -p
-                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
-                    sharing this profile's skills with a Codex app-server subprocess are out of scope.
-                  </p>
                 </div>
               </>
             )}

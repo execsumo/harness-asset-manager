@@ -89,7 +89,7 @@ describe("SkillDetailContent", () => {
     );
     expect(screen.queryByRole("heading", { level: 3, name: "About" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Harnesses" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Document" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Document" })).toBeInTheDocument();
     expect(screen.getByLabelText("Description")).toHaveValue("Trace review workflow");
     expect(screen.getByLabelText("Body (SKILL.md)")).toHaveValue("## Usage\n\nInspect traces.");
     expect(screen.queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();

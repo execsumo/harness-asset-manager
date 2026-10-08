@@ -42,11 +42,6 @@ export function DocumentSection({
 }: DocumentSectionProps) {
   return (
     <section className="document-section" aria-label={title}>
-      <div className="document-section__header">
-        <h3 className="document-section__title">{title}</h3>
-
-      </div>
-
       {!editable ? (
         <div className="document-section__preview">
           <div className="document-section__surface skill-detail__document-surface">

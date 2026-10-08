@@ -217,7 +217,7 @@ describe("AgentsInUsePage", () => {
       
       await waitFor(() => expect(screen.getByRole("heading", { name: "Test Agent Real Name" })).toBeInTheDocument());
       expect(screen.getByLabelText("Description")).toHaveValue("Detail description");
-      expect(screen.getByRole("heading", { name: "Document" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Document" })).toBeInTheDocument();
       const harnesses = within(screen.getByLabelText("Harness access for Test Agent Real Name"));
       expect(harnesses.getByText("Cursor")).toBeInTheDocument();
       expect(harnesses.getByText("Windsurf")).toBeInTheDocument();

@@ -14,10 +14,7 @@ import { useSkillsListQuery } from "../../skills/public";
 import { useToast } from "../../../components/Toast";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { DetailBindingIdentity } from "../../../components/detail/DetailBindingIdentity";
-import {
-  FrontmatterChoiceSelect,
-  type FrontmatterChoiceOption,
-} from "../../../components/detail/editing/FrontmatterChoiceSelect";
+import { FrontmatterChoiceSelect } from "../../../components/detail/editing/FrontmatterChoiceSelect";
 import {
   AgentSkillsFieldEditor,
   deriveSkillTagOptions,
@@ -55,7 +52,6 @@ export function CreateAgentDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [role, setRole] = useState("");
-  const [harness, setHarness] = useState("");
   const [model, setModel] = useState("");
   const [hermesProvider, setHermesProvider] = useState("");
   const [effort, setEffort] = useState("");
@@ -89,7 +85,6 @@ export function CreateAgentDialog({
     setName("");
     setDescription("");
     setRole("");
-    setHarness("");
     setModel("");
     setHermesProvider("");
     setEffort("");
@@ -160,19 +155,6 @@ export function CreateAgentDialog({
   const isPending = createMutation.isPending;
 
   const columns = inventoryQuery.data?.columns ?? [];
-  // Every known harness stays selectable, with the uninstalled ones marked -- the same
-  // vocabulary, from the same inventory, that Agent Details offers. Agents are authored
-  // on one machine for another, so filtering to what happens to be installed here would
-  // make a cross-device target unpickable rather than merely unusual.
-  const harnessOptions = useMemo<FrontmatterChoiceOption[]>(
-    () =>
-      columns.map((column) => ({
-        value: column.harness,
-        label: column.label,
-        note: column.installed ? undefined : "not installed here",
-      })),
-    [columns],
-  );
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
   const hermesProviderOptions = hermesProviders.map((provider) => provider.id);
 
@@ -198,10 +180,6 @@ export function CreateAgentDialog({
     if (role.trim()) {
       payload.role = role.trim();
     }
-    if (harness.trim()) {
-      payload.harness = harness.trim();
-    }
-
     if (model.trim()) {
       payload.model = model.trim();
     }
@@ -283,7 +261,6 @@ export function CreateAgentDialog({
               )}
 
               <section className="detail-sheet__section">
-                <h3 className="detail-sheet__section-heading">Frontmatter</h3>
                 <div className="dialog-fieldset">
                   <div className="dialog-form-fields agent-frontmatter-grid">
                     <label className="form-field">
@@ -332,20 +309,19 @@ export function CreateAgentDialog({
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         disabled={isPending}
-                        rows={2}
+                        rows={3}
                         required
                       />
                     </label>
 
                     <label className="form-field">
-                      <span className="form-field__label">Harness</span>
+                      <span className="form-field__label">Provider (Hermes)</span>
                       <FrontmatterChoiceSelect
-                        label="Harness"
-                        value={harness}
-                        options={harnessOptions}
-                        onChange={setHarness}
+                        label="Provider (Hermes)"
+                        value={hermesProvider}
+                        options={hermesProviderOptions}
+                        onChange={setHermesProvider}
                         disabled={isPending}
-                        clearLabel={harnessOptions.length > 0 ? "(none)" : "(no harnesses discovered)"}
                         className="form-field__input"
                       />
                     </label>
@@ -375,50 +351,18 @@ export function CreateAgentDialog({
                     </label>
                   </div>
 
-                  {/* Capabilities, then Execution -- the same order as the structured
-                      editor in Agent Details. */}
+                  {/* Short fields first; Skills and MCP Servers each take a full row. */}
                   <div className="dialog-form-fields agent-frontmatter-grid__additional">
-                    <div className="form-field agent-frontmatter-grid__skills">
-                      <span className="form-field__label">Skills</span>
-                      <AgentSkillsFieldEditor
-                        skills={skills}
-                        knownSkills={adoptedSkills}
-                        tagOptions={tagOptions}
-                        onChange={setSkills}
-                        disabled={isPending}
-                      />
-                    </div>
-
-                    {/* The format and the key a field writes belong in a help line, not
-                        crammed into its label -- the same split the structured editor in
-                        Agent Details makes. Each input names itself with its own
-                        `aria-label` so the help line does not widen the accessible name. */}
                     <label className="form-field">
-                      <span className="form-field__label">MCP Servers</span>
-                      <AgentSkillsFieldEditor
-                        skills={mcpServers}
-                        knownSkills={managedMcpServers}
-                        onChange={setMcpServers}
-                        disabled={isPending}
-                        placeholder="Add MCP server..."
-                        itemLabel="MCP server"
-                        inputLabel="MCP Servers"
-                      />
-                      <span className="form-field__hint">Claude/Codex bind inline; other harnesses use a harness-level fallback.</span>
-                    </label>
-
-                    <label className="form-field">
-                      <span className="form-field__label">Disallowed Tools</span>
+                      <span className="form-field__label">Max Turns</span>
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder="e.g. Write, Edit, Agent(Explore)"
-                        value={disallowedTools}
-                        onChange={(e) => setDisallowedTools(e.target.value)}
+                        placeholder={`${MAX_TURNS_DEFAULT} — the default when the key is absent`}
+                        value={maxTurns}
+                        onChange={(e) => setMaxTurns(e.target.value)}
                         disabled={isPending}
-                        aria-label="Disallowed Tools"
                       />
-                      <span className="form-field__hint">Comma-separated. Written as disallowedTools.</span>
                     </label>
 
                     <label className="form-field">
@@ -434,38 +378,42 @@ export function CreateAgentDialog({
                     </label>
 
                     <label className="form-field">
-                      <span className="form-field__label">Max Turns</span>
+                      <span className="form-field__label">Disallowed Tools</span>
                       <input
                         type="text"
                         className="form-field__input"
-                        placeholder={`${MAX_TURNS_DEFAULT} — the default when the key is absent`}
-                        value={maxTurns}
-                        onChange={(e) => setMaxTurns(e.target.value)}
+                        placeholder="e.g. Write, Edit, Agent(Explore)"
+                        value={disallowedTools}
+                        onChange={(e) => setDisallowedTools(e.target.value)}
                         disabled={isPending}
+                        aria-label="Disallowed Tools"
                       />
                     </label>
-                  </div>
 
-                  <div className="dialog-form-fields dialog-form-fields--split">
+                    <div className="form-field agent-frontmatter-grid__skills">
+                      <span className="form-field__label">Skills</span>
+                      <AgentSkillsFieldEditor
+                        skills={skills}
+                        knownSkills={adoptedSkills}
+                        tagOptions={tagOptions}
+                        onChange={setSkills}
+                        disabled={isPending}
+                      />
+                    </div>
+
                     <label className="form-field">
-                      <span className="form-field__label">Hermes Provider</span>
-                      <FrontmatterChoiceSelect
-                        label="Hermes Provider"
-                        value={hermesProvider}
-                        options={hermesProviderOptions}
-                        onChange={setHermesProvider}
+                      <span className="form-field__label">MCP Servers</span>
+                      <AgentSkillsFieldEditor
+                        skills={mcpServers}
+                        knownSkills={managedMcpServers}
+                        onChange={setMcpServers}
                         disabled={isPending}
-                        className="form-field__input"
+                        placeholder="Add MCP server..."
+                        itemLabel="MCP server"
+                        inputLabel="MCP Servers"
                       />
                     </label>
-
                   </div>
-                  <p className="create-dialog__hint">
-                    Hermes profile skills and agents are verified supported targets. Hermes always uses
-                    the shared Model field; provider choices come from Hermes configuration. HAM-managed Bots are addressed as hermes -p
-                    &lt;name&gt; and do not install PATH wrapper scripts. External CLI backends and
-                    sharing this profile's skills with a Codex app-server subprocess are out of scope.
-                  </p>
                 </div>
               </section>
 

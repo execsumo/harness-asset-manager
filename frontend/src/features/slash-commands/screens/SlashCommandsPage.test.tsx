@@ -67,7 +67,7 @@ describe("SlashCommandsPage", () => {
     expect(within(dialog).getByRole("heading", { name: "code-review", level: 2 })).toBeInTheDocument();
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("region", { name: "Document" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Description")).toHaveValue("Review code");
     expect(within(dialog).getByLabelText("Prompt Body")).toHaveValue("$ARGUMENTS");
     expect(within(dialog).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
@@ -115,14 +115,14 @@ describe("SlashCommandsPage", () => {
     expect(within(dialog).getByLabelText("Name (Immutable)")).toHaveValue("code-review");
     expect(within(getDetailHeader(dialog, "slash-command-detail-shell__chrome")).queryByText("Managed command")).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("heading", { name: "About" })).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("heading", { name: "Document" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("region", { name: "Document" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Description")).toHaveValue("Review code");
     expect(within(dialog).getByLabelText("Prompt Body")).toHaveValue("$ARGUMENTS");
     expect(within(dialog).queryByRole("button", { name: "Preview" })).not.toBeInTheDocument();
 
-    const documentHeading = within(dialog).getByRole("heading", { name: "Document" });
+    const documentSection = within(dialog).getByRole("region", { name: "Document" });
     const harnessesHeading = within(dialog).getByRole("heading", { name: "Harnesses" });
-    expect(Boolean(documentHeading.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(Boolean(documentSection.compareDocumentPosition(harnessesHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     expect(within(dialog).queryByRole("heading", { name: "Locations" })).not.toBeInTheDocument();
 
     expect(within(dialog).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
