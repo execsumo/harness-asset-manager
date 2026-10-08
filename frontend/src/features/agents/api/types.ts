@@ -27,8 +27,10 @@ export const AGENT_CONTRACT_KEYS = [
   "mode",
   "spawning",
   "trust-project",
-  "deny-tools",
 ] as const;
+
+/** Legacy frontmatter keys to hide from custom metadata editing and strip on save. */
+export const RETIRED_AGENT_KEYS = ["deny-tools"] as const;
 
 /**
  * The fixed vocabularies, each plus the empty choice that clears the key. Global, not
@@ -156,7 +158,6 @@ export interface AgentCreateRequest {
   mode?: string;
   spawning?: string;
   trustProject?: string;
-  denyTools?: string[];
   /** Hermes profile routing; values are passed through without a HAM vocabulary. */
   hermesProvider?: string;
   hermesModel?: string;
@@ -184,7 +185,6 @@ export interface AgentUpdateRequest {
   mode?: string;
   spawning?: string;
   trustProject?: string;
-  denyTools?: string[];
   hermesProvider?: string;
   hermesModel?: string;
   metadata?: Array<{ key: string; value: string; rawValue?: unknown }>;
@@ -230,7 +230,6 @@ export interface AgentDetailDto {
   mode?: string | null;
   spawning?: string | null;
   trustProject?: string | null;
-  denyTools?: string[];
   hermesProvider?: string | null;
   hermesModel?: string | null;
   ok?: boolean;

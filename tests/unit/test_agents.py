@@ -1324,7 +1324,8 @@ class ContractFieldRoundTripTests(unittest.TestCase):
     def test_retired_execution_fields_are_omitted_on_rewrite(self) -> None:
         document = (
             "---\nname: A\ndescription: d\nmode: interactive\nbackground: true\n"
-            "isolation: worktree\nspawning: true\ntrust-project: false\ncolor: cyan\n---\n\nbody\n"
+            "isolation: worktree\nspawning: true\ntrust-project: false\ncolor: cyan\n"
+            "deny-tools: shell\n---\n\nbody\n"
         )
         agent = parse_agent_document(document, slug="a", path=Path("a.md"))
         rendered_documents = (
@@ -1352,7 +1353,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             ),
         )
         for rendered in rendered_documents:
-            for key in ("mode", "background", "isolation", "spawning", "trust-project", "color"):
+            for key in ("mode", "background", "isolation", "spawning", "trust-project", "color", "deny-tools"):
                 self.assertNotIn(f"{key}:", rendered)
 
     def test_role_harness_and_memory_round_trip(self) -> None:
@@ -1401,7 +1402,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             [
                 "name", "description", "role", "harness", "model", "effort",
                 "tools", "disallowedTools", "skills", "mcpServers", "memory", "maxTurns",
-                "deny-tools", "permissionMode",
+                "permissionMode",
             ],
         )
 

@@ -39,7 +39,6 @@ CONTRACT_KEYS: tuple[str, ...] = (
     "mode",
     "spawning",
     "trust-project",
-    "deny-tools",
 )
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
@@ -274,7 +273,6 @@ class AgentDefinition:
     mode: str = MODE_DEFAULT
     spawning: str = SPAWNING_DEFAULT
     trust_project: str = TRUST_PROJECT_DEFAULT
-    deny_tools: tuple[str, ...] = ()
 
     @property
     def ref(self) -> str:
@@ -391,7 +389,6 @@ class AgentDetail:
     mode: str = MODE_DEFAULT
     spawning: str = SPAWNING_DEFAULT
     trust_project: str = TRUST_PROJECT_DEFAULT
-    deny_tools: tuple[str, ...] = ()
     hermes_provider: str | None = None
     hermes_model: str | None = None
 

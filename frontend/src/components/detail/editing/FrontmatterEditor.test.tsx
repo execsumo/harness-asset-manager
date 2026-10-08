@@ -279,11 +279,11 @@ skills:
   it("shows help text under a field without changing its accessible name", () => {
     const knownFields: KnownFieldConfig[] = [
       {
-        key: "deny-tools",
-        label: "Deny Tools",
-        value: "shell",
+        key: "disallowedTools",
+        label: "Disallowed Tools",
+        value: "Write",
         onChange: vi.fn(),
-        helpText: "Comma-separated. Written as deny-tools.",
+        helpText: "Comma-separated. Written as disallowedTools.",
       },
     ];
 
@@ -300,10 +300,10 @@ skills:
     );
 
     expect(container.querySelector(".frontmatter-editor__help")?.textContent).toBe(
-      "Comma-separated. Written as deny-tools.",
+      "Comma-separated. Written as disallowedTools.",
     );
     // The hint lives inside the wrapping label, so the control has to keep naming
     // itself or the help text would be read as part of the field's name.
-    expect(screen.getByLabelText("Deny Tools")).toHaveValue("shell");
+    expect(screen.getByLabelText("Disallowed Tools")).toHaveValue("Write");
   });
 });

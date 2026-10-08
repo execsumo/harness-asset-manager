@@ -1690,8 +1690,6 @@ export interface components {
             color?: string | null;
             /** Configuration */
             configuration?: components["schemas"]["AgentConfigEntryResponse"][];
-            /** Denytools */
-            denyTools?: string[];
             /** Description */
             description: string;
             /** Disallowedtools */
@@ -2126,8 +2124,6 @@ export interface components {
             background?: string | null;
             /** Color */
             color?: string | null;
-            /** Denytools */
-            denyTools?: string[];
             /**
              * Description
              * @default
@@ -3826,8 +3822,6 @@ export interface components {
             background?: string | null;
             /** Color */
             color?: string | null;
-            /** Denytools */
-            denyTools?: string[] | null;
             /** Description */
             description?: string | null;
             /** Disallowedtools */

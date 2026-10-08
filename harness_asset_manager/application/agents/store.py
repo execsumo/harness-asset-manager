@@ -136,7 +136,6 @@ class AgentStore:
         mode: str = "background",
         spawning: str = "false",
         trust_project: str = "true",
-        deny_tools: tuple[str, ...] = (),
         hermes_provider: str | None = None,
         hermes_model: str | None = None,
     ) -> AgentDefinition:
@@ -167,7 +166,6 @@ class AgentStore:
                 mode=mode,
                 spawning=spawning,
                 trust_project=trust_project,
-                deny_tools=deny_tools,
             ),
         )
         self.write_hermes_extras(
@@ -207,7 +205,6 @@ class AgentStore:
         mode: str | None = None,
         spawning: str | None = None,
         trust_project: str | None = None,
-        deny_tools: tuple[str, ...] | None = None,
         hermes_provider: str | None = None,
         hermes_model: str | None = None,
         metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
@@ -255,7 +252,6 @@ class AgentStore:
             mode=mode if mode is not None else current.mode,
             spawning=spawning if spawning is not None else current.spawning,
             trust_project=trust_project if trust_project is not None else current.trust_project,
-            deny_tools=deny_tools if deny_tools is not None else current.deny_tools,
             base_metadata=current.metadata if metadata is None else None,
             extra_metadata=metadata,
         )

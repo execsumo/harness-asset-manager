@@ -87,7 +87,6 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
         mode=_optional_str(metadata, "mode") or MODE_DEFAULT,
         spawning=_optional_bool_str(metadata, "spawning") or SPAWNING_DEFAULT,
         trust_project=_optional_bool_str(metadata, "trust-project") or TRUST_PROJECT_DEFAULT,
-        deny_tools=_str_tuple(metadata.get("deny-tools"), "deny-tools"),
     )
 
 
@@ -113,7 +112,6 @@ def render_agent_document(
     mode: str = MODE_DEFAULT,
     spawning: str = SPAWNING_DEFAULT,
     trust_project: str = TRUST_PROJECT_DEFAULT,
-    deny_tools: tuple[str, ...] = (),
     base_metadata: Mapping[str, object] | None = None,
     extra_metadata: list[tuple[str, object]] | tuple[tuple[str, object], ...] | list[dict[str, str]] | None = None,
 ) -> str:
@@ -158,10 +156,6 @@ def render_agent_document(
                 metadata[scalar_key] = scalar_value
         if disallowed_tools:
             metadata["disallowedTools"] = list(disallowed_tools)
-        # Keep the optional list in the canonical contract position when an edit is
-        # rendered with an explicit metadata payload. An empty list is still an
-        # explicit, harmless value and preserves the contract's stable field order.
-        metadata["deny-tools"] = list(deny_tools)
 
         custom_keys: list[str] = []
         for item in extra_metadata:
@@ -243,11 +237,6 @@ def render_agent_document(
             metadata["disallowedTools"] = list(disallowed_tools)
         else:
             metadata.pop("disallowedTools", None)
-        if deny_tools:
-            metadata["deny-tools"] = list(deny_tools)
-        elif "deny-tools" in metadata:
-            del metadata["deny-tools"]
-
         # Contract fields lead in canonical order, then everything else in its original order.
         lead = [k for k in CONTRACT_KEYS if k in metadata]
         ordered = lead + [k for k in metadata if k not in lead]

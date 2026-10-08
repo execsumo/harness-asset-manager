@@ -37,6 +37,7 @@ import { useSkillsListQuery } from "../../../skills/public";
 import { useMcpInventoryQuery } from "../../../mcp/public";
 import {
   AGENT_CONTRACT_KEYS,
+  RETIRED_AGENT_KEYS,
   EFFORT_VALUES,
   MAX_TURNS_DEFAULT,
   MEMORY_VALUES,
@@ -206,6 +207,7 @@ export function AgentDetailContent({
       .filter(
         (c) =>
           !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
+          !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
           c.key !== "mcpServers",
       )
       .map((c, idx) => ({
@@ -236,7 +238,6 @@ export function AgentDetailContent({
   const [mcpServersStr, setMcpServersStr] = useState(
     (detail.mcpServers ?? []).map((binding) => binding.name).join(", "),
   );
-  const [denyToolsStr, setDenyToolsStr] = useState((detail.denyTools ?? []).join(", "));
   const [otherEntries, setOtherEntries] = useState<OtherFrontmatterEntry[]>(initialOtherEntries);
   const [rawYaml, setRawYaml] = useState("");
   const [prompt, setPrompt] = useState(detail.prompt);
@@ -258,12 +259,12 @@ export function AgentDetailContent({
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
-    setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(
       (detail.configuration || [])
         .filter(
           (c) =>
             !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
+            !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
             c.key !== "mcpServers",
         )
         .map((c, idx) => ({
@@ -427,15 +428,6 @@ export function AgentDetailContent({
         helpText: "Comma-separated. Written as disallowedTools.",
       },
       {
-        key: "deny-tools",
-        label: "Deny Tools",
-        group: "capabilities",
-        value: denyToolsStr,
-        onChange: setDenyToolsStr,
-        placeholder: "e.g. web_search, shell",
-        helpText: "Comma-separated. Written as deny-tools.",
-      },
-      {
         // Keep tools available when switching to raw YAML, but do not expose it in
         // the structured editor per the Claude-facing layout.
         key: "tools",
@@ -488,7 +480,6 @@ export function AgentDetailContent({
       disallowedToolsStr,
       mcpServersStr,
       toolsStr,
-      denyToolsStr,
     ],
   );
 
@@ -507,7 +498,6 @@ export function AgentDetailContent({
     if (memoryStr !== (detail.memory ?? "")) return true;
     if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
     if (mcpServersStr !== (detail.mcpServers ?? []).map((binding) => binding.name).join(", ")) return true;
-    if (denyToolsStr !== (detail.denyTools ?? []).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -524,7 +514,7 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, hermesProviderStr, effortStr, maxTurnsStr, memoryStr, disallowedToolsStr, mcpServersStr, denyToolsStr]);
+  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, hermesProviderStr, effortStr, maxTurnsStr, memoryStr, disallowedToolsStr, mcpServersStr]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
@@ -540,7 +530,6 @@ export function AgentDetailContent({
     setMemoryStr(detail.memory ?? "");
     setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
     setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
-    setDenyToolsStr((detail.denyTools ?? []).join(", "));
     setOtherEntries(initialOtherEntries);
     setPrompt(detail.prompt);
     setSaveError(null);
@@ -562,11 +551,10 @@ export function AgentDetailContent({
     let finalMemory = memoryStr;
     let finalDisallowedToolsStr = disallowedToolsStr;
     const finalMcpServersStr = mcpServersStr;
-    let finalDenyToolsStr = denyToolsStr;
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, "mcpServers"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, ...RETIRED_AGENT_KEYS, "mcpServers"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;
@@ -582,7 +570,6 @@ export function AgentDetailContent({
       finalMaxTurns = parsed.known.maxTurns ?? "";
       finalMemory = parsed.known.memory ?? "";
       finalDisallowedToolsStr = parsed.known.disallowedTools ?? "";
-      finalDenyToolsStr = parsed.known["deny-tools"] ?? "";
       finalOther = parsed.other;
       setName(finalName);
       setDescription(finalDesc);
@@ -596,7 +583,6 @@ export function AgentDetailContent({
       setMemoryStr(finalMemory);
       setDisallowedToolsStr(finalDisallowedToolsStr);
       setMcpServersStr(finalMcpServersStr);
-      setDenyToolsStr(finalDenyToolsStr);
       setOtherEntries(finalOther);
     }
 
@@ -638,7 +624,6 @@ export function AgentDetailContent({
           maxTurns: finalMaxTurns.trim(),
           memory: finalMemory.trim(),
           disallowedTools: finalDisallowedToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
-          denyTools: finalDenyToolsStr.split(",").map((tool) => tool.trim()).filter(Boolean),
           hermesProvider: hermesProviderStr.trim(),
           hermesModel: "",
           metadata: metadataPayload,

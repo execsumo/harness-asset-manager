@@ -491,13 +491,6 @@
             "title": "Configuration",
             "type": "array"
           },
-          "denyTools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Denytools",
-            "type": "array"
-          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -1827,13 +1820,6 @@
               }
             ],
             "title": "Color"
-          },
-          "denyTools": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Denytools",
-            "type": "array"
           },
           "description": {
             "default": "",
@@ -6951,20 +6937,6 @@
               }
             ],
             "title": "Color"
-          },
-          "denyTools": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Denytools"
           },
           "description": {
             "anyOf": [

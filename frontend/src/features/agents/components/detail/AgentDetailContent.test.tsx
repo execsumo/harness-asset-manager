@@ -360,7 +360,7 @@ describe("AgentDetailContent", () => {
       },
       {
         title: "Capabilities",
-        labels: ["Skills", "MCP Servers", "Disallowed Tools", "Deny Tools"],
+        labels: ["Skills", "MCP Servers", "Disallowed Tools"],
       },
       {
         title: "Execution",
@@ -390,19 +390,14 @@ describe("AgentDetailContent", () => {
     expect(labels).not.toContain("Tools (comma-separated)");
   });
 
-  it("spells out which key each of the two block-list fields writes", () => {
+  it("spells out which key the Disallowed Tools field writes", () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({ rows: [] })));
 
     const { container } = renderDetail(agentDetailFixture());
 
-    const helpFor = (key: string) =>
-      container
-        .querySelector(`[data-frontmatter-key="${key}"] .frontmatter-editor__help`)
-        ?.textContent;
-
-    // "Disallowed Tools" and "Deny Tools" are different keys, not a duplicate row.
-    expect(helpFor("disallowedTools")).toContain("disallowedTools");
-    expect(helpFor("deny-tools")).toContain("deny-tools");
+    expect(
+      container.querySelector('[data-frontmatter-key="disallowedTools"] .frontmatter-editor__help')?.textContent,
+    ).toContain("disallowedTools");
   });
 
   it("hides retired Color and keeps only the shared Hermes Model field", () => {

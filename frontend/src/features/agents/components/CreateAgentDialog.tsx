@@ -375,9 +375,8 @@ export function CreateAgentDialog({
                     </label>
                   </div>
 
-                  {/* Capabilities, then Execution -- the same order, and the same
-                      order within each, as the structured editor in Agent Details.
-                      The detail-only deny-tools field is skipped, not reordered around. */}
+                  {/* Capabilities, then Execution -- the same order as the structured
+                      editor in Agent Details. */}
                   <div className="dialog-form-fields agent-frontmatter-grid__additional">
                     <div className="form-field agent-frontmatter-grid__skills">
                       <span className="form-field__label">Skills</span>

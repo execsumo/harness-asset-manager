@@ -154,7 +154,6 @@ def create_agent(
         mode=validate_mode(body.mode) or MODE_DEFAULT,
         spawning=validate_bool_setting(body.spawning, label="spawning", code="invalid_spawning") or SPAWNING_DEFAULT,
         trust_project=validate_bool_setting(body.trustProject, label="trust-project", code="invalid_trust_project") or TRUST_PROJECT_DEFAULT,
-        deny_tools=tuple(body.denyTools),
         hermes_provider=body.hermesProvider,
         hermes_model=body.hermesModel,
     )
@@ -285,7 +284,6 @@ def update_agent(
             mode=validated_mode,
             spawning=validated_spawning,
             trust_project=validated_trust_project,
-            deny_tools=tuple(body.denyTools) if body.denyTools is not None else None,
             metadata=extra_metadata,
         )
     else:
@@ -314,7 +312,6 @@ def update_agent(
             mode=validated_mode,
             spawning=validated_spawning,
             trust_project=validated_trust_project,
-            deny_tools=tuple(body.denyTools) if body.denyTools is not None else None,
             hermes_provider=body.hermesProvider,
             hermes_model=body.hermesModel,
             metadata=extra_metadata,
@@ -548,7 +545,6 @@ def _detail(
         mode=detail.mode,
         spawning=detail.spawning,
         trustProject=detail.trust_project,
-        denyTools=list(detail.deny_tools),
         hermesProvider=detail.hermes_provider,
         hermesModel=detail.hermes_model,
         ok=len(failed_list) == 0 and len(harness_failures_list) == 0,
