@@ -93,6 +93,7 @@ class HarnessCellResponse(BaseModel):
 class AgentAttachmentResponse(BaseModel):
     ref: str
     name: str
+    role: str | None = None
 
 
 class SkillTableRowResponse(BaseModel):

@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Check, ChevronDown, CircleSlash2, Star, Trash2, X } from "lucide-react";
 
 import { BulkTagPopover } from "./BulkTagPopover";
-import { BulkAgentPopover } from "./BulkAgentPopover";
+import { BulkAgentPopover, type AgentAttachmentInfo } from "./BulkAgentPopover";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useCommonCopy } from "../i18n";
@@ -36,7 +36,7 @@ interface BulkActionBarProps {
   onTagSelected?: (tags: string[]) => Promise<void>;
   knownTags?: string[];
   onAgentSelected?: (agentRefs: string[], mode: "attach" | "detach") => Promise<void>;
-  knownAgents?: { ref: string; name: string }[];
+  knownAgents?: AgentAttachmentInfo[];
   destructive: {
     /** Button aria-label + confirm button text (e.g. "Delete" / "Uninstall"). */
     actionLabel: string;

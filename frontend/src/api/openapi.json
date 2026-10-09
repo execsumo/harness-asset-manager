@@ -339,6 +339,17 @@
           "ref": {
             "title": "Ref",
             "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           }
         },
         "required": [

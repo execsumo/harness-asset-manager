@@ -1633,6 +1633,8 @@ export interface components {
             name: string;
             /** Ref */
             ref: string;
+            /** Role */
+            role?: string | null;
         };
         /** AgentBindingResponse */
         AgentBindingResponse: {

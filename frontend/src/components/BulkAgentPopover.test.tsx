@@ -50,4 +50,21 @@ describe("BulkAgentPopover", () => {
 
     await waitFor(() => expect(onApply).toHaveBeenCalledWith(["agent-1"], "detach"));
   });
+
+  it("labels agents as <role>:<name>, falling back to the name without a role", () => {
+    render(
+      <BulkAgentPopover
+        knownAgents={[
+          { ref: "chuck", name: "Chuck", role: "Reviewer" },
+          { ref: "plain", name: "Plain", role: null },
+        ]}
+        onApply={vi.fn(async () => undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Agents" }));
+    expect(screen.getByRole("checkbox", { name: "Reviewer:Chuck" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Plain" })).toBeInTheDocument();
+    expect(screen.getByText("Reviewer:Chuck")).toBeInTheDocument();
+  });
 });

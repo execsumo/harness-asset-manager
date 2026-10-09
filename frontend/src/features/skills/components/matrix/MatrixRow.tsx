@@ -13,6 +13,7 @@ import type {
 } from "../../model/types";
 import { SkillMatrixHarnessCell } from "./SkillMatrixHarnessCell";
 import { skillStatusConcept } from "../../../../lib/product-language";
+import { agentLabel } from "../../../../lib/agent-label";
 import { hermesBotLabel, hermesBotScopes } from "../../model/hermesTargets";
 
 interface MatrixRowProps {
@@ -119,7 +120,7 @@ export function MatrixRow({
                   style={{ cursor: onToggleAgent ? 'pointer' : 'default' }}
                 >
                   <Bot size={12} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'text-bottom' }} />
-                  {agent.name}
+                  {agentLabel(agent)}
                 </span>
               ))}
               {(row.agents || []).length > 2 ? (

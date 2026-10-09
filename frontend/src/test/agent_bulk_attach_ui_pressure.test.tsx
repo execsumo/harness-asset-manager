@@ -205,8 +205,11 @@ describe("Agent Bulk Attach UI Pressure Test", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Managed 1")).toBeInTheDocument());
-    // No row carries an agent chip - the cold-start condition.
-    expect(screen.queryByRole("button", { name: /Agent 1/ })).not.toBeInTheDocument();
+    // No row carries an agent - the cold-start condition. The agent filter bar
+    // still lists every adopted agent, at a count of zero.
+    const agentFilter = screen.getByRole("group", { name: "Filter by agent" });
+    const agentOneChip = within(agentFilter).getByRole("button", { name: /Agent 1/ });
+    expect(within(agentOneChip).getByText("0")).toHaveClass("skill-tag-chip__count");
 
     fireEvent.click(screen.getByLabelText("Select all visible skills"));
     const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
