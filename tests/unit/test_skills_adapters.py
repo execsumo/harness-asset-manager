@@ -29,6 +29,29 @@ def _adapter(harness: str, spec, *, data_dir: Path | None = None) :
 
 
 class SkillsAdapterTests(unittest.TestCase):
+    def test_hermes_symlink_to_unmanifested_store_package_is_not_a_duplicate(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            spec = create_fake_home_spec(Path(temp_dir))
+            package = seed_skill_package(spec.skills_store_root, "herdr", "herdr")
+            link = spec.hermes_skills_root / "harnessam" / "herdr"
+            link.parent.mkdir(parents=True)
+            link.symlink_to(package)
+            container = build_backend_container(spec.env())
+
+            matches = [
+                entry
+                for entry in container.skills_queries.inventory().entries
+                if entry.name == "herdr"
+            ]
+
+            self.assertEqual(len(matches), 1)
+            self.assertEqual(matches[0].kind, "managed")
+            self.assertIn("hermes", matches[0].linked_harnesses())
+            self.assertEqual(
+                load_skill_store_manifest(container.paths.skills_store_manifest).entries,
+                (),
+            )
+
     def test_physical_profile_skill_is_unmanaged_and_names_its_bot(self) -> None:
         with TemporaryDirectory() as temp_dir:
             spec = create_fake_home_spec(Path(temp_dir))

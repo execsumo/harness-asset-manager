@@ -1002,17 +1002,15 @@ def _is_harness_asset_manager_hermes_binding(
 ) -> bool:
     if not skill_root.is_symlink():
         return False
-    if canonical_store_root is not None and not _link_target_is_under(
-        skill_root, canonical_store_root
-    ):
-        return False
+    if canonical_store_root is not None:
+        # A symlink into the canonical store is a managed binding even when an
+        # older store has no manifest entry to record binding intent against.
+        return _link_target_is_under(skill_root, canonical_store_root)
     target = str(BindingTarget("hermes", root.binding_scope))
     if target in recorded_bindings.get(skill_root.name, frozenset()):
         return True
-    # Direct adapter callers and pre-intent stores have no manifest to consult.
-    # Preserve their legacy categorized links, but only in that no-ledger case;
-    # a category name alone is never ownership evidence once the canonical store
-    # and binding intent are available.
+    # Without a canonical store, direct adapter callers cannot verify the link
+    # target. Preserve recorded intent and legacy categorized links in that case.
     return canonical_store_root is None and any(
         locator_name.startswith(f"{category}/")
         for category in {managed_category, LEGACY_HERMES_MANAGED_CATEGORY}
