@@ -252,7 +252,7 @@ class AgentStore:
             mode=mode if mode is not None else current.mode,
             spawning=spawning if spawning is not None else current.spawning,
             trust_project=trust_project if trust_project is not None else current.trust_project,
-            base_metadata=current.metadata if metadata is None else None,
+            base_metadata=current.metadata,
             extra_metadata=metadata,
         )
         previous_document = current.path.read_text(encoding="utf-8")

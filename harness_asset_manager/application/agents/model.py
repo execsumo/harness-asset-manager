@@ -36,9 +36,6 @@ CONTRACT_KEYS: tuple[str, ...] = (
     "maxTurns",
     "isolation",
     "background",
-    "mode",
-    "spawning",
-    "trust-project",
 )
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
@@ -50,14 +47,17 @@ RETIRED_KEYS = frozenset(
         "harnesses",
         "allowed_subagents",
         "max_turns",
-        "isolation",
-        "background",
-        "mode",
-        "spawning",
-        "trust-project",
-        "color",
         "deny-tools",
     }
+)
+
+# Contract keys no editor exposes any more. Unlike ``RETIRED_KEYS`` they are valid
+# frontmatter a user or harness may have written, so a rewrite carries them forward
+# verbatim when the file already has them and never invents them when it does not.
+PASSTHROUGH_KEYS: tuple[str, ...] = (
+    "color",
+    "isolation",
+    "background",
 )
 
 # Fixed, global vocabularies — not per-harness, unlike ``model``, whose value set is
@@ -444,6 +444,7 @@ __all__ = [
     "COLOR_VALUES",
     "CONTRACT_KEYS",
     "CONTRACT_KEY_SET",
+    "PASSTHROUGH_KEYS",
     "RETIRED_KEYS",
     "EFFORT_VALUES",
     "ISOLATION_VALUES",

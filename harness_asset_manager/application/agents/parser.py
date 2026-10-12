@@ -12,6 +12,7 @@ from .model import (
     CONTRACT_KEY_SET,
     CONTRACT_KEYS,
     MODE_DEFAULT,
+    PASSTHROUGH_KEYS,
     RETIRED_KEYS,
     SPAWNING_DEFAULT,
     TRUST_PROJECT_DEFAULT,
@@ -176,12 +177,24 @@ def render_agent_document(
                 metadata[k] = v
                 custom_keys.append(k)
 
+        for key in PASSTHROUGH_KEYS:
+            if base_metadata and key in base_metadata and base_metadata[key] is not None:
+                metadata[key] = base_metadata[key]
+
         ordered = [k for k in CONTRACT_KEYS if k in metadata]
         ordered.extend(custom_keys)
     else:
         metadata = {
             key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
         }
+        # A YAML null is an empty optional field and an explicit empty string is a
+        # request to clear it; neither is carried forward. Anything else is.
+        for key, explicit in (("color", color), ("isolation", isolation), ("background", background)):
+            if explicit == "":
+                metadata.pop(key, None)
+        for key in PASSTHROUGH_KEYS:
+            if key in metadata and metadata[key] is None:
+                del metadata[key]
         for key in _OPTIONAL_COLLECTION_KEYS:
             if _is_unset_optional_collection(key, metadata.get(key)):
                 metadata.pop(key, None)
