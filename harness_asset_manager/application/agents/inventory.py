@@ -141,7 +141,12 @@ class AgentInventoryService:
         ]
         entries.extend(
             self._unmanaged_entries(
-                targets, adapters, issue_list, tags_by_ref=tags_by_ref, resolve_skills=resolve_skills
+                targets,
+                adapters,
+                issue_list,
+                tags_by_ref=tags_by_ref,
+                resolve_skills=resolve_skills,
+                managed_slugs=frozenset(agent.slug for agent in managed),
             )
         )
         return AgentInventory(
@@ -516,6 +521,7 @@ class AgentInventoryService:
         issues: list[AgentIssue],
         tags_by_ref: dict[str, list[str]] | None = None,
         resolve_skills: Callable[[tuple[str, ...]], tuple[AgentSkill, ...]] | None = None,
+        managed_slugs: frozenset[str] = frozenset(),
     ) -> list[AgentEntry]:
         entries: list[AgentEntry] = []
         tags_map = tags_by_ref or {}
@@ -523,6 +529,12 @@ class AgentInventoryService:
         for target in targets:
             adapter = adapters[target.id]
             for path in adapter.unmanaged_paths():
+                if path.stem in managed_slugs:
+                    # A harness that rewrote our link into a real file (Droid does) has
+                    # not created a second agent. The managed row already owns this
+                    # name and reports the occupied binding, so a separate unmanaged
+                    # row would show the same agent twice.
+                    continue
                 ref = f"{target.id}/{path.stem}"
                 entries.append(
                     self._unmanaged_entry(
