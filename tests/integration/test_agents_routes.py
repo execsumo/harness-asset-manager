@@ -1070,7 +1070,7 @@ class AgentRoutesTests(unittest.TestCase):
                     [item["ref"] for item in harness.get_json("/api/agents")["entries"]],
                 )
 
-    def test_update_agent_drops_legacy_frontmatter(self) -> None:
+    def test_update_agent_keeps_valued_legacy_frontmatter(self) -> None:
         def seed(spec: FakeHomeSpec) -> None:
             root = spec.agents_root
             root.mkdir(parents=True, exist_ok=True)
@@ -1087,8 +1087,8 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(updated["prompt"], "body")
 
             content = (harness.spec.agents_root / "legacy.md").read_text(encoding="utf-8")
-            self.assertNotIn("capabilities", content)
-            self.assertNotIn("harnesses", content)
+            self.assertIn("capabilities:", content)
+            self.assertIn("harnesses:", content)
 
     def test_error_body_uses_the_shared_error_field(self) -> None:
         with AppTestHarness() as harness:

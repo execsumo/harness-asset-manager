@@ -39,19 +39,7 @@ CONTRACT_KEYS: tuple[str, ...] = (
 )
 CONTRACT_KEY_SET = frozenset(CONTRACT_KEYS)
 
-# Invalid or retired keys are intentionally not exposed as custom metadata and are
-# omitted when an agent is next written.
-RETIRED_KEYS = frozenset(
-    {
-        "capabilities",
-        "harnesses",
-        "allowed_subagents",
-        "max_turns",
-        "deny-tools",
-    }
-)
-
-# Contract keys no editor exposes any more. Unlike ``RETIRED_KEYS`` they are valid
+# Contract keys no editor exposes any more. They are valid
 # frontmatter a user or harness may have written, so a rewrite carries them forward
 # verbatim when the file already has them and never invents them when it does not.
 PASSTHROUGH_KEYS: tuple[str, ...] = (
@@ -284,7 +272,7 @@ class AgentDefinition:
         return tuple(
             (key, value)
             for key, value in self.metadata.items()
-            if key not in CONTRACT_KEY_SET and key not in RETIRED_KEYS
+            if key not in CONTRACT_KEY_SET
         )
 
 
@@ -445,7 +433,6 @@ __all__ = [
     "CONTRACT_KEYS",
     "CONTRACT_KEY_SET",
     "PASSTHROUGH_KEYS",
-    "RETIRED_KEYS",
     "EFFORT_VALUES",
     "ISOLATION_VALUES",
     "MAX_TURNS_DEFAULT",

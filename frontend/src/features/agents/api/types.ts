@@ -26,9 +26,6 @@ export const AGENT_CONTRACT_KEYS = [
   "background",
 ] as const;
 
-/** Legacy frontmatter keys to hide from custom metadata editing and strip on save. */
-export const RETIRED_AGENT_KEYS = ["deny-tools"] as const;
-
 /**
  * The fixed vocabularies, each plus the empty choice that clears the key. Global, not
  * per-harness. Mirror the tuples of the same names in application/agents/model.py,

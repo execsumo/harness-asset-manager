@@ -13,7 +13,6 @@ from .model import (
     CONTRACT_KEYS,
     MODE_DEFAULT,
     PASSTHROUGH_KEYS,
-    RETIRED_KEYS,
     SPAWNING_DEFAULT,
     TRUST_PROJECT_DEFAULT,
     AgentDefinition,
@@ -24,13 +23,12 @@ _yaml = YAML(typ="safe")
 _rt_yaml = YAML()
 _rt_yaml.default_flow_style = False
 
-# Claude Code treats hooks as an optional collection. An empty/null value means
-# the feature is unset, so do not emit a misleading frontmatter key for it.
-_OPTIONAL_COLLECTION_KEYS = frozenset({"hooks"})
-
-# Unknown *harness* keys are preserved on write. These keys are not unknown metadata:
-# they were invalid HAM contract fields and are intentionally removed rather than
-# carried into Claude Code agent files.
+# Optional keys whose empty/null value means the feature is unset, so no misleading
+# frontmatter key is emitted for it. ``hooks`` is a Claude Code collection; the rest
+# are legacy keys that are ordinary metadata when valued and dropped when empty.
+_OPTIONAL_COLLECTION_KEYS = frozenset(
+    {"hooks", "capabilities", "harnesses", "allowed_subagents", "max_turns", "deny-tools"}
+)
 
 def parse_hermes_extras(raw: Mapping[str, object]) -> tuple[str | None, str | None]:
     """Read the optional Hermes sidecar values without imposing a provider vocabulary."""
@@ -56,9 +54,9 @@ def parse_agent_document(document: str, *, slug: str, path: Path) -> AgentDefini
     Everything in ``CONTRACT_KEYS`` drives behavior as a contract field. Every other
     frontmatter key is kept verbatim in ``metadata`` — harness agents carry
     `permissionMode`, Cursor's `readonly`, and so on, and Harness Asset Manager must
-    display those without interpreting or destroying them. The only keys dropped on
-    write are ``RETIRED_KEYS`` and attempts to smuggle standard contract fields through
-    the custom metadata channel.
+    display those without interpreting or destroying them. A valued key is never
+    dropped on write; only unset (null/empty) optional keys are, and attempts to smuggle
+    standard contract fields through the custom metadata channel are refused.
     """
     try:
         metadata, prompt = split_frontmatter(document)
@@ -171,7 +169,6 @@ def render_agent_document(
             if (
                 k
                 and k not in CONTRACT_KEY_SET
-                and k not in RETIRED_KEYS
                 and not _is_unset_optional_collection(k, v)
             ):
                 metadata[k] = v
@@ -184,9 +181,7 @@ def render_agent_document(
         ordered = [k for k in CONTRACT_KEYS if k in metadata]
         ordered.extend(custom_keys)
     else:
-        metadata = {
-            key: value for key, value in (base_metadata or {}).items() if key not in RETIRED_KEYS
-        }
+        metadata = dict(base_metadata or {})
         # A YAML null is an empty optional field and an explicit empty string is a
         # request to clear it; neither is carried forward. Anything else is.
         for key, explicit in (("color", color), ("isolation", isolation), ("background", background)):

@@ -35,7 +35,6 @@ import { useSkillsListQuery } from "../../../skills/public";
 import { useMcpInventoryQuery } from "../../../mcp/public";
 import {
   AGENT_CONTRACT_KEYS,
-  RETIRED_AGENT_KEYS,
   EFFORT_VALUES,
   MAX_TURNS_DEFAULT,
   MEMORY_VALUES,
@@ -187,7 +186,6 @@ export function AgentDetailContent({
       .filter(
         (c) =>
           !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
-          !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
           c.key !== "mcpServers",
       )
       .map((c, idx) => ({
@@ -244,7 +242,6 @@ export function AgentDetailContent({
         .filter(
           (c) =>
             !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
-            !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
             c.key !== "mcpServers",
         )
         .map((c, idx) => ({
@@ -514,7 +511,7 @@ export function AgentDetailContent({
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, ...RETIRED_AGENT_KEYS, "mcpServers"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, "mcpServers"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;

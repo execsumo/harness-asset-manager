@@ -379,8 +379,8 @@ class AgentParserTests(unittest.TestCase):
         )
         self.assertNotIn("model", rendered)
 
-    def test_render_drops_legacy_keys(self) -> None:
-        """Our own retired compile keys are the one thing still dropped on write."""
+    def test_render_keeps_valued_legacy_keys(self) -> None:
+        """Nothing with a value is dropped on write, legacy compile keys included."""
         agent = parse_agent_document(LEGACY_AGENT_DOC, slug="legacy", path=Path("legacy.md"))
         rendered = render_agent_document(
             name=agent.name,
@@ -389,9 +389,26 @@ class AgentParserTests(unittest.TestCase):
             tools=agent.tools,
             base_metadata=agent.metadata,
         )
-        self.assertNotIn("capabilities", rendered)
-        self.assertNotIn("harnesses", rendered)
+        self.assertIn("capabilities:", rendered)
+        self.assertIn("harnesses:", rendered)
         self.assertIn("name: Legacy Agent", rendered)
+
+    def test_render_drops_unset_legacy_keys(self) -> None:
+        for empty in (None, "", [], {}):
+            rendered = render_agent_document(
+                name="A",
+                description="d",
+                prompt="body",
+                base_metadata={
+                    "deny-tools": empty,
+                    "max_turns": empty,
+                    "capabilities": empty,
+                    "harnesses": empty,
+                    "allowed_subagents": empty,
+                },
+            )
+            for key in ("deny-tools", "max_turns", "capabilities", "harnesses", "allowed_subagents"):
+                self.assertNotIn(f"{key}:", rendered)
 
 
 class AgentsFixture(unittest.TestCase):
@@ -1348,7 +1365,7 @@ class ContractFieldRoundTripTests(unittest.TestCase):
             "deny-tools: shell\n---\n\nbody\n"
         )
         agent = parse_agent_document(document, slug="a", path=Path("a.md"))
-        carried = [("mode", "interactive"), ("spawning", "true"), ("trust-project", "false")]
+        carried = [("mode", "interactive"), ("spawning", "true"), ("trust-project", "false"), ("deny-tools", "shell")]
         for kwargs in ({"base_metadata": agent.metadata}, {"extra_metadata": carried, "base_metadata": agent.metadata}):
             rendered = render_agent_document(
                 name=agent.name, description=agent.description, prompt=agent.prompt, **kwargs
@@ -1362,7 +1379,27 @@ class ContractFieldRoundTripTests(unittest.TestCase):
                 "color: cyan",
             ):
                 self.assertIn(line, rendered)
-            self.assertNotIn("deny-tools:", rendered)
+            self.assertIn("deny-tools: shell", rendered)
+
+    def test_arbitrary_frontmatter_keys_survive_both_rewrite_paths(self) -> None:
+        """Preservation is general: no key name is special, whatever its value."""
+        agent = parse_agent_document(
+            "---\nname: A\ndescription: d\nmy-weird_Key: 5\nnested:\n  a: [1, 2]\n"
+            "flag: false\n---\n\nbody\n",
+            slug="a",
+            path=Path("a.md"),
+        )
+        for kwargs in (
+            {"base_metadata": agent.metadata},
+            {"extra_metadata": list(agent.extra_metadata)},
+        ):
+            rendered = render_agent_document(
+                name="A", description="d", prompt="body", **kwargs
+            )
+            reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
+            self.assertEqual(reparsed.metadata["my-weird_Key"], 5)
+            self.assertEqual(reparsed.metadata["nested"], {"a": [1, 2]})
+            self.assertIs(reparsed.metadata["flag"], False)
 
     def test_defaults_are_never_written_into_a_file_that_lacks_the_keys(self) -> None:
         agent = parse_agent_document(
