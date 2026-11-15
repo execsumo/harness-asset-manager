@@ -113,7 +113,7 @@ describe("ConfigsPage", () => {
     });
     renderWithAppProviders(<ConfigsPage />);
     const row = (await screen.findByText("Cursor")).closest("tr")!;
-    const button = within(row).getByRole("button", { name: /unstar/i });
+    const button = within(row).getByRole("button", { name: "Remove star" });
     expect(button.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(button);
     await waitFor(() => expect(tags).toEqual(["Research"]));

@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.application import BackendContainer
-from harness_asset_manager.application.asset_tags import normalize_and_dedupe_tags, sort_tags
+from harness_asset_manager.application.asset_tags import (
+    normalize_and_dedupe_tags,
+    sort_tags,
+)
 
 router = APIRouter(prefix="/api/asset-tags", tags=["asset-tags"])
 logger = logging.getLogger(__name__)

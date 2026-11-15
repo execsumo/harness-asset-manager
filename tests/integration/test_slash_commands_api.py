@@ -35,12 +35,21 @@ class SlashCommandApiTests(unittest.TestCase):
                 (harness.container.mcp_queries, "_list_snapshot"),
                 (harness.container.hooks_queries, "_list_snapshot"),
                 (harness.container.permissions_queries, "_list_snapshot"),
-                (harness.container.harness_kernel, "bindings_for_family"),
             )
             for source, method in sources:
                 with self.subTest(family=method), patch.object(source, method, side_effect=OSError("unreadable")):
                     tags = harness.get_json("/api/asset-tags/")["tags"]
-                    self.assertIn("agent-tag" if method == "bindings_for_family" else "config-tag", tags)
+                    self.assertIn("config-tag", tags)
+            kernel = harness.container.harness_kernel
+            bindings_for_family = kernel.bindings_for_family
+
+            def fail_config_bindings(family):
+                if family == "configs":
+                    raise OSError("unreadable")
+                return bindings_for_family(family)
+
+            with patch.object(kernel, "bindings_for_family", side_effect=fail_config_bindings):
+                self.assertIn("agent-tag", harness.get_json("/api/asset-tags/")["tags"])
 
     def test_shared_tags_survive_invalid_command(self) -> None:
         with AppTestHarness() as harness:

@@ -126,6 +126,8 @@ parts are actually invariant.
       include each entry's sorted `tags` array (`starred` first) in list/detail
       payloads via `AssetTagService` (`application/asset_tags/`, keyed
       `<family>:<ref>`); add a `PUT /api/<family>/{ref}/tags` replace-set endpoint;
+      include live tags in the read-only shared vocabulary in `api/routers/asset_tags.py`
+      and use `useSharedTagCounts` for family filters and editor suggestions;
       render the star column after the identity column with the filterable filled-star
       header toggling `?tag=starred` (see `SkillsWorkspacePage.tsx`,
       `MatrixView.tsx`/`MatrixRow.tsx`, `matrix-table__th/cell--star`); support tag

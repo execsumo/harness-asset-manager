@@ -178,10 +178,8 @@ change like it sees tag changes.
 `set(family, ref, membership)`, `set_many(items)` (one lock, one write), `delete_for_ref`.
 Validation: unknown profile id → `MutationError(status=400, code="invalid_profile")`.
 
-**Cleanup on delete.** Wherever a family deletes an asset, call `delete_for_ref`. Today only
-permissions cleans its tags on delete (`permissions/mutations.py:113`); the other families leak
-tag entries. Fix that gap for profiles in every family, and fix it for tags at the same call
-sites — it is the same one-line change and leaving it half-done is worse than either state.
+**Cleanup on delete.** Wherever a family deletes an asset, call `delete_for_ref` for profile
+membership. Refer to each family's tag-deletion handling for the corresponding lifecycle.
 
 ### 3.3 `ActiveProfileStore` — `<state_dir>/profile.json`
 
