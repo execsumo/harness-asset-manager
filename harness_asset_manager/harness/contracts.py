@@ -8,7 +8,7 @@ from harness_asset_manager.env_names import env_get
 
 from .resolution import ResolutionContext
 
-FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents"]
+FamilyKey = Literal["skills", "mcp", "slash_commands", "hooks", "permissions", "agents", "configs"]
 
 #: How much support a harness is committed to, which is a statement about *our*
 #: investment rather than a property of the harness itself.
