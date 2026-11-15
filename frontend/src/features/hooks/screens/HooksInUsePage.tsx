@@ -336,6 +336,12 @@ export default function HooksInUsePage() {
                   {harnessFilterLabel ? (
                     <HarnessFilterChip label={harnessFilterLabel} onClear={clearHarnessFilter} />
                   ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
                   <HooksFilterMenu
                     pill={statusFilter}
                     counts={counts}
@@ -343,12 +349,6 @@ export default function HooksInUsePage() {
                   />
                 </>
               }
-            />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
             />
           </>
         ) : null}

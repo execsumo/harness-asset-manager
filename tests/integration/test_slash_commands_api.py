@@ -2,12 +2,28 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest.mock import patch
 
 from harness_asset_manager.paths import APP_NAME
 from tests.support.app_harness import AppTestHarness
 
 
 class SlashCommandApiTests(unittest.TestCase):
+    def test_inventory_loads_command_tags_once(self) -> None:
+        with AppTestHarness() as harness:
+            for name in ("first", "second"):
+                harness.post_json("/api/slash-commands", {
+                    "name": name, "description": name, "prompt": name, "targets": []
+                })
+                harness.put_json(f"/api/slash-commands/{name}/tags", {"tags": [name]})
+            store = harness.container.asset_tag_store
+            with patch.object(store, "load", wraps=store.load) as load:
+                data = harness.container.slash_command_read_models.list_commands()
+            self.assertEqual(load.call_count, 1)
+            self.assertEqual({row["name"]: row["tags"] for row in data["commands"]}, {
+                "first": ["first"], "second": ["second"]
+            })
+
     def test_list_starts_empty_with_detected_targets(self) -> None:
         with AppTestHarness() as harness:
             payload = harness.get_json("/api/slash-commands")

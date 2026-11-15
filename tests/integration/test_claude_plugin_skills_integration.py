@@ -22,6 +22,26 @@ def _dir_hash(path: Path) -> str:
 
 
 class ClaudePluginSkillsIntegrationTests(TestCase):
+    def test_deleting_local_copy_preserves_surviving_plugin_tags(self) -> None:
+        def fixture(spec: FakeHomeSpec) -> None:
+            plugin = spec.claude_plugins_cache / "market" / "agtx" / "0.1.0"
+            seed_skill_package(plugin / "skills", "brainstorm", "brainstorm", description="Explore ideas")
+            seed_skill_package(spec.claude_root, "brainstorm", "brainstorm", description="Explore ideas")
+            spec.claude_plugins_registry.parent.mkdir(parents=True, exist_ok=True)
+            spec.claude_plugins_registry.write_text(json.dumps({"version": 2, "plugins": {
+                "agtx@market": [{"installPath": str(plugin), "version": "0.1.0"}]
+            }}), encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=fixture) as harness:
+            queries = harness.container.skills_queries
+            entry = next(e for e in queries.inventory().entries if e.name == "brainstorm")
+            self.assertTrue(any(s.scope == "plugin" for s in entry.sightings))
+            self.assertTrue(any(s.scope != "plugin" for s in entry.sightings))
+            harness.container.skills_mutations.set_skill_tags(entry.skill_ref, ["keep-me"])
+            harness.container.skills_mutations.delete_skill(entry.skill_ref)
+            self.assertIsNotNone(queries.inventory().find(entry.skill_ref))
+            self.assertEqual(harness.container.asset_tags.get_tags("skills", entry.skill_ref), ["keep-me"])
+
     def test_unmanaged_plugin_skill_discovery_and_adoption(self) -> None:
         def fixture(spec: FakeHomeSpec) -> None:
             plugin_dir = spec.home / ".claude" / "plugins" / "cache" / "market" / "agtx" / "0.1.0"
@@ -103,7 +123,7 @@ class ClaudePluginSkillsIntegrationTests(TestCase):
             self.assertIn("canonical", scopes)
             self.assertIn("plugin", scopes)
 
-            mutations.set_tags(m_entry.skill_ref, ["managed-only"])
+            mutations.set_skill_tags(m_entry.skill_ref, ["managed-only"])
             self.assertIn("managed-only", harness.get_json("/api/asset-tags/")["tags"])
             # 5. Delete managed skill: removes binding and store copy, never touches plugin cache
             with patch.object(harness.container.asset_tag_store, "set_tags", side_effect=OSError("read only")):

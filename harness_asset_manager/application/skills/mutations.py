@@ -438,9 +438,9 @@ class SkillsMutationService:
                 adapter.prepare_remove_local_copy(path)
             for adapter, path in targets:
                 adapter.remove_local_copy(path)
-            if self.asset_tags is not None:
-                self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
             self.read_models.invalidate()
+            if self.asset_tags is not None and self.queries._inventory_snapshot().find(entry.skill_ref) is None:
+                self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
             return {"ok": True}
 
         if entry.package_dir is None:

@@ -436,6 +436,12 @@ export default function PermissionsPage() {
                       onClear={clearHarnessFilter}
                     />
                   ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
                   <SelectionMenu
                   value={statusFilter}
                   options={(Object.keys(STATUS_LABELS) as PermissionsStatusFilter[]).map((value) => ({
@@ -449,12 +455,6 @@ export default function PermissionsPage() {
                   />
                 </>
               }
-            />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
             />
           </>
         ) : null}

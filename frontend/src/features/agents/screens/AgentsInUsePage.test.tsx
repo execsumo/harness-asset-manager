@@ -105,6 +105,19 @@ describe("AgentsInUsePage", () => {
     fetchMock.mockReset();
   });
 
+  it("shows shared tags with zero counts for an empty inventory", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/api/asset-tags")) return okJson({ tags: ["research"] });
+      if (url.includes("/api/agents")) return okJson({ ...agentsInUseFixture(), entries: [] });
+      return okJson({});
+    });
+    renderPage();
+    const tag = await screen.findByRole("button", { name: /research\s*0/i });
+    fireEvent.click(tag);
+    expect(tag).toHaveAttribute("aria-pressed", "true");
+  });
+
   it("renders MatrixTable with agent rows", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();

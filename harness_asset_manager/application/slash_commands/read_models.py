@@ -41,13 +41,14 @@ class SlashCommandReadModelService:
         targets = tuple(target for target in all_targets if target.installed)
         commands = self.store.list_commands()
         state = self.sync_state.load()
+        tags_by_ref = self.asset_tags.get_tags_for_family("slash_commands") if self.asset_tags is not None else {}
         return {
             "storePath": str(self.store.paths.commands_dir),
             "syncStatePath": str(self.sync_state.path),
             "targets": [target.to_dict() for target in targets],
             "defaultTargets": [target.id for target in targets if target.default_selected],
-            "commands": [self._command_payload(command, state.get(command.name, {}), targets) for command in commands],
-            "reviewCommands": self.review_commands(commands=commands, state=state, targets=targets),
+            "commands": [self._command_payload(command, state.get(command.name, {}), targets, tags_by_ref) for command in commands],
+            "reviewCommands": self.review_commands(commands=commands, state=state, targets=targets, tags_by_ref=tags_by_ref),
         }
 
     def get_command(self, name: str) -> dict[str, object] | None:
@@ -57,7 +58,8 @@ class SlashCommandReadModelService:
         if command is None:
             return None
         state = self.sync_state.load()
-        return self._command_payload(command, state.get(command.name, {}), targets)
+        tags_by_ref = self.asset_tags.get_tags_for_family("slash_commands") if self.asset_tags is not None else {}
+        return self._command_payload(command, state.get(command.name, {}), targets, tags_by_ref)
 
     def review_commands(
         self,
@@ -65,15 +67,18 @@ class SlashCommandReadModelService:
         commands: tuple[SlashCommand, ...] | None = None,
         state: dict[str, dict[str, SlashCommandSyncRecord]] | None = None,
         targets: tuple[SlashTarget, ...] | None = None,
+        tags_by_ref: dict[str, list[str]] | None = None,
     ) -> list[dict[str, object]]:
         all_targets = self.resolve_targets()
         resolved_targets = targets if targets is not None else tuple(t for t in all_targets if t.installed)
         managed_commands = commands if commands is not None else self.store.list_commands()
         command_names = {command.name for command in managed_commands}
         sync_state = state if state is not None else self.sync_state.load()
+        if tags_by_ref is None:
+            tags_by_ref = self.asset_tags.get_tags_for_family("slash_commands") if self.asset_tags is not None else {}
         rows: list[SlashCommandReviewRow] = []
-        rows.extend(self._tracked_review_rows(command_names, sync_state, resolved_targets))
-        rows.extend(self._unmanaged_review_rows(command_names, sync_state, resolved_targets))
+        rows.extend(self._tracked_review_rows(command_names, sync_state, resolved_targets, tags_by_ref))
+        rows.extend(self._unmanaged_review_rows(command_names, sync_state, resolved_targets, tags_by_ref))
         return [row.to_dict() for row in rows]
 
     def _command_payload(
@@ -81,6 +86,7 @@ class SlashCommandReadModelService:
         command: SlashCommand,
         records: dict[str, SlashCommandSyncRecord],
         targets: tuple[SlashTarget, ...],
+        tags_by_ref: dict[str, list[str]],
     ) -> dict[str, object]:
         metadata: list[dict[str, str]] = []
         for line in command.frontmatter:
@@ -93,7 +99,7 @@ class SlashCommandReadModelService:
                 continue
             metadata.append({"key": key, "value": _parse_scalar(raw_v.strip())})
 
-        tags = self.asset_tags.get_tags("slash_commands", command.name) if self.asset_tags is not None else []
+        tags = tags_by_ref.get(command.name, [])
         return {
             "name": command.name,
             "description": command.description,
@@ -155,6 +161,7 @@ class SlashCommandReadModelService:
         command_names: set[str],
         state: dict[str, dict[str, SlashCommandSyncRecord]],
         targets: tuple[SlashTarget, ...],
+        tags_by_ref: dict[str, list[str]],
     ) -> list[SlashCommandReviewRow]:
         rows: list[SlashCommandReviewRow] = []
         for command_name, records in state.items():
@@ -176,7 +183,7 @@ class SlashCommandReadModelService:
                             command_exists=command_name in command_names,
                             actions=("remove_binding",),
                             error=str(error),
-                            tags=tuple(self.asset_tags.get_tags("slash_commands", f"drifted:{target.id}:{command_name}")) if self.asset_tags is not None else (),
+                            tags=tuple(tags_by_ref.get(f"drifted:{target.id}:{command_name}", [])),
                         )
                     )
                     continue
@@ -192,7 +199,7 @@ class SlashCommandReadModelService:
                             command_exists=command_name in command_names,
                             actions=("restore_managed", "remove_binding"),
                             error="Managed slash command file is missing",
-                            tags=tuple(self.asset_tags.get_tags("slash_commands", f"missing:{target.id}:{command_name}")) if self.asset_tags is not None else (),
+                            tags=tuple(tags_by_ref.get(f"missing:{target.id}:{command_name}", [])),
                         )
                     )
                     continue
@@ -206,6 +213,7 @@ class SlashCommandReadModelService:
                             command_exists=command_name in command_names,
                             actions=("restore_managed", "adopt_target", "remove_binding"),
                             error="Managed slash command file changed outside Harness Asset Manager",
+                            tags_by_ref=tags_by_ref,
                         )
                     )
         return rows
@@ -215,6 +223,7 @@ class SlashCommandReadModelService:
         command_names: set[str],
         state: dict[str, dict[str, SlashCommandSyncRecord]],
         targets: tuple[SlashTarget, ...],
+        tags_by_ref: dict[str, list[str]],
     ) -> list[SlashCommandReviewRow]:
         known_paths = {
             self.path_policy.path_identity(record.path)
@@ -240,6 +249,7 @@ class SlashCommandReadModelService:
                         command_exists=command_exists,
                         actions=actions,
                         error=None,
+                        tags_by_ref=tags_by_ref,
                     )
                 )
         return rows
@@ -254,9 +264,10 @@ class SlashCommandReadModelService:
         command_exists: bool,
         actions: tuple[str, ...],
         error: str | None,
+        tags_by_ref: dict[str, list[str]],
     ) -> SlashCommandReviewRow:
         review_ref = f"{kind}:{target.id}:{name}"
-        tags = tuple(self.asset_tags.get_tags("slash_commands", review_ref)) if self.asset_tags is not None else ()
+        tags = tuple(tags_by_ref.get(review_ref, []))
         try:
             parsed = parse_slash_command_document(
                 name,

@@ -426,6 +426,12 @@ export default function AgentsInUsePage() {
                       onClear={clearHarnessFilter}
                     />
                   ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
                   <SelectionMenu
                     value={statusFilter}
                     options={STATUS_VALUES.map((value) => ({
@@ -439,12 +445,6 @@ export default function AgentsInUsePage() {
                   />
                 </>
               }
-            />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
             />
           </>
         ) : null}
