@@ -1,11 +1,32 @@
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.application import BackendContainer
+from harness_asset_manager.application.asset_tags import normalize_and_dedupe_tags, sort_tags
 
 router = APIRouter(prefix="/api/asset-tags", tags=["asset-tags"])
 
 
 @router.get("/")
 def list_asset_tags(container: BackendContainer = Depends(get_container)) -> dict[str, list[str]]:
-    return {"tags": container.asset_tags.list_tags()}
+    skills = container.skills_queries._inventory_snapshot().entries
+    agents = container.agents_inventory.build().entries
+    commands = container.slash_command_read_models.list_commands()
+    mcp = container.mcp_queries.list_servers()["entries"]
+    hooks = container.hooks_queries.list_hooks()["entries"]
+    permissions = container.permissions_queries.list_permissions()["entries"]
+    configs = container.configs_queries.list_configs().values()
+    rows = [
+        *cast(list[dict[str, Any]], commands["commands"]),
+        *cast(list[dict[str, Any]], commands["reviewCommands"]),
+        *cast(list[dict[str, Any]], mcp),
+        *cast(list[dict[str, Any]], hooks),
+        *cast(list[dict[str, Any]], permissions),
+        *configs,
+    ]
+    tags = [tag for row in rows for tag in row.get("tags", [])]
+    tags.extend(tag for agent in agents for tag in agent.tags)
+    tags.extend(tag for skill in skills for tag in container.asset_tags.get_tags("skills", skill.skill_ref))
+    return {"tags": sort_tags(normalize_and_dedupe_tags(tags))}

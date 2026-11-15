@@ -109,7 +109,7 @@ class HooksMutationService:
         def remove() -> None:
             self.store.remove(id)
             if self.asset_tags is not None:
-                self.asset_tags.delete_tags_for_ref("hooks", id)
+                self.asset_tags.try_delete_tags_for_ref("hooks", id)
 
         return self.harness_application.disable_many(
             id,

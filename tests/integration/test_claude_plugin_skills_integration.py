@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
@@ -105,9 +106,10 @@ class ClaudePluginSkillsIntegrationTests(TestCase):
             mutations.set_tags(m_entry.skill_ref, ["managed-only"])
             self.assertIn("managed-only", harness.container.asset_tags.list_tags())
             # 5. Delete managed skill: removes binding and store copy, never touches plugin cache
-            del_result = mutations.delete_skill(m_entry.skill_ref)
+            with patch.object(harness.container.asset_tag_store, "set_tags", side_effect=OSError("read only")):
+                del_result = mutations.delete_skill(m_entry.skill_ref)
             self.assertTrue(del_result.get("ok"))
-            self.assertNotIn("managed-only", harness.container.asset_tags.list_tags())
+            self.assertNotIn("managed-only", harness.get_json("/api/asset-tags/")["tags"])
             self.assertFalse(store_dir.exists())
             self.assertFalse(claude_binding.exists())
 

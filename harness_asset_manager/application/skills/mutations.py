@@ -439,7 +439,7 @@ class SkillsMutationService:
             for adapter, path in targets:
                 adapter.remove_local_copy(path)
             if self.asset_tags is not None:
-                self.asset_tags.delete_tags_for_ref("skills", entry.skill_ref)
+                self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
             self.read_models.invalidate()
             return {"ok": True}
 
@@ -466,7 +466,7 @@ class SkillsMutationService:
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
         if self.asset_tags is not None:
-            self.asset_tags.delete_tags_for_ref("skills", entry.skill_ref)
+            self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
         self.read_models.invalidate()
         return {"ok": True}
 
