@@ -18,6 +18,14 @@ from harness_asset_manager.errors import MutationError
 
 
 class AssetTagStoreTests(unittest.TestCase):
+    def test_shared_vocabulary_collects_tags_across_families(self) -> None:
+        with TemporaryDirectory() as tmp:
+            service = AssetTagService(AssetTagStore(Path(tmp) / "tags.json"))
+            service.set_tags("skills", "shared:one", ["Research", "starred"])
+            service.set_tags("agents", "one", ["research", "ops"])
+            self.assertEqual(service.list_tags(), ["starred", "ops", "research"])
+            self.assertEqual(service.get_tags("hooks", "one"), [])
+
     def test_total_read_on_missing_file(self) -> None:
         with TemporaryDirectory() as tmp:
             store = AssetTagStore(Path(tmp) / "asset-tags.json")

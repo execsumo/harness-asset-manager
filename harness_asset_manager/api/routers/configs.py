@@ -43,5 +43,5 @@ def set_config_tags(
     req: SetTagsRequest,
     container: BackendContainer = Depends(get_container),
 ) -> dict:
-    container.asset_tag_service.set_tags("configs", harness, req.tags)
-    return {"tags": container.asset_tag_service.get_tags("configs", harness)}
+    container.asset_tags.set_tags("configs", harness, req.tags)
+    return {"tags": container.asset_tags.get_tags("configs", harness)}

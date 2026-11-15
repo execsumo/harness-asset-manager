@@ -1,3 +1,4 @@
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import "../agents.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
@@ -106,7 +107,8 @@ export default function AgentsInUsePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(() => extractAgentTagCounts(inventory?.entries), [inventory?.entries]);
+  const localTagCounts = useMemo(() => extractAgentTagCounts(inventory?.entries), [inventory?.entries]);
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const skillsQuery = useSkillsListQuery();

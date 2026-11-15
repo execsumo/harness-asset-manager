@@ -1,3 +1,4 @@
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -67,10 +68,11 @@ export default function SlashCommandsPage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(
+  const localTagCounts = useMemo(
     () => extractSlashCommandTagCounts(controller.data?.commands),
     [controller.data?.commands],
   );
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(

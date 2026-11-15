@@ -1,3 +1,4 @@
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -125,10 +126,11 @@ export default function McpInUsePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(
+  const localTagCounts = useMemo(
     () => extractMcpTagCounts(inventory),
     [inventory],
   );
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(

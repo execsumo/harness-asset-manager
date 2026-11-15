@@ -1,3 +1,4 @@
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useMemo, useState } from "react";
 import { SlidersHorizontal, Upload } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -110,7 +111,8 @@ export default function ConfigsPage() {
     [configsQuery.data, settingsQuery.data],
   );
   const summary = useMemo(() => summarizeConfigs(rows), [rows]);
-  const tagCounts = useMemo(() => extractAssetTagCounts(rows), [rows]);
+  const localTagCounts = useMemo(() => extractAssetTagCounts(rows), [rows]);
+  const tagCounts = useSharedTagCounts(localTagCounts);
   const visibleRows = useMemo(
     () => filterConfigsRows(rows, { search, status, tags: selectedTags }),
     [rows, search, status, selectedTags],

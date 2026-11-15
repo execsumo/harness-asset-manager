@@ -1,3 +1,4 @@
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -145,7 +146,8 @@ export default function SkillsWorkspacePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(() => extractSkillTagCounts(data), [data]);
+  const localTagCounts = useMemo(() => extractSkillTagCounts(data), [data]);
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
