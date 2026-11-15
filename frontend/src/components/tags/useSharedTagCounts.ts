@@ -15,6 +15,12 @@ export function mergeSharedTagCounts(counts: AssetTagCount[], vocabulary: string
   );
 }
 
+/** Accept only a list of tag strings; anything else is treated as an empty vocabulary. */
+function vocabularyFrom(result: { tags?: unknown } | null | undefined): string[] {
+  const tags = result?.tags;
+  return Array.isArray(tags) ? tags.filter((tag): tag is string => typeof tag === "string") : [];
+}
+
 export function useSharedTagCounts(counts: AssetTagCount[]): AssetTagCount[] {
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   useEffect(() => {
@@ -24,8 +30,8 @@ export function useSharedTagCounts(counts: AssetTagCount[]): AssetTagCount[] {
     const refresh = () => {
       clearTimeout(retry);
       const current = ++request;
-      fetchJson<{ tags: string[] }>("/asset-tags/")
-        .then((result) => { if (active && current === request) setVocabulary(result.tags); })
+      fetchJson<{ tags?: unknown }>("/asset-tags/")
+        .then((result) => { if (active && current === request) setVocabulary(vocabularyFrom(result)); })
         .catch(() => {
           if (active && current === request) retry = setTimeout(refresh, 5000);
         });

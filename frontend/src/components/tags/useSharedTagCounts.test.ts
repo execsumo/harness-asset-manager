@@ -22,6 +22,20 @@ describe("useSharedTagCounts", () => {
     vi.useRealTimers();
   });
 
+  it("treats a malformed vocabulary response as empty instead of crashing", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(okJson({}))
+      .mockResolvedValueOnce(okJson({ tags: ["Valid", 7, null] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const counts = [{ tag: "Local", count: 1, isStarred: false }];
+    const { result, unmount } = renderHook(() => useSharedTagCounts(counts));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(result.current).toEqual(counts);
+    act(() => window.dispatchEvent(new Event("focus")));
+    await waitFor(() => expect(result.current.map((item) => item.tag)).toEqual(["Local", "Valid"]));
+    unmount();
+  });
+
   it("refreshes shared tags on focus without changing local counts", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(okJson({ tags: ["Initial"] }))
