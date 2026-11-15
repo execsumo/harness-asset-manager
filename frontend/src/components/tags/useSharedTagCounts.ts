@@ -20,16 +20,21 @@ export function useSharedTagCounts(counts: AssetTagCount[]): AssetTagCount[] {
   useEffect(() => {
     let active = true;
     let request = 0;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     const refresh = () => {
+      clearTimeout(retry);
       const current = ++request;
       fetchJson<{ tags: string[] }>("/asset-tags/")
         .then((result) => { if (active && current === request) setVocabulary(result.tags); })
-        .catch(() => {});
+        .catch(() => {
+          if (active && current === request) retry = setTimeout(refresh, 5000);
+        });
     };
     refresh();
     window.addEventListener("focus", refresh);
     return () => {
       active = false;
+      clearTimeout(retry);
       window.removeEventListener("focus", refresh);
     };
   }, [counts]);

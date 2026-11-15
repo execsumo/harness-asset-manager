@@ -7,6 +7,21 @@ import { extractAssetTagCounts, matchesAssetTags } from "./tag-counts";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("useSharedTagCounts", () => {
+  it("retries a failed vocabulary request without requiring focus", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(okJson({ tags: ["Recovered"] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const counts: Array<{ tag: string; count: number; isStarred: boolean }> = [];
+    const { result, unmount } = renderHook(() => useSharedTagCounts(counts));
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(result.current).toContainEqual({ tag: "Recovered", count: 0, isStarred: false });
+    unmount();
+    vi.useRealTimers();
+  });
+
   it("refreshes shared tags on focus without changing local counts", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(okJson({ tags: ["Initial"] }))

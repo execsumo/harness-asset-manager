@@ -102,9 +102,12 @@ class ClaudePluginSkillsIntegrationTests(TestCase):
             self.assertIn("canonical", scopes)
             self.assertIn("plugin", scopes)
 
+            mutations.set_tags(m_entry.skill_ref, ["managed-only"])
+            self.assertIn("managed-only", harness.container.asset_tags.list_tags())
             # 5. Delete managed skill: removes binding and store copy, never touches plugin cache
             del_result = mutations.delete_skill(m_entry.skill_ref)
             self.assertTrue(del_result.get("ok"))
+            self.assertNotIn("managed-only", harness.container.asset_tags.list_tags())
             self.assertFalse(store_dir.exists())
             self.assertFalse(claude_binding.exists())
 

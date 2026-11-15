@@ -54,7 +54,7 @@ export function DetailTags({
       setError("Tag cannot be empty");
       return;
     }
-    if (trimmed.length > 64) {
+    if (Array.from(trimmed).length > 64) {
       setError("Tag must be 64 characters or fewer");
       return;
     }
@@ -161,7 +161,6 @@ export function DetailTags({
               placeholder="Tag name..."
               aria-label="Tag name"
               disabled={disabled}
-              maxLength={64}
             />
             <button
               type="button"

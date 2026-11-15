@@ -106,10 +106,15 @@ class HooksMutationService:
         if self.store.get_managed(id) is None:
             raise MutationError(f"unknown hook: {id}", status=404)
         bound_harnesses = self._harnesses_in_states(id, {"managed", "drifted"})
+        def remove() -> None:
+            self.store.remove(id)
+            if self.asset_tags is not None:
+                self.asset_tags.delete_tags_for_ref("hooks", id)
+
         return self.harness_application.disable_many(
             id,
             bound_harnesses,
-            remove_after_full_success=lambda: self.store.remove(id),
+            remove_after_full_success=remove,
         ).to_dict()
 
     def unmanage_hook(self, id: str) -> dict[str, object]:

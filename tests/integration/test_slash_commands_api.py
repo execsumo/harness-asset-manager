@@ -90,9 +90,12 @@ class SlashCommandApiTests(unittest.TestCase):
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(set(state["commands"]["code-review"]), {"claude"})
 
+            harness.put_json("/api/slash-commands/code-review/tags", {"tags": ["command-only"]})
+            self.assertIn("command-only", harness.get_json("/api/asset-tags/")["tags"])
             deleted = harness.delete_json("/api/slash-commands/code-review")
 
             self.assertTrue(deleted["ok"])
+            self.assertNotIn("command-only", harness.get_json("/api/asset-tags/")["tags"])
             self.assertFalse(claude_path.exists())
             self.assertFalse(
                 (harness.spec.xdg_data_home / APP_NAME / "slash-commands" / "commands" / "code-review.toml").exists()

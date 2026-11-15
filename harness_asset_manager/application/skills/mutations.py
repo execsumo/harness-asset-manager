@@ -438,6 +438,8 @@ class SkillsMutationService:
                 adapter.prepare_remove_local_copy(path)
             for adapter, path in targets:
                 adapter.remove_local_copy(path)
+            if self.asset_tags is not None:
+                self.asset_tags.delete_tags_for_ref("skills", entry.skill_ref)
             self.read_models.invalidate()
             return {"ok": True}
 
@@ -463,6 +465,8 @@ class SkillsMutationService:
             self.read_models.store.delete(entry.package_dir)
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
+        if self.asset_tags is not None:
+            self.asset_tags.delete_tags_for_ref("skills", entry.skill_ref)
         self.read_models.invalidate()
         return {"ok": True}
 
