@@ -63,8 +63,11 @@ class SlashCommandReadModelService:
                 commands.append(self.store._read_command_path(path))
             except (MutationError, OSError, UnicodeError):
                 continue
-        rows = self.review_commands(commands=tuple(commands), tags_by_ref=tags_by_ref)
-        tags.extend(tag for row in rows for tag in cast(list[str], row.get("tags", [])))
+        try:
+            rows = self.review_commands(commands=tuple(commands), tags_by_ref=tags_by_ref)
+            tags.extend(tag for row in rows for tag in cast(list[str], row.get("tags", [])))
+        except (MutationError, OSError, UnicodeError):
+            pass
         return tags
 
     def get_command(self, name: str) -> dict[str, object] | None:
