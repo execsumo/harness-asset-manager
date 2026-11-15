@@ -1,3 +1,4 @@
+import { tagIdentity } from "../components/tags/tag-identity";
 import { useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Star, Tag as TagIcon, X } from "lucide-react";
@@ -168,7 +169,7 @@ export function BulkTagPopover({
               onClick={() => inputRef.current?.focus()}
             >
               {stagedTags.map((tag, idx) => {
-                const isStarred = tag.toLowerCase() === "starred";
+                const isStarred = tagIdentity(tag) === "starred";
                 return (
                   <span
                     key={tag}
@@ -223,7 +224,7 @@ export function BulkTagPopover({
                       inputRef.current?.focus();
                     }}
                   >
-                    {suggestion.toLowerCase() === "starred" ? (
+                    {tagIdentity(suggestion) === "starred" ? (
                       <Star size={11} className="skill-detail-tag__star" />
                     ) : null}
                     <span>{suggestion}</span>

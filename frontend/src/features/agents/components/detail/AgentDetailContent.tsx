@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import "../../agents.css";
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { Loader2, Star } from "lucide-react";
@@ -146,12 +147,12 @@ export function AgentDetailContent({
     setLocalActionError(null);
   };
 
-  const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (detail.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     const nextTags = isStarred
-      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (detail.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     try {
       await setTagsMutation.mutateAsync({
         ref: detail.ref,

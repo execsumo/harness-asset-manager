@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, Star, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
@@ -93,13 +94,13 @@ export function PermissionDetailSheet({
   const spec = detail?.spec ?? null;
   const displayName = detail?.displayName ?? id;
   const errorMessage = detailQuery.error instanceof Error ? detailQuery.error.message : "";
-  const isStarred = (detail?.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (detail?.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     if (!detail) return;
     const nextTags = isStarred
-      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (detail.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     await setTagsMutation.mutateAsync({
       id: detail.id,
       tags: nextTags,

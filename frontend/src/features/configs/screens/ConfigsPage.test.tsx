@@ -98,6 +98,28 @@ describe("ConfigsPage", () => {
     await waitFor(() => expect(tags).toEqual(["starred"]));
   });
 
+  it("toggles a case-folded starred tag off", async () => {
+    let tags = ["ſtarred", "Research"];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/configs/cursor/tags" && init?.method === "PUT") {
+        tags = JSON.parse(String(init.body)).tags;
+        return okJson({ tags });
+      }
+      if (url === "/api/configs/") return okJson({ ...CONFIGS, cursor: { ...CONFIGS.cursor, tags } });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+    renderWithAppProviders(<ConfigsPage />);
+    const row = (await screen.findByText("Cursor")).closest("tr")!;
+    const button = within(row).getByRole("button", { name: /unstar/i });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(button);
+    await waitFor(() => expect(tags).toEqual(["Research"]));
+    await waitFor(() => expect(within(row).getByRole("button", { name: /^star$/i }).getAttribute("aria-pressed")).toBe("false"));
+  });
+
   it("reports tag removal failures and permits retry", async () => {
     let attempts = 0;
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {

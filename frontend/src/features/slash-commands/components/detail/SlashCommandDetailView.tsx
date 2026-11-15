@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Loader2, Star, Trash2 } from "lucide-react";
 
@@ -82,12 +83,12 @@ export function SlashCommandDetailView({
     }
   };
 
-  const isStarred = (command.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (command.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     const nextTags = isStarred
-      ? (command.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(command.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (command.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(command.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     try {
       await setTagsMutation.mutateAsync({
         name: command.name,

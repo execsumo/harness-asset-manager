@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Loader2, Star } from "lucide-react";
 
@@ -198,8 +199,8 @@ function AgentsMatrixRow({
 }) {
   const isUntracked = entry.kind === "unmanaged";
   const enabledCount = entry.bindings.filter((binding) => binding.state === "enabled").length;
-  const isStarred = (entry.tags || []).some((t) => t.toLowerCase() === "starred");
-  const displayTags = (entry.tags || []).filter((t) => t.toLowerCase() !== "starred");
+  const isStarred = (entry.tags || []).some((t) => tagIdentity(t) === "starred");
+  const displayTags = (entry.tags || []).filter((t) => tagIdentity(t) !== "starred");
 
   return (
     <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>

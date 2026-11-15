@@ -99,7 +99,7 @@ export function DetailTags({
     <div className="skill-detail-tags" ref={containerRef}>
       <div className="skill-detail-tags__list">
         {tags.map((tag) => {
-          const isStarred = tag.toLowerCase() === "starred";
+          const isStarred = tagIdentity(tag) === "starred";
           return (
             <span
               key={tag}
@@ -199,7 +199,7 @@ export function DetailTags({
                       void handleAdd(suggestion);
                     }}
                   >
-                    {suggestion.toLowerCase() === "starred" ? (
+                    {tagIdentity(suggestion) === "starred" ? (
                       <Star size={11} className="skill-detail-tag__star" />
                     ) : null}
                     <span>{suggestion}</span>

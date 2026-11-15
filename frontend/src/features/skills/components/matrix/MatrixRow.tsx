@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { Bot, Star } from "lucide-react";
 
 import { CardSelectCheckbox } from "../../../../components/cards/CardSelectCheckbox";
@@ -65,8 +66,8 @@ export function MatrixRow({
   const totalCount = harnessColumns.length;
   const isUntracked = skillStatusConcept(row.displayStatus) === "needsReview";
   const pendingStructuralAction = pendingStructuralActions?.get(row.skillRef) ?? null;
-  const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
-  const displayTags = (row.tags || []).filter((t) => t.toLowerCase() !== "starred");
+  const isStarred = (row.tags || []).some((t) => tagIdentity(t) === "starred");
+  const displayTags = (row.tags || []).filter((t) => tagIdentity(t) !== "starred");
   const hermesBots = hermesBotScopes(row.linkedTargets).map(hermesBotLabel);
 
   return (

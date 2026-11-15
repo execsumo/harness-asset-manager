@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { Star } from "lucide-react";
 
 import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
@@ -39,7 +40,7 @@ export function ConfigsTable({ rows, selectedHarness, onSelect }: ConfigsTablePr
     tagsMutation.mutate({
       harness: row.harness,
       tags: starred
-        ? row.tags.filter((tag) => tag.toLowerCase() !== "starred")
+        ? row.tags.filter((tag) => tagIdentity(tag) !== "starred")
         : ["starred", ...row.tags],
     });
   };

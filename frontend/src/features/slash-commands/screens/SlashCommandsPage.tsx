@@ -70,8 +70,8 @@ export default function SlashCommandsPage() {
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
   const localTagCounts = useMemo(
-    () => extractSlashCommandTagCounts(controller.data?.commands),
-    [controller.data?.commands],
+    () => extractSlashCommandTagCounts(controller.data),
+    [controller.data],
   );
   const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
