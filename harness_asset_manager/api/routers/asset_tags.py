@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/asset-tags", tags=["asset-tags"])
 @router.get("/")
 def list_asset_tags(container: BackendContainer = Depends(get_container)) -> dict[str, list[str]]:
     skills = container.skills_queries._inventory_snapshot().entries
-    agents = container.agents_inventory.build().entries
+    agents = container.agents_inventory.snapshot().entries
     commands = container.slash_command_read_models.list_commands()
     mcp = container.mcp_queries._list_snapshot()["entries"]
     hooks = container.hooks_queries._list_snapshot()["entries"]
