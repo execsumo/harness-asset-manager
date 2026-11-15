@@ -18,10 +18,19 @@ export function useSharedTagCounts(counts: AssetTagCount[]): AssetTagCount[] {
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   useEffect(() => {
     let active = true;
-    fetchJson<{ tags: string[] }>("/asset-tags/")
-      .then((result) => { if (active) setVocabulary(result.tags); })
-      .catch(() => { if (active) setVocabulary([]); });
-    return () => { active = false; };
+    let request = 0;
+    const refresh = () => {
+      const current = ++request;
+      fetchJson<{ tags: string[] }>("/asset-tags/")
+        .then((result) => { if (active && current === request) setVocabulary(result.tags); })
+        .catch(() => {});
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+    };
   }, [counts]);
   return useMemo(() => mergeSharedTagCounts(counts, vocabulary), [counts, vocabulary]);
 }

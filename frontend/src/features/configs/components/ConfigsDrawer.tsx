@@ -5,6 +5,7 @@ import { Download, Power, PowerOff, Upload } from "lucide-react";
 import { DetailHeader } from "../../../components/detail/DetailHeader";
 import { DetailNote } from "../../../components/detail/DetailNote";
 import { DetailSection } from "../../../components/detail/DetailSection";
+import { DetailTags } from "../../../components/detail/DetailTags";
 import { HarnessAvatar } from "../../../components/harness/HarnessAvatar";
 import { useFormatPath } from "../../../lib/paths";
 import {
@@ -13,6 +14,7 @@ import {
   useDisableConfigMutation,
   useEnableConfigMutation,
   useRestoreConfigMutation,
+  useSetConfigTagsMutation,
 } from "../api/queries";
 import { useConfigsCopy } from "../i18n";
 import type { ConfigRowData, ConfigStatus } from "../model/selectors";
@@ -31,9 +33,11 @@ const CAPTURED_AT_FORMAT = new Intl.DateTimeFormat(undefined, {
 
 export function ConfigsDrawer({
   row,
+  knownTags,
   onClose,
 }: {
   row: ConfigRowData | null;
+  knownTags: string[];
   onClose: () => void;
 }) {
   return (
@@ -41,14 +45,14 @@ export function ConfigsDrawer({
       <Dialog.Portal>
         <Dialog.Overlay className="detail-sheet__overlay" />
         <Dialog.Content className="detail-sheet" aria-describedby={undefined}>
-          {row ? <ConfigsDrawerBody row={row} onClose={onClose} /> : null}
+          {row ? <ConfigsDrawerBody row={row} knownTags={knownTags} onClose={onClose} /> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
-function ConfigsDrawerBody({ row, onClose }: { row: ConfigRowData; onClose: () => void }) {
+function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; knownTags: string[]; onClose: () => void }) {
   const copy = useConfigsCopy();
   const formatPath = useFormatPath();
   const diff = useConfigDiffMutation();
@@ -56,6 +60,7 @@ function ConfigsDrawerBody({ row, onClose }: { row: ConfigRowData; onClose: () =
   const disable = useDisableConfigMutation();
   const restore = useRestoreConfigMutation();
   const capture = useCaptureConfigsMutation();
+  const tagsMutation = useSetConfigTagsMutation();
 
   const { harness, managed } = row;
   const { mutate: runDiff } = diff;
@@ -124,6 +129,16 @@ function ConfigsDrawerBody({ row, onClose }: { row: ConfigRowData; onClose: () =
       />
 
       <div className="detail-sheet__body">
+        <DetailSection heading="Tags">
+          <DetailTags
+            tags={row.tags}
+            knownTags={knownTags}
+            canEdit
+            disabled={tagsMutation.isPending}
+            onAddTag={async (tag) => { await tagsMutation.mutateAsync({ harness: row.harness, tags: [...row.tags, tag] }); }}
+            onRemoveTag={async (tag) => { await tagsMutation.mutateAsync({ harness: row.harness, tags: row.tags.filter((item) => item.toLowerCase() !== tag.toLowerCase()) }); }}
+          />
+        </DetailSection>
         <DetailSection heading={copy.detail.sourceHeading}>
           <code className="configs-detail__path">{formatPath(row.sourceFile)}</code>
         </DetailSection>

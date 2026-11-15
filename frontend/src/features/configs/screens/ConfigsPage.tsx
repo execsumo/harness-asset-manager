@@ -194,7 +194,11 @@ export default function ConfigsPage() {
         />
       )}
 
-      <ConfigsDrawer row={selectedRow} onClose={() => setSelectedHarness(null)} />
+      <ConfigsDrawer
+        row={selectedRow}
+        knownTags={tagCounts.map((item) => item.tag)}
+        onClose={() => setSelectedHarness(null)}
+      />
     </>
   );
 }
