@@ -9,6 +9,22 @@ from tests.support.app_harness import AppTestHarness
 
 
 class SlashCommandApiTests(unittest.TestCase):
+    def test_shared_tags_survive_invalid_command(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/agents", {"name": "Tagged Agent", "description": "d", "prompt": "p"})
+            harness.container.asset_tags.set_tags("agents", "tagged-agent", ["agent-tag"])
+            for name in ("broken", "healthy"):
+                harness.post_json("/api/slash-commands", {
+                    "name": name, "description": name, "prompt": name, "targets": []
+                })
+                harness.put_json(f"/api/slash-commands/{name}/tags", {"tags": [f"{name}-tag"]})
+            harness.container.asset_tags.set_tags("slash_commands", "orphan", ["orphan-tag"])
+            harness.container.slash_command_store.command_path("broken").write_text("invalid = [", encoding="utf-8")
+            tags = harness.get_json("/api/asset-tags/")["tags"]
+            self.assertTrue({"agent-tag", "broken-tag", "healthy-tag"}.issubset(tags))
+            self.assertNotIn("orphan-tag", tags)
+            harness.get_json("/api/slash-commands", expected_status=400)
+
     def test_inventory_loads_command_tags_once(self) -> None:
         with AppTestHarness() as harness:
             for name in ("first", "second"):

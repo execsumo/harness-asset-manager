@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from harness_asset_manager.errors import MutationError
 
@@ -50,6 +50,22 @@ class SlashCommandReadModelService:
             "commands": [self._command_payload(command, state.get(command.name, {}), targets, tags_by_ref) for command in commands],
             "reviewCommands": self.review_commands(commands=commands, state=state, targets=targets, tags_by_ref=tags_by_ref),
         }
+
+    def vocabulary_tags(self) -> list[str]:
+        tags_by_ref = self.asset_tags.get_tags_for_family("slash_commands") if self.asset_tags is not None else {}
+        commands: list[SlashCommand] = []
+        tags: list[str] = []
+        for path in sorted(self.store.paths.commands_dir.glob("*.toml")):
+            if not path.is_file():
+                continue
+            tags.extend(tags_by_ref.get(path.stem, []))
+            try:
+                commands.append(self.store._read_command_path(path))
+            except (MutationError, OSError, UnicodeError):
+                continue
+        rows = self.review_commands(commands=tuple(commands), tags_by_ref=tags_by_ref)
+        tags.extend(tag for row in rows for tag in cast(list[str], row.get("tags", [])))
+        return tags
 
     def get_command(self, name: str) -> dict[str, object] | None:
         all_targets = self.resolve_targets()

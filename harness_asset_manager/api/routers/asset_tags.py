@@ -13,20 +13,18 @@ router = APIRouter(prefix="/api/asset-tags", tags=["asset-tags"])
 def list_asset_tags(container: BackendContainer = Depends(get_container)) -> dict[str, list[str]]:
     skills = container.skills_queries._inventory_snapshot().entries
     agents = container.agents_inventory.snapshot().entries
-    commands = container.slash_command_read_models.list_commands()
+    command_tags = container.slash_command_read_models.vocabulary_tags()
     mcp = container.mcp_queries._list_snapshot()["entries"]
     hooks = container.hooks_queries._list_snapshot()["entries"]
     permissions = container.permissions_queries._list_snapshot()["entries"]
     config_tags = container.asset_tags.get_tags_for_family("configs")
     skill_tags = container.asset_tags.get_tags_for_family("skills")
     rows = [
-        *cast(list[dict[str, Any]], commands["commands"]),
-        *cast(list[dict[str, Any]], commands["reviewCommands"]),
         *cast(list[dict[str, Any]], mcp),
         *cast(list[dict[str, Any]], hooks),
         *cast(list[dict[str, Any]], permissions),
     ]
-    tags = [tag for row in rows for tag in row.get("tags", [])]
+    tags = [*command_tags, *(tag for row in rows for tag in row.get("tags", []))]
     tags.extend(tag for agent in agents for tag in agent.tags)
     tags.extend(tag for skill in skills for tag in skill_tags.get(skill.skill_ref, []))
     tags.extend(
