@@ -54,6 +54,9 @@ class HooksQueryService:
 
     def list_hooks(self) -> dict[str, object]:
         self._reconcile_once()
+        return self._list_snapshot()
+
+    def _list_snapshot(self) -> dict[str, object]:
         snapshot = self.read_models.snapshot()
         active_scans = self._active_scans(snapshot)
         inventory = self._inventory(active_scans)

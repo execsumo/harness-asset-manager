@@ -42,6 +42,23 @@ class ClaudePluginSkillsIntegrationTests(TestCase):
             self.assertIsNotNone(queries.inventory().find(entry.skill_ref))
             self.assertEqual(harness.container.asset_tags.get_tags("skills", entry.skill_ref), ["keep-me"])
 
+    def test_delete_succeeds_and_keeps_tags_when_rescan_fails(self) -> None:
+        def fixture(spec: FakeHomeSpec) -> None:
+            seed_skill_package(spec.claude_root, "local", "local")
+
+        with AppTestHarness(fixture_factory=fixture) as harness:
+            queries = harness.container.skills_queries
+            mutations = harness.container.skills_mutations
+            entry = next(e for e in queries.inventory().entries if e.name == "local")
+            mutations.set_skill_tags(entry.skill_ref, ["keep-me"])
+            with patch.object(queries, "require_entry", return_value=entry), patch.object(
+                queries, "_inventory_snapshot", side_effect=OSError("scan failed")
+            ):
+                self.assertTrue(mutations.delete_skill(entry.skill_ref)["ok"])
+            self.assertFalse((harness.spec.claude_root / "local").exists())
+            self.assertEqual(harness.container.asset_tags.get_tags("skills", entry.skill_ref), ["keep-me"])
+            self.assertIsNone(queries.inventory().find(entry.skill_ref))
+
     def test_unmanaged_plugin_skill_discovery_and_adoption(self) -> None:
         def fixture(spec: FakeHomeSpec) -> None:
             plugin_dir = spec.home / ".claude" / "plugins" / "cache" / "market" / "agtx" / "0.1.0"

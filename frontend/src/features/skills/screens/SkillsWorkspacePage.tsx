@@ -423,12 +423,6 @@ export default function SkillsWorkspacePage() {
                       onClear={clearHarnessFilter}
                     />
                   ) : null}
-        <SkillTagFilterBar
-          tags={knownTags}
-          selectedTags={selectedTags}
-          onToggleTag={toggleTagFilter}
-          onClearTags={clearTagFilters}
-        />
                   <SelectionMenu
                     value={statusFilter}
                     options={statusOptions}
@@ -447,6 +441,12 @@ export default function SkillsWorkspacePage() {
             />
           </>
         ) : null}
+        <SkillTagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {isInitialLoading ? (

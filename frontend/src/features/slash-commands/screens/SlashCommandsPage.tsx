@@ -248,12 +248,6 @@ export default function SlashCommandsPage() {
                   {harnessParam ? (
                     <HarnessFilterChip label={harnessParam} onClear={clearHarnessFilter} />
                   ) : null}
-        <TagFilterBar
-          tags={knownTags}
-          selectedTags={selectedTags}
-          onToggleTag={toggleTagFilter}
-          onClearTags={clearTagFilters}
-        />
                   <SelectionMenu
                     value={statusFilter}
                     options={(Object.keys(STATUS_LABELS) as SlashCommandsStatusFilter[]).map((value) => ({
@@ -270,6 +264,12 @@ export default function SlashCommandsPage() {
             />
           </>
         ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {controller.actionError ? <ErrorBanner message={controller.actionError} onDismiss={() => controller.setActionError("")} /> : null}

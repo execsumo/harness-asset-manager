@@ -588,18 +588,18 @@ export default function McpInUsePage() {
                   {harnessParam ? (
                     <HarnessFilterChip label={findHarnessLabel(harnessParam)} onClear={clearHarnessFilter} />
                   ) : null}
-        <TagFilterBar
-          tags={knownTags}
-          selectedTags={selectedTags}
-          onToggleTag={toggleTagFilter}
-          onClearTags={clearTagFilters}
-        />
                   <McpFilterMenu pill={statusFilter} counts={counts} onChange={setStatusFilter} />
                 </>
               }
             />
           </>
         ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {visibleActionErrorMessage ? (

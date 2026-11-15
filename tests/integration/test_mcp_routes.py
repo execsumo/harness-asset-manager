@@ -1064,6 +1064,28 @@ class McpRoutesTests(unittest.TestCase):
             assert isinstance(servers, dict)
             self.assertIn("context7", [e["name"] for e in servers["entries"]])
 
+    def test_shared_tag_refresh_does_not_auto_adopt_mcp(self) -> None:
+        with AppTestHarness() as harness:
+            payload = {"command": "uvx", "args": ["auto-mcp"]}
+            cursor_cfg = harness.spec.home / ".cursor" / "mcp.json"
+            cursor_cfg.parent.mkdir(parents=True, exist_ok=True)
+            cursor_cfg.write_text(json.dumps({"mcpServers": {"auto-mcp": payload}}))
+            claude_cfg = harness.spec.home / ".claude.json"
+            claude_cfg.write_text(json.dumps({"mcpServers": {"auto-mcp": payload}}))
+            harness.put_json("/api/settings/auto-adopt/mcp", {"enabled": True})
+            harness.container.asset_tags.set_tags("mcp", "auto-mcp", ["unmanaged-tag"])
+            before_cursor = cursor_cfg.read_bytes()
+            before_claude = claude_cfg.read_bytes()
+            self.assertEqual(harness.container.mcp_store.list_managed(), ())
+
+            for _ in range(2):
+                self.assertIn("unmanaged-tag", harness.get_json("/api/asset-tags/")["tags"])
+            self.assertEqual(harness.container.mcp_store.list_managed(), ())
+            self.assertEqual(cursor_cfg.read_bytes(), before_cursor)
+            self.assertEqual(claude_cfg.read_bytes(), before_claude)
+            servers = harness.get_json("/api/mcp/servers")
+            self.assertEqual(next(e for e in servers["entries"] if e["name"] == "auto-mcp")["kind"], "managed")
+
     def test_auto_adopt_promotes_identical_unmanaged_mcp_configs(self) -> None:
         with AppTestHarness() as harness:
             payload = {"command": "uvx", "args": ["auto-mcp"]}

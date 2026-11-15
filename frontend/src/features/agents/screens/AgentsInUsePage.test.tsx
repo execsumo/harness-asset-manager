@@ -113,6 +113,8 @@ describe("AgentsInUsePage", () => {
       return okJson({});
     });
     renderPage();
+    expect(await screen.findByText("No agents found")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /Agents harness matrix|Agents Matrix/i })).not.toBeInTheDocument();
     const tag = await screen.findByRole("button", { name: /research\s*0/i });
     fireEvent.click(tag);
     expect(tag).toHaveAttribute("aria-pressed", "true");
