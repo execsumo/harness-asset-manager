@@ -17,6 +17,21 @@ describe("SlashCommandsReviewPage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("counts tags on untracked commands in the filter", async () => {
+    const payload = slashCommandsPayload();
+    const tagged = { ...payload, reviewCommands: payload.reviewCommands.map((row) => ({ ...row, tags: ["Research"] })) };
+    fetchMock.mockImplementation(createRouteFetchMock([
+      { match: "/api/slash-commands", response: tagged },
+      { match: "/api/asset-tags/", response: { tags: ["Research"] } },
+    ]));
+    renderWithAppProviders(<SlashCommandsReviewPage />, { route: "/slash-commands" });
+    const filter = await screen.findByRole("group", { name: "Filter by tag" });
+    const chip = await within(filter).findByRole("button", { name: /Research/ });
+    expect(within(chip).getByText("1")).toBeInTheDocument();
+    fireEvent.click(chip);
+    expect(await screen.findByText("code-review")).toBeInTheDocument();
+  });
+
   it("shows unmanaged commands and imports one", async () => {
     const requests: unknown[] = [];
     fetchMock.mockImplementation(

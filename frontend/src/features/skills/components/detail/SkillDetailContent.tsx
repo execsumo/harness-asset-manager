@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Star } from "lucide-react";
 
@@ -67,12 +68,12 @@ export function SkillDetailContent({
   const setTagsMutation = useSetSkillTagsMutation();
 
   const isManaged = skillStatusConcept(detail.displayStatus) === "inUse";
-  const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (detail.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     const nextTags = isStarred
-      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (detail.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     try {
       await setTagsMutation.mutateAsync({
         skillRef: detail.skillRef,

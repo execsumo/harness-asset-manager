@@ -110,6 +110,8 @@ class SlashCommandMutationService:
 
         self.store.delete_command(name)
         self.sync_state.remove_command(name)
+        if self.asset_tags is not None:
+            self.asset_tags.try_delete_tags_for_ref("slash_commands", name)
         return {"ok": True, "sync": removed["sync"]}
 
     def unmanage_command(self, name: str) -> dict[str, object]:

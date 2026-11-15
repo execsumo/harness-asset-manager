@@ -109,7 +109,9 @@ class AgentInventoryService:
         reconcile_issues: tuple[tuple[str, str], ...] = ()
         if self._reconcile is not None:
             reconcile_issues = self._reconcile().issues
+        return self.snapshot(reconcile_issues)
 
+    def snapshot(self, reconcile_issues: tuple[tuple[str, str], ...] = ()) -> AgentInventory:
         all_targets, adapters = self._resolve()
         targets = tuple(target for target in all_targets if target.installed)
         managed, issues = self.store.scan()

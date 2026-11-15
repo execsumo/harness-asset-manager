@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Iterable
@@ -28,6 +29,8 @@ from .source_fetch import SourceFetchService
 
 if TYPE_CHECKING:
     from harness_asset_manager.application.asset_tags import AssetTagService
+
+logger = logging.getLogger(__name__)
 
 
 class SkillsMutationService:
@@ -439,6 +442,14 @@ class SkillsMutationService:
             for adapter, path in targets:
                 adapter.remove_local_copy(path)
             self.read_models.invalidate()
+            if self.asset_tags is not None:
+                try:
+                    surviving = self.queries._inventory_snapshot().find(entry.skill_ref)
+                except Exception:  # noqa: BLE001
+                    logger.exception("Could not check whether deleted skill %s survives", entry.skill_ref)
+                else:
+                    if surviving is None:
+                        self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
             return {"ok": True}
 
         if entry.package_dir is None:
@@ -463,6 +474,8 @@ class SkillsMutationService:
             self.read_models.store.delete(entry.package_dir)
         except ValueError as error:
             raise MutationError(str(error), status=409) from error
+        if self.asset_tags is not None:
+            self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
         self.read_models.invalidate()
         return {"ok": True}
 

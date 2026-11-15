@@ -334,8 +334,9 @@ in list/detail views, and the `starred` tag is available through the matrix star
 URL-backed `?tag=starred` filter. Tag filters compose with each family's status and harness
 filters. Unmanaged entries remain read-only for tagging.
 
-Every tag editor suggests existing tags while you type, so a portfolio converges on a shared
-tag vocabulary instead of splintering into near-duplicates. Families whose managed rows carry
+Tag filters and editors share a vocabulary across asset families and Configs. A tag used in
+one family appears in the others, even when its local count is zero; counts remain specific to
+the current family. Editors suggest these existing tags while you type. Families whose managed rows carry
 select checkboxes (Skills, MCP Servers, Permissions) also support bulk tagging: select rows,
 then use **Tag** in the bulk action bar to apply one or more tags to all selected assets at
 once — tags are merged into each asset's existing set, never replaced.

@@ -1,3 +1,5 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -67,21 +69,22 @@ export default function SlashCommandsPage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(
-    () => extractSlashCommandTagCounts(controller.data?.commands),
-    [controller.data?.commands],
+  const localTagCounts = useMemo(
+    () => extractSlashCommandTagCounts(controller.data),
+    [controller.data],
   );
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const current = params.getAll("tag");
-      const normalizedToggle = tagToToggle.toLowerCase();
+      const normalizedToggle = tagIdentity(tagToToggle);
       params.delete("tag");
       let found = false;
       for (const t of current) {
-        if (t.toLowerCase() === normalizedToggle) {
+        if (tagIdentity(t) === normalizedToggle) {
           found = true;
         } else {
           params.append("tag", t);
@@ -101,7 +104,7 @@ export default function SlashCommandsPage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const starredFilterActive = selectedTags.some((t) => tagIdentity(t) === "starred");
   const onToggleStarredFilter = useCallback(() => {
     toggleTagFilter("starred");
   }, [toggleTagFilter]);
@@ -112,10 +115,10 @@ export default function SlashCommandsPage() {
       const reviewCmd = !cmd ? controller.data?.reviewCommands.find((r) => r.reviewRef === name || r.name === name) : null;
       if (!cmd && !reviewCmd) return;
       const currentTags = cmd?.tags || reviewCmd?.tags || [];
-      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const isStarred = currentTags.some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+        ? currentTags.filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...currentTags.filter((t) => tagIdentity(t) !== "starred")];
       try {
         await setTagsMutation.mutateAsync({ name, tags: nextTags });
       } catch (err) {
@@ -259,14 +262,14 @@ export default function SlashCommandsPage() {
                 </>
               }
             />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
-            />
           </>
         ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {controller.actionError ? <ErrorBanner message={controller.actionError} onDismiss={() => controller.setActionError("")} /> : null}

@@ -15,6 +15,7 @@ from .errors import install_error_handlers
 from .guards import ApiTokenMiddleware, LoopbackOnlyMiddleware
 from .routers import (
     agents,
+    asset_tags,
     bootstrap,
     configs,
     health,
@@ -96,6 +97,7 @@ def create_app(
         trusted_hosts=trusted_hosts,
     )
     install_error_handlers(app)
+    app.include_router(asset_tags.router)
     app.include_router(health.router)
     app.include_router(configs.router)
     app.include_router(settings.router)

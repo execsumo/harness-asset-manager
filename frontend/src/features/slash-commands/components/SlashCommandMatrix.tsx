@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useMemo, useState } from "react";
 import { Loader2, Star } from "lucide-react";
 
@@ -213,8 +214,8 @@ function SlashCommandMatrixRow({
   if (entry.kind === "managed") {
     const { command } = entry;
     const enabled = syncedTargetIds(command);
-    const isStarred = (command.tags || []).some((t) => t.toLowerCase() === "starred");
-    const displayTags = (command.tags || []).filter((t) => t.toLowerCase() !== "starred");
+    const isStarred = (command.tags || []).some((t) => tagIdentity(t) === "starred");
+    const displayTags = (command.tags || []).filter((t) => tagIdentity(t) !== "starred");
 
     return (
       <tr className="matrix-table__row" data-checked={checked ? "true" : undefined}>
@@ -298,8 +299,8 @@ function SlashCommandMatrixRow({
   }
 
   const { review } = entry;
-  const isStarred = (review.tags || []).some((t) => t.toLowerCase() === "starred");
-  const displayTags = (review.tags || []).filter((t) => t.toLowerCase() !== "starred");
+  const isStarred = (review.tags || []).some((t) => tagIdentity(t) === "starred");
+  const displayTags = (review.tags || []).filter((t) => tagIdentity(t) !== "starred");
   const primaryAction = primaryReviewAction(review);
   const isPending = primaryAction ? pendingReviewKey === reviewKey(review.target, review.name, primaryAction) : false;
   const actionLabel = copy.review.actionLabel(primaryAction);

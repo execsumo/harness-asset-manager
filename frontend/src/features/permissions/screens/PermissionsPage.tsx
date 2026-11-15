@@ -1,3 +1,5 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -101,21 +103,22 @@ export default function PermissionsPage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(
+  const localTagCounts = useMemo(
     () => extractPermissionsTagCounts(inventory),
     [inventory],
   );
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const current = params.getAll("tag");
-      const normalizedToggle = tagToToggle.toLowerCase();
+      const normalizedToggle = tagIdentity(tagToToggle);
       params.delete("tag");
       let found = false;
       for (const t of current) {
-        if (t.toLowerCase() === normalizedToggle) {
+        if (tagIdentity(t) === normalizedToggle) {
           found = true;
         } else {
           params.append("tag", t);
@@ -135,7 +138,7 @@ export default function PermissionsPage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const starredFilterActive = selectedTags.some((t) => tagIdentity(t) === "starred");
   const onToggleStarredFilter = useCallback(() => {
     toggleTagFilter("starred");
   }, [toggleTagFilter]);
@@ -145,10 +148,10 @@ export default function PermissionsPage() {
       const permEntry = inventory?.entries.find((e) => e.id === id);
       if (!permEntry) return;
       const currentTags = permEntry.tags || [];
-      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const isStarred = currentTags.some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+        ? currentTags.filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...currentTags.filter((t) => tagIdentity(t) !== "starred")];
       await setTagsMutation.mutateAsync({ id, tags: nextTags });
     },
     [inventory, setTagsMutation],
@@ -271,8 +274,8 @@ export default function PermissionsPage() {
           const entry = inventory?.entries.find((e) => e.id === id);
           if (!entry || entry.kind !== "managed") continue;
           const currentTags = entry.tags || [];
-          const currentLower = new Set(currentTags.map((t) => t.toLowerCase()));
-          const toAdd = tagsToAdd.filter((t) => !currentLower.has(t.toLowerCase()));
+          const currentLower = new Set(currentTags.map((t) => tagIdentity(t)));
+          const toAdd = tagsToAdd.filter((t) => !currentLower.has(tagIdentity(t)));
           if (toAdd.length === 0) {
             continue;
           }
@@ -298,7 +301,7 @@ export default function PermissionsPage() {
       const entry = inventory?.entries.find((candidate) => candidate.id === id);
       if (!entry || entry.kind !== "managed") return;
       const currentTags = entry.tags || [];
-      if (currentTags.some((tag) => tag.toLowerCase() === "starred")) return;
+      if (currentTags.some((tag) => tagIdentity(tag) === "starred")) return;
       await setTagsMutation.mutateAsync({ id, tags: ["starred", ...currentTags] });
     });
   }, [inventory, runBulkAction, setTagsMutation]);
@@ -447,14 +450,14 @@ export default function PermissionsPage() {
                 </>
               }
             />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
-            />
           </>
         ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {actionErrorMessage ? (

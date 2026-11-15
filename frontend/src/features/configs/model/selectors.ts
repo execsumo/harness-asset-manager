@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { matchesAssetTags } from "../../../components/tags/tag-counts";
 import type { ConfigsPayload } from "../api/types";
 
@@ -119,5 +120,5 @@ export function sortConfigsRows(rows: readonly ConfigRowData[]): ConfigRowData[]
 }
 
 export function isStarred(row: ConfigRowData): boolean {
-  return row.tags.some((tag) => tag.toLowerCase() === "starred");
+  return row.tags.some((tag) => tagIdentity(tag) === "starred");
 }

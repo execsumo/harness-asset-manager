@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 from unittest import TestCase
+from unittest.mock import patch
 
 from harness_asset_manager.errors import MutationError
 from tests.support.app_harness import AppTestHarness
@@ -21,6 +22,43 @@ def _dir_hash(path: Path) -> str:
 
 
 class ClaudePluginSkillsIntegrationTests(TestCase):
+    def test_deleting_local_copy_preserves_surviving_plugin_tags(self) -> None:
+        def fixture(spec: FakeHomeSpec) -> None:
+            plugin = spec.claude_plugins_cache / "market" / "agtx" / "0.1.0"
+            seed_skill_package(plugin / "skills", "brainstorm", "brainstorm", description="Explore ideas")
+            seed_skill_package(spec.claude_root, "brainstorm", "brainstorm", description="Explore ideas")
+            spec.claude_plugins_registry.parent.mkdir(parents=True, exist_ok=True)
+            spec.claude_plugins_registry.write_text(json.dumps({"version": 2, "plugins": {
+                "agtx@market": [{"installPath": str(plugin), "version": "0.1.0"}]
+            }}), encoding="utf-8")
+
+        with AppTestHarness(fixture_factory=fixture) as harness:
+            queries = harness.container.skills_queries
+            entry = next(e for e in queries.inventory().entries if e.name == "brainstorm")
+            self.assertTrue(any(s.scope == "plugin" for s in entry.sightings))
+            self.assertTrue(any(s.scope != "plugin" for s in entry.sightings))
+            harness.container.skills_mutations.set_skill_tags(entry.skill_ref, ["keep-me"])
+            harness.container.skills_mutations.delete_skill(entry.skill_ref)
+            self.assertIsNotNone(queries.inventory().find(entry.skill_ref))
+            self.assertEqual(harness.container.asset_tags.get_tags("skills", entry.skill_ref), ["keep-me"])
+
+    def test_delete_succeeds_and_keeps_tags_when_rescan_fails(self) -> None:
+        def fixture(spec: FakeHomeSpec) -> None:
+            seed_skill_package(spec.claude_root, "local", "local")
+
+        with AppTestHarness(fixture_factory=fixture) as harness:
+            queries = harness.container.skills_queries
+            mutations = harness.container.skills_mutations
+            entry = next(e for e in queries.inventory().entries if e.name == "local")
+            mutations.set_skill_tags(entry.skill_ref, ["keep-me"])
+            with patch.object(queries, "require_entry", return_value=entry), patch.object(
+                queries, "_inventory_snapshot", side_effect=OSError("scan failed")
+            ):
+                self.assertTrue(mutations.delete_skill(entry.skill_ref)["ok"])
+            self.assertFalse((harness.spec.claude_root / "local").exists())
+            self.assertEqual(harness.container.asset_tags.get_tags("skills", entry.skill_ref), ["keep-me"])
+            self.assertIsNone(queries.inventory().find(entry.skill_ref))
+
     def test_unmanaged_plugin_skill_discovery_and_adoption(self) -> None:
         def fixture(spec: FakeHomeSpec) -> None:
             plugin_dir = spec.home / ".claude" / "plugins" / "cache" / "market" / "agtx" / "0.1.0"
@@ -102,9 +140,13 @@ class ClaudePluginSkillsIntegrationTests(TestCase):
             self.assertIn("canonical", scopes)
             self.assertIn("plugin", scopes)
 
+            mutations.set_skill_tags(m_entry.skill_ref, ["managed-only"])
+            self.assertIn("managed-only", harness.get_json("/api/asset-tags/")["tags"])
             # 5. Delete managed skill: removes binding and store copy, never touches plugin cache
-            del_result = mutations.delete_skill(m_entry.skill_ref)
+            with patch.object(harness.container.asset_tag_store, "set_tags", side_effect=OSError("read only")):
+                del_result = mutations.delete_skill(m_entry.skill_ref)
             self.assertTrue(del_result.get("ok"))
+            self.assertNotIn("managed-only", harness.get_json("/api/asset-tags/")["tags"])
             self.assertFalse(store_dir.exists())
             self.assertFalse(claude_binding.exists())
 

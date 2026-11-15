@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { type ReactNode, useId, useState } from "react";
 import { Loader2, Star, Trash2 } from "lucide-react";
 
@@ -82,13 +83,13 @@ export function McpServerDetailView({
     loadErrorMessage: copy.detail.unableToLoadInstallConfig,
   });
 
-  const isStarred = (detail?.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (detail?.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     if (!detail) return;
     const nextTags = isStarred
-      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (detail.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     await setTagsMutation.mutateAsync({
       name: detail.name,
       tags: nextTags,

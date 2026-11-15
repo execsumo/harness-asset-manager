@@ -4,6 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { DetailTags } from "./DetailTags";
 
 describe("DetailTags", () => {
+  it("accepts shared tags containing up to 64 Unicode characters", () => {
+    const tag = "😀".repeat(40);
+    const onAddTag = vi.fn().mockResolvedValue(undefined);
+    render(<DetailTags tags={[]} knownTags={[tag]} canEdit onAddTag={onAddTag} onRemoveTag={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /add tag/i }));
+    fireEvent.mouseDown(screen.getByRole("option", { name: tag }));
+    expect(onAddTag).toHaveBeenCalledWith(tag);
+  });
+
   it("renders tag chips and allows removing tags", async () => {
     const onAddTag = vi.fn().mockResolvedValue(undefined);
     const onRemoveTag = vi.fn().mockResolvedValue(undefined);

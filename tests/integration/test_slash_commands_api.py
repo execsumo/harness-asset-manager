@@ -2,12 +2,86 @@ from __future__ import annotations
 
 import json
 import unittest
+from unittest.mock import patch
 
 from harness_asset_manager.paths import APP_NAME
 from tests.support.app_harness import AppTestHarness
 
 
 class SlashCommandApiTests(unittest.TestCase):
+    def test_shared_tags_survive_unreadable_command_binding(self) -> None:
+        with AppTestHarness() as harness:
+            harness.put_json("/api/configs/claude/tags", {"tags": ["config-tag"]})
+            harness.post_json("/api/slash-commands", {
+                "name": "review", "description": "Review", "prompt": "Review", "targets": ["codex"]
+            })
+            harness.put_json("/api/slash-commands/review/tags", {"tags": ["command-tag"]})
+            path = harness.spec.home / ".codex" / "prompts" / "review.md"
+            self.assertTrue(path.is_file())
+            with patch("harness_asset_manager.application.slash_commands.read_models.hash_file", side_effect=PermissionError("unreadable")):
+                tags = harness.get_json("/api/asset-tags/")["tags"]
+            self.assertIn("config-tag", tags)
+            self.assertIn("command-tag", tags)
+
+    def test_shared_tags_isolate_family_inventory_failures(self) -> None:
+        with AppTestHarness() as harness:
+            harness.put_json("/api/configs/claude/tags", {"tags": ["config-tag"]})
+            harness.post_json("/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"})
+            harness.container.asset_tags.set_tags("agents", "red-team", ["agent-tag"])
+            sources = (
+                (harness.container.skills_queries, "_inventory_snapshot"),
+                (harness.container.agents_inventory, "snapshot"),
+                (harness.container.slash_command_read_models, "vocabulary_tags"),
+                (harness.container.mcp_queries, "_list_snapshot"),
+                (harness.container.hooks_queries, "_list_snapshot"),
+                (harness.container.permissions_queries, "_list_snapshot"),
+            )
+            for source, method in sources:
+                with self.subTest(family=method), patch.object(source, method, side_effect=OSError("unreadable")):
+                    tags = harness.get_json("/api/asset-tags/")["tags"]
+                    self.assertIn("config-tag", tags)
+            kernel = harness.container.harness_kernel
+            bindings_for_family = kernel.bindings_for_family
+
+            def fail_config_bindings(family):
+                if family == "configs":
+                    raise OSError("unreadable")
+                return bindings_for_family(family)
+
+            with patch.object(kernel, "bindings_for_family", side_effect=fail_config_bindings):
+                self.assertIn("agent-tag", harness.get_json("/api/asset-tags/")["tags"])
+
+    def test_shared_tags_survive_invalid_command(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json("/api/agents", {"name": "Tagged Agent", "description": "d", "prompt": "p"})
+            harness.container.asset_tags.set_tags("agents", "tagged-agent", ["agent-tag"])
+            for name in ("broken", "healthy"):
+                harness.post_json("/api/slash-commands", {
+                    "name": name, "description": name, "prompt": name, "targets": []
+                })
+                harness.put_json(f"/api/slash-commands/{name}/tags", {"tags": [f"{name}-tag"]})
+            harness.container.asset_tags.set_tags("slash_commands", "orphan", ["orphan-tag"])
+            harness.container.slash_command_store.command_path("broken").write_text("invalid = [", encoding="utf-8")
+            tags = harness.get_json("/api/asset-tags/")["tags"]
+            self.assertTrue({"agent-tag", "broken-tag", "healthy-tag"}.issubset(tags))
+            self.assertNotIn("orphan-tag", tags)
+            harness.get_json("/api/slash-commands", expected_status=400)
+
+    def test_inventory_loads_command_tags_once(self) -> None:
+        with AppTestHarness() as harness:
+            for name in ("first", "second"):
+                harness.post_json("/api/slash-commands", {
+                    "name": name, "description": name, "prompt": name, "targets": []
+                })
+                harness.put_json(f"/api/slash-commands/{name}/tags", {"tags": [name]})
+            store = harness.container.asset_tag_store
+            with patch.object(store, "load", wraps=store.load) as load:
+                data = harness.container.slash_command_read_models.list_commands()
+            self.assertEqual(load.call_count, 1)
+            self.assertEqual({row["name"]: row["tags"] for row in data["commands"]}, {
+                "first": ["first"], "second": ["second"]
+            })
+
     def test_list_starts_empty_with_detected_targets(self) -> None:
         with AppTestHarness() as harness:
             payload = harness.get_json("/api/slash-commands")
@@ -90,9 +164,12 @@ class SlashCommandApiTests(unittest.TestCase):
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(set(state["commands"]["code-review"]), {"claude"})
 
+            harness.put_json("/api/slash-commands/code-review/tags", {"tags": ["command-only"]})
+            self.assertIn("command-only", harness.get_json("/api/asset-tags/")["tags"])
             deleted = harness.delete_json("/api/slash-commands/code-review")
 
             self.assertTrue(deleted["ok"])
+            self.assertNotIn("command-only", harness.get_json("/api/asset-tags/")["tags"])
             self.assertFalse(claude_path.exists())
             self.assertFalse(
                 (harness.spec.xdg_data_home / APP_NAME / "slash-commands" / "commands" / "code-review.toml").exists()

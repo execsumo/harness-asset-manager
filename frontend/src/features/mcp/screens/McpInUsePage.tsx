@@ -1,3 +1,5 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -125,21 +127,22 @@ export default function McpInUsePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(
+  const localTagCounts = useMemo(
     () => extractMcpTagCounts(inventory),
     [inventory],
   );
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const current = params.getAll("tag");
-      const normalizedToggle = tagToToggle.toLowerCase();
+      const normalizedToggle = tagIdentity(tagToToggle);
       params.delete("tag");
       let found = false;
       for (const t of current) {
-        if (t.toLowerCase() === normalizedToggle) {
+        if (tagIdentity(t) === normalizedToggle) {
           found = true;
         } else {
           params.append("tag", t);
@@ -159,7 +162,7 @@ export default function McpInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const starredFilterActive = selectedTags.some((t) => tagIdentity(t) === "starred");
   const onToggleStarredFilter = useCallback(() => {
     toggleTagFilter("starred");
   }, [toggleTagFilter]);
@@ -169,10 +172,10 @@ export default function McpInUsePage() {
       const serverEntry = inventory?.entries.find((e) => e.name === name);
       if (!serverEntry) return;
       const currentTags = serverEntry.tags || [];
-      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const isStarred = currentTags.some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+        ? currentTags.filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...currentTags.filter((t) => tagIdentity(t) !== "starred")];
       await setTagsMutation.mutateAsync({ name, tags: nextTags });
     },
     [inventory, setTagsMutation],
@@ -589,14 +592,14 @@ export default function McpInUsePage() {
                 </>
               }
             />
-            <TagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
-            />
           </>
         ) : null}
+        <TagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {visibleActionErrorMessage ? (

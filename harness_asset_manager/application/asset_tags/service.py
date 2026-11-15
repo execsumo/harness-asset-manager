@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 
 from harness_asset_manager.errors import MutationError
 
 from .store import AssetTagStore
+
+logger = logging.getLogger(__name__)
 
 MAX_TAG_LENGTH = 64
 STARRED_TAG = "starred"
@@ -72,3 +75,9 @@ class AssetTagService:
 
     def delete_tags_for_ref(self, family: str, ref: str) -> None:
         self.store.set_tags(f"{family}:{ref}", [])
+
+    def try_delete_tags_for_ref(self, family: str, ref: str) -> None:
+        try:
+            self.delete_tags_for_ref(family, ref)
+        except OSError:
+            logger.exception("Could not remove tags for %s:%s", family, ref)
