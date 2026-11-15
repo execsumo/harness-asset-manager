@@ -17,16 +17,21 @@ def list_asset_tags(container: BackendContainer = Depends(get_container)) -> dic
     mcp = container.mcp_queries.list_servers()["entries"]
     hooks = container.hooks_queries.list_hooks()["entries"]
     permissions = container.permissions_queries.list_permissions()["entries"]
-    configs = container.configs_queries.list_configs().values()
+    config_tags = container.asset_tags.get_tags_for_family("configs")
+    skill_tags = container.asset_tags.get_tags_for_family("skills")
     rows = [
         *cast(list[dict[str, Any]], commands["commands"]),
         *cast(list[dict[str, Any]], commands["reviewCommands"]),
         *cast(list[dict[str, Any]], mcp),
         *cast(list[dict[str, Any]], hooks),
         *cast(list[dict[str, Any]], permissions),
-        *configs,
     ]
     tags = [tag for row in rows for tag in row.get("tags", [])]
     tags.extend(tag for agent in agents for tag in agent.tags)
-    tags.extend(tag for skill in skills for tag in container.asset_tags.get_tags("skills", skill.skill_ref))
+    tags.extend(tag for skill in skills for tag in skill_tags.get(skill.skill_ref, []))
+    tags.extend(
+        tag
+        for binding in container.harness_kernel.bindings_for_family("configs")
+        for tag in config_tags.get(binding.definition.harness, [])
+    )
     return {"tags": sort_tags(normalize_and_dedupe_tags(tags))}

@@ -58,12 +58,6 @@ class AssetTagService:
         raw = self.store.get_tags(f"{family}:{ref}")
         return sort_tags(raw)
 
-    def list_tags(self) -> list[str]:
-        """Return the shared vocabulary of tags assigned in any family."""
-        tags = (tag for values in self.store.load().values() for tag in values
-                if tag.strip() and len(tag.strip()) <= MAX_TAG_LENGTH)
-        return sort_tags(normalize_and_dedupe_tags(tags))
-
     def get_tags_for_family(self, family: str) -> dict[str, list[str]]:
         all_tags = self.store.load()
         prefix = f"{family}:"
