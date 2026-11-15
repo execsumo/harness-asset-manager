@@ -98,6 +98,29 @@ describe("ConfigsPage", () => {
     await waitFor(() => expect(tags).toEqual(["starred"]));
   });
 
+  it("reports tag removal failures and permits retry", async () => {
+    let attempts = 0;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/configs/cursor/tags" && init?.method === "PUT") {
+        attempts++;
+        if (attempts === 1) throw new Error("Network unavailable");
+        return okJson({ tags: [] });
+      }
+      if (url === "/api/configs/") return okJson({ ...CONFIGS, cursor: { ...CONFIGS.cursor, tags: attempts > 1 ? [] : ["Research"] } });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+    renderWithAppProviders(<ConfigsPage />);
+    fireEvent.click(await screen.findByText("Cursor"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag Research" }));
+    expect(await screen.findByText("Network unavailable")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag Research" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove tag Research" })).toBeNull());
+    expect(screen.queryByText("Network unavailable")).toBeNull();
+  });
+
   it("lists each detected harness with its status, key count, and config path", async () => {
     renderWithAppProviders(<ConfigsPage />);
 

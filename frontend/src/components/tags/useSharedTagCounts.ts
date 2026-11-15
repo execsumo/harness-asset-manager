@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../../api/http";
 import type { AssetTagCount } from "./tag-counts";
+import { tagIdentity } from "./tag-identity";
 
 /** Merge the shared vocabulary with counts from the current asset family. */
 export function mergeSharedTagCounts(counts: AssetTagCount[], vocabulary: string[]): AssetTagCount[] {
-  const merged = new Map(counts.map((item) => [item.tag.toLowerCase(), item]));
+  const merged = new Map(counts.map((item) => [tagIdentity(item.tag), item]));
   for (const tag of vocabulary) {
-    const key = tag.toLowerCase();
+    const key = tagIdentity(tag);
     if (!merged.has(key)) merged.set(key, { tag, count: 0, isStarred: key === "starred" });
   }
   return Array.from(merged.values()).sort((a, b) =>

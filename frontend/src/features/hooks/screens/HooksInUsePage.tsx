@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
@@ -106,11 +107,11 @@ export default function HooksInUsePage() {
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const current = params.getAll("tag");
-      const normalizedToggle = tagToToggle.toLowerCase();
+      const normalizedToggle = tagIdentity(tagToToggle);
       params.delete("tag");
       let found = false;
       for (const t of current) {
-        if (t.toLowerCase() === normalizedToggle) {
+        if (tagIdentity(t) === normalizedToggle) {
           found = true;
         } else {
           params.append("tag", t);
@@ -130,7 +131,7 @@ export default function HooksInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const starredFilterActive = selectedTags.some((t) => tagIdentity(t) === "starred");
   const onToggleStarredFilter = useCallback(() => {
     toggleTagFilter("starred");
   }, [toggleTagFilter]);
@@ -140,10 +141,10 @@ export default function HooksInUsePage() {
       const hookEntry = inventory?.entries.find((e) => e.id === id);
       if (!hookEntry) return;
       const currentTags = hookEntry.tags || [];
-      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const isStarred = currentTags.some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+        ? currentTags.filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...currentTags.filter((t) => tagIdentity(t) !== "starred")];
       await setTagsMutation.mutateAsync({ id, tags: nextTags });
     },
     [inventory, setTagsMutation],

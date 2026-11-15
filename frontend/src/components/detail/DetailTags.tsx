@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Star, X } from "lucide-react";
+import { tagIdentity } from "../tags/tag-identity";
 
 export interface DetailTagsProps {
   tags: string[];
@@ -41,10 +42,10 @@ export function DetailTags({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const normalizedExisting = new Set(tags.map((t) => t.toLowerCase()));
+  const normalizedExisting = new Set(tags.map(tagIdentity));
   const suggestions = knownTags
-    .filter((t) => !normalizedExisting.has(t.toLowerCase()))
-    .filter((t) => (inputVal.trim() ? t.toLowerCase().includes(inputVal.trim().toLowerCase()) : true))
+    .filter((t) => !normalizedExisting.has(tagIdentity(t)))
+    .filter((t) => (inputVal.trim() ? tagIdentity(t).includes(tagIdentity(inputVal.trim())) : true))
     .slice(0, 6);
 
   const handleAdd = async (tagToAdd: string) => {
@@ -57,7 +58,7 @@ export function DetailTags({
       setError("Tag must be 64 characters or fewer");
       return;
     }
-    if (normalizedExisting.has(trimmed.toLowerCase())) {
+    if (normalizedExisting.has(tagIdentity(trimmed))) {
       setError("Tag already added");
       return;
     }
@@ -70,6 +71,15 @@ export function DetailTags({
       setSuggestOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add tag");
+    }
+  };
+
+  const handleRemove = async (tag: string) => {
+    setError(null);
+    try {
+      await onRemoveTag(tag);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove tag");
     }
   };
 
@@ -103,7 +113,7 @@ export function DetailTags({
                 <button
                   type="button"
                   className="skill-detail-tag__remove"
-                  onClick={() => void onRemoveTag(tag)}
+                  onClick={() => void handleRemove(tag)}
                   disabled={disabled}
                   aria-label={`Remove tag ${tag}`}
                 >

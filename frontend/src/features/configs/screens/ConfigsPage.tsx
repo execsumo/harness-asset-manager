@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useMemo, useState } from "react";
 import { SlidersHorizontal, Upload } from "lucide-react";
@@ -76,7 +77,7 @@ export default function ConfigsPage() {
         params.delete("tag");
         let removed = false;
         for (const value of current) {
-          if (value.toLowerCase() === tag.toLowerCase()) removed = true;
+          if (tagIdentity(value) === tagIdentity(tag)) removed = true;
           else params.append("tag", value);
         }
         if (!removed) params.append("tag", tag);

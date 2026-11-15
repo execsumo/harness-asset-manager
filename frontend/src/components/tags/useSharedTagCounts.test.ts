@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mergeSharedTagCounts, useSharedTagCounts } from "./useSharedTagCounts";
 import { okJson } from "../../test/fetch";
+import { extractAssetTagCounts, matchesAssetTags } from "./tag-counts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -24,6 +25,16 @@ describe("useSharedTagCounts", () => {
 });
 
 describe("mergeSharedTagCounts", () => {
+  it("shares Unicode case-folded identities while retaining family counts", () => {
+    const items = [{ tags: ["Straße"] }, { tags: ["STRASSE"] }];
+    const counts = extractAssetTagCounts(items);
+    expect(mergeSharedTagCounts(counts, ["strasse"])).toEqual([
+      { tag: "starred", count: 0, isStarred: true },
+      { tag: "Straße", count: 2, isStarred: false },
+    ]);
+    expect(matchesAssetTags(items[0], ["STRASSE"])).toBe(true);
+    expect(matchesAssetTags({ tags: ["ς"] }, ["Σ"])).toBe(true);
+  });
   it("shows tags from other families with zero local count and deduplicates casing", () => {
     expect(mergeSharedTagCounts(
       [{ tag: "starred", count: 0, isStarred: true }, { tag: "Ops", count: 2, isStarred: false }],

@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
@@ -154,8 +155,8 @@ export default function SkillsWorkspacePage() {
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const currentTags = params.getAll("tag");
-      const normalized = tagToToggle.toLowerCase();
-      const hasTag = currentTags.some((t) => t.toLowerCase() === normalized);
+      const normalized = tagIdentity(tagToToggle);
+      const hasTag = currentTags.some((t) => tagIdentity(t) === normalized);
       params.delete("tag");
       if (!hasTag) {
         for (const t of currentTags) {
@@ -164,7 +165,7 @@ export default function SkillsWorkspacePage() {
         params.append("tag", tagToToggle);
       } else {
         for (const t of currentTags) {
-          if (t.toLowerCase() !== normalized) {
+          if (tagIdentity(t) !== normalized) {
             params.append("tag", t);
           }
         }
@@ -467,7 +468,7 @@ export default function SkillsWorkspacePage() {
             onManageSkill={(ref) => void onManageSkill(ref)}
             onToggleAgent={toggleAgentFilter}
             pendingStructuralActions={pendingStructuralActions}
-            starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
+            starredFilterActive={selectedTags.some((t) => tagIdentity(t) === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}
           />
         ) : hasData || hasActiveFilters ? (

@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import "../agents.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -132,11 +133,11 @@ export default function AgentsInUsePage() {
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const current = params.getAll("tag");
-      const normalizedToggle = tagToToggle.toLowerCase();
+      const normalizedToggle = tagIdentity(tagToToggle);
       params.delete("tag");
       let found = false;
       for (const t of current) {
-        if (t.toLowerCase() === normalizedToggle) {
+        if (tagIdentity(t) === normalizedToggle) {
           found = true;
         } else {
           params.append("tag", t);
@@ -156,7 +157,7 @@ export default function AgentsInUsePage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const starredFilterActive = selectedTags.some((t) => t.toLowerCase() === "starred");
+  const starredFilterActive = selectedTags.some((t) => tagIdentity(t) === "starred");
   const onToggleStarredFilter = useCallback(() => {
     toggleTagFilter("starred");
   }, [toggleTagFilter]);
@@ -166,10 +167,10 @@ export default function AgentsInUsePage() {
       const entry = inventory?.entries.find((e) => e.ref === ref);
       if (!entry) return;
       const currentTags = entry.tags || [];
-      const isStarred = currentTags.some((t) => t.toLowerCase() === "starred");
+      const isStarred = currentTags.some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? currentTags.filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...currentTags.filter((t) => t.toLowerCase() !== "starred")];
+        ? currentTags.filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...currentTags.filter((t) => tagIdentity(t) !== "starred")];
       try {
         await setTagsMutation.mutateAsync({ ref, tags: nextTags });
       } catch (err) {
