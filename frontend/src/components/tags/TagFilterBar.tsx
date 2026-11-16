@@ -1,6 +1,8 @@
 import { tagIdentity } from "./tag-identity";
 import { useEffect, useRef, useState } from "react";
-import { Search, Star, X } from "lucide-react";
+import { Pencil, Search, Star, X } from "lucide-react";
+
+import { RenameTagDialog } from "./RenameTagDialog";
 
 import type { AssetTagCount } from "./tag-counts";
 
@@ -17,6 +19,7 @@ export function TagFilterBar({
   onToggleTag,
   onClearTags,
 }: TagFilterBarProps) {
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -75,16 +78,26 @@ export function TagFilterBar({
         {filteredRegularTags.map((item) => {
           const isSelected = normalizedSelected.has(tagIdentity(item.tag));
           return (
-            <button
-              key={item.tag}
-              type="button"
-              className={`skill-tag-chip ${isSelected ? "skill-tag-chip--active" : ""}`}
-              onClick={() => onToggleTag(item.tag)}
-              aria-pressed={isSelected}
-            >
-              <span>{item.tag}</span>
-              <span className="skill-tag-chip__count">{item.count}</span>
-            </button>
+            <span key={item.tag} className="tag-chip-with-rename">
+              <button
+                type="button"
+                className={`skill-tag-chip ${isSelected ? "skill-tag-chip--active" : ""}`}
+                onClick={() => onToggleTag(item.tag)}
+                aria-pressed={isSelected}
+              >
+                <span>{item.tag}</span>
+                <span className="skill-tag-chip__count">{item.count}</span>
+              </button>
+              <button
+                type="button"
+                className="tag-rename-button"
+                aria-label={`Rename ${item.tag}`}
+                title={`Rename ${item.tag}`}
+                onClick={() => setRenaming(item.tag)}
+              >
+                <Pencil size={12} />
+              </button>
+            </span>
           );
         })}
 
@@ -165,6 +178,7 @@ export function TagFilterBar({
           </button>
         ) : null}
       </div>
+      {renaming ? <RenameTagDialog source={renaming} onClose={() => setRenaming(null)} /> : null}
     </div>
   );
 }

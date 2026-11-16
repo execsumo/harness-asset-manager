@@ -600,3 +600,6 @@ select.form-field__input,
 }
 
 }
+
+.tag-chip-with-rename { display: inline-flex; align-items: center; }
+.tag-rename-button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 4px; }
