@@ -32,6 +32,28 @@ class _BlockingStore:
         return SkillStoreScan(packages=(), issues=(str(call),))
 
 
+class _GatedStore:
+    """Scans return immediately unless ``gate`` is cleared; the second scan signals its start."""
+
+    def __init__(self) -> None:
+        self.package_cache = SkillPackageCache()
+        self.gate = Event()
+        self.gate.set()
+        self.second_started = Event()
+        self.calls = 0
+        self._lock = Lock()
+
+    def scan(self, *, cache_cycle: int | None = None) -> SkillStoreScan:
+        del cache_cycle
+        with self._lock:
+            self.calls += 1
+            call = self.calls
+        if call == 2:
+            self.second_started.set()
+        self.gate.wait(timeout=5)
+        return SkillStoreScan(packages=(), issues=(str(call),))
+
+
 class _ReentrantStore:
     def __init__(self) -> None:
         self.package_cache = SkillPackageCache()
@@ -146,6 +168,44 @@ class SkillsReadModelTests(unittest.TestCase):
         self.assertEqual(store.calls, 2)
         self.assertEqual(snapshot.store_scan.issues, ("2",))
 
+    def test_max_age_serves_cached_snapshot_without_waiting_on_a_build(self) -> None:
+        store = _GatedStore()
+        service = SkillsReadModelService(
+            store=store,  # type: ignore[arg-type]
+            adapters=(),
+            kernel=Mock(),
+            snapshot_ttl_seconds=0,
+        )
+        first = service.snapshot()
+        store.gate.clear()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            rebuilding = executor.submit(service.snapshot)
+            self.assertTrue(store.second_started.wait(timeout=2))
+            tolerant = service.snapshot(max_age_seconds=60)
+            self.assertIs(tolerant, first)
+            store.gate.set()
+            rebuilt = rebuilding.result(timeout=5)
+
+        self.assertEqual(rebuilt.store_scan.issues, ("2",))
+        self.assertIs(service.snapshot(max_age_seconds=60), rebuilt)
+        self.assertEqual(store.calls, 2)
+
+    def test_invalidate_is_not_masked_by_max_age(self) -> None:
+        store = _GatedStore()
+        service = SkillsReadModelService(
+            store=store,  # type: ignore[arg-type]
+            adapters=(),
+            kernel=Mock(),
+            snapshot_ttl_seconds=0,
+        )
+        service.snapshot()
+        service.invalidate()
+
+        snapshot = service.snapshot(max_age_seconds=60)
+
+        self.assertEqual(snapshot.store_scan.issues, ("2",))
+        self.assertEqual(store.calls, 2)
     def test_snapshot_reentrancy_is_rejected_instead_of_deadlocking(self) -> None:
         store = _ReentrantStore()
         service = SkillsReadModelService(

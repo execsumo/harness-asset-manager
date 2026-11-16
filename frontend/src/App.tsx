@@ -1,5 +1,5 @@
-import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useState } from "react";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import RouteLoadingPanel from "./components/RouteLoadingPanel";
@@ -7,6 +7,8 @@ import { Shell } from "./components/Shell";
 import { ToastProvider } from "./components/Toast";
 import { UiTooltipProvider } from "./components/ui/UiTooltipProvider";
 import { invalidateCapabilityQueries } from "./app/capability-registry";
+import { createAppQueryClient } from "./app/query-client";
+import { prefetchAssetTagVocabulary } from "./components/tags/asset-tag-vocabulary";
 import { SkillsWorkspaceSessionProvider } from "./features/skills/model/session";
 import { getSkillsRouteElements } from "./features/skills/routes";
 import { getHooksRouteElements } from "./features/hooks/routes";
@@ -25,16 +27,7 @@ const PermissionsPage = lazy(() => import("./features/permissions/screens/Permis
 const ConfigsPage = lazy(() => import("./features/configs/screens/ConfigsPage"));
 
 export function App() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: 1,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(createAppQueryClient);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -55,6 +48,12 @@ function AppContent() {
   const queryClient = useQueryClient();
   const [refreshPending, setRefreshPending] = useState(false);
   const common = useCommonCopy();
+
+  // Start the shared tag vocabulary with the app rather than after a page's
+  // lazy chunk loads, so the first tag bar can render it from cache.
+  useEffect(() => {
+    void prefetchAssetTagVocabulary(queryClient);
+  }, [queryClient]);
 
   async function handleRefreshData() {
     setRefreshPending(true);

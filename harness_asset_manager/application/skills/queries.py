@@ -128,9 +128,9 @@ class SkillsQueryService:
                 self._reconcile_state.active = False
         return self._inventory_snapshot()
 
-    def _inventory_snapshot(self) -> SkillInventory:
+    def _inventory_snapshot(self, *, max_age_seconds: float | None = None) -> SkillInventory:
         """The matrix as it stands, with no repair pass. Never writes."""
-        snapshot = self.read_models.snapshot()
+        snapshot = self.read_models.snapshot(max_age_seconds=max_age_seconds)
         active_scans = tuple(
             scan for scan in self.read_models.visible_scans(snapshot)
             if scan.installed
