@@ -120,6 +120,21 @@ class ClaudeScopedHookRemovalTests(unittest.TestCase):
                 },
             )
 
+    def test_id_less_copy_of_app_created_hook_is_left_alone(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _manage(home, HookSpec(id="lint", event="pre_tool_use", command="lint.sh", match="shell"))
+            adapter = _adapter("claude", home=home)
+            _write_json(
+                adapter.config_path,
+                {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [_cmd("lint.sh")]}]}},
+            )
+            before = adapter.config_path.read_bytes()
+
+            adapter.disable_hook("lint")
+
+            self.assertEqual(adapter.config_path.read_bytes(), before)
+
     def test_duplicate_adopted_occurrences_refuse_with_409(self) -> None:
         with TemporaryDirectory() as tmp:
             home = Path(tmp)

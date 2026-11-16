@@ -299,9 +299,11 @@ class ClaudeCodeHooksMapper:
         if not isinstance(hooks_subtree, dict):
             return False
 
-        # An entry carrying the managed id is the app's own write and wins outright.
-        # An id-less entry is the managed hook only at the managed event and matcher
-        # (the same rule ``read_entries`` uses to attribute it), never elsewhere.
+        # The app tags every hook it writes with its id, so a tagged entry is the
+        # app's own write. An id-less entry can only be the managed hook when that hook
+        # was adopted (a ``manual:`` id), and then only at the adopted event and
+        # matcher, never wherever the same command appears.
+        adopted = id.startswith("manual:")
         tagged: list[tuple[str, ...]] = []
         untagged: list[tuple[str, ...]] = []
         occurrences: dict[tuple[str, ...], tuple[str, list[object], dict[str, object], object]] = {}
@@ -332,6 +334,8 @@ class ClaudeCodeHooksMapper:
                             tagged.append(key)
                         continue
                     hook_command = hook.get("command")
+                    if not adopted:
+                        continue
                     if spec is not None:
                         if (
                             canonical_event == spec.event
