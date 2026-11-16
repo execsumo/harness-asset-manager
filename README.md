@@ -237,6 +237,9 @@ harnessam skills list --json | jq -r '.rows[] | select(.displayStatus=="Unmanage
 
 ### Overview
 
+In the Agent, Skill, and Slash Command detail editors, refreshing the selected asset preserves
+unsaved edits. Selecting a different asset loads that asset's details.
+
 Start with the Active harnesses table: per-harness coverage across skills, slash commands,
 MCP servers, hooks, permissions, and agents, with a review column that totals everything
 waiting for a decision. Every cell deep-links into the filtered capability view (and its
