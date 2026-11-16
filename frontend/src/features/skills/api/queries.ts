@@ -28,7 +28,7 @@ import {
   removeSkillFromList,
 } from "./cache-patches";
 import { invalidateSkillsQueries } from "./invalidation";
-import { SKILLS_GC_TIME_MS, SKILLS_STALE_TIME_MS, skillsKeys } from "./keys";
+import { SKILLS_GC_TIME_MS, SKILLS_LIST_REFETCH_INTERVAL_MS, SKILLS_STALE_TIME_MS, skillsKeys } from "./keys";
 import { mapSkillDetail, mapSkillsPage } from "./mappers";
 import type { HarnessCellState } from "../model/types";
 import type {
@@ -49,6 +49,8 @@ export function useSkillsListQuery() {
     queryFn: fetchSkillsPage,
     select: mapSkillsPage,
     ...queryPolicy(SKILLS_STALE_TIME_MS, SKILLS_GC_TIME_MS),
+    refetchInterval: SKILLS_LIST_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: true,
   });
 }
 

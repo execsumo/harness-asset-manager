@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { fetchJson, postJson, putJson } from "../../../api/http";
 import type { ConfigsPayload, ConfigDiff } from "./types";
 
@@ -7,11 +7,18 @@ export const CONFIGS_KEYS = {
   list: () => [...CONFIGS_KEYS.all, "list"] as const,
 };
 
+export const CONFIGS_REFETCH_INTERVAL_MS = 5_000;
+
 export function useConfigsListQuery() {
   return useQuery({
     queryKey: CONFIGS_KEYS.list(),
     queryFn: async () => fetchJson<ConfigsPayload>("/configs/"),
+    refetchInterval: CONFIGS_REFETCH_INTERVAL_MS,
   });
+}
+
+export async function invalidateConfigsQueries(queryClient: QueryClient): Promise<void> {
+  await queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all });
 }
 
 export function useConfigDiffMutation() {
