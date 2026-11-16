@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { queryPolicy } from "../../../lib/query";
@@ -44,9 +45,12 @@ export async function invalidateSlashCommandQueries(queryClient: QueryClient): P
 export function useSetSlashCommandTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...slashCommandKeys.all, "tags"],
     mutationFn: ({ name, tags }: { name: string; tags: string[] }) =>
       setSlashCommandTags(name, tags),
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onMutate: ({ name, tags }) => optimisticTags(queryClient, { prefix: slashCommandKeys.all, collectionKey: "list", collections: ["commands", "reviewCommands"], identity: "name" }, name, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => queryClient.isMutating({ mutationKey: [...slashCommandKeys.all, "tags"] }) === 1 ? invalidateSlashCommandQueries(queryClient) : undefined,
   });
 }
 

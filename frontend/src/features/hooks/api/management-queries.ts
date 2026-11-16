@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import {
   useMutation,
   useQuery,
@@ -36,9 +37,12 @@ export function useHooksInventoryQuery() {
 export function useSetHookTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...hooksManagementKeys.all, "tags"],
     mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
       setHookTags(id, tags),
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onMutate: ({ id, tags }) => optimisticTags(queryClient, { prefix: hooksManagementKeys.all, collectionKey: "inventory", collections: ["entries"], identity: "id", detail: hooksManagementKeys.detail(id) }, id, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => queryClient.isMutating({ mutationKey: [...hooksManagementKeys.all, "tags"] }) === 1 ? invalidateHooksQueries(queryClient) : undefined,
   });
 }
 

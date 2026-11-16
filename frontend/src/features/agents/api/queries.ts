@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent, setAgentArchived } from "./client";
 import { AGENTS_LIST_REFETCH_INTERVAL_MS, agentsKeys } from "./keys";
@@ -28,10 +29,14 @@ export function useAgentDetailQuery(ref: string) {
 export function useSetAgentTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...agentsKeys.all, "tags"],
     mutationFn: ({ ref, tags }: { ref: string; tags: string[] }) => setAgentTags(ref, tags),
-    onSuccess: (_, { ref }) => {
-      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
-      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
+    onMutate: ({ ref, tags }) => optimisticTags(queryClient, { prefix: agentsKeys.all, collectionKey: "list", collections: ["entries"], identity: "ref", detail: agentsKeys.detail(ref) }, ref, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey: [...agentsKeys.all, "tags"] }) === 1) {
+        return queryClient.invalidateQueries({ queryKey: agentsKeys.all });
+      }
     },
   });
 }
