@@ -5210,6 +5210,37 @@
         "title": "ReconcilePermissionRequest",
         "type": "object"
       },
+      "RenameTagRequest": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "RenameTagRequest",
+        "type": "object"
+      },
+      "RenameTagResponse": {
+        "properties": {
+          "assets_changed": {
+            "title": "Assets Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assets_changed"
+        ],
+        "title": "RenameTagResponse",
+        "type": "object"
+      },
       "ScaffoldRequest": {
         "properties": {
           "asset_type": {
@@ -5328,6 +5359,19 @@
           "enabled"
         ],
         "title": "SetAutoAdoptRequest",
+        "type": "object"
+      },
+      "SetDisplayPreferenceRequest": {
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "SetDisplayPreferenceRequest",
         "type": "object"
       },
       "SetHarnessSupportRequest": {
@@ -5592,6 +5636,17 @@
         "title": "SettingsAutoAdoptResponse",
         "type": "object"
       },
+      "SettingsDisplayResponse": {
+        "properties": {
+          "showSkillAgentTags": {
+            "default": true,
+            "title": "Showskillagenttags",
+            "type": "boolean"
+          }
+        },
+        "title": "SettingsDisplayResponse",
+        "type": "object"
+      },
       "SettingsHarnessResponse": {
         "properties": {
           "harness": {
@@ -5667,6 +5722,12 @@
             },
             "title": "Autoadoptharnesses",
             "type": "object"
+          },
+          "display": {
+            "$ref": "#/components/schemas/SettingsDisplayResponse",
+            "default": {
+              "showSkillAgentTags": true
+            }
           },
           "harnesses": {
             "items": {
@@ -8774,6 +8835,97 @@
           }
         },
         "summary": "List Asset Tags",
+        "tags": [
+          "asset-tags"
+        ]
+      }
+    },
+    "/api/asset-tags/rename": {
+      "post": {
+        "operationId": "rename_asset_tag_api_asset_tags_rename_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameTagResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Rename Asset Tag",
         "tags": [
           "asset-tags"
         ]
@@ -14699,6 +14851,107 @@
           }
         },
         "summary": "Set Auto Adopt Harnesses"
+      }
+    },
+    "/api/settings/display/{key}": {
+      "put": {
+        "operationId": "set_display_preference_api_settings_display__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDisplayPreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Display Preference Api Settings Display  Key  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Set Display Preference"
       }
     },
     "/api/settings/harnesses/{harness}/support": {

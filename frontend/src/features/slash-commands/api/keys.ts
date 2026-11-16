@@ -5,3 +5,4 @@ export const slashCommandKeys = {
 
 export const SLASH_COMMANDS_STALE_TIME_MS = 10_000;
 export const SLASH_COMMANDS_GC_TIME_MS = 5 * 60_000;
+export const SLASH_COMMANDS_REFETCH_INTERVAL_MS = 5_000;

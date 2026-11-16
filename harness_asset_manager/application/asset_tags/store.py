@@ -84,3 +84,33 @@ class AssetTagStore:
 
             atomic_write_text(self.path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
             return list(tags)
+
+    def rename_tag(self, source: str, target: str) -> int:
+        """Replace an identity across the store in one locked atomic write."""
+        with file_lock(self.lock_path):
+            if not self.path.is_file():
+                return 0
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict) or not isinstance(payload.get("tags"), dict):
+                raise ValueError("Invalid asset tag store")
+            entries = payload["tags"]
+            count = 0
+            for key, tags in entries.items():
+                if not isinstance(key, str) or ":" not in key or not isinstance(tags, list):
+                    continue
+                if not any(isinstance(tag, str) and tag.casefold() == source.casefold() for tag in tags):
+                    continue
+                count += 1
+                result = []
+                target_seen = False
+                for tag in tags:
+                    if isinstance(tag, str) and tag.casefold() in (source.casefold(), target.casefold()):
+                        if not target_seen:
+                            result.append(target)
+                            target_seen = True
+                    else:
+                        result.append(tag)
+                entries[key] = result
+            if count:
+                atomic_write_text(self.path, json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            return count

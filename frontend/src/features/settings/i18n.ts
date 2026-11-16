@@ -10,6 +10,12 @@ const englishSettingsCopy = {
     cacheTitle: "Marketplace cache",
     cacheSubtitle: "Downloaded previews and install bundles.",
   },
+  display: {
+    heading: "Display",
+    skillAgentTagsTitle: "Show agents as tags on Skills",
+    skillAgentTagsSubtitle: "List agents in the Skills filter bar and on skill rows. Attaching agents in bulk works either way.",
+    unableToUpdate: "Unable to update display settings.",
+  },
   harnesses: {
     heading: "Harness roots",
     detectedHeading: "Detected harnesses",

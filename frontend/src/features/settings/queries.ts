@@ -4,7 +4,7 @@ import { queryPolicy } from "../../lib/query";
 import { invalidateAgentsQueries } from "../agents/public";
 import { invalidateMcpQueries } from "../mcp/public";
 import { invalidateSkillsQueries } from "../skills/public";
-import { fetchSettings, updateAutoAdopt, updateAutoAdoptHarnesses, updateHarnessSupport } from "./api/client";
+import { fetchSettings, updateAutoAdopt, updateAutoAdoptHarnesses, updateDisplayPreference, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
 const SETTINGS_STALE_TIME_MS = 60_000;
@@ -128,6 +128,44 @@ export function useAutoAdoptHarnessesMutation() {
       }
     },
     onSuccess: async () => {
+      await invalidateSettingsQueries(queryClient);
+    },
+  });
+}
+
+export type DisplayPreferenceKey = "showSkillAgentTags";
+
+const DISPLAY_DEFAULTS: Record<DisplayPreferenceKey, boolean> = { showSkillAgentTags: true };
+
+/** UI display preferences, falling back to defaults while settings load or if they fail. */
+export function useDisplayPreferences(): Record<DisplayPreferenceKey, boolean> {
+  const { data } = useSettingsQuery();
+  return { ...DISPLAY_DEFAULTS, ...(data?.display ?? {}) };
+}
+
+export function useDisplayPreferenceMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ key, value }: { key: DisplayPreferenceKey; value: boolean }) =>
+      updateDisplayPreference(key, value),
+    onMutate: async ({ key, value }) => {
+      await queryClient.cancelQueries({ queryKey: settingsKeys.detail() });
+      const previousSettings = queryClient.getQueryData<SettingsData>(settingsKeys.detail());
+      if (previousSettings) {
+        queryClient.setQueryData<SettingsData>(settingsKeys.detail(), {
+          ...previousSettings,
+          display: { ...DISPLAY_DEFAULTS, ...(previousSettings.display ?? {}), [key]: value },
+        });
+      }
+      return { previousSettings };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSettings) {
+        queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
+      }
+    },
+    onSettled: async () => {
       await invalidateSettingsQueries(queryClient);
     },
   });

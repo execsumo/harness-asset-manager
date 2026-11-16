@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent, setAgentArchived } from "./client";
-import { agentsKeys } from "./keys";
+import { AGENTS_LIST_REFETCH_INTERVAL_MS, agentsKeys } from "./keys";
 
 export function useHermesOptionsQuery() {
   return useQuery({
@@ -14,6 +14,7 @@ export function useAgentsInventoryQuery(includeArchived = false) {
   return useQuery({
     queryKey: [...agentsKeys.list(), includeArchived],
     queryFn: () => fetchAgentsInventory(includeArchived),
+    refetchInterval: AGENTS_LIST_REFETCH_INTERVAL_MS,
   });
 }
 

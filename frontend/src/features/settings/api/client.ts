@@ -33,3 +33,15 @@ export async function updateAutoAdoptHarnesses(
     { harnesses },
   );
 }
+
+export type DisplayPreferences = SettingsData["display"];
+
+export async function updateDisplayPreference(
+  key: keyof NonNullable<DisplayPreferences>,
+  value: boolean,
+): Promise<{ ok: boolean; display: NonNullable<DisplayPreferences> }> {
+  return putJson<{ ok: boolean; display: NonNullable<DisplayPreferences> }>(
+    `/settings/display/${encodeURIComponent(key)}`,
+    { value },
+  );
+}

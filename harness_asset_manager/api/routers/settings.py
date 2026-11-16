@@ -6,6 +6,7 @@ from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.api.schemas import (
     SetAutoAdoptHarnessesRequest,
     SetAutoAdoptRequest,
+    SetDisplayPreferenceRequest,
     SetHarnessSupportRequest,
     SettingsResponse,
 )
@@ -44,3 +45,12 @@ def set_auto_adopt_harnesses(
     container: BackendContainer = Depends(get_container),
 ) -> dict[str, object]:
     return container.settings_mutations.set_auto_adopt_harnesses(family, body.harnesses)
+
+
+@router.put("/display/{key}")
+def set_display_preference(
+    key: str,
+    body: SetDisplayPreferenceRequest,
+    container: BackendContainer = Depends(get_container),
+) -> dict[str, object]:
+    return container.settings_mutations.set_display_preference(key, body.value)

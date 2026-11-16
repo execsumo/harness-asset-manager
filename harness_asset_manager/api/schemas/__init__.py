@@ -120,7 +120,9 @@ from .permissions import (
 from .settings import (
     SetAutoAdoptHarnessesRequest,
     SetAutoAdoptRequest,
+    SetDisplayPreferenceRequest,
     SettingsAutoAdoptResponse,
+    SettingsDisplayResponse,
     SettingsHarnessResponse,
     SettingsResponse,
     SettingsStorageResponse,
@@ -271,6 +273,8 @@ __all__ = [
     "ReconcileMcpServerRequest",
     "SetAutoAdoptHarnessesRequest",
     "SetAutoAdoptRequest",
+    "SetDisplayPreferenceRequest",
+    "SettingsDisplayResponse",
     "SetHarnessSupportRequest",
     "SetMcpServerHarnessesRequest",
     "SetMcpServerTagsRequest",

@@ -241,4 +241,43 @@ describe("SettingsPage", () => {
       ).toBe(true);
     });
   });
+
+  it("toggles showing agents as tags on the Skills page", async () => {
+    let display = { showSkillAgentTags: true };
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/settings") {
+        return okJson({
+          storage: {
+            platform: "linux",
+            configDir: "/tmp/config/harnessam",
+            dataDir: "/tmp/data/harnessam",
+            stateDir: "/tmp/state/harnessam",
+            skillsStorePath: "/tmp/data/harnessam/shared",
+            marketplaceCachePath: "/tmp/data/harnessam/marketplace",
+            settingsPath: "/tmp/config/harnessam/settings.json",
+          },
+          harnesses: [],
+          autoAdopt: {},
+          display,
+        });
+      }
+      if (url === "/api/settings/display/showSkillAgentTags" && init?.method === "PUT") {
+        display = { showSkillAgentTags: JSON.parse(String(init.body)).value };
+        return okJson({ ok: true, display });
+      }
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<SettingsPage />);
+
+    const toggle = await screen.findByRole("switch", { name: "Show agents as tags on Skills" });
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(display.showSkillAgentTags).toBe(false));
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: "Show agents as tags on Skills" })).toHaveAttribute("aria-checked", "false"),
+    );
+  });
 });

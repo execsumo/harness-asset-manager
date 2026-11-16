@@ -2,4 +2,4 @@
 // for configsRoutes/useConfigsListQuery, and a static re-export here would pull
 // the whole screen into the main bundle and defeat its lazy route in App.tsx.
 export { configsRoutes } from './routes';
-export { useConfigsListQuery } from './api/queries';
+export { invalidateConfigsQueries, useConfigsListQuery } from './api/queries';
