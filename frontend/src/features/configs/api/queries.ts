@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { fetchJson, postJson, putJson } from "../../../api/http";
 import type { ConfigsPayload, ConfigDiff } from "./types";
@@ -62,9 +63,12 @@ export function useCaptureConfigsMutation() {
 export function useSetConfigTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...CONFIGS_KEYS.all, "tags"],
     mutationFn: async ({ harness, tags }: { harness: string; tags: string[] }) => {
       await putJson(`/configs/${encodeURIComponent(harness)}/tags`, { tags });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }),
+    onMutate: ({ harness, tags }) => optimisticTags(queryClient, { prefix: CONFIGS_KEYS.all, identity: "harness", collectionKey: "list", config: true }, harness, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => queryClient.isMutating({ mutationKey: [...CONFIGS_KEYS.all, "tags"] }) === 1 ? queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }) : undefined,
   });
 }

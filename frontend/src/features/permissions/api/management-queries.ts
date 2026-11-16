@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import {
   useMutation,
   useQuery,
@@ -36,9 +37,12 @@ export function usePermissionsInventoryQuery() {
 export function useSetPermissionTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...permissionsManagementKeys.all, "tags"],
     mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
       setPermissionTags(id, tags),
-    onSettled: () => invalidatePermissionsQueries(queryClient),
+    onMutate: ({ id, tags }) => optimisticTags(queryClient, { prefix: permissionsManagementKeys.all, collectionKey: "inventory", collections: ["entries"], identity: "id", detail: permissionsManagementKeys.detail(id) }, id, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => queryClient.isMutating({ mutationKey: [...permissionsManagementKeys.all, "tags"] }) === 1 ? invalidatePermissionsQueries(queryClient) : undefined,
   });
 }
 

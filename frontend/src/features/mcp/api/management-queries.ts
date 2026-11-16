@@ -1,3 +1,4 @@
+import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import {
   useMutation,
   useQuery,
@@ -37,9 +38,12 @@ export function useMcpInventoryQuery(includeArchived = false) {
 export function useSetMcpServerTagsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: [...mcpManagementKeys.all, "tags"],
     mutationFn: ({ name, tags }: { name: string; tags: string[] }) =>
       setMcpServerTags(name, tags),
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onMutate: ({ name, tags }) => optimisticTags(queryClient, { prefix: mcpManagementKeys.all, collectionKey: "inventory", collections: ["entries"], identity: "name", detail: mcpManagementKeys.detail(name) }, name, tags),
+    onError: (_error, _variables, rollback) => rollback?.(),
+    onSettled: () => queryClient.isMutating({ mutationKey: [...mcpManagementKeys.all, "tags"] }) === 1 ? invalidateMcpQueries(queryClient) : undefined,
   });
 }
 
