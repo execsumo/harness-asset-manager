@@ -16,6 +16,36 @@ class RawHookEntry:
         self.payload = payload
 
 
+def _manual_hook_id(command: str) -> str:
+    return f"manual:{hashlib.sha256(command.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _remove_item(items: list[object], item: object) -> None:
+    # By identity: a user copy can compare equal to the managed entry.
+    for index, candidate in enumerate(items):
+        if candidate is item:
+            del items[index]
+            return
+
+
+def _ambiguous_hook(id: str, locations: list[str]) -> MutationError:
+    return MutationError(
+        f"Hook '{id}' matches {len(locations)} entries ({', '.join(locations)}), so the one "
+        "Harness Asset Manager wrote cannot be identified. Remove the extra copies by hand, "
+        "then retry.",
+        status=409,
+    )
+
+
+def _single_target(id: str, targets: list[tuple[str, ...]]) -> tuple[str, ...] | None:
+    """The one occurrence to remove, ``None`` when there is none, 409 when several match."""
+    if not targets:
+        return None
+    if len(targets) > 1:
+        raise _ambiguous_hook(id, [target[0] for target in targets])
+    return targets[0]
+
+
 class HookMapper(Protocol):
     """Translates between HookSpec and a single harness's hook configuration shape."""
 
@@ -23,7 +53,19 @@ class HookMapper(Protocol):
 
     def enable_hook(self, document: dict[str, object], spec: HookSpec) -> None: ...
 
-    def disable_hook(self, document: dict[str, object], id: str, command: str | None = None) -> None: ...
+    def disable_hook(
+        self,
+        document: dict[str, object],
+        id: str,
+        spec: HookSpec | None = None,
+    ) -> bool:
+        """Remove the one occurrence of ``id`` that the app wrote or adopted.
+
+        ``spec`` is the managed record and locates the occurrence (event, matcher
+        group, command). Returns whether anything changed; raises a 409
+        ``MutationError`` when the occurrence cannot be told apart from look-alikes.
+        """
+        ...
 
     def spec_to_dict(self, spec: HookSpec) -> dict[str, object]: ...
 
@@ -35,6 +77,27 @@ class HookMapper(Protocol):
     ) -> HookSpec: ...
 
     def representable(self, spec: HookSpec) -> tuple[bool, str | None, str | None]: ...
+
+
+_CLAUDE_EVENTS = {
+    "PreToolUse": "pre_tool_use",
+    "PostToolUse": "post_tool_use",
+    "UserPromptSubmit": "user_prompt_submit",
+    "SessionStart": "session_start",
+    "Stop": "stop",
+    "PreCompact": "pre_compact",
+}
+
+_CLAUDE_MATCHERS = {
+    "Bash": "shell",
+    "Read": "file_read",
+    "Edit|Write": "file_write",
+    "Edit": "file_write",
+    "Write": "file_write",
+    "mcp__.*": "mcp",
+    "WebFetch": "web",
+    "*": "any",
+}
 
 
 class ClaudeCodeHooksMapper:
@@ -97,26 +160,9 @@ class ClaudeCodeHooksMapper:
         hooks_subtree = document.get("hooks")
         if not isinstance(hooks_subtree, dict):
             return []
-        
-        event_map = {
-            "PreToolUse": "pre_tool_use",
-            "PostToolUse": "post_tool_use",
-            "UserPromptSubmit": "user_prompt_submit",
-            "SessionStart": "session_start",
-            "Stop": "stop",
-            "PreCompact": "pre_compact",
-        }
-        
-        matcher_map = {
-            "Bash": "shell",
-            "Read": "file_read",
-            "Edit|Write": "file_write",
-            "Edit": "file_write",
-            "Write": "file_write",
-            "mcp__.*": "mcp",
-            "WebFetch": "web",
-            "*": "any",
-        }
+
+        event_map = _CLAUDE_EVENTS
+        matcher_map = _CLAUDE_MATCHERS
 
         entries: list[RawHookEntry] = []
         for native_event, matcher_groups in hooks_subtree.items():
@@ -243,45 +289,77 @@ class ClaudeCodeHooksMapper:
             if not ev_list:
                 hooks_subtree.pop(ev, None)
 
-    def disable_hook(self, document: dict[str, object], id: str, command: str | None = None) -> None:
+    def disable_hook(
+        self,
+        document: dict[str, object],
+        id: str,
+        spec: HookSpec | None = None,
+    ) -> bool:
         hooks_subtree = document.get("hooks")
         if not isinstance(hooks_subtree, dict):
-            return
+            return False
 
-        removed = False
-        for ev, ev_list in list(hooks_subtree.items()):
-            if not isinstance(ev_list, list):
+        # The app tags every hook it writes with its id, so a tagged entry is the
+        # app's own write. An id-less entry can only be the managed hook when that hook
+        # was adopted (a ``manual:`` id), and then only at the adopted event and
+        # matcher, never wherever the same command appears.
+        adopted = id.startswith("manual:")
+        tagged: list[tuple[str, ...]] = []
+        untagged: list[tuple[str, ...]] = []
+        occurrences: dict[tuple[str, ...], tuple[str, list[object], dict[str, object], object]] = {}
+        for native_event, groups in hooks_subtree.items():
+            if not isinstance(groups, list):
                 continue
-            for grp in list(ev_list):
-                if not isinstance(grp, dict) or "hooks" not in grp or not isinstance(grp["hooks"], list):
+            canonical_event = _CLAUDE_EVENTS.get(native_event, native_event)
+            for group_index, group in enumerate(groups):
+                if not isinstance(group, dict):
                     continue
-                orig_len = len(grp["hooks"])
-                
-                def matches(h: object) -> bool:
-                    if not isinstance(h, dict):
-                        return False
-                    hid = h.get("id")
-                    hcmd = h.get("command")
-                    if hid == id:
-                        return True
-                    if command and hcmd == command:
-                        return True
-                    if id.startswith("manual:") and isinstance(hcmd, str):
-                        hcmd_hash = hashlib.sha256(hcmd.encode("utf-8")).hexdigest()[:16]
-                        if f"manual:{hcmd_hash}" == id:
-                            return True
-                    return False
+                hooks_list = group.get("hooks")
+                if not isinstance(hooks_list, list):
+                    continue
+                native_matcher = group.get("matcher")
+                canonical_match = (
+                    _CLAUDE_MATCHERS.get(native_matcher, native_matcher)
+                    if native_matcher is not None
+                    else None
+                )
+                for hook_index, hook in enumerate(hooks_list):
+                    if not isinstance(hook, dict):
+                        continue
+                    key = (f"{native_event}[{native_matcher or ''}]", str(group_index), str(hook_index))
+                    occurrences[key] = (native_event, groups, group, hook)
+                    raw_id = hook.get("id")
+                    if isinstance(raw_id, str) and raw_id:
+                        if raw_id == id:
+                            tagged.append(key)
+                        continue
+                    hook_command = hook.get("command")
+                    if not adopted:
+                        continue
+                    if spec is not None:
+                        if (
+                            canonical_event == spec.event
+                            and canonical_match == spec.match
+                            and hook_command == spec.command
+                        ):
+                            untagged.append(key)
+                    elif isinstance(hook_command, str) and _manual_hook_id(hook_command) == id:
+                        untagged.append(key)
 
-                grp["hooks"] = [h for h in grp["hooks"] if not matches(h)]
-                if len(grp["hooks"]) < orig_len:
-                    removed = True
-                if not grp["hooks"]:
-                    ev_list.remove(grp)
-            if not ev_list:
-                hooks_subtree.pop(ev, None)
-
+        target = _single_target(id, tagged or untagged)
+        if target is None:
+            return False
+        native_event, groups, group, hook = occurrences[target]
+        hooks_list = group["hooks"]
+        assert isinstance(hooks_list, list)
+        _remove_item(hooks_list, hook)
+        if not hooks_list and set(group) <= {"matcher", "hooks"}:
+            _remove_item(groups, group)
+        if not groups:
+            hooks_subtree.pop(native_event, None)
         if not hooks_subtree:
             document.pop("hooks", None)
+        return True
 
 
 class CodexHooksMapper(ClaudeCodeHooksMapper):
@@ -418,39 +496,54 @@ class CursorHooksMapper:
                 if not hooks_subtree[ev]:
                     hooks_subtree.pop(ev, None)
 
-    def disable_hook(self, document: dict[str, object], id: str, command: str | None = None) -> None:
+    def disable_hook(
+        self,
+        document: dict[str, object],
+        id: str,
+        spec: HookSpec | None = None,
+    ) -> bool:
         hooks_subtree = document.get("hooks")
         if not isinstance(hooks_subtree, dict):
-            return
+            return False
 
-        removed = False
-        for ev, ev_list in list(hooks_subtree.items()):
-            if not isinstance(ev_list, list):
+        # Cursor entries carry no id, so a managed hook is its command under the one
+        # native event its (event, match) maps to — the same rule ``read_entries`` uses.
+        if spec is not None:
+            cat = spec.match or "any" if spec.event in ("pre_tool_use", "post_tool_use") else None
+            native_event = self._event_mapping().get((spec.event, cat))
+            events = [native_event] if native_event else []
+        else:
+            events = list(hooks_subtree)
+
+        targets: list[tuple[str, ...]] = []
+        occurrences: dict[tuple[str, ...], tuple[str, list[object], object]] = {}
+        for event in events:
+            hook_list = hooks_subtree.get(event)
+            if not isinstance(hook_list, list):
                 continue
-            orig_len = len(ev_list)
+            for index, hook in enumerate(hook_list):
+                if not isinstance(hook, dict):
+                    continue
+                hook_command = hook.get("command")
+                if spec is not None:
+                    matched = hook_command == spec.command
+                else:
+                    matched = isinstance(hook_command, str) and _manual_hook_id(hook_command) == id
+                if matched:
+                    key = (event, str(index))
+                    targets.append(key)
+                    occurrences[key] = (event, hook_list, hook)
 
-            def matches(h: object) -> bool:
-                if not isinstance(h, dict):
-                    return False
-                hcmd = h.get("command")
-                if command and hcmd == command:
-                    return True
-                if isinstance(hcmd, str):
-                    hcmd_hash = hashlib.sha256(hcmd.encode("utf-8")).hexdigest()[:16]
-                    if f"manual:{hcmd_hash}" == id:
-                        return True
-                return False
-
-            ev_list = [h for h in ev_list if not matches(h)]
-            if len(ev_list) < orig_len:
-                removed = True
-            if ev_list:
-                hooks_subtree[ev] = ev_list
-            else:
-                hooks_subtree.pop(ev, None)
-
+        target = _single_target(id, targets)
+        if target is None:
+            return False
+        event, hook_list, hook = occurrences[target]
+        _remove_item(hook_list, hook)
+        if not hook_list:
+            hooks_subtree.pop(event, None)
         if not hooks_subtree:
             document.pop("hooks", None)
+        return True
 
 
 class OpenCodeHooksMapper:
@@ -624,53 +717,119 @@ class OpenCodeHooksMapper:
         else:
             raise MutationError(f"Unsupported event for OpenCode: {spec.event}", status=400)
 
-    def disable_hook(self, document: dict[str, object], id: str, command: str | None = None) -> None:
+    def disable_hook(
+        self,
+        document: dict[str, object],
+        id: str,
+        spec: HookSpec | None = None,
+    ) -> bool:
         exp = document.get("experimental")
         if not isinstance(exp, dict):
-            return
+            return False
         hook_subtree = exp.get("hook")
         if not isinstance(hook_subtree, dict):
-            return
-
-        command_argv = ["/bin/sh", "-c", command] if command else None
-
-        def matches(h: object) -> bool:
-            if not isinstance(h, dict):
-                return False
-            argv = h.get("command")
-            if not isinstance(argv, list):
-                return False
-            if command_argv and argv == command_argv:
-                return True
-            if len(argv) == 3 and argv[0] == "/bin/sh" and argv[1] == "-c":
-                hcmd = argv[2]
-            else:
-                hcmd = " ".join(str(arg) for arg in argv)
-            hcmd_hash = hashlib.sha256(hcmd.encode("utf-8")).hexdigest()[:16]
-            if f"manual:{hcmd_hash}" == id:
-                return True
             return False
 
+        def unwrapped(hook: object) -> str | None:
+            if not isinstance(hook, dict):
+                return None
+            argv = hook.get("command")
+            if not isinstance(argv, list):
+                return None
+            if len(argv) == 3 and argv[0] == "/bin/sh" and argv[1] == "-c":
+                return str(argv[2])
+            return " ".join(str(arg) for arg in argv)
+
+        def matching(hook_list: object, location: str) -> list[tuple[str, ...]]:
+            if not isinstance(hook_list, list):
+                return []
+            found: list[tuple[str, ...]] = []
+            for index, hook in enumerate(hook_list):
+                command = unwrapped(hook)
+                if command is None:
+                    continue
+                if spec is not None:
+                    matched = command == spec.command
+                else:
+                    matched = _manual_hook_id(command) == id
+                if matched:
+                    key = (location, str(index))
+                    found.append(key)
+                    occurrences[key] = (hook_list, hook)
+            return found
+
+        occurrences: dict[tuple[str, ...], tuple[list[object], object]] = {}
         file_edited = hook_subtree.get("file_edited")
-        if isinstance(file_edited, dict):
-            for glob, hook_list in list(file_edited.items()):
-                if isinstance(hook_list, list):
-                    file_edited[glob] = [h for h in hook_list if not matches(h)]
-                    if not file_edited[glob]:
-                        file_edited.pop(glob, None)
-            if not file_edited:
-                hook_subtree.pop("file_edited", None)
+        globs = list(file_edited) if isinstance(file_edited, dict) else []
+        session_targets: list[tuple[str, ...]] = []
+        if spec is None or spec.event == "stop":
+            session_targets = matching(hook_subtree.get("session_completed"), "session_completed")
+        star_targets: list[tuple[str, ...]] = []
+        glob_targets: list[tuple[str, ...]] = []
+        if isinstance(file_edited, dict) and (
+            spec is None or (spec.event == "post_tool_use" and spec.match == "file_write")
+        ):
+            for glob in globs:
+                found = matching(file_edited.get(glob), f"file_edited[{glob}]")
+                (star_targets if glob == "*" else glob_targets).extend(found)
 
-        session_completed = hook_subtree.get("session_completed")
-        if isinstance(session_completed, list):
-            hook_subtree["session_completed"] = [h for h in session_completed if not matches(h)]
-            if not hook_subtree["session_completed"]:
+        if spec is None:
+            targets = session_targets + star_targets + glob_targets
+        elif spec.event == "stop":
+            targets = session_targets
+        else:
+            # The app writes file-edit hooks under "*"; another glob is only the
+            # managed hook when it was adopted from there and is the sole candidate.
+            targets = star_targets or glob_targets
+
+        target = _single_target(id, targets)
+        if target is None:
+            return False
+        hook_list, hook = occurrences[target]
+        _remove_item(hook_list, hook)
+        if not hook_list:
+            if target[0] == "session_completed":
                 hook_subtree.pop("session_completed", None)
-
+            elif isinstance(file_edited, dict):
+                glob = target[0][len("file_edited[") : -1]
+                file_edited.pop(glob, None)
+                if not file_edited:
+                    hook_subtree.pop("file_edited", None)
         if not hook_subtree:
             exp.pop("hook", None)
         if not exp:
             document.pop("experimental", None)
+        return True
+
+
+_ANTIGRAVITY_EVENTS = {
+    "PreToolUse": "pre_tool_use",
+    "PostToolUse": "post_tool_use",
+    "Stop": "stop",
+    "PreInvocation": "user_prompt_submit",
+}
+
+
+def _antigravity_matcher(raw_matcher: str | None) -> str | None:
+    if raw_matcher is None:
+        return None
+    if raw_matcher in ("*", "", "any"):
+        return "any"
+    if raw_matcher in ("run_command", "bash", "shell"):
+        return "shell"
+    if raw_matcher in ("view_file", "read_file", "file_read"):
+        return "file_read"
+    if raw_matcher in (
+        "write_to_file|replace_file_content|multi_replace_file_content",
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+        "file_write",
+    ):
+        return "file_write"
+    if raw_matcher in ("read_url_content|search_web", "read_url_content", "search_web", "web"):
+        return "web"
+    return raw_matcher
 
 
 class AntigravityHooksMapper:
@@ -729,33 +888,8 @@ class AntigravityHooksMapper:
         )
 
     def read_entries(self, document: dict[str, object], specs: Iterable[HookSpec] = ()) -> list[RawHookEntry]:
-        event_map = {
-            "PreToolUse": "pre_tool_use",
-            "PostToolUse": "post_tool_use",
-            "Stop": "stop",
-            "PreInvocation": "user_prompt_submit",
-        }
-
-        def _canonicalize_matcher(raw_matcher: str | None) -> str | None:
-            if raw_matcher is None:
-                return None
-            if raw_matcher in ("*", "", "any"):
-                return "any"
-            if raw_matcher in ("run_command", "bash", "shell"):
-                return "shell"
-            if raw_matcher in ("view_file", "read_file", "file_read"):
-                return "file_read"
-            if raw_matcher in (
-                "write_to_file|replace_file_content|multi_replace_file_content",
-                "write_to_file",
-                "replace_file_content",
-                "multi_replace_file_content",
-                "file_write",
-            ):
-                return "file_write"
-            if raw_matcher in ("read_url_content|search_web", "read_url_content", "search_web", "web"):
-                return "web"
-            return raw_matcher
+        event_map = _ANTIGRAVITY_EVENTS
+        _canonicalize_matcher = _antigravity_matcher
 
         entries: list[RawHookEntry] = []
         for hook_id, hook_entry in document.items():
@@ -841,47 +975,77 @@ class AntigravityHooksMapper:
         else:
             raise MutationError(f"Unsupported event for Antigravity: {spec.event}", status=400)
 
-    def disable_hook(self, document: dict[str, object], id: str, command: str | None = None) -> None:
-        if id in document:
-            document.pop(id, None)
-            return
+    def disable_hook(
+        self,
+        document: dict[str, object],
+        id: str,
+        spec: HookSpec | None = None,
+    ) -> bool:
+        # Antigravity keys every hook entry by its id, so the managed hook lives only
+        # under ``document[id]``. Another key holding the same command is a user hook.
+        entry = document.get(id)
+        if not isinstance(entry, dict):
+            return False
 
-        for hook_id, entry in list(document.items()):
-            if not isinstance(entry, dict):
+        occurrences: list[tuple[str, list[object], dict[str, object] | None, dict[str, object]]] = []
+        for native_event, value in entry.items():
+            if native_event not in _ANTIGRAVITY_EVENTS or not isinstance(value, list):
                 continue
-            matches = False
-            for native_event, val in entry.items():
-                if native_event == "enabled":
+            if native_event in ("Stop", "PreInvocation"):
+                occurrences.extend(
+                    (native_event, value, None, hook) for hook in value if isinstance(hook, dict)
+                )
+                continue
+            for group in value:
+                if not isinstance(group, dict):
                     continue
-                if native_event in ("Stop", "PreInvocation"):
-                    if isinstance(val, list):
-                        for hook in val:
-                            if isinstance(hook, dict) and hook.get("command") == command:
-                                matches = True
-                            elif isinstance(hook, dict) and id.startswith("manual:"):
-                                hcmd = hook.get("command")
-                                if isinstance(hcmd, str):
-                                    hcmd_hash = hashlib.sha256(hcmd.encode("utf-8")).hexdigest()[:16]
-                                    if f"manual:{hcmd_hash}" == id:
-                                        matches = True
-                else:
-                    if isinstance(val, list):
-                        for group in val:
-                            if not isinstance(group, dict):
-                                continue
-                            hooks_list = group.get("hooks", [])
-                            if isinstance(hooks_list, list):
-                                for hook in hooks_list:
-                                    if isinstance(hook, dict) and hook.get("command") == command:
-                                        matches = True
-                                    elif isinstance(hook, dict) and id.startswith("manual:"):
-                                        hcmd = hook.get("command")
-                                        if isinstance(hcmd, str):
-                                            hcmd_hash = hashlib.sha256(hcmd.encode("utf-8")).hexdigest()[:16]
-                                            if f"manual:{hcmd_hash}" == id:
-                                                matches = True
-            if matches:
-                document.pop(hook_id, None)
+                hooks_list = group.get("hooks")
+                if isinstance(hooks_list, list):
+                    occurrences.extend(
+                        (native_event, hooks_list, group, hook)
+                        for hook in hooks_list
+                        if isinstance(hook, dict)
+                    )
+
+        other_keys = [key for key in entry if key != "enabled"]
+        if len(occurrences) == 1 and len(other_keys) == 1:
+            # Exactly the shape the app writes: the whole entry is the managed hook.
+            document.pop(id, None)
+            return True
+        if not occurrences:
+            return False
+
+        def is_managed(occurrence: tuple[str, list[object], dict[str, object] | None, dict[str, object]]) -> bool:
+            if spec is None:
+                return False
+            native_event, _, group, hook = occurrence
+            if _ANTIGRAVITY_EVENTS[native_event] != spec.event or hook.get("command") != spec.command:
+                return False
+            if group is None:
+                return True
+            raw_matcher = group.get("matcher")
+            canonical = _antigravity_matcher(raw_matcher if isinstance(raw_matcher, str) else None)
+            return canonical == (spec.match or "any")
+
+        managed = [occurrence for occurrence in occurrences if is_managed(occurrence)]
+        if len(managed) != 1:
+            raise MutationError(
+                f"Hook entry '{id}' holds {len(occurrences)} hooks and {len(managed)} of them "
+                "match the managed hook, so the one to remove cannot be identified. Edit the "
+                "entry by hand, then retry.",
+                status=409,
+            )
+        native_event, container, group, hook = managed[0]
+        _remove_item(container, hook)
+        if group is not None and not container and set(group) <= {"matcher", "hooks"}:
+            event_list = entry[native_event]
+            assert isinstance(event_list, list)
+            _remove_item(event_list, group)
+        if not entry[native_event]:
+            entry.pop(native_event, None)
+        if not [key for key in entry if key != "enabled"]:
+            document.pop(id, None)
+        return True
 
 
 _MAPPERS: dict[str, HookMapper] = {

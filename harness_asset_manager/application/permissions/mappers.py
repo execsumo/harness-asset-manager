@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable, Mapping, Protocol
+from typing import Callable, Iterable, Mapping, Protocol
 
 from harness_asset_manager.errors import MutationError
 
@@ -17,6 +17,73 @@ class RawPermissionEntry:
         self.payload = payload
 
 
+def _manual_rule_id(rule: str) -> str:
+    return f"manual:{hashlib.sha256(rule.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _ambiguous_permission(id: str, detail: str) -> MutationError:
+    return MutationError(
+        f"Permission '{id}': {detail}, so the rule Harness Asset Manager wrote cannot be "
+        "identified. Remove the extra copies by hand, then retry.",
+        status=409,
+    )
+
+
+def _managed_deny_rules(
+    deny: list[object],
+    id: str,
+    *,
+    spec: PermissionSpec | None,
+    pattern: str | None,
+    spec_rules: Callable[[PermissionSpec], list[str]],
+    parse_rule: Callable[[str], tuple[str, str | None]],
+) -> set[str]:
+    """The deny-list rule strings that make up managed permission ``id``.
+
+    An adopted rule is identified by its own hash, so a rule the app never wrote is
+    never mistaken for it. Otherwise the managed spec renders the exact rules the app
+    wrote. With neither, a bare ``pattern`` is resolved to the one scope it appears
+    under in the deny list, refusing when it appears under several.
+    """
+    rules = [rule for rule in deny if isinstance(rule, str)]
+    if id.startswith("manual:"):
+        adopted = {rule for rule in rules if _manual_rule_id(rule) == id}
+        if adopted:
+            return adopted
+    if spec is not None:
+        return set(spec_rules(spec))
+    if not pattern:
+        return set()
+    by_scope: dict[str, set[str]] = {}
+    for rule in rules:
+        scope, rule_pattern = parse_rule(rule)
+        if rule_pattern == pattern:
+            by_scope.setdefault(scope, set()).add(rule)
+    if len(by_scope) > 1:
+        raise _ambiguous_permission(
+            id, f"pattern '{pattern}' is denied under several scopes ({', '.join(sorted(by_scope))})"
+        )
+    return next(iter(by_scope.values()), set())
+
+
+def _remove_deny_rules(permissions_subtree: dict[str, object], id: str, targets: set[str]) -> bool:
+    """Remove each target rule from the deny list once. Allow and ask are never touched."""
+    deny = permissions_subtree.get("deny")
+    if not isinstance(deny, list):
+        return False
+    present = sorted(rule for rule in targets if rule in deny)
+    duplicated = [rule for rule in present if deny.count(rule) > 1]
+    if duplicated:
+        raise _ambiguous_permission(id, f"the deny list holds {', '.join(duplicated)} more than once")
+    if not present:
+        return False
+    for rule in present:
+        deny.remove(rule)
+    if not deny:
+        permissions_subtree.pop("deny", None)
+    return True
+
+
 class PermissionMapper(Protocol):
     """Translates between PermissionSpec and a single harness's permission configuration shape."""
 
@@ -24,7 +91,20 @@ class PermissionMapper(Protocol):
 
     def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None: ...
 
-    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None: ...
+    def disable_permission(
+        self,
+        document: dict[str, object],
+        id: str,
+        pattern: str | None = None,
+        *,
+        spec: PermissionSpec | None = None,
+    ) -> bool:
+        """Remove only the rule the app wrote or adopted, and only policy it owns.
+
+        Returns whether anything changed; raises a 409 ``MutationError`` when the
+        managed rule cannot be told apart from look-alikes.
+        """
+        ...
 
     def spec_to_dict(self, spec: PermissionSpec) -> dict[str, object]: ...
 
@@ -37,6 +117,11 @@ class PermissionMapper(Protocol):
     ) -> PermissionSpec: ...
 
     def representable(self, spec: PermissionSpec) -> tuple[bool, str | None, str | None]: ...
+
+
+def _rules(payload: Mapping[str, object]) -> list[str]:
+    rules = payload.get("rules")
+    return [rule for rule in rules if isinstance(rule, str)] if isinstance(rules, list) else []
 
 
 class ClaudeCodePermissionsMapper:
@@ -200,51 +285,40 @@ class ClaudeCodePermissionsMapper:
                 if not permissions_subtree[other_decision]:
                     permissions_subtree.pop(other_decision, None)
 
-    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
+    def disable_permission(
+        self,
+        document: dict[str, object],
+        id: str,
+        pattern: str | None = None,
+        *,
+        spec: PermissionSpec | None = None,
+    ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
-            return
-
-        def rule_matches(rule_string: str) -> bool:
-            rule_hash = hashlib.sha256(rule_string.encode("utf-8")).hexdigest()[:16]
-            if f"manual:{rule_hash}" == id:
-                return True
-            if pattern:
-                candidates = [
-                    f"Bash({pattern})",
-                    f"Read({pattern})",
-                    f"Edit({pattern})",
-                    f"Write({pattern})",
-                    f"MultiEdit({pattern})",
-                    f"NotebookEdit({pattern})",
-                    f"WebFetch({pattern})",
-                ]
-                if "/" in pattern:
-                    s, t = pattern.split("/", 1)
-                    candidates.append(f"mcp__{s}__{t}")
-                else:
-                    candidates.append(f"mcp__{pattern}")
-                    if pattern.endswith("/*"):
-                        candidates.append(f"mcp__{pattern[:-2]}")
-                if rule_string in candidates:
-                    return True
+            return False
+        deny = permissions_subtree.get("deny")
+        if not isinstance(deny, list):
             return False
 
-        for decision in ("allow", "deny", "ask"):
-            rules_list = permissions_subtree.get(decision)
-            if isinstance(rules_list, list):
-                permissions_subtree[decision] = [r for r in rules_list if not rule_matches(r)]
-                if not permissions_subtree[decision]:
-                    permissions_subtree.pop(decision, None)
+        targets = _managed_deny_rules(
+            deny,
+            id,
+            spec=spec,
+            pattern=pattern,
+            spec_rules=lambda managed: _rules(self.spec_to_dict(managed)),
+            parse_rule=self._parse_rule_string,
+        )
+        if not _remove_deny_rules(permissions_subtree, id, targets):
+            return False
 
+        # The mode is part of HAM's denylist adoption, not a permanent global
+        # setting after the last deny rule is removed. A different value is the
+        # user's own choice and stays.
+        if not permissions_subtree.get("deny") and permissions_subtree.get("defaultMode") == "bypassPermissions":
+            permissions_subtree.pop("defaultMode", None)
         if not permissions_subtree:
             document.pop("permissions", None)
-        elif not permissions_subtree.get("deny"):
-            # The mode is part of HAM's denylist adoption, not a permanent
-            # global setting after the last adopted rule is removed.
-            permissions_subtree.pop("defaultMode", None)
-            if not permissions_subtree:
-                document.pop("permissions", None)
+        return True
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Bash(") and rule.endswith(")"):
@@ -409,36 +483,37 @@ class AntigravityPermissionsMapper:
                 if not permissions_subtree[other_decision]:
                     permissions_subtree.pop(other_decision, None)
 
-    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
+    def disable_permission(
+        self,
+        document: dict[str, object],
+        id: str,
+        pattern: str | None = None,
+        *,
+        spec: PermissionSpec | None = None,
+    ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
-            return
-
-        def rule_matches(rule_string: str) -> bool:
-            rule_hash = hashlib.sha256(rule_string.encode("utf-8")).hexdigest()[:16]
-            if f"manual:{rule_hash}" == id:
-                return True
-            if pattern:
-                candidates = [
-                    f"command({pattern})",
-                    f"mcp({pattern})",
-                ]
-                if rule_string in candidates:
-                    return True
+            return False
+        deny = permissions_subtree.get("deny")
+        if not isinstance(deny, list):
             return False
 
-        for decision in ("allow", "deny", "ask"):
-            rules_list = permissions_subtree.get(decision)
-            if isinstance(rules_list, list):
-                permissions_subtree[decision] = [r for r in rules_list if not rule_matches(r)]
-                if not permissions_subtree[decision]:
-                    permissions_subtree.pop(decision, None)
+        targets = _managed_deny_rules(
+            deny,
+            id,
+            spec=spec,
+            pattern=pattern,
+            spec_rules=lambda managed: _rules(self.spec_to_dict(managed)),
+            parse_rule=self._parse_rule_string,
+        )
+        if not _remove_deny_rules(permissions_subtree, id, targets):
+            return False
 
         if not permissions_subtree:
             document.pop("permissions", None)
-        if not permissions_subtree or not permissions_subtree.get("deny"):
-            if document.get("toolPermission") == "always-proceed":
-                document.pop("toolPermission", None)
+        if not permissions_subtree.get("deny") and document.get("toolPermission") == "always-proceed":
+            document.pop("toolPermission", None)
+        return True
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("command(") and rule.endswith(")"):
@@ -600,40 +675,37 @@ class CursorPermissionsMapper:
             if rule not in target_list:
                 target_list.append(rule)
 
-    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
+    def disable_permission(
+        self,
+        document: dict[str, object],
+        id: str,
+        pattern: str | None = None,
+        *,
+        spec: PermissionSpec | None = None,
+    ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
-            return
-
-        def rule_matches(rule_string: str) -> bool:
-            rule_hash = hashlib.sha256(rule_string.encode("utf-8")).hexdigest()[:16]
-            if f"manual:{rule_hash}" == id:
-                return True
-            if pattern:
-                candidates = [
-                    f"Shell({pattern})",
-                    f"Read({pattern})",
-                    f"Write({pattern})",
-                    f"WebFetch({pattern})",
-                ]
-                if "/" in pattern:
-                    server, tool = pattern.split("/", 1)
-                    candidates.append(f"Mcp({server}:{tool})")
-                if rule_string in candidates:
-                    return True
+            return False
+        deny = permissions_subtree.get("deny")
+        if not isinstance(deny, list):
             return False
 
-        rules_list = permissions_subtree.get("deny")
-        if isinstance(rules_list, list):
-            permissions_subtree["deny"] = [rule for rule in rules_list if not rule_matches(str(rule))]
-            if not permissions_subtree["deny"]:
-                permissions_subtree.pop("deny", None)
+        targets = _managed_deny_rules(
+            deny,
+            id,
+            spec=spec,
+            pattern=pattern,
+            spec_rules=lambda managed: _rules(self.spec_to_dict(managed)),
+            parse_rule=self._parse_rule_string,
+        )
+        if not _remove_deny_rules(permissions_subtree, id, targets):
+            return False
 
         if not permissions_subtree:
             document.pop("permissions", None)
-        if not permissions_subtree or not permissions_subtree.get("deny"):
-            if document.get("approvalMode") == "unrestricted":
-                document.pop("approvalMode", None)
+        if not permissions_subtree.get("deny") and document.get("approvalMode") == "unrestricted":
+            document.pop("approvalMode", None)
+        return True
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Shell(") and rule.endswith(")"):
@@ -817,43 +889,45 @@ class CodexPermissionsMapper:
             assert isinstance(doms, dict)
             doms[spec.pattern] = "allow" if spec.decision == "allow" else "deny"
 
-    def disable_permission(self, document: dict[str, object], id: str, pattern: str | None = None) -> None:
+    def disable_permission(
+        self,
+        document: dict[str, object],
+        id: str,
+        pattern: str | None = None,
+        *,
+        spec: PermissionSpec | None = None,
+    ) -> bool:
         perms = document.get("permissions")
         if not isinstance(perms, dict):
-            return
+            return False
         sm_profile = perms.get("harness-asset-manager")
         if not isinstance(sm_profile, dict):
-            return
-
+            return False
         filesystem = sm_profile.get("filesystem")
-        if isinstance(filesystem, dict):
-            for pat in list(filesystem.keys()):
-                candidates = [
-                    f"manual:fs_read:{pat}",
-                    f"manual:fs_write:{pat}",
-                    f"manual:fs_deny:{pat}"
-                ]
-                if id in candidates or pat == pattern:
-                    filesystem.pop(pat, None)
-            if not filesystem:
-                sm_profile.pop("filesystem", None)
-
         network = sm_profile.get("network")
+        domains = network.get("domains") if isinstance(network, dict) else None
+
+        # A rule is one key in one table: filesystem rules for file scopes, network
+        # domains for web. The app only ever writes "deny" there, so another value
+        # under the same key is not the managed rule.
+        target = self._managed_rule(id, pattern, spec, filesystem, domains)
+        if target is None:
+            return False
+        table, key = target
+        table.pop(key, None)
+
+        if isinstance(filesystem, dict) and not filesystem:
+            sm_profile.pop("filesystem", None)
         if isinstance(network, dict):
-            domains = network.get("domains")
-            if isinstance(domains, dict):
-                for pat in list(domains.keys()):
-                    candidates = [
-                        f"manual:net_allow:{pat}",
-                        f"manual:net_deny:{pat}"
-                    ]
-                    if id in candidates or pat == pattern:
-                        domains.pop(pat, None)
-            # Keep the allow-by-default network baseline while any HAM
-            # filesystem deny remains active.  It is removed with the profile
-            # once the final HAM rule is disabled.
+            # Keep the allow-by-default network baseline while any HAM filesystem
+            # deny remains active. It is removed with the profile once the final HAM
+            # rule is disabled, unless the user added settings of their own to it.
             has_filesystem_rules = isinstance(filesystem, dict) and bool(filesystem)
-            if not network.get("domains") and not has_filesystem_rules:
+            if (
+                not network.get("domains")
+                and not has_filesystem_rules
+                and set(network) <= {"enabled", "mode", "domains"}
+            ):
                 sm_profile.pop("network", None)
 
         if len(sm_profile) <= 1 and "extends" in sm_profile:
@@ -861,11 +935,44 @@ class CodexPermissionsMapper:
         if not perms:
             document.pop("permissions", None)
 
-        if "harness-asset-manager" not in perms:
-            if document.get("default_permissions") == "harness-asset-manager":
-                document.pop("default_permissions", None)
+        # The app activates its profile and turns off approval prompts together. If
+        # the user has since pointed default_permissions elsewhere, both settings are
+        # theirs now.
+        if "harness-asset-manager" not in perms and document.get("default_permissions") == "harness-asset-manager":
+            document.pop("default_permissions", None)
             if document.get("approval_policy") == "never":
                 document.pop("approval_policy", None)
+        return True
+
+    def _managed_rule(
+        self,
+        id: str,
+        pattern: str | None,
+        spec: PermissionSpec | None,
+        filesystem: object,
+        domains: object,
+    ) -> tuple[dict[str, object], str] | None:
+        def denied(table: object, key: str | None) -> tuple[dict[str, object], str] | None:
+            if isinstance(table, dict) and key is not None and table.get(key) == "deny":
+                return table, key
+            return None
+
+        if spec is not None:
+            if spec.scope in ("file_read", "file_write"):
+                return denied(filesystem, spec.pattern)
+            if spec.scope == "web":
+                return denied(domains, spec.pattern)
+            return None
+        if id.startswith("manual:fs_deny:"):
+            return denied(filesystem, id[len("manual:fs_deny:") :])
+        if id.startswith("manual:net_deny:"):
+            return denied(domains, id[len("manual:net_deny:") :])
+        if not pattern:
+            return None
+        matches = [match for match in (denied(filesystem, pattern), denied(domains, pattern)) if match]
+        if len(matches) > 1:
+            raise _ambiguous_permission(id, f"pattern '{pattern}' is denied for both filesystem and network")
+        return matches[0] if matches else None
 
 
 _MAPPERS: dict[str, PermissionMapper] = {
