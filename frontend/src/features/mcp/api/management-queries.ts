@@ -11,6 +11,7 @@ import {
   disableMcpServer,
   enableMcpServer,
   fetchMcpInventory,
+  setMcpServerArchived,
   fetchMcpServerDetail,
   fetchMcpNeedsReviewByServer,
   reconcileMcpServer,
@@ -24,10 +25,10 @@ import { MCP_GC_TIME_MS, MCP_INVENTORY_REFETCH_INTERVAL_MS, MCP_STALE_TIME_MS, m
 export { invalidateMcpQueries } from "./invalidation";
 export { mcpManagementKeys } from "./keys";
 
-export function useMcpInventoryQuery() {
+export function useMcpInventoryQuery(includeArchived = false) {
   return useQuery({
-    queryKey: mcpManagementKeys.inventory(),
-    queryFn: fetchMcpInventory,
+    queryKey: [...mcpManagementKeys.inventory(), includeArchived],
+    queryFn: () => fetchMcpInventory(includeArchived),
     refetchInterval: MCP_INVENTORY_REFETCH_INTERVAL_MS,
     ...queryPolicy(MCP_STALE_TIME_MS, MCP_GC_TIME_MS),
   });
@@ -115,4 +116,9 @@ export function useAdoptMcpServerMutation() {
     mutationFn: adoptMcpServer,
     onSettled: () => invalidateMcpQueries(queryClient),
   });
+}
+
+export function useSetMcpServerArchivedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setMcpServerArchived(name, archived), onSettled: () => invalidateMcpQueries(queryClient) });
 }

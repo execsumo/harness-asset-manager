@@ -190,6 +190,24 @@ class FileBackedMcpAdapter(McpHarnessAdapter):
             atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
         self._remove_from_noncanonical_config_paths(spec.name)
 
+    def verify_archive_binding(self, spec: McpServerSpec) -> None:
+        expected = _normalize_payload(self._mapper.spec_to_dict(spec))
+        occurrences = 0
+        for config_path in self._discovery_config_paths:
+            if not config_path.is_file():
+                continue
+            document = self._load_document(config_path)
+            for subtree_path in self._read_subtree_paths:
+                subtree = self._read_subtree(document, subtree_path)
+                if spec.name not in subtree:
+                    continue
+                occurrences += 1
+                payload = subtree[spec.name]
+                if not isinstance(payload, dict) or _normalize_payload(dict(payload)) != expected:
+                    raise MutationError(f"cannot safely remove unverified server: {self.harness}", status=409)
+        if occurrences > 1:
+            raise MutationError(f"cannot safely remove duplicate server entries: {self.harness}", status=409)
+
     def disable_server(self, name: str) -> None:
         for config_path in self._discovery_config_paths:
             if not config_path.is_file():

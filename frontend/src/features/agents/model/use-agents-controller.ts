@@ -11,7 +11,7 @@ import {
 } from "../api/queries";
 
 export function useAgentsController() {
-  const inventoryQuery = useAgentsInventoryQuery();
+  const inventoryQuery = useAgentsInventoryQuery(true);
   const enableMutation = useEnableAgentMutation();
   const disableMutation = useDisableAgentMutation();
   const adoptMutation = useAdoptAgentMutation();

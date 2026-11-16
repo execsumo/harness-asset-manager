@@ -37,6 +37,7 @@ export interface SkillListRow {
   skillRef: string;
   name: string;
   description: string;
+  archived?: boolean;
   displayStatus: SkillStatus;
   tags: string[];
   agents: AgentAttachment[];
@@ -68,6 +69,7 @@ export interface SkillDetail {
   skillRef: string;
   name: string;
   description: string;
+  archived?: boolean;
   displayStatus: SkillStatus;
   attentionMessage: string | null;
   tags: string[];

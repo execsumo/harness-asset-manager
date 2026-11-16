@@ -249,6 +249,9 @@ class FileTreeSkillsAdapter(SkillsHarnessAdapter):
         candidate = self._binding_path(package_dir, scope=scope, include_discovery=include_discovery)
         return candidate.exists() or candidate.is_symlink()
 
+    def binding_path(self, package_dir: str, *, scope: str | None = None) -> Path:
+        return self._binding_path(package_dir, scope=scope)
+
     def prepare_materialize(
         self, package_dir: str, expected_target: Path, *, scope: str | None = None
     ) -> None:

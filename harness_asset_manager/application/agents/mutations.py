@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import shutil
+from contextlib import nullcontext
 from dataclasses import dataclass
 from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Literal, cast
 
-from harness_asset_manager.atomic_files import atomic_write_text
+from harness_asset_manager.application.asset_archive import AssetArchiveStore
+from harness_asset_manager.atomic_files import atomic_write_text, file_lock
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.harness.binding_targets import BindingTarget
 from harness_asset_manager.harness.catalog import mcp_agent_binding_capability
 from harness_asset_manager.harness.hermes_profiles import hermes_profile_name
+from harness_asset_manager.hashing import hash_file
 
 from ..mcp.mappers import get_mapper
 from ..mcp.store import McpServerStore
@@ -78,8 +81,12 @@ class AgentMutationService:
         hermes_root: Path | None = None,
         mcp_store: McpServerStore | None = None,
         mcp_mutations: McpMutationService | None = None,
+        archive: AssetArchiveStore | None = None,
+        reconcile_lock_path: Path | None = None,
     ) -> None:
         self.store = store
+        self.archive = archive
+        self.reconcile_lock_path = reconcile_lock_path
         self._resolve = resolve
         self._resolve_all = resolve_all or resolve
         self.ledger = ledger
@@ -128,6 +135,43 @@ class AgentMutationService:
     set_agent_tags = set_tags
 
     # -- per-harness binding ------------------------------------------------
+
+    def set_archived(self, ref: str, *, archived: bool) -> dict[str, bool]:
+        if "/" in ref:
+            raise MutationError("only managed agents can be archived", status=400)
+        agent = self.store.get(ref)
+        if agent is None:
+            raise MutationError(f"agent not found: {ref}", status=404)
+        if self.archive is None or self.reconcile_lock_path is None:
+            raise MutationError("archive service is not configured", status=500)
+        with file_lock(self.reconcile_lock_path):
+            if self.archive.is_archived("agents", ref) == archived:
+                return {"ok": True}
+            if archived:
+                records = self.ledger.load().get(ref, {})
+                _, adapters = self._resolve_all()
+                if set(records) - set(adapters):
+                    raise MutationError("cannot verify all recorded bindings", status=409)
+                owned = []
+                for harness, adapter in adapters.items():
+                    path = adapter.binding_path(ref)
+                    if not path.exists() and not path.is_symlink():
+                        continue
+                    record = records.get(harness)
+                    if adapter.renders:
+                        safe = (record is not None and record.rendered_sha256 is not None
+                                and not path.is_symlink() and path.is_file()
+                                and hash_file(path) == record.rendered_sha256 and adapter.owns(path))
+                    else:
+                        safe = path.is_symlink() and path.resolve() == agent.path.resolve()
+                    if not safe:
+                        raise MutationError(f"cannot safely remove unverified binding: {harness}", status=409)
+                    owned.append(adapter)
+                for adapter in owned:
+                    adapter.disable(ref)
+                self.ledger.forget_slug(ref)
+            self.archive.set_archived("agents", ref, archived=archived)
+        return {"ok": True}
 
     def enable(self, slug: str, harness: str) -> None:
         agent = self._require_agent(slug)
@@ -357,6 +401,8 @@ class AgentMutationService:
 
         if self.mcp_store is not None:
             for name in deduped:
+                if self.archive and self.archive.is_archived("mcp", name):
+                    raise MutationError(f"unarchive MCP server before binding: {name}", status=409)
                 if self.mcp_store.get_managed(name) is None:
                     raise MutationError(
                         f"MCP server '{name}' is unknown or not managed in harnessAM",
@@ -628,6 +674,8 @@ class AgentMutationService:
 
         self.store.delete(slug)
         self.ledger.forget_slug(slug)
+        if self.archive is not None:
+            self.archive.set_archived("agents", slug, archived=False)
         if self.asset_tags is not None:
             self.asset_tags.try_delete_tags_for_ref("agents", slug)
 
@@ -697,6 +745,13 @@ class AgentMutationService:
     # -- ledger -------------------------------------------------------------
 
     def _enable(self, adapter: AgentHarnessAdapter, harness: str, agent: AgentDefinition) -> None:
+        lock = file_lock(self.reconcile_lock_path) if self.reconcile_lock_path else nullcontext()
+        with lock:
+            self._enable_locked(adapter, harness, agent)
+
+    def _enable_locked(self, adapter: AgentHarnessAdapter, harness: str, agent: AgentDefinition) -> None:
+        if self.archive and self.archive.is_archived("agents", agent.slug):
+            raise MutationError("unarchive the agent before enabling it", status=409)
         if harness == "hermes" and self.hermes_root is not None:
             # Hermes consumes a Bot/Profile, not the conventional agents/*.md file.
             ensure_profile(agent, self.hermes_root)

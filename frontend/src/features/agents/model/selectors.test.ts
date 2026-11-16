@@ -85,3 +85,12 @@ describe("agents selectors", () => {
     expect(backendOrOps.map((e) => e.ref)).toEqual(["planner", "helper"]);
   });
 });
+
+it("shows archived agents only under the Archived filter", () => {
+  const inventory: AgentInventoryDto = {
+    columns: [], issues: [],
+    entries: [makeEntry("active", "managed", []), { ...makeEntry("stored", "managed", []), archived: true }],
+  };
+  expect(filterAgents(inventory, { search: "", status: "all" }).map((entry) => entry.ref)).toEqual(["active"]);
+  expect(filterAgents(inventory, { search: "", status: "archived" }).map((entry) => entry.ref)).toEqual(["stored"]);
+});

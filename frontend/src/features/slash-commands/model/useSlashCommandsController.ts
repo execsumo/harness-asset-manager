@@ -21,7 +21,7 @@ import type {
 import { filterSlashCommands, filterSlashReviewRows, primaryReviewAction, reviewKey, slashCommandInventoryEntries, syncedTargetIds } from "./selectors";
 
 export function useSlashCommandsController() {
-  const query = useSlashCommandsQuery();
+  const query = useSlashCommandsQuery(true);
   const createMutation = useCreateSlashCommandMutation();
   const updateMutation = useUpdateSlashCommandMutation();
   const syncMutation = useSyncSlashCommandMutation();

@@ -49,6 +49,7 @@ class ResolveAppPathsTests(unittest.TestCase):
             self.assertEqual(paths.skills_store_manifest, base / "skills-manifest.json")
             self.assertEqual(paths.marketplace_cache_root, base / "marketplace")
             self.assertEqual(paths.mutation_audit_path, base / "audit.log")
+            self.assertEqual(paths.asset_archive_path, base / "asset-archive.json")
             self.assertEqual(paths.settings_path, base / "settings.json")
             self.assertEqual(paths.slash_command_store_root, base / "slash-commands")
             self.assertEqual(paths.slash_command_commands_dir, base / "slash-commands" / "commands")

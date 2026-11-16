@@ -27,8 +27,8 @@ router = APIRouter(prefix="/api/skills")
 
 
 @router.get("", response_model=SkillsPageResponse)
-def list_skills(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
-    return container.skills_queries.list_skills()
+def list_skills(include_archived: bool = False, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
+    return container.skills_queries.list_skills(include_archived=include_archived)
 
 
 @router.post("", response_model=CreateSkillResponse)
@@ -96,6 +96,16 @@ def update_skill_document(
         body=body.body,
         metadata=metadata_entries,
     )
+
+
+@router.post("/{skill_ref}/archive", response_model=OkResponse)
+def archive_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    return container.skills_mutations.set_archived(skill_ref, archived=True)
+
+
+@router.post("/{skill_ref}/unarchive", response_model=OkResponse)
+def unarchive_skill(skill_ref: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    return container.skills_mutations.set_archived(skill_ref, archived=False)
 
 
 @router.post("/{skill_ref}/enable", response_model=OkResponse)

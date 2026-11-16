@@ -18,8 +18,8 @@ import type {
 } from "./types";
 import { fetchJson, postJson, putJson } from "../../../api/http";
 
-export async function fetchSkillsPage(): Promise<SkillsPageDto> {
-  return fetchJson<SkillsPageDto>("/skills");
+export async function fetchSkillsPage(includeArchived = false): Promise<SkillsPageDto> {
+  return fetchJson<SkillsPageDto>(includeArchived ? "/skills?include_archived=true" : "/skills");
 }
 
 export async function createSkill(request: CreateSkillRequest): Promise<CreateSkillResponseDto> {
@@ -99,4 +99,8 @@ export async function attachAgents(
   request: AttachAgentsRequestDto,
 ): Promise<AttachAgentsResponseDto> {
   return postJson<AttachAgentsResponseDto>("/skills/attach-agents", request);
+}
+
+export async function setSkillArchived(skillRef: string, archived: boolean): Promise<OkResponse> {
+  return postJson<OkResponse>(`/skills/${encodeURIComponent(skillRef)}/${archived ? "archive" : "unarchive"}`);
 }

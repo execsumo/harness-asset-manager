@@ -2,6 +2,9 @@ import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { setSkillArchived } from "../api/client";
+import { invalidateSkillsQueries } from "../api/invalidation";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
@@ -35,7 +38,7 @@ import { useSkillsWorkspaceController } from "../model/use-skills-workspace-cont
 import { skillStatusConcept } from "../../../lib/product-language";
 import { useDisplayPreferences } from "../../settings/public";
 
-const STATUS_VALUES: SkillsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked"];
+const STATUS_VALUES: SkillsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked", "archived"];
 
 function isSkillsStatusFilter(value: string | null): value is SkillsStatusFilter {
   return value !== null && STATUS_VALUES.includes(value as SkillsStatusFilter);
@@ -95,6 +98,9 @@ export default function SkillsWorkspacePage() {
   const copy = useSkillsCopy();
   const common = useCommonCopy();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archivePending, setArchivePending] = useState(false);
 
   const statusParam = searchParams.get("status");
   const statusFilter: SkillsStatusFilter = isSkillsStatusFilter(statusParam) ? statusParam : "all";
@@ -117,7 +123,11 @@ export default function SkillsWorkspacePage() {
     [searchParams, showSkillAgentTags],
   );
   // Filter options: every adopted agent, with how many skills each carries.
-  const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
+  const filterData = useMemo(() => data ? {
+    ...data,
+    rows: data.rows.filter((row) => statusFilter === "archived" ? row.archived : !row.archived),
+  } : null, [data, statusFilter]);
+  const knownAgents = useMemo(() => extractSkillAgentCounts(filterData), [filterData]);
   // Bulk attach/detach vocabulary: every adopted agent, straight from the
   // roster rather than the row attachments, so the first attach is possible.
   const agentOptions = useMemo(() => sortByAgentLabel(data?.agentOptions ?? []), [data]);
@@ -153,7 +163,7 @@ export default function SkillsWorkspacePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const localTagCounts = useMemo(() => extractSkillTagCounts(data), [data]);
+  const localTagCounts = useMemo(() => extractSkillTagCounts(filterData), [filterData]);
   const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
@@ -320,6 +330,19 @@ export default function SkillsWorkspacePage() {
     [multiSelectedRefs, sortedRows],
   );
   const selectedManagedCount = selectedManagedRows.length;
+  const changeSelectedArchive = async (archived: boolean) => {
+    setArchivePending(true);
+    try {
+      const results = await Promise.allSettled(selectedManagedRows.map((row) => setSkillArchived(row.skillRef, archived)));
+      await invalidateSkillsQueries(queryClient);
+      const failed = results.filter((result) => result.status === "rejected").length;
+      toast(failed ? `${failed} skills could not be updated.` : archived ? "Skills archived." : "Skills unarchived.");
+      onClearMultiSelect();
+      setArchiveDialogOpen(false);
+    } finally {
+      setArchivePending(false);
+    }
+  };
   const selectedCount = checkedRefs.size;
   const selectedDeletableCount = selectedManagedCount + (hasDeletableUntrackedSelection ?
     sortedRows.filter((row) => selectedUntrackedRefs.has(row.skillRef) && row.actions.canDelete).length : 0);
@@ -503,7 +526,7 @@ export default function SkillsWorkspacePage() {
             onClearMultiSelect();
             setSelectedUntrackedRefs(new Set());
           }}
-          showHarnessActions={selectedManagedCount > 0}
+          showHarnessActions={selectedManagedCount > 0 && statusFilter !== "archived"}
           onEnableAll={onMultiSelectEnableAll}
           onDisableAll={onMultiSelectDisableAll}
           harnessOptions={bulkHarnessOptions}
@@ -518,7 +541,15 @@ export default function SkillsWorkspacePage() {
           onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
           knownAgents={agentOptions}
           extraActions={
-            selectedAdoptableUntrackedCount > 0 ? (
+            selectedManagedCount > 0 || selectedAdoptableUntrackedCount > 0 ? (
+              <>
+                {selectedManagedCount > 0 ? (
+                  <button type="button" className="bulk-bar__action" disabled={archivePending}
+                    onClick={() => statusFilter === "archived" ? void changeSelectedArchive(false) : setArchiveDialogOpen(true)}>
+                    {statusFilter === "archived" ? "Unarchive" : "Archive"}
+                  </button>
+                ) : null}
+                {selectedAdoptableUntrackedCount > 0 ? (
               <button
                 type="button"
                 className="bulk-bar__action"
@@ -530,6 +561,8 @@ export default function SkillsWorkspacePage() {
                   ? copy.review.adoptSelected
                   : `${copy.review.adoptSelected} (${selectedAdoptableUntrackedCount})`}
               </button>
+                ) : null}
+              </>
             ) : null
           }
           destructive={{
@@ -571,6 +604,16 @@ export default function SkillsWorkspacePage() {
         isPending={multiSelectPending === "attach-agents"}
       />
 
+      <ConfirmActionDialog
+        open={archiveDialogOpen}
+        title="Archive selected skills?"
+        description="This removes the selected skills from all harnesses. Their files and tags remain in the library."
+        confirmLabel="Archive"
+        pendingLabel="Archiving..."
+        isPending={archivePending}
+        onOpenChange={setArchiveDialogOpen}
+        onConfirm={() => changeSelectedArchive(true)}
+      />
       <CreateSkillDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
       <SkillDetailModal
@@ -593,6 +636,7 @@ export default function SkillsWorkspacePage() {
 const EMPTY_PENDING_TOGGLE_HARNESSES = new Set<string>();
 
 function statusLabel(copy: ReturnType<typeof useSkillsCopy>, value: SkillsStatusFilter): string {
+  if (value === "archived") return "Archived";
   if (value === "all") return copy.inUse.pills.all;
   if (value === "enabled") return copy.inUse.pills.enabled;
   if (value === "all-harnesses") return copy.inUse.pills.allHarnesses;

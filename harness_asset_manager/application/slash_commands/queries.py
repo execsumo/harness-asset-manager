@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
+from harness_asset_manager.application.asset_archive import AssetArchiveStore
+
 from .read_models import SlashCommandReadModelService
 
 
@@ -11,7 +13,9 @@ class SlashCommandQueryService:
         self,
         read_models: SlashCommandReadModelService,
         reconcile: Callable[[], object] | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
+        self.archive = archive
         self.read_models = read_models
         self._reconcile = reconcile
         # Reentrancy guard, per thread. The reconcile pass itself reads through this
@@ -35,13 +39,23 @@ class SlashCommandQueryService:
         finally:
             self._reconcile_state.active = False
 
-    def list_commands(self) -> dict[str, object]:
+    def list_commands(self, *, include_archived: bool = False) -> dict[str, object]:
         self._reconcile_once()
-        return self.read_models.list_commands()
+        payload = self.read_models.list_commands()
+        archived = self.archive.load() if self.archive else set()
+        commands = payload["commands"]
+        assert isinstance(commands, list)
+        for command in commands:
+            command["archived"] = f"slash_commands:{command['name']}" in archived
+        payload["commands"] = [command for command in commands if include_archived or not command["archived"]]
+        return payload
 
     def get_command(self, name: str) -> dict[str, object] | None:
         self._reconcile_once()
-        return self.read_models.get_command(name)
+        result = self.read_models.get_command(name)
+        if result is not None:
+            result["archived"] = bool(self.archive and self.archive.is_archived("slash_commands", name))
+        return result
 
 
 __all__ = ["SlashCommandQueryService"]

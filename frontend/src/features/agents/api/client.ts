@@ -14,8 +14,8 @@ export async function fetchHermesOptions(): Promise<HermesOptionsDto> {
   return fetchJson<HermesOptionsDto>("/agents/hermes-options");
 }
 
-export async function fetchAgentsInventory(): Promise<AgentInventoryDto> {
-  return fetchJson<AgentInventoryDto>("/agents");
+export async function fetchAgentsInventory(includeArchived = false): Promise<AgentInventoryDto> {
+  return fetchJson<AgentInventoryDto>(includeArchived ? "/agents?include_archived=true" : "/agents");
 }
 
 export async function fetchAgentDetail(ref: string): Promise<AgentDetailDto> {
@@ -95,3 +95,7 @@ export async function unmanageAgent(ref: string): Promise<void> {
   await postJson<void>(`/agents/${ref}/unmanage`, {});
 }
 
+
+export async function setAgentArchived(ref: string, archived: boolean): Promise<void> {
+  await postJson<void>(`/agents/${ref}/${archived ? "archive" : "unarchive"}`);
+}

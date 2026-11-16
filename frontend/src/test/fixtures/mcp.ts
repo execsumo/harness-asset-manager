@@ -40,6 +40,7 @@ export function mcpInventoryEntry({
   spec = null,
 }: Pick<McpInventoryEntryDto, "name" | "kind"> & Partial<McpInventoryEntryDto>): McpInventoryEntryDto {
   return {
+    archived: false,
     name,
     displayName,
     kind,

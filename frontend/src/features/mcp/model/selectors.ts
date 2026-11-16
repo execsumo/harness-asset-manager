@@ -14,7 +14,7 @@ import {
   type AssetTagCount,
 } from "../../../components/tags/tag-counts";
 
-export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked";
+export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "unbound" | "drifted" | "untracked" | "archived";
 
 export type McpTagCount = AssetTagCount;
 
@@ -105,6 +105,7 @@ export function filterMcpServersInUse(
   const addressable = addressableHarnesses(inventory);
   const harnessCount = addressable.size;
   return inventory.entries.filter((entry) => {
+    if (filters.pill === "archived" ? !entry.archived : entry.archived) return false;
     if (filters.tags && filters.tags.length > 0) {
       if (entry.kind !== "managed" || !matchesAssetTags(entry, filters.tags)) {
         return false;
@@ -112,6 +113,7 @@ export function filterMcpServersInUse(
     }
     if (!matchesSearch(entry, filters.search.trim())) return false;
     if (!matchesHarnessSighting(entry.sightings, filters.harness)) return false;
+    if (filters.pill === "archived") return true;
     if (filters.pill === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.pill === "all";
 
@@ -135,14 +137,15 @@ export function filterMcpServersInUse(
 
 export function pillCounts(inventory: McpInventoryDto | null): Record<InUsePillValue, number> {
   if (!inventory) {
-    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0, untracked: 0 };
+    return { all: 0, enabled: 0, "all-harnesses": 0, unbound: 0, drifted: 0, untracked: 0, archived: 0 };
   }
   const addressable = addressableHarnesses(inventory);
   const harnessCount = addressable.size;
-  const inUseEntries = inventory.entries.filter((e) => e.kind === "managed");
+  const inUseEntries = inventory.entries.filter((e) => e.kind === "managed" && !e.archived);
   const untrackedEntries = inventory.entries.filter((e) => e.kind === "unmanaged");
   return {
-    all: inventory.entries.length,
+    all: inventory.entries.filter((e) => !e.archived).length,
+    archived: inventory.entries.filter((e) => e.archived).length,
     enabled: inUseEntries.filter((e) => inUseBindingCount(e, addressable) > 0).length,
     "all-harnesses": inUseEntries.filter(
       (e) => harnessCount > 0 && inUseBindingCount(e, addressable) === harnessCount,

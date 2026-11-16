@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar, type BulkHarnessState } from "../../../components/BulkActionBar";
+import { ArchiveBulkAction } from "../../../components/ArchiveBulkAction";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -29,11 +30,12 @@ import {
 } from "../model/selectors";
 import { useSlashCommandsController } from "../model/useSlashCommandsController";
 import type { SlashTargetId } from "../api/types";
-import { useSetSlashCommandTagsMutation } from "../api/queries";
+import { useSetSlashCommandArchivedMutation, useSetSlashCommandTagsMutation } from "../api/queries";
 
 const STATUS_LABELS: Record<SlashCommandsStatusFilter, string> = {
   all: "All",
   untracked: "Untracked",
+  archived: "Archived",
 };
 
 export default function SlashCommandsPage() {
@@ -46,9 +48,10 @@ export default function SlashCommandsPage() {
   const [adoptingSelected, setAdoptingSelected] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const setTagsMutation = useSetSlashCommandTagsMutation();
+  const archiveMutation = useSetSlashCommandArchivedMutation();
 
   const statusParam = searchParams.get("status");
-  const statusFilter: SlashCommandsStatusFilter = statusParam === "untracked" ? "untracked" : "all";
+  const statusFilter: SlashCommandsStatusFilter = statusParam === "untracked" || statusParam === "archived" ? statusParam : "all";
   const setStatusFilter = useCallback(
     (next: SlashCommandsStatusFilter) => {
       const params = new URLSearchParams(searchParams);
@@ -295,7 +298,7 @@ export default function SlashCommandsPage() {
               return next;
             });
           }}
-          onToggleTarget={(command, target) => void controller.handleToggleTarget(command, target)}
+          onToggleTarget={(command, target) => { if (!command.archived) void controller.handleToggleTarget(command, target); }}
           onReviewAction={(row) => void controller.handleReviewAction(row)}
           onToggleStar={handleToggleStar}
           starredFilterActive={starredFilterActive}
@@ -332,7 +335,7 @@ export default function SlashCommandsPage() {
           pendingTarget={controller.pendingTarget}
           onClose={controller.closeDetail}
           onDelete={controller.setDeleteCommand}
-          onToggleTarget={(command, target) => void controller.handleToggleTarget(command, target)}
+          onToggleTarget={(command, target) => { if (!command.archived) void controller.handleToggleTarget(command, target); }}
         />
       ) : null}
 
@@ -370,7 +373,7 @@ export default function SlashCommandsPage() {
           selectedCount={selectedCount}
           pending={controller.bulkPending}
           onClear={() => setSelectedRefs(new Set())}
-          showHarnessActions={selectedManagedCount > 0}
+          showHarnessActions={selectedManagedCount > 0 && statusFilter !== "archived"}
           onEnableAll={handleBulkEnableAll}
           onDisableAll={handleBulkDisableAll}
           harnessOptions={bulkHarnessOptions}
@@ -379,7 +382,9 @@ export default function SlashCommandsPage() {
           onDelete={handleBulkDelete}
           showDestructiveAction={false}
           extraActions={
-            adoptableSelectedCount > 0 ? (
+            <>
+            <ArchiveBulkAction count={selectedManagedCount} archived={statusFilter === "archived"} pending={archiveMutation.isPending} onChange={async (archived) => { const results = await Promise.allSettled(selectedManagedNames.map((name) => archiveMutation.mutateAsync({ name, archived }))); const failed = results.filter((result) => result.status === "rejected").length; if (failed) controller.setActionError(`${failed} commands could not be updated.`); setSelectedRefs(new Set()); }} />
+            {adoptableSelectedCount > 0 ? (
               <button
                 type="button"
                 className="bulk-bar__action"
@@ -395,7 +400,8 @@ export default function SlashCommandsPage() {
                   ? "Adopt selected"
                   : `Adopt selected (${adoptableSelectedCount})`}
               </button>
-            ) : null
+            ) : null}
+            </>
           }
           destructive={{
             actionLabel: "Delete",

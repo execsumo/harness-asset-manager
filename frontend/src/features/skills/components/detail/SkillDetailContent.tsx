@@ -1,6 +1,9 @@
 import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Star } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { setSkillArchived } from "../../api/client";
+import { invalidateSkillsQueries } from "../../api/invalidation";
 
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailNote } from "../../../../components/detail/DetailNote";
@@ -64,6 +67,22 @@ export function SkillDetailContent({
   const headingId = useId();
   const copy = useSkillsCopy();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archivePending, setArchivePending] = useState(false);
+  const changeArchive = async (archived: boolean) => {
+    setArchivePending(true);
+    try {
+      await setSkillArchived(detail.skillRef, archived);
+      await invalidateSkillsQueries(queryClient);
+      toast(archived ? "Skill archived." : "Skill unarchived.");
+      setArchiveDialogOpen(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Unable to update archive status.");
+    } finally {
+      setArchivePending(false);
+    }
+  };
   const updateDocumentMutation = useUpdateSkillDocumentMutation();
   const setTagsMutation = useSetSkillTagsMutation();
 
@@ -112,7 +131,7 @@ export function SkillDetailContent({
   const showUpdateControl =
     detail.actions.updateStatus !== null &&
     detail.actions.updateStatus !== "local_changes_detected";
-  const showFooter = computeShowFooter(detail);
+  const showFooter = computeShowFooter(detail) || isManaged;
   const showHarnessSection = detail.harnessCells.length > 0;
 
   // Document & Frontmatter editing state
@@ -347,7 +366,7 @@ export function SkillDetailContent({
               </DetailNote>
             ) : null}
 
-            {showHarnessSection ? (
+            {showHarnessSection && !detail.archived ? (
               <DetailSection heading={copy.detail.harnesses}>
                 <SkillDetailHarnessMatrix
                   skillName={detail.name}
@@ -371,6 +390,12 @@ export function SkillDetailContent({
         )}
         footer={showFooter ? (
           <>
+            {isManaged ? (
+              <button type="button" className="action-pill action-pill--md" disabled={archivePending || controlsDisabled}
+                onClick={() => detail.archived ? void changeArchive(false) : setArchiveDialogOpen(true)}>
+                {detail.archived ? "Unarchive" : "Archive"}
+              </button>
+            ) : null}
             {detail.actions.canManage ? (
               <button
                 type="button"
@@ -417,6 +442,16 @@ export function SkillDetailContent({
         bodyAriaLabelledBy={headingId}
       />
 
+      <ConfirmActionDialog
+        open={archiveDialogOpen}
+        title="Archive skill?"
+        description="This removes the skill from all harnesses. Its files and tags remain in the library."
+        confirmLabel="Archive"
+        pendingLabel="Archiving..."
+        isPending={archivePending}
+        onOpenChange={setArchiveDialogOpen}
+        onConfirm={() => changeArchive(true)}
+      />
       <ConfirmActionDialog
         open={isDiscardDialogOpen}
         title={copy.detail.discardTitle}

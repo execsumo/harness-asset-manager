@@ -21,6 +21,7 @@ import { UiTooltip } from "../../../../components/ui/UiTooltip";
 import { UiTooltipTriggerBoundary } from "../../../../components/ui/UiTooltipTriggerBoundary";
 import {
   useSetSlashCommandTagsMutation,
+  useSetSlashCommandArchivedMutation,
   useUnmanageSlashCommandMutation,
   useUpdateSlashCommandMutation,
 } from "../../api/queries";
@@ -60,6 +61,8 @@ export function SlashCommandDetailView({
   const unmanageMutation = useUnmanageSlashCommandMutation();
   const setTagsMutation = useSetSlashCommandTagsMutation();
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const archiveMutation = useSetSlashCommandArchivedMutation();
 
   const commandPending = pendingName === command.name;
   const enabledTargetIds = useMemo(() => syncedTargetIds(command), [command]);
@@ -325,6 +328,7 @@ export function SlashCommandDetailView({
       </div>
 
       <DetailActionFooter ariaLabel={copy.detail.actionsAria}>
+        <button type="button" className="action-pill action-pill--md" disabled={archiveMutation.isPending} onClick={() => command.archived ? void archiveMutation.mutateAsync({ name: command.name, archived: false }).catch((error: unknown) => toast(error instanceof Error ? error.message : "Could not unarchive command")) : setArchiveDialogOpen(true)}>{command.archived ? "Unarchive" : "Archive"}</button>
         {isRemoveBlocked ? (
           <UiTooltipTriggerBoundary
             content={removeTooltip}
@@ -370,6 +374,7 @@ export function SlashCommandDetailView({
         </button>
       </DetailActionFooter>
 
+      <ConfirmActionDialog open={archiveDialogOpen} title="Archive slash command?" description="This removes its harness bindings while keeping its content and tags." confirmLabel="Archive" pendingLabel="Archiving" isPending={archiveMutation.isPending} onOpenChange={setArchiveDialogOpen} onConfirm={async () => { try { await archiveMutation.mutateAsync({ name: command.name, archived: true }); setArchiveDialogOpen(false); } catch (error) { toast(error instanceof Error ? error.message : "Could not archive command"); } }} />
       <ConfirmActionDialog
         open={removeDialogOpen}
         title="Remove from Harness Asset Manager"
@@ -441,7 +446,7 @@ function HarnessesSection({
                 <button
                   type="button"
                   className={`action-pill ${enabled ? "action-pill--danger" : "action-pill--accent"}`}
-                  disabled={commandPending || !target.enabled}
+                  disabled={commandPending || !target.enabled || command.archived}
                   onClick={() => onToggleTarget(command, target)}
                   aria-pressed={enabled}
                   aria-label={enabled ? copy.detail.disableTargetFor(target.label, command.name) : copy.detail.enableTargetFor(target.label, command.name)}

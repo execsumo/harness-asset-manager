@@ -97,6 +97,7 @@ class AgentAttachmentResponse(BaseModel):
 
 
 class SkillTableRowResponse(BaseModel):
+    archived: bool = False
     skillRef: str
     name: str
     description: str
@@ -197,6 +198,7 @@ class SkillTagsResponse(BaseModel):
 
 
 class SkillDetailResponse(BaseModel):
+    archived: bool = False
     skillRef: str
     name: str
     description: str

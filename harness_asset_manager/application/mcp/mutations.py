@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Callable, Iterable
 
+from harness_asset_manager.application.asset_archive import AssetArchiveStore
 from harness_asset_manager.errors import MutationError
 
 from .availability import (
@@ -41,7 +42,9 @@ class McpMutationService:
         availability_probe: McpAvailabilityProbe | None = None,
         availability_cache: AvailabilityCache | None = None,
         asset_tags: AssetTagService | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
+        self.archive = archive
         self.store = store
         self.read_models = read_models
         self.planner = planner
@@ -76,6 +79,48 @@ class McpMutationService:
             self.store.record_binding(name, harness, bound=bound)
         except OSError:
             return
+
+    def set_archived(self, name: str, *, archived: bool) -> dict[str, bool]:
+        spec = self.store.get_managed(name)
+        if spec is None:
+            if any(entry.name == name for scan in self.read_models.snapshot().harness_scans for entry in scan.entries):
+                raise MutationError("only managed MCP servers can be archived", status=400)
+            raise MutationError(f"unknown server: {name}", status=404)
+        if self.archive is None:
+            raise MutationError("archive service is not configured", status=500)
+        if self.archive.is_archived("mcp", name) == archived:
+            return {"ok": True}
+        if archived:
+            refs = self._agent_refs_still_bound(name)
+            if refs:
+                raise MutationError(f"unbind server from agents first: {', '.join(refs)}", status=409)
+            self.read_models.invalidate()
+            scans = self.read_models.snapshot().harness_scans
+            adapters = {adapter.harness: adapter for adapter in self.read_models.adapters}
+            if set(spec.enabled_harnesses) - set(adapters):
+                raise MutationError("cannot verify all recorded bindings", status=409)
+            binding_spec = self.store.get_binding_spec(name)
+            if binding_spec is None:
+                raise MutationError("cannot verify server binding", status=409)
+            for adapter in adapters.values():
+                adapter.verify_archive_binding(binding_spec)
+            for scan in scans:
+                if scan.scan_issue:
+                    raise MutationError(f"cannot verify {scan.harness} config: {scan.scan_issue}", status=409)
+                if any(entry.name == name and entry.state not in ("managed", "missing") for entry in scan.entries):
+                    raise MutationError(f"cannot safely remove unverified server: {scan.harness}", status=409)
+            for scan in scans:
+                if any(entry.name == name and entry.state == "managed" for entry in scan.entries):
+                    adapters[scan.harness].disable_server(name)
+            for harness in spec.enabled_harnesses:
+                self.store.record_binding(name, harness, bound=False)
+        self.archive.set_archived("mcp", name, archived=archived)
+        self.read_models.invalidate()
+        return {"ok": True}
+
+    def _require_unarchived(self, name: str) -> None:
+        if self.archive and self.archive.is_archived("mcp", name):
+            raise MutationError("unarchive the server before enabling it", status=409)
 
     def set_tags(self, name: str, tags: Iterable[str]) -> dict[str, object]:
         if self.store.get_managed(name) is None:
@@ -144,6 +189,8 @@ class McpMutationService:
 
         def remove() -> None:
             self.store.remove(name)
+            if self.archive:
+                self.archive.set_archived("mcp", name, archived=False)
             if self.asset_tags is not None:
                 self.asset_tags.try_delete_tags_for_ref("mcp", name)
 
@@ -163,6 +210,7 @@ class McpMutationService:
         config: dict[str, object] | None = None,
     ) -> dict[str, bool]:
         record = self._require_record(name)
+        self._require_unarchived(name)
         adapter = self.read_models.require_enabled_adapter(harness)
         if adapter.has_binding(name):
             self._record_binding(name, harness, bound=True)
@@ -197,6 +245,8 @@ class McpMutationService:
         if target not in ("enabled", "disabled"):
             raise MutationError("target must be 'enabled' or 'disabled'", status=400)
         record = self._require_record(name)
+        if target == "enabled":
+            self._require_unarchived(name)
         binding_record = self._record_for_enable(record, config=config) if target == "enabled" else record
 
         bound_now = self._harnesses_in_states(name, {"managed", "drifted"})
@@ -245,6 +295,7 @@ class McpMutationService:
     ) -> dict[str, object]:
         if self.store.get_managed(name) is None:
             raise MutationError(f"unknown server: {name}", status=404)
+        self._require_unarchived(name)
         target_harnesses = (
             set(harnesses)
             if harnesses is not None

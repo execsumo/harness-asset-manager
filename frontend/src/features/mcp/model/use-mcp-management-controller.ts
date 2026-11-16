@@ -20,7 +20,7 @@ import type { McpInstallConfigValues } from "./install-config";
 export type McpStatus = "loading" | "ready" | "error";
 
 export function useMcpManagementController() {
-  const inventoryQuery = useMcpInventoryQuery();
+  const inventoryQuery = useMcpInventoryQuery(true);
   const needsReviewByServerQuery = useMcpNeedsReviewByServerQuery();
   const setHarnessesMutation = useSetMcpServerHarnessesMutation();
   const uninstallMutation = useUninstallMcpServerMutation();

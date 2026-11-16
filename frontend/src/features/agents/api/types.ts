@@ -104,6 +104,7 @@ export interface AgentInventoryDto {
 }
 
 export interface AgentInventoryEntryDto {
+  archived?: boolean;
   ref: string;
   name: string;
   description: string;
@@ -185,6 +186,7 @@ export interface AgentUpdateRequest {
 }
 
 export interface AgentDetailDto {
+  archived?: boolean;
   ref: string;
   name: string;
   description: string;

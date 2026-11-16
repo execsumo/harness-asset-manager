@@ -8,6 +8,7 @@ import {
   importSlashCommand,
   resolveSlashCommandReview,
   setSlashCommandTags,
+  setSlashCommandArchived,
   syncSlashCommand,
   unmanageSlashCommand,
   updateSlashCommand,
@@ -27,10 +28,10 @@ import type {
 
 export { slashCommandKeys } from "./keys";
 
-export function useSlashCommandsQuery() {
+export function useSlashCommandsQuery(includeArchived = false) {
   return useQuery({
-    queryKey: slashCommandKeys.list(),
-    queryFn: fetchSlashCommands,
+    queryKey: [...slashCommandKeys.list(), includeArchived],
+    queryFn: () => fetchSlashCommands(includeArchived),
     refetchInterval: SLASH_COMMANDS_REFETCH_INTERVAL_MS,
     ...queryPolicy(SLASH_COMMANDS_STALE_TIME_MS, SLASH_COMMANDS_GC_TIME_MS),
   });
@@ -111,3 +112,8 @@ export function useUnmanageSlashCommandMutation() {
   });
 }
 
+
+export function useSetSlashCommandArchivedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setSlashCommandArchived(name, archived), onSuccess: async () => invalidateSlashCommandQueries(queryClient) });
+}

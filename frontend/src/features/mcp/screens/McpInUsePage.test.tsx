@@ -18,6 +18,7 @@ function inventoryFixture(): McpInventoryDto {
     ],
     entries: [
       {
+        archived: false,
         name: "exa",
         displayName: "Exa Search",
         kind: "managed",
@@ -43,6 +44,7 @@ function inventoryFixture(): McpInventoryDto {
         ],
       },
       {
+        archived: false,
         name: "ctx",
         displayName: "Context7",
         kind: "managed",
@@ -128,6 +130,7 @@ function unmanagedInventoryFixture(): McpInventoryDto {
     ],
     entries: [
       {
+        archived: false,
         name: "context7",
         displayName: "Context7",
         kind: "unmanaged",
@@ -1010,6 +1013,7 @@ describe("McpInUsePage", () => {
       ],
       entries: [
         {
+          archived: false,
           name: "exa",
           displayName: "Exa Search",
           kind: "managed",
@@ -1034,6 +1038,7 @@ describe("McpInUsePage", () => {
           ],
         },
         {
+          archived: false,
           name: "context7",
           displayName: "Context7",
           kind: "unmanaged",

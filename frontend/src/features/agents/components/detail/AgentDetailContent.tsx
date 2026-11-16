@@ -28,6 +28,7 @@ import {
   useDeleteAgentMutation,
   useHermesOptionsQuery,
   useSetAgentTagsMutation,
+  useSetAgentArchivedMutation,
   useUnmanageAgentMutation,
   useUpdateAgentMutation,
 } from "../../api/queries";
@@ -91,6 +92,8 @@ export function AgentDetailContent({
   const headingId = useId();
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const archiveMutation = useSetAgentArchivedMutation();
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   
   const deleteMutation = useDeleteAgentMutation();
@@ -827,7 +830,7 @@ export function AgentDetailContent({
                         <button
                           type="button"
                           className={`action-pill ${h.state === "enabled" ? "action-pill--danger" : "action-pill--accent"}`}
-                          disabled={pending || isDeleting}
+                          disabled={pending || isDeleting || detail.archived}
                           onClick={() => handleToggleHarness(h.harness, h.state)}
                         >
                           {pending ? <Loader2 size={12} className="card-action-spinner" aria-hidden="true" /> : null}
@@ -844,6 +847,7 @@ export function AgentDetailContent({
       </div>
 
       <DetailActionFooter ariaLabel="Agent actions">
+        {!isUnmanaged ? <button type="button" className="action-pill action-pill--md" disabled={archiveMutation.isPending} onClick={() => detail.archived ? void archiveMutation.mutateAsync({ ref: detail.ref, archived: false }).catch((error: unknown) => toast(error instanceof Error ? error.message : "Could not unarchive agent")) : setArchiveDialogOpen(true)}>{detail.archived ? "Unarchive" : "Archive"}</button> : null}
         {isUnmanaged ? (
           <button
             type="button"
@@ -901,6 +905,7 @@ export function AgentDetailContent({
         ) : null}
       </DetailActionFooter>
 
+      <ConfirmActionDialog open={archiveDialogOpen} title="Archive agent?" description="This removes its harness bindings while keeping its content and tags." confirmLabel="Archive" pendingLabel="Archiving" isPending={archiveMutation.isPending} onOpenChange={setArchiveDialogOpen} onConfirm={async () => { try { await archiveMutation.mutateAsync({ ref: detail.ref, archived: true }); setArchiveDialogOpen(false); } catch (error) { toast(error instanceof Error ? error.message : "Could not archive agent"); } }} />
       {detail.canDelete ? (
         <ConfirmActionDialog
           open={deleteDialogOpen}

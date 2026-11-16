@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent } from "./client";
+import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent, setAgentArchived } from "./client";
 import { AGENTS_LIST_REFETCH_INTERVAL_MS, agentsKeys } from "./keys";
 
 export function useHermesOptionsQuery() {
@@ -10,10 +10,10 @@ export function useHermesOptionsQuery() {
   });
 }
 
-export function useAgentsInventoryQuery() {
+export function useAgentsInventoryQuery(includeArchived = false) {
   return useQuery({
-    queryKey: agentsKeys.list(),
-    queryFn: fetchAgentsInventory,
+    queryKey: [...agentsKeys.list(), includeArchived],
+    queryFn: () => fetchAgentsInventory(includeArchived),
     refetchInterval: AGENTS_LIST_REFETCH_INTERVAL_MS,
   });
 }
@@ -121,3 +121,14 @@ export function useUnmanageAgentMutation() {
   });
 }
 
+
+export function useSetAgentArchivedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ref, archived }: { ref: string; archived: boolean }) => setAgentArchived(ref, archived),
+    onSuccess: (_, { ref }) => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
+    },
+  });
+}

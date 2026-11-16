@@ -23,6 +23,7 @@ function columns(): McpInventoryColumnDto[] {
 function entries(): McpInventoryEntryDto[] {
   return [
     {
+      archived: false,
       name: "exa",
       displayName: "Exa Search",
       kind: "managed",
@@ -48,6 +49,7 @@ function entries(): McpInventoryEntryDto[] {
       ],
     },
     {
+      archived: false,
       name: "drift",
       displayName: "Drift Server",
       kind: "managed",
@@ -210,6 +212,7 @@ describe("McpServerMatrixView", () => {
 
   it("renders adopt action and calls onAdopt for identical unmanaged entries", () => {
     const unmanagedEntry: McpInventoryEntryDto = {
+      archived: false,
       name: "context7",
       displayName: "Context7",
       kind: "unmanaged",
@@ -253,6 +256,7 @@ describe("McpServerMatrixView", () => {
 
   it("renders choose-config action and calls onChooseConfigToAdopt for differing unmanaged entries", () => {
     const unmanagedEntry: McpInventoryEntryDto = {
+      archived: false,
       name: "context7",
       displayName: "Context7",
       kind: "unmanaged",

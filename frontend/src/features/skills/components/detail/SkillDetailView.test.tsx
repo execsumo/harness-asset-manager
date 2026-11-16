@@ -1,4 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+
+function render(ui: ReactElement) {
+  return rtlRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
+}
 import { describe, expect, it, vi } from "vitest";
 
 import { useSkillDetailController } from "../../model/use-skill-detail-controller";

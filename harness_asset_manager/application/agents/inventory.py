@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+from harness_asset_manager.application.asset_archive import AssetArchiveStore
+
 from .adapters import AgentHarnessAdapter, TargetResolver, parse_codex_agent
 from .ledger import AgentBindingLedger, AgentBindingRecord, classify_drift, hash_file
 from .model import (
@@ -40,8 +42,10 @@ class AgentInventoryService:
         reconcile: Callable[[], ReconcileOutcome] | None = None,
         asset_tags: AssetTagService | None = None,
         skills_queries: SkillsQueryService | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
         self.store = store
+        self.archive = archive
         self._resolve = resolve
         self.ledger = ledger
         self._reconcile = reconcile

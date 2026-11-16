@@ -4,6 +4,7 @@ import threading
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from harness_asset_manager.application.asset_archive import AssetArchiveStore
 from harness_asset_manager.errors import MutationError
 
 from .availability import (
@@ -39,7 +40,9 @@ class McpQueryService:
         availability_cache: AvailabilityCache | None = None,
         reconcile: Callable[[], object] | None = None,
         asset_tags: AssetTagService | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
+        self.archive = archive
         self.read_models = read_models
         self.planner = planner
         self.enrichment = enrichment
@@ -73,9 +76,18 @@ class McpQueryService:
             if scan.installed or scan.config_present
         )
 
-    def list_servers(self) -> dict[str, object]:
+    def list_servers(self, *, include_archived: bool = False) -> dict[str, object]:
         self._reconcile_once()
-        return self._list_snapshot()
+        payload = self._list_snapshot()
+        entries = payload["entries"]
+        assert isinstance(entries, list)
+        archived = self.archive.load() if self.archive else set()
+        for entry in entries:
+            entry["archived"] = f"mcp:{entry['name']}" in archived
+            if entry["archived"]:
+                entry["canEnable"] = False
+        payload["entries"] = [entry for entry in entries if include_archived or not entry["archived"]]
+        return payload
 
     def _list_snapshot(self) -> dict[str, object]:
         snapshot = self.read_models.snapshot()
@@ -108,6 +120,9 @@ class McpQueryService:
                     link = self.enrichment.lookup(name) if self.enrichment else None
                     if link is not None:
                         payload["marketplaceLink"] = link.to_dict()
+                payload["archived"] = bool(self.archive and self.archive.is_archived("mcp", name))
+                if payload["archived"]:
+                    payload["canEnable"] = False
                 return payload
         raise MutationError(f"unknown mcp server: {name}", status=404)
 

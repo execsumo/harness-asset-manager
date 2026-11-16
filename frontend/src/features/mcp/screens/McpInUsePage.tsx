@@ -9,6 +9,7 @@ import {
   type BulkHarnessState,
   type MultiSelectAction,
 } from "../../../components/BulkActionBar";
+import { ArchiveBulkAction } from "../../../components/ArchiveBulkAction";
 import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
@@ -42,7 +43,7 @@ import {
 } from "../model/selectors";
 import { useMcpEnableWorkflow } from "../model/use-mcp-enable-workflow";
 import { useMcpManagementController } from "../model/use-mcp-management-controller";
-import { useSetMcpServerTagsMutation } from "../api/management-queries";
+import { useSetMcpServerArchivedMutation, useSetMcpServerTagsMutation } from "../api/management-queries";
 
 const DETAIL_PARAM = "server";
 const STATUS_VALUES: InUsePillValue[] = [
@@ -52,6 +53,7 @@ const STATUS_VALUES: InUsePillValue[] = [
   "unbound",
   "drifted",
   "untracked",
+  "archived",
 ];
 
 function isMcpStatusFilter(value: string | null): value is InUsePillValue {
@@ -89,6 +91,7 @@ export default function McpInUsePage() {
     handleMultiSelectStar,
   } = useMcpManagementController();
 
+  const archiveMutation = useSetMcpServerArchivedMutation();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedName = searchParams.get(DETAIL_PARAM);
   const [confirmUninstallName, setConfirmUninstallName] = useState<string | null>(null);
@@ -752,7 +755,7 @@ export default function McpInUsePage() {
           handleClearMultiSelect();
           setSelectedUntrackedNames(new Set());
         }}
-        showHarnessActions={selectedManagedCount > 0}
+        showHarnessActions={selectedManagedCount > 0 && statusFilter !== "archived"}
         onEnableAll={handleBulkEnableAll}
         onDisableAll={handleMultiSelectDisableAll}
         harnessOptions={bulkHarnessOptions}
@@ -765,7 +768,9 @@ export default function McpInUsePage() {
         starLabel="Star"
         knownTags={knownTagNames}
         extraActions={
-          selectedAdoptableUntrackedCount > 0 ? (
+          <>
+          <ArchiveBulkAction count={selectedManagedCount} archived={statusFilter === "archived"} pending={archiveMutation.isPending} onChange={async (archived) => { const results = await Promise.allSettled(selectedManagedEntries.map((entry) => archiveMutation.mutateAsync({ name: entry.name, archived }))); const failed = results.filter((result) => result.status === "rejected").length; if (failed) setPageActionErrorMessage(`${failed} servers could not be updated.`); handleClearMultiSelect(); }} />
+          {selectedAdoptableUntrackedCount > 0 ? (
             <button
               type="button"
               className="bulk-bar__action"
@@ -781,7 +786,8 @@ export default function McpInUsePage() {
                 ? (copy.inUse.adoptSelected || "Adopt selected")
                 : `${copy.inUse.adoptSelected || "Adopt selected"} (${selectedAdoptableUntrackedCount})`}
             </button>
-          ) : null
+          ) : null}
+          </>
         }
         destructive={{
           actionLabel: copy.inUse.uninstall.action,

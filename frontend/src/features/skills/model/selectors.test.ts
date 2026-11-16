@@ -51,6 +51,12 @@ const data: SkillsWorkspaceData = {
 } as unknown as SkillsWorkspaceData;
 
 describe("skills workspace model", () => {
+  it("hides archived skills by default and shows them in Archived", () => {
+    const archived = { ...data.rows[0], archived: true };
+    const inventory = { ...data, rows: [archived, data.rows[1]] };
+    expect(filterSkills(inventory, { search: "", status: "all" }).map((row) => row.skillRef)).toEqual([data.rows[1].skillRef]);
+    expect(filterSkills(inventory, { search: "", status: "archived" }).map((row) => row.skillRef)).toEqual([archived.skillRef]);
+  });
   it("harness filter keeps only rows enabled or found on the harness", () => {
     // "shared-audit" is adopted but merely disabled on codex — it must NOT match.
     const codexOnly = filterSkills(data, { search: "", status: "all", harness: "codex" });

@@ -8,6 +8,8 @@ import { getSkillsRouteElements } from "../routes";
 import SkillsWorkspacePage from "./SkillsWorkspacePage";
 
 const hooks = vi.hoisted(() => ({
+  selected: new Set<string>(),
+  archive: vi.fn(async () => ({ ok: true })),
   onManageSkill: vi.fn(async () => undefined),
   onManageAll: vi.fn(),
   onOpenSkill: vi.fn(),
@@ -80,6 +82,8 @@ const mixedData = {
   ],
 };
 
+vi.mock("../api/client", () => ({ setSkillArchived: hooks.archive }));
+
 vi.mock("../model/use-skills-workspace-controller", () => ({
   useSkillsWorkspaceController: () => ({
     context: {
@@ -92,7 +96,7 @@ vi.mock("../model/use-skills-workspace-controller", () => ({
       pendingStructuralActions: new Map(),
       pendingBulkAction: null,
       selectedSkillRef: null,
-      multiSelectedRefs: new Set(),
+      multiSelectedRefs: hooks.selected,
       multiSelectPending: null,
       onManageAll: hooks.onManageAll,
       onManageSkill: hooks.onManageSkill,
@@ -175,8 +179,19 @@ describe("Skills unified inventory page", () => {
   });
 
   afterEach(() => {
+    hooks.selected.clear();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+  });
+
+  it("confirms the bulk archive action before updating selected skills", async () => {
+    hooks.selected.add("shared:managed-skill");
+    renderPage();
+    const toolbar = screen.getByRole("toolbar", { name: "Bulk actions" });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Archive" }));
+    expect(hooks.archive).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(hooks.archive).toHaveBeenCalledWith("shared:managed-skill", true));
   });
 
   it("ignores ?agent= filters when agent tags are hidden in Settings", () => {

@@ -2,6 +2,7 @@ import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { type ReactNode, useId, useState } from "react";
 import { Loader2, Star, Trash2 } from "lucide-react";
 
+import { ConfirmActionDialog } from "../../../../components/ConfirmActionDialog";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
 import { DetailSourceLinks } from "../../../../components/detail/DetailSourceLinks";
@@ -13,7 +14,7 @@ import type {
   McpInventoryColumnDto,
   McpServerSpecDto,
 } from "../../api/management-types";
-import { useMcpServerDetailQuery, useSetMcpServerTagsMutation } from "../../api/management-queries";
+import { useMcpServerDetailQuery, useSetMcpServerArchivedMutation, useSetMcpServerTagsMutation } from "../../api/management-queries";
 import { useMcpCopy, type McpCopy } from "../../i18n";
 import { formatDisplayHeaders, maskMcpPayloadPreview } from "../../model/display-secrets";
 import type { McpInstallConfigValues } from "../../model/install-config";
@@ -66,6 +67,9 @@ export function McpServerDetailView({
   const headingId = useId();
   const copy = useMcpCopy();
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveError, setArchiveError] = useState("");
+  const archiveMutation = useSetMcpServerArchivedMutation();
   const detailQuery = useMcpServerDetailQuery(name);
   const setTagsMutation = useSetMcpServerTagsMutation();
 
@@ -312,6 +316,9 @@ export function McpServerDetailView({
           </>
         )}
         footer={(
+          <>
+          <button type="button" className="action-pill" disabled={archiveMutation.isPending} onClick={() => detail?.archived ? void archiveMutation.mutateAsync({ name, archived: false }).catch((error: unknown) => setArchiveError(error instanceof Error ? error.message : "Could not unarchive server")) : setArchiveDialogOpen(true)}>{detail?.archived ? "Unarchive" : "Archive"}</button>
+          {archiveError ? <ErrorBanner message={archiveError} /> : null}
           <button
             type="button"
             className="action-pill mcp-detail__uninstall"
@@ -329,9 +336,11 @@ export function McpServerDetailView({
             )}
             {copy.detail.uninstall}
           </button>
+          </>
         )}
         bodyAriaLabelledBy={headingId}
       />
+      <ConfirmActionDialog open={archiveDialogOpen} title="Archive MCP server?" description="This removes its harness bindings while keeping its content and tags." confirmLabel="Archive" pendingLabel="Archiving" isPending={archiveMutation.isPending} onOpenChange={setArchiveDialogOpen} onConfirm={async () => { try { await archiveMutation.mutateAsync({ name, archived: true }); setArchiveDialogOpen(false); } catch (error) { setArchiveError(error instanceof Error ? error.message : "Could not archive server"); } }} />
       {resolveDialogOpen ? (
         <McpConfigChoiceDialog
           open

@@ -43,10 +43,10 @@ import type {
 export { invalidateSkillsQueries } from "./invalidation";
 export { skillsKeys } from "./keys";
 
-export function useSkillsListQuery() {
+export function useSkillsListQuery(includeArchived = false) {
   return useQuery({
-    queryKey: skillsKeys.list(),
-    queryFn: fetchSkillsPage,
+    queryKey: includeArchived ? [...skillsKeys.list(), "with-archived"] : skillsKeys.list(),
+    queryFn: () => fetchSkillsPage(includeArchived),
     select: mapSkillsPage,
     ...queryPolicy(SKILLS_STALE_TIME_MS, SKILLS_GC_TIME_MS),
     refetchInterval: SKILLS_LIST_REFETCH_INTERVAL_MS,
@@ -104,15 +104,16 @@ export function useToggleSkillMutation() {
         queryClient.cancelQueries({ queryKey: skillsKeys.detail(skillRef) }),
       ]);
 
-      const previousList = queryClient.getQueryData<SkillsPageDto>(skillsKeys.list());
+      const previousList = queryClient.getQueryData<SkillsPageDto>([...skillsKeys.list(), "with-archived"])
+        ?? queryClient.getQueryData<SkillsPageDto>(skillsKeys.list());
       const previousDetail = queryClient.getQueryData<SkillDetailDto>(skillsKeys.detail(skillRef));
       const previousListCellState = getListCellState(previousList, skillRef, harness);
       const previousDetailCellState = getDetailCellState(previousDetail, harness);
 
       if (previousList) {
-        queryClient.setQueryData<SkillsPageDto>(
-          skillsKeys.list(),
-          patchSkillsListToggle(previousList, skillRef, harness, nextState),
+        queryClient.setQueriesData<SkillsPageDto>(
+          { queryKey: skillsKeys.list() },
+          (current) => current ? patchSkillsListToggle(current, skillRef, harness, nextState) : current,
         );
       }
       if (previousDetail) {
@@ -136,8 +137,8 @@ export function useToggleSkillMutation() {
 
       if (context.previousListCellState !== null) {
         const previousListCellState = context.previousListCellState;
-        queryClient.setQueryData<SkillsPageDto>(
-          skillsKeys.list(),
+        queryClient.setQueriesData<SkillsPageDto>(
+          { queryKey: skillsKeys.list() },
           (current) => current ? patchSkillsListToggle(
             current,
             context.skillRef,

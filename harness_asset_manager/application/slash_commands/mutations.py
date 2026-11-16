@@ -66,6 +66,31 @@ class SlashCommandMutationService:
         updated_tags = self.asset_tags.set_tags("slash_commands", canonical_key, tags)
         return {"tags": updated_tags}
 
+    def set_archived(self, name: str, *, archived: bool) -> dict[str, bool]:
+        if self.store.get_command(name) is None:
+            reviews = self.read_models.list_commands().get("reviewCommands", [])
+            if any(row.get("name") == name or row.get("reviewRef") == name for row in reviews):
+                raise MutationError("only managed slash commands can be archived", status=400)
+            raise MutationError(f"unknown slash command: {name}", status=404)
+        archive = self.queries.archive
+        if archive is None:
+            raise MutationError("archive service is not configured", status=500)
+        if archive.is_archived("slash_commands", name) == archived:
+            return {"ok": True}
+        if archived:
+            records = self.sync_state.load().get(name, {})
+            targets = self.resolve_all_targets() if self.resolve_all_targets else self.resolve_targets()
+            if set(records) - {target.id for target in targets}:
+                raise MutationError("cannot verify all recorded bindings", status=409)
+            if any(record.path.exists() and not record.content_hash for record in records.values()):
+                raise MutationError("cannot verify a recorded binding", status=409)
+            removed = self.sync_executor.remove_tracked_outputs(records, targets)
+            if not removed["ok"]:
+                raise MutationError("cannot safely remove slash command bindings", status=409)
+            self.sync_state.remove_command(name)
+        archive.set_archived("slash_commands", name, archived=archived)
+        return {"ok": True}
+
     def create_command(
         self,
         *,
@@ -88,6 +113,8 @@ class SlashCommandMutationService:
         targets: list[str] | None = None,
         metadata: list[dict[str, str]] | list[tuple[str, str]] | tuple[tuple[str, str], ...] | list[str] | tuple[str, ...] | None = None,
     ) -> dict[str, object]:
+        if self.queries.archive and self.queries.archive.is_archived("slash_commands", name):
+            raise MutationError("unarchive the slash command before updating it", status=409)
         self.store.update_command(name, description=description, prompt=prompt, metadata=metadata)
         sync = self.sync_command(name, targets=targets)
         payload = self.queries.get_command(name)
@@ -96,6 +123,8 @@ class SlashCommandMutationService:
     def sync_command(self, name: str, *, targets: list[str] | None = None) -> dict[str, object]:
         resolved_targets = self.resolve_targets()
         command = self.store.require_command(name)
+        if self.queries.archive and self.queries.archive.is_archived("slash_commands", name):
+            raise MutationError("unarchive the slash command before enabling it", status=409)
         selected = self._selected_targets(targets, resolved_targets)
         return self.sync_executor.sync_command(command, selected, resolved_targets)
 
@@ -110,6 +139,8 @@ class SlashCommandMutationService:
 
         self.store.delete_command(name)
         self.sync_state.remove_command(name)
+        if self.queries.archive:
+            self.queries.archive.set_archived("slash_commands", name, archived=False)
         if self.asset_tags is not None:
             self.asset_tags.try_delete_tags_for_ref("slash_commands", name)
         return {"ok": True, "sync": removed["sync"]}

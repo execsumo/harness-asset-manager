@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Callable, Literal
 
+from harness_asset_manager.application.asset_archive.store import AssetArchiveStore
 from harness_asset_manager.errors import MutationError
 from harness_asset_manager.sources import (
     github_folder_url,
@@ -32,10 +33,12 @@ class SkillsQueryService:
         source_fetcher: SourceFetchService,
         asset_tags: AssetTagService | None = None,
         reconcile: Callable[[], object] | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
         self.asset_tags = asset_tags
+        self.archive = archive
         self._reconcile = reconcile
         self._agent_attachments_getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]] | None = None
         self._agent_roster_getter: Callable[[], tuple[AgentAttachment, ...]] | None = None
@@ -79,15 +82,29 @@ class SkillsQueryService:
         except Exception:
             return ()
 
-    def list_skills(self) -> dict[str, object]:
+    def list_skills(self, *, include_archived: bool = False) -> dict[str, object]:
         all_tags = self.asset_tags.get_tags_for_family("skills") if self.asset_tags is not None else {}
         attachments = self._get_agent_attachments()
-        return skills_page_payload(
+        payload = skills_page_payload(
             self.inventory(),
             tags=all_tags,
             attachments=attachments,
             agent_options=self._get_agent_roster(),
         )
+        archived = self.archive.load() if self.archive else set()
+        rows = payload["rows"]
+        assert isinstance(rows, list)
+        for row in rows:
+            row["archived"] = f"skills:{row['skillRef']}" in archived
+            if row["archived"]:
+                for cell in row["cells"]:
+                    cell["interactive"] = False
+        payload["rows"] = [row for row in rows if include_archived or not row["archived"]]
+        payload["summary"] = {
+            "managed": sum(1 for row in rows if not row["archived"] and row["displayStatus"] == "Managed"),
+            "unmanaged": sum(1 for row in rows if not row["archived"] and row["displayStatus"] == "Unmanaged"),
+        }
+        return payload
 
     def get_skill_detail(self, skill_ref: str) -> dict[str, object] | None:
         inventory = self.inventory()
@@ -98,7 +115,7 @@ class SkillsQueryService:
         document_markdown, metadata = read_skill_document_and_metadata(package_root)
         tags = self.asset_tags.get_tags("skills", entry.skill_ref) if self.asset_tags is not None else []
         attachments = self._get_agent_attachments().get(skill_ref, ())
-        return skill_detail_payload(
+        payload = skill_detail_payload(
             entry,
             columns=inventory.columns,
             document_markdown=document_markdown,
@@ -107,6 +124,8 @@ class SkillsQueryService:
             tags=tags,
             agents=attachments,
         )
+        payload["archived"] = self.archive.is_archived("skills", entry.skill_ref) if self.archive else False
+        return payload
 
     def get_skill_source_status(self, skill_ref: str) -> dict[str, object] | None:
         entry = self.inventory().find(skill_ref)

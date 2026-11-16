@@ -41,6 +41,7 @@ export interface SlashSyncEntryDto {
 }
 
 export interface SlashCommandDto {
+  archived?: boolean;
   name: string;
   description: string;
   prompt: string;

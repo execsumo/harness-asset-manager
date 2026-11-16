@@ -45,6 +45,7 @@ class AutoEnableFailureResponse(BaseModel):
 
 
 class AgentEntryResponse(BaseModel):
+    archived: bool = False
     ref: str
     name: str
     description: str
@@ -234,6 +235,7 @@ class AgentTagsResponse(BaseModel):
 
 
 class AgentDetailResponse(BaseModel):
+    archived: bool = False
     ref: str
     name: str
     description: str

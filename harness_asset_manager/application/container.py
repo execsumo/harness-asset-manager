@@ -23,6 +23,7 @@ from .agents import (
     resolve_agent_targets,
 )
 from .agents.attachments import agent_roster, skill_attachments
+from .asset_archive import AssetArchiveStore
 from .asset_tags import AssetTagService, AssetTagStore
 from .bootstrap import (
     BootstrapApplier,
@@ -277,9 +278,10 @@ def build_backend_container(
 
     asset_tag_store = AssetTagStore(paths.asset_tags_path)
     asset_tags = AssetTagService(asset_tag_store)
+    asset_archive = AssetArchiveStore(paths.asset_archive_path)
 
     active_source_fetcher = source_fetcher or SourceFetchService()
-    skills_queries = SkillsQueryService(skills_read_models, active_source_fetcher, asset_tags=asset_tags)
+    skills_queries = SkillsQueryService(skills_read_models, active_source_fetcher, asset_tags=asset_tags, archive=asset_archive)
     skills_mutations = SkillsMutationService(skills_read_models, skills_queries, active_source_fetcher, asset_tags=asset_tags)
     auto_adopt_store = AutoAdoptStore(paths.settings_path)
     settings_queries = SettingsQueryService(harness_kernel, paths, auto_adopt_store)
@@ -321,7 +323,7 @@ def build_backend_container(
         slash_command_path_policy,
         asset_tags=asset_tags,
     )
-    slash_command_queries = SlashCommandQueryService(slash_command_read_models)
+    slash_command_queries = SlashCommandQueryService(slash_command_read_models, archive=asset_archive)
     slash_command_mutations = SlashCommandMutationService(
         slash_command_store,
         slash_command_sync_state,
@@ -378,6 +380,7 @@ def build_backend_container(
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
         asset_tags=asset_tags,
+        archive=asset_archive,
     )
     mcp_mutations = McpMutationService(
         store=mcp_store,
@@ -387,6 +390,7 @@ def build_backend_container(
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
         asset_tags=asset_tags,
+        archive=asset_archive,
     )
     mcp_auto_adopt = McpAutoAdoptService(
         planner=mcp_planner,
@@ -507,6 +511,8 @@ def build_backend_container(
         hermes_root=_hermes_root(harness_kernel.context),
         mcp_store=mcp_store,
         mcp_mutations=mcp_mutations,
+        archive=asset_archive,
+        reconcile_lock_path=paths.agents_reconcile_lock_path,
     )
 
     def _agent_refs_bound_to_mcp_server(name: str) -> tuple[str, ...]:
@@ -535,6 +541,7 @@ def build_backend_container(
             (paths.skills_store_manifest, False),
             (paths.skills_store_root, False),
             (paths.asset_tags_path, False),
+            (paths.asset_archive_path, False),
             *((adapter.managed_root, False) for adapter in skills_read_models.adapters),
         )
     )
@@ -542,12 +549,14 @@ def build_backend_container(
     slash_tracker = MutationPathTracker(
         lambda: (
             (paths.slash_command_store_root, True),
+            (paths.asset_archive_path, False),
             *((target.output_dir, False) for target in resolve_slash_snapshot()),
         )
     )
     mcp_tracker = MutationPathTracker(
         lambda: (
             (paths.mcp_store_manifest, False),
+            (paths.asset_archive_path, False),
             *(
                 (config_path, False)
                 for adapter in mcp_read_models.adapters
@@ -558,12 +567,14 @@ def build_backend_container(
     hooks_tracker = MutationPathTracker(
         lambda: (
             (paths.hooks_store_manifest, False),
+            (paths.asset_archive_path, False),
             *((adapter.config_path, False) for adapter in hooks_read_models.adapters),
         )
     )
     permissions_tracker = MutationPathTracker(
         lambda: (
             (paths.permissions_store_manifest, False),
+            (paths.asset_archive_path, False),
             (paths.asset_tags_path, False),
             *((adapter.config_path, False) for adapter in permissions_read_models.adapters),
         )
@@ -572,6 +583,7 @@ def build_backend_container(
         lambda: (
             (paths.agents_root, True),
             (paths.bindings_ledger_path, False),
+            (paths.asset_archive_path, False),
             *((target.output_dir, False) for target in resolve_agents_snapshot()[0]),
         )
     )
@@ -655,6 +667,7 @@ def build_backend_container(
         audited_agents_reconcile.reconcile,
         asset_tags=asset_tags,
         skills_queries=skills_queries,
+        archive=asset_archive,
     )
     configs_store = ConfigStore(paths.configs_dir / "manifest.json")
     configs_service = ConfigsService(configs_store, harness_kernel, asset_tags)

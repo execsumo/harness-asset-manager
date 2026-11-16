@@ -277,7 +277,7 @@ function SlashCommandMatrixRow({
                   ariaLabel={`${isEnabled ? "Disable" : "Enable"} ${target.label} for ${command.name}`}
                   state={isEnabled ? "enabled" : "disabled"}
                   pending={pending && pendingTarget === target.id}
-                  disabled={pending || !target.enabled}
+                  disabled={pending || !target.enabled || command.archived}
                   ariaPressed={isEnabled}
                   onClick={() => onToggleTarget(command, target)}
                 >
