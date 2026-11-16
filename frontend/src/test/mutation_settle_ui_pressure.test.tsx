@@ -38,7 +38,7 @@ function stubServer(plans: Record<string, Plan>) {
   fetchMock.mockImplementation(createRouteFetchMock([
     {
       match: (url, _input, init) => init?.method === "POST" && /\/api\/agents\/[^/]+\/(enable|disable)$/.test(url),
-      response: async (url, _input, init) => {
+      response: async (url: string, _input: unknown, init?: RequestInit) => {
         const [, ref, verb] = /\/api\/agents\/([^/]+)\/(enable|disable)$/.exec(url)!;
         const { harness } = JSON.parse(String(init?.body)) as { harness: string };
         const plan = plans[`${ref}:${harness}`];
