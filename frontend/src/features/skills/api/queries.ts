@@ -1,9 +1,10 @@
 import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { ScopedReconciliationTracker } from "../../../lib/async/scoped-reconciliation";
-import { queryPolicy } from "../../../lib/query";
+import { queryPolicy, settleInvalidate } from "../../../lib/query";
+import { invalidateAgentsQueries } from "../../agents/public";
 import {
   attachAgents,
   createSkill,
@@ -43,6 +44,16 @@ import type {
 
 export { invalidateSkillsQueries } from "./invalidation";
 export { skillsKeys } from "./keys";
+
+// Scoped on purpose (PR #154): a single-skill mutation refreshes the list plus that skill's
+// own detail and source status, not every cached skill.
+const settleSkillScope = (queryClient: QueryClient, skillRef: string) =>
+  settleInvalidate(queryClient, skillsKeys.list(), skillsKeys.detail(skillRef), skillsKeys.sourceStatus(skillRef))();
+
+// Agent payloads list their skills, so a skill that goes away or changes identity must also
+// refresh agents.
+const settleSkillsAndAgents = (queryClient: QueryClient) =>
+  settleInvalidate(queryClient, invalidateSkillsQueries, invalidateAgentsQueries)();
 
 export function useSkillsListQuery(includeArchived = false) {
   return useQuery({
@@ -165,20 +176,11 @@ export function useToggleSkillMutation() {
         invalidateAll: true,
         invalidateScope: true,
       };
-      const invalidations: Promise<unknown>[] = [];
-
-      if (decision.invalidateScope) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }));
-        invalidations.push(queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }));
-      }
-
-      if (decision.invalidateAll) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: skillsKeys.list() }));
-      }
-
-      if (invalidations.length > 0) {
-        await Promise.all(invalidations);
-      }
+      await settleInvalidate(
+        queryClient,
+        ...(decision.invalidateScope ? [skillsKeys.detail(variables.skillRef), skillsKeys.sourceStatus(variables.skillRef)] : []),
+        ...(decision.invalidateAll ? [skillsKeys.list()] : []),
+      )();
     },
   });
 }
@@ -239,13 +241,7 @@ export function useSetSkillHarnessesMutation() {
         queryClient.setQueryData<SkillDetailDto>(skillsKeys.detail(context.skillRef), context.previousDetail);
       }
     },
-    onSettled: async (_data, _error, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
-      ]);
-    },
+    onSettled: (_data, _error, variables) => settleSkillScope(queryClient, variables.skillRef),
   });
 }
 
@@ -253,11 +249,9 @@ export function useCreateSkillMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: CreateSkillRequest): Promise<CreateSkillResponseDto> => createSkill(request),
-    onSuccess: async () => {
-      // A new package changes the list and nothing else yet, but it can land bound to
-      // harnesses, so the whole skills scope is refreshed rather than the list alone.
-      await invalidateSkillsQueries(queryClient);
-    },
+    // A new package changes the list and nothing else yet, but it can land bound to
+    // harnesses, so the whole skills scope is refreshed rather than the list alone.
+    onSettled: settleInvalidate(queryClient, invalidateSkillsQueries),
   });
 }
 
@@ -265,13 +259,7 @@ export function useManageSkillMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ skillRef }: { skillRef: string }) => manageSkill(skillRef),
-    onSuccess: async (_data, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
-      ]);
-    },
+    onSettled: (_data, _error, variables) => settleSkillScope(queryClient, variables.skillRef),
   });
 }
 
@@ -279,9 +267,7 @@ export function useManageAllSkillsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: manageAllSkills,
-    onSuccess: async () => {
-      await invalidateSkillsQueries(queryClient);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateSkillsQueries),
   });
 }
 
@@ -289,13 +275,7 @@ export function useUpdateSkillMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ skillRef }: { skillRef: string }) => updateSkill(skillRef),
-    onSuccess: async (_data, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
-      ]);
-    },
+    onSettled: (_data, _error, variables) => settleSkillScope(queryClient, variables.skillRef),
   });
 }
 
@@ -303,11 +283,11 @@ export function useUnmanageSkillMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ skillRef }: { skillRef: string }) => unmanageSkill(skillRef),
-    onSuccess: async (_data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.removeQueries({ queryKey: skillsKeys.detail(variables.skillRef), exact: true });
       queryClient.removeQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef), exact: true });
-      await invalidateSkillsQueries(queryClient);
     },
+    onSettled: () => settleSkillsAndAgents(queryClient),
   });
 }
 
@@ -341,11 +321,11 @@ export function useDeleteSkillMutation() {
         queryClient.setQueryData(skillsKeys.detail(context.skillRef), context.previousDetail);
       }
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.removeQueries({ queryKey: skillsKeys.detail(variables.skillRef), exact: true });
       queryClient.removeQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef), exact: true });
-      await invalidateSkillsQueries(queryClient);
     },
+    onSettled: () => settleSkillsAndAgents(queryClient),
   });
 }
 
@@ -354,13 +334,7 @@ export function useUpdateSkillDocumentMutation() {
   return useMutation({
     mutationFn: ({ skillRef, body }: { skillRef: string; body: Parameters<typeof updateSkillDocument>[1] }) =>
       updateSkillDocument(skillRef, body),
-    onSuccess: async (_data, variables) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: skillsKeys.list() }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.detail(variables.skillRef) }),
-        queryClient.invalidateQueries({ queryKey: skillsKeys.sourceStatus(variables.skillRef) }),
-      ]);
-    },
+    onSettled: (_data, _error, variables) => settleSkillScope(queryClient, variables.skillRef),
   });
 }
 
@@ -387,10 +361,7 @@ export function useAttachAgentsMutation() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (req: AttachAgentsRequestDto) => attachAgents(req),
-    onSuccess: (_res, req) => {
-      if (!req.dryRun) {
-        void client.invalidateQueries({ queryKey: skillsKeys.list() });
-      }
-    },
+    // A dry run changes nothing, so it needs no refetch.
+    onSettled: (_res, _error, req) => (req.dryRun ? undefined : settleSkillsAndAgents(client)),
   });
 }
