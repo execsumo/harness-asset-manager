@@ -25,6 +25,7 @@ from .contracts import (
     PermissionHarnessStatus,
     PermissionObservedEntry,
 )
+from .default_policy import DefaultPolicyStore, default_policy_path
 from .mappers import PermissionMapper, RawPermissionEntry, get_mapper
 from .store import PermissionSpec
 
@@ -223,23 +224,31 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
             raise MutationError(f"Permission not supported on {self.label}: {reason}", status=400)
 
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        policies = self._policy_store()
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
-            self._mapper.enable_permission(document, spec)
+            record = policies.get(self.harness)
+            legacy = record is None and self._holds_rules_the_app_wrote(document)
+            record = self._mapper.enable_permission(document, spec, policy=record, legacy=legacy)
             atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
+            policies.put(self.harness, record)
 
     def disable_permission(self, id: str) -> None:
         if not self.config_path.is_file():
             return
         spec = self._get_managed_spec(id)
+        policies = self._policy_store()
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
+            record = policies.get(self.harness)
             try:
-                changed = self._mapper.disable_permission(document, id, spec=spec)
+                changed = self._mapper.disable_permission(document, id, spec=spec, policy=record)
             except MutationError as error:
                 raise MutationError(f"{self.config_path}: {error}", status=error.status) from error
             if changed:
                 atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
+                if record is not None and self._mapper.denylist_empty(document):
+                    policies.clear(self.harness)
 
     def invalidate(self) -> None:
         return None
@@ -276,6 +285,28 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
             return ()
         document = self._load_document(self.config_path)
         return tuple(self._mapper.read_entries(document, specs))
+
+    def _policy_store(self) -> DefaultPolicyStore:
+        from harness_asset_manager.paths import resolve_app_paths
+
+        return DefaultPolicyStore(default_policy_path(resolve_app_paths(self._env).permissions_store_manifest))
+
+    def _holds_rules_the_app_wrote(self, document: dict[str, object]) -> bool:
+        """Whether the file already holds a rule the app enabled (not one it adopted)."""
+        specs = self._managed_specs()
+        written = {spec.id for spec in specs if not spec.id.startswith("manual:")}
+        return any(entry.id in written for entry in self._mapper.read_entries(document, specs))
+
+    def _managed_specs(self) -> tuple[PermissionSpec, ...]:
+        try:
+            from harness_asset_manager.application.permissions.store import (
+                PermissionStore,
+            )
+            from harness_asset_manager.paths import resolve_app_paths
+            app_paths = resolve_app_paths(self._env)
+            return PermissionStore(app_paths.permissions_store_manifest).list_managed()
+        except Exception:
+            return ()
 
     def _get_managed_spec(self, id: str) -> PermissionSpec | None:
         try:
