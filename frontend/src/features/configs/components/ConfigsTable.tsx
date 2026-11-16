@@ -12,6 +12,7 @@ import {
   useSetConfigTagsMutation,
 } from "../api/queries";
 import { useConfigsCopy } from "../i18n";
+import { reportFailure, useSingleFlight } from "../model/action-errors";
 import { isStarred, type ConfigRowData, type ConfigStatus } from "../model/selectors";
 
 const STATUS_TONE: Record<ConfigStatus, string> = {
@@ -25,24 +26,28 @@ interface ConfigsTableProps {
   rows: ConfigRowData[];
   selectedHarness: string | null;
   onSelect: (harness: string | null) => void;
+  onActionError: (message: string) => void;
 }
 
-export function ConfigsTable({ rows, selectedHarness, onSelect }: ConfigsTableProps) {
+export function ConfigsTable({ rows, selectedHarness, onSelect, onActionError }: ConfigsTableProps) {
   const copy = useConfigsCopy();
   const common = useCommonCopy();
   const formatPath = useFormatPath();
   const tagsMutation = useSetConfigTagsMutation();
   const enable = useEnableConfigMutation();
   const disable = useDisableConfigMutation();
+  const singleFlight = useSingleFlight();
 
   const toggleStar = (row: ConfigRowData) => {
     const starred = isStarred(row);
-    tagsMutation.mutate({
-      harness: row.harness,
-      tags: starred
-        ? row.tags.filter((tag) => tagIdentity(tag) !== "starred")
-        : ["starred", ...row.tags],
-    });
+    void reportFailure(onActionError, copy.errors.tags(row.label), () =>
+      tagsMutation.mutateAsync({
+        harness: row.harness,
+        tags: starred
+          ? row.tags.filter((tag) => tagIdentity(tag) !== "starred")
+          : ["starred", ...row.tags],
+      }),
+    );
   };
 
   return (
@@ -137,7 +142,11 @@ export function ConfigsTable({ rows, selectedHarness, onSelect }: ConfigsTablePr
                     data-pending={pending || undefined}
                     onClick={(event) => {
                       event.stopPropagation();
-                      disable.mutate(row.harness);
+                      void singleFlight(`disable:${row.harness}`, () =>
+                        reportFailure(onActionError, copy.errors.stopManaging(row.label), () =>
+                          disable.mutateAsync(row.harness),
+                        ),
+                      );
                     }}
                   >
                     {copy.actions.stopManaging}
@@ -161,7 +170,11 @@ export function ConfigsTable({ rows, selectedHarness, onSelect }: ConfigsTablePr
                     data-pending={pending || undefined}
                     onClick={(event) => {
                       event.stopPropagation();
-                      enable.mutate(row.harness);
+                      void singleFlight(`enable:${row.harness}`, () =>
+                        reportFailure(onActionError, copy.errors.manage(row.label), () =>
+                          enable.mutateAsync(row.harness),
+                        ),
+                      );
                     }}
                   >
                     {copy.actions.manage}

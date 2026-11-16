@@ -1,7 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Download, Power, PowerOff, Upload } from "lucide-react";
 
+import { ErrorBanner } from "../../../components/ErrorBanner";
 import { DetailHeader } from "../../../components/detail/DetailHeader";
 import { DetailNote } from "../../../components/detail/DetailNote";
 import { DetailSection } from "../../../components/detail/DetailSection";
@@ -17,6 +18,7 @@ import {
   useSetConfigTagsMutation,
 } from "../api/queries";
 import { useConfigsCopy } from "../i18n";
+import { describeActionError, reportFailure, useSingleFlight, type ConfigActionError } from "../model/action-errors";
 import type { ConfigRowData, ConfigStatus } from "../model/selectors";
 
 const STATUS_TONE: Record<ConfigStatus, string> = {
@@ -31,28 +33,42 @@ const CAPTURED_AT_FORMAT = new Intl.DateTimeFormat(undefined, {
   timeStyle: "short",
 });
 
+interface ConfigsDrawerActions {
+  actionError: ConfigActionError | null;
+  onActionError: (message: string) => void;
+  onDismissActionError: () => void;
+}
+
 export function ConfigsDrawer({
   row,
   knownTags,
   onClose,
+  ...actions
 }: {
   row: ConfigRowData | null;
   knownTags: string[];
   onClose: () => void;
-}) {
+} & ConfigsDrawerActions) {
   return (
     <Dialog.Root open={row !== null} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="detail-sheet__overlay" />
         <Dialog.Content className="detail-sheet" aria-describedby={undefined}>
-          {row ? <ConfigsDrawerBody row={row} knownTags={knownTags} onClose={onClose} /> : null}
+          {row ? <ConfigsDrawerBody row={row} knownTags={knownTags} onClose={onClose} {...actions} /> : null}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
   );
 }
 
-function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; knownTags: string[]; onClose: () => void }) {
+function ConfigsDrawerBody({
+  row,
+  knownTags,
+  onClose,
+  actionError,
+  onActionError,
+  onDismissActionError,
+}: { row: ConfigRowData; knownTags: string[]; onClose: () => void } & ConfigsDrawerActions) {
   const copy = useConfigsCopy();
   const formatPath = useFormatPath();
   const diff = useConfigDiffMutation();
@@ -69,7 +85,31 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
     if (managed) runDiff(harness);
   }, [harness, managed, runDiff]);
 
-  const refreshDiff = { onSuccess: () => runDiff(harness) };
+  const diffError = diff.error;
+  useEffect(() => {
+    if (diffError) onActionError(describeActionError(copy.errors.diff(row.label), diffError));
+  }, [diffError, onActionError, copy, row.label]);
+
+  // mutateAsync keeps reporting a failure after the drawer closes; the diff
+  // only refreshes while the drawer is still open.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const singleFlight = useSingleFlight();
+  const runAction = (
+    key: string,
+    headline: string,
+    action: () => Promise<unknown>,
+    refresh = false,
+  ) =>
+    singleFlight(key, async () => {
+      const ok = await reportFailure(onActionError, headline, action);
+      if (ok && refresh && mounted.current) runDiff(harness);
+    });
   const drift = diff.data;
   const hasDrift = drift?.state === "drifted";
 
@@ -106,7 +146,7 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
             <button
               type="button"
               className="action-pill action-pill--danger"
-              onClick={() => disable.mutate(row.harness)}
+              onClick={() => void runAction("disable", copy.errors.stopManaging(row.label), () => disable.mutateAsync(row.harness))}
               disabled={disable.isPending}
               data-pending={disable.isPending || undefined}
             >
@@ -117,7 +157,7 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
             <button
               type="button"
               className="action-pill action-pill--accent"
-              onClick={() => enable.mutate(row.harness, refreshDiff)}
+              onClick={() => void runAction("enable", copy.errors.manage(row.label), () => enable.mutateAsync(row.harness), true)}
               disabled={enable.isPending}
               data-pending={enable.isPending || undefined}
             >
@@ -129,6 +169,9 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
       />
 
       <div className="detail-sheet__body">
+        {actionError ? (
+          <ErrorBanner key={actionError.id} message={actionError.message} onDismiss={onDismissActionError} />
+        ) : null}
         <DetailSection heading="Tags">
           <DetailTags
             tags={row.tags}
@@ -152,7 +195,7 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
                   <button
                     type="button"
                     className="action-pill action-pill--danger"
-                    onClick={() => disable.mutate(row.harness)}
+                    onClick={() => void runAction("disable", copy.errors.stopManaging(row.label), () => disable.mutateAsync(row.harness))}
                     disabled={disable.isPending}
                     data-pending={disable.isPending || undefined}
                   >
@@ -176,7 +219,7 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
                 <button
                   type="button"
                   className="action-pill"
-                  onClick={() => restore.mutate(row.harness, refreshDiff)}
+                  onClick={() => void runAction("restore", copy.errors.restore(row.label), () => restore.mutateAsync(row.harness), true)}
                   disabled={restore.isPending}
                   data-pending={restore.isPending || undefined}
                   title={copy.detail.restoreHint}
@@ -187,7 +230,7 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
                 <button
                   type="button"
                   className="action-pill action-pill--accent"
-                  onClick={() => capture.mutate(true, refreshDiff)}
+                  onClick={() => void runAction("capture", copy.errors.captureHarness(row.label), () => capture.mutateAsync(true), true)}
                   disabled={capture.isPending}
                   data-pending={capture.isPending || undefined}
                   title={copy.detail.captureHint}
@@ -207,6 +250,13 @@ function ConfigsDrawerBody({ row, knownTags, onClose }: { row: ConfigRowData; kn
                     <DriftGroup label={copy.detail.changed} keys={drift.changed} />
                   </dl>
                 </DetailNote>
+              ) : diff.isError ? (
+                <div className="configs-detail__actions">
+                  <p className="muted-text">{copy.detail.driftUnknown}</p>
+                  <button type="button" className="action-pill" onClick={() => runDiff(harness)}>
+                    {copy.detail.retryDiff}
+                  </button>
+                </div>
               ) : (
                 <p className="muted-text">{copy.detail.noDrift}</p>
               )}

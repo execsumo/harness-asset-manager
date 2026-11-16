@@ -1,6 +1,6 @@
 import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, Upload } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
@@ -16,6 +16,7 @@ import { ConfigsSummaryStrip } from "../components/ConfigsSummaryStrip";
 import { ConfigsTable } from "../components/ConfigsTable";
 import { ConfigsDrawer } from "../components/ConfigsDrawer";
 import { useConfigsCopy } from "../i18n";
+import { reportFailure, useSingleFlight, type ConfigActionError } from "../model/action-errors";
 import {
   filterConfigsRows,
   selectConfigsRows,
@@ -44,6 +45,17 @@ export default function ConfigsPage() {
   // only keys by harness id.
   const settingsQuery = useSettingsQuery();
   const capture = useCaptureConfigsMutation();
+
+  // One banner for every action failure. While the detail drawer is open it shows
+  // the banner itself, because the modal drawer hides the page behind it.
+  const [actionError, setActionError] = useState<ConfigActionError | null>(null);
+  const errorSeq = useRef(0);
+  const reportActionError = useCallback((message: string) => {
+    errorSeq.current += 1;
+    setActionError({ id: errorSeq.current, message });
+  }, []);
+  const singleFlight = useSingleFlight();
+  const dismissActionError = useCallback(() => setActionError(null), []);
 
   const statusParam = searchParams.get(STATUS_PARAM);
   const status: ConfigStatus | "all" = STATUSES.has(statusParam ?? "")
@@ -133,7 +145,11 @@ export default function ConfigsPage() {
               <button
                 type="button"
                 className="action-pill action-pill--md action-pill--accent"
-                onClick={() => capture.mutate(true)}
+                onClick={() =>
+                  void singleFlight("capture", () =>
+                    reportFailure(reportActionError, copy.errors.capture, () => capture.mutateAsync(true)),
+                  )
+                }
                 disabled={capture.isPending}
                 data-pending={capture.isPending || undefined}
                 title={copy.captureAllHint}
@@ -165,7 +181,9 @@ export default function ConfigsPage() {
         ) : null}
       </div>
 
-      {capture.isError ? <ErrorBanner message={String(capture.error)} /> : null}
+      {actionError && !selectedRow ? (
+        <ErrorBanner key={actionError.id} message={actionError.message} onDismiss={dismissActionError} />
+      ) : null}
 
       {configsQuery.isLoading ? (
         <div className="panel-state">
@@ -192,6 +210,7 @@ export default function ConfigsPage() {
           rows={visibleRows}
           selectedHarness={selectedHarness}
           onSelect={setSelectedHarness}
+          onActionError={reportActionError}
         />
       )}
 
@@ -199,6 +218,9 @@ export default function ConfigsPage() {
         row={selectedRow}
         knownTags={tagCounts.map((item) => item.tag)}
         onClose={() => setSelectedHarness(null)}
+        actionError={actionError}
+        onActionError={reportActionError}
+        onDismissActionError={dismissActionError}
       />
     </>
   );

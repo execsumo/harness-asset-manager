@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { okJson } from "../../../test/fetch";
+import { errorJson, okJson } from "../../../test/fetch";
 import { renderWithAppProviders } from "../../../test/render";
 import ConfigsPage from "./ConfigsPage";
 
@@ -266,5 +266,176 @@ describe("ConfigsPage", () => {
       expect(screen.getByRole("button", { name: /Manage/ })).toBeTruthy();
     });
     expect(screen.queryByText("Record without a local file")).toBeNull();
+  });
+});
+
+describe("ConfigsPage action failures", () => {
+  const posts: string[] = [];
+
+  function route(overrides: (url: string, init?: RequestInit) => Response | Promise<Response> | null) {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (init?.method === "POST") posts.push(url);
+      const custom = overrides(url, init);
+      if (custom) return custom;
+      if (url.endsWith("/diff")) return okJson({ state: "managed", missing: [], extra: [], changed: [] });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+  }
+
+  async function expectReadableAlert(message: RegExp) {
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toMatch(message);
+    expect(alert.textContent).not.toMatch(/ApiError/);
+    return alert;
+  }
+
+  beforeEach(() => {
+    posts.length = 0;
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    fetchMock.mockReset();
+  });
+
+  it("shows a readable alert when enabling a harness fails, and lets the user dismiss it", async () => {
+    route((url) =>
+      url === "/api/configs/cursor/enable" ? errorJson("config file is locked", { status: 409 }) : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Manage" }));
+
+    const alert = await expectReadableAlert(/Could not start managing Cursor\. config file is locked/);
+    fireEvent.click(within(alert).getByRole("button", { name: "Dismiss error" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+
+  it("shows a readable alert when disabling a harness fails", async () => {
+    route((url) =>
+      url === "/api/configs/claude/disable" ? errorJson("cannot remove record", { status: 500 }) : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Stop managing" }));
+
+    await expectReadableAlert(/Could not stop managing Claude\. cannot remove record/);
+  });
+
+  it("shows a readable alert inside the drawer when restoring fails", async () => {
+    route((url) =>
+      url === "/api/configs/claude/restore" ? errorJson("snapshot is corrupt", { status: 500 }) : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByText("Claude"));
+    fireEvent.click(await screen.findByRole("button", { name: /Restore/ }));
+
+    const alert = await expectReadableAlert(/Could not restore Claude\. snapshot is corrupt/);
+    expect(screen.getByRole("dialog").contains(alert)).toBe(true);
+  });
+
+  it("shows a readable alert when capture fails", async () => {
+    route((url) => (url.startsWith("/api/configs/capture") ? errorJson("disk full", { status: 500 }) : null));
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Capture all/ }));
+
+    await expectReadableAlert(/Could not capture configs\. disk full/);
+  });
+
+  it("shows a readable alert when the drift check fails instead of claiming no drift", async () => {
+    route((url) => (url === "/api/configs/claude/diff" ? errorJson("diff exploded", { status: 500 }) : null));
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByText("Claude"));
+
+    await expectReadableAlert(/Could not check Claude for drift\. diff exploded/);
+    expect(screen.getByText("Drift could not be checked.")).toBeTruthy();
+    expect(screen.queryByText("The config file matches the captured snapshot.")).toBeNull();
+  });
+
+  it("shows a readable alert when starring fails", async () => {
+    route((url, init) =>
+      url === "/api/configs/cursor/tags" && init?.method === "PUT"
+        ? errorJson("tags are read-only", { status: 500 })
+        : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    const row = (await screen.findByText("Cursor")).closest("tr")!;
+    fireEvent.click(within(row).getByRole("button", { name: "Star" }));
+
+    await expectReadableAlert(/Could not update tags for Cursor\. tags are read-only/);
+  });
+
+  it("disables a row action while it is pending and sends one request for a double click", async () => {
+    let release: (response: Response) => void = () => undefined;
+    route((url) =>
+      url === "/api/configs/cursor/enable"
+        ? new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+        : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    const button = await screen.findByRole("button", { name: "Manage" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(true));
+    expect(posts.filter((url) => url === "/api/configs/cursor/enable")).toHaveLength(1);
+
+    release(okJson({ status: "ok" }));
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
+    expect(posts.filter((url) => url === "/api/configs/cursor/enable")).toHaveLength(1);
+  });
+
+  it("disables the drawer restore button while pending and sends one request for a double click", async () => {
+    let release: (response: Response) => void = () => undefined;
+    route((url) =>
+      url === "/api/configs/claude/restore"
+        ? new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+        : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    fireEvent.click(await screen.findByText("Claude"));
+    const button = await screen.findByRole("button", { name: /Restore/ });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(true));
+    expect(posts.filter((url) => url === "/api/configs/claude/restore")).toHaveLength(1);
+
+    release(okJson({ status: "ok" }));
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it("disables the capture button while capture is pending", async () => {
+    let release: (response: Response) => void = () => undefined;
+    route((url) =>
+      url.startsWith("/api/configs/capture")
+        ? new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+        : null,
+    );
+    renderWithAppProviders(<ConfigsPage />);
+
+    const button = await screen.findByRole("button", { name: /Capture all/ });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Capturing/ }).hasAttribute("disabled")).toBe(true));
+    expect(posts.filter((url) => url.startsWith("/api/configs/capture"))).toHaveLength(1);
+    release(okJson({ status: "ok" }));
   });
 });
