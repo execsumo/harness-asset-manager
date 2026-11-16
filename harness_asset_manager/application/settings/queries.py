@@ -4,6 +4,7 @@ from harness_asset_manager.harness import HarnessKernelService
 from harness_asset_manager.paths import AppPaths
 
 from .auto_adopt import AutoAdoptStore
+from .display import DisplayPreferencesStore
 from .presenters import settings_payload
 
 
@@ -13,13 +14,15 @@ class SettingsQueryService:
         harness_kernel: HarnessKernelService,
         paths: AppPaths,
         auto_adopt_store: AutoAdoptStore,
+        display_store: DisplayPreferencesStore | None = None,
     ) -> None:
         self.harness_kernel = harness_kernel
         self.paths = paths
         self.auto_adopt_store = auto_adopt_store
+        self.display_store = display_store or DisplayPreferencesStore(paths.settings_path)
 
     def get_settings(self) -> dict[str, object]:
-        return settings_payload(
+        payload = settings_payload(
             paths=self.paths,
             platform=self.harness_kernel.context.platform,
             harness_statuses=self.harness_kernel.harness_statuses(),
@@ -34,3 +37,5 @@ class SettingsQueryService:
                 for family in self.auto_adopt_store.default_harnesses()
             },
         )
+        payload["display"] = self.display_store.preferences()
+        return payload

@@ -33,6 +33,7 @@ import { useSkillsInUseSession } from "../model/session";
 import { pendingToggleHarnessesForSkill } from "../model/pending";
 import { useSkillsWorkspaceController } from "../model/use-skills-workspace-controller";
 import { skillStatusConcept } from "../../../lib/product-language";
+import { useDisplayPreferences } from "../../settings/public";
 
 const STATUS_VALUES: SkillsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked"];
 
@@ -108,7 +109,13 @@ export default function SkillsWorkspacePage() {
   );
 
   // URL-backed agent filters (?agent=)
-  const selectedAgents = useMemo(() => searchParams.getAll("agent"), [searchParams]);
+  const { showSkillAgentTags } = useDisplayPreferences();
+  // With agent tags hidden in Settings, an ?agent= deep link must not filter
+  // invisibly: there would be no chip to clear it with.
+  const selectedAgents = useMemo(
+    () => (showSkillAgentTags ? searchParams.getAll("agent") : []),
+    [searchParams, showSkillAgentTags],
+  );
   // Filter options: every adopted agent, with how many skills each carries.
   const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
   // Bulk attach/detach vocabulary: every adopted agent, straight from the
@@ -432,12 +439,14 @@ export default function SkillsWorkspacePage() {
                 </>
               }
             />
-            <SkillAgentFilterBar
-              agents={knownAgents}
-              selectedAgents={selectedAgents}
-              onToggleAgent={toggleAgentFilter}
-              onClearAgents={clearAgentFilters}
-            />
+            {showSkillAgentTags ? (
+              <SkillAgentFilterBar
+                agents={knownAgents}
+                selectedAgents={selectedAgents}
+                onToggleAgent={toggleAgentFilter}
+                onClearAgents={clearAgentFilters}
+              />
+            ) : null}
           </>
         ) : null}
         <SkillTagFilterBar
@@ -466,6 +475,7 @@ export default function SkillsWorkspacePage() {
             onToggleStar={onToggleStar}
             onManageSkill={(ref) => void onManageSkill(ref)}
             onToggleAgent={toggleAgentFilter}
+            showAgents={showSkillAgentTags}
             pendingStructuralActions={pendingStructuralActions}
             starredFilterActive={selectedTags.some((t) => tagIdentity(t) === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}

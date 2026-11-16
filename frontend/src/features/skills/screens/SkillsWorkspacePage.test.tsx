@@ -179,6 +179,29 @@ describe("Skills unified inventory page", () => {
     vi.clearAllMocks();
   });
 
+  it("ignores ?agent= filters when agent tags are hidden in Settings", () => {
+    function renderWithDisplay(showSkillAgentTags: boolean) {
+      const client = new QueryClient();
+      client.setQueryData(["settings", "detail"], { display: { showSkillAgentTags } });
+      return render(
+        <QueryClientProvider client={client}>
+          <SkillsWorkspaceSessionProvider>
+            <MemoryRouter initialEntries={["/skills?agent=agent:reviewer"]}>
+              <SkillsWorkspacePage />
+            </MemoryRouter>
+          </SkillsWorkspaceSessionProvider>
+        </QueryClientProvider>,
+      );
+    }
+
+    const shown = renderWithDisplay(true);
+    expect(screen.queryByText("Managed Skill")).not.toBeInTheDocument();
+    shown.unmount();
+
+    renderWithDisplay(false);
+    expect(screen.getByText("Managed Skill")).toBeInTheDocument();
+  });
+
   it("renders managed and untracked rows in one sortable matrix", () => {
     renderPage();
 

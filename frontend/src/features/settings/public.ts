@@ -1,6 +1,7 @@
 export {
   invalidateSettingsQueries,
   settingsKeys,
+  useDisplayPreferences,
   useHarnessSupportMutation,
   useSettingsQuery,
 } from "./queries";

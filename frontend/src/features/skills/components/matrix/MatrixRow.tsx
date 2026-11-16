@@ -29,6 +29,7 @@ interface MatrixRowProps {
   onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   onToggleAgent?: (agentRef: string) => void;
+  showAgents?: boolean;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
 }
 
@@ -61,6 +62,7 @@ export function MatrixRow({
   onToggleStar,
   onManageSkill,
   onToggleAgent,
+  showAgents = true,
   pendingStructuralActions,
 }: MatrixRowProps) {
   const enabledCount = countEnabled(row);
@@ -108,7 +110,7 @@ export function MatrixRow({
               ) : null}
             </div>
           ) : null}
-          {(row.agents || []).length > 0 ? (
+          {showAgents && (row.agents || []).length > 0 ? (
             <div className="matrix-table__tag-pills">
               {(row.agents || []).slice(0, 2).map((agent) => (
                 <span 
