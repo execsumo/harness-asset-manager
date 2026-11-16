@@ -99,6 +99,11 @@ class McpMutationService:
             adapters = {adapter.harness: adapter for adapter in self.read_models.adapters}
             if set(spec.enabled_harnesses) - set(adapters):
                 raise MutationError("cannot verify all recorded bindings", status=409)
+            binding_spec = self.store.get_binding_spec(name)
+            if binding_spec is None:
+                raise MutationError("cannot verify server binding", status=409)
+            for adapter in adapters.values():
+                adapter.verify_archive_binding(binding_spec)
             for scan in scans:
                 if scan.scan_issue:
                     raise MutationError(f"cannot verify {scan.harness} config: {scan.scan_issue}", status=409)

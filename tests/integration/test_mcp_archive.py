@@ -45,3 +45,15 @@ class McpArchiveTests(unittest.TestCase):
             harness.container.mcp_read_models.invalidate()
             harness.post_json('/api/mcp/servers/modified/archive', expected_status=409)
             self.assertEqual(json.loads(path.read_text())['mcpServers']['modified']['args'], ['new'])
+
+    def test_duplicate_hidden_binding_is_not_removed(self) -> None:
+        with AppTestHarness() as harness:
+            path = harness.spec.home / '.claude.json'
+            original = {'command': 'uvx', 'args': ['original']}
+            path.write_text(json.dumps({'mcpServers': {'duplicate': original}}))
+            harness.post_json('/api/mcp/unmanaged/adopt', {'name': 'duplicate'})
+            document = json.loads(path.read_text())
+            document['projects'] = {str(harness.spec.home): {'mcpServers': {'duplicate': {'command': 'other'}}}}
+            path.write_text(json.dumps(document))
+            harness.post_json('/api/mcp/servers/duplicate/archive', expected_status=409)
+            self.assertEqual(json.loads(path.read_text()), document)
