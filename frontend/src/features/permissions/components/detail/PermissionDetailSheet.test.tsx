@@ -28,7 +28,7 @@ function permissionDetailFixture(overrides?: Partial<Record<string, unknown>>) {
 }
 
 const columns = [
-  { harness: "claude", label: "Claude Code", installed: true },
+  { harness: "claude", label: "Claude Code", installed: true, configPresent: true, permissionsWritable: true },
 ];
 
 describe("PermissionDetailSheet", () => {

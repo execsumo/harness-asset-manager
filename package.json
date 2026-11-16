@@ -12,7 +12,7 @@
     "version:sync": "./.venv/bin/python scripts/sync_version.py --check",
     "build:release": "./.venv/bin/python scripts/build_release.py",
     "build": "VITE_API_BASE=/api vite build",
-    "lint:frontend": "eslint frontend/src",
+    "lint:frontend": "eslint frontend/src --max-warnings=0",
     "lint:backend": "./.venv/bin/ruff check harness_asset_manager tests scripts",
     "lint:backend:fix": "./.venv/bin/ruff check --fix harness_asset_manager tests scripts",
     "typecheck": "tsc --noEmit",
@@ -50,7 +50,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.0",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.1.0",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jsdom": "^30.1.0",
@@ -58,6 +58,11 @@
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.70.0",
     "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.8"
+    }
   }
 }

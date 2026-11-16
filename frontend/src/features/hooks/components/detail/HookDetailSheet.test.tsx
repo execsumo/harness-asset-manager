@@ -29,7 +29,7 @@ function hookDetailFixture(overrides?: Partial<Record<string, unknown>>) {
 }
 
 const columns = [
-  { harness: "claude", label: "Claude Code", installed: true },
+  { harness: "claude", label: "Claude Code", installed: true, configPresent: true, hooksWritable: true },
 ];
 
 describe("HookDetailSheet", () => {

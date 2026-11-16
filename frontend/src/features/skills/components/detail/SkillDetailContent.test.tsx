@@ -69,6 +69,44 @@ const unmanagedDetail: SkillDetail = {
 };
 
 describe("SkillDetailContent", () => {
+  it("adopts refreshed clean data and preserves an unsaved draft", () => {
+    const props = {
+      actionErrorMessage: "",
+      queryErrorMessage: "",
+      pendingToggleHarnesses: new Set<string>(),
+      pendingStructuralAction: null,
+      onClose: vi.fn(),
+      onDismissActionError: vi.fn(),
+      onManage: vi.fn(),
+      onToggleHarness: vi.fn(),
+      onUpdate: vi.fn(),
+      onRequestRemove: vi.fn(),
+      onRequestDelete: vi.fn(),
+    };
+    const view = render(<SkillDetailContent {...props} detail={unmanagedDetail} />);
+
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <SkillDetailContent
+          {...props}
+          detail={{ ...unmanagedDetail, description: "Refreshed" }}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByLabelText("Description")).toHaveValue("Refreshed");
+
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Draft" } });
+    view.rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <SkillDetailContent
+          {...props}
+          detail={{ ...unmanagedDetail, description: "New refresh" }}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByLabelText("Description")).toHaveValue("Draft");
+  });
+
   it("confirms archive and unarchives directly", async () => {
     archiveMock.mockClear();
     const managed = { ...unmanagedDetail, skillRef: "shared:trace-lens", displayStatus: "Managed" as const };

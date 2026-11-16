@@ -185,8 +185,10 @@ export function AgentDetailContent({
   };
 
   // Frontmatter & Document editing state
+  const [editBaseline, setEditBaseline] = useState(detail);
+
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
-    return (detail.configuration || [])
+    return (editBaseline.configuration || [])
       .filter(
         (c) =>
           !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
@@ -200,9 +202,9 @@ export function AgentDetailContent({
           ? { rawValue: c.rawValue }
           : {}),
       }));
-  }, [detail.configuration]);
+  }, [editBaseline.configuration]);
 
-  const initialSkills = useMemo(() => (detail.skills || []).map((s) => s.slug), [detail.skills]);
+  const initialSkills = useMemo(() => (editBaseline.skills || []).map((s) => s.slug), [editBaseline.skills]);
 
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
@@ -226,40 +228,6 @@ export function AgentDetailContent({
   const [saveError, setSaveError] = useState<string | null>(null);
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
   const hermesProviderOptions = hermesProviders.map((provider) => provider.id);
-
-  useEffect(() => {
-    setName(detail.name);
-    setDescription(detail.description);
-    setRoleStr(detail.role ?? "");
-    setHarnessStr(detail.harness ?? "");
-    setToolsStr(detail.tools.join(", "));
-    setSkills((detail.skills || []).map((s) => s.slug));
-    setModelStr(detail.model ?? "");
-    setHermesProviderStr(detail.hermesProvider ?? "");
-    setEffortStr(detail.effort ?? "");
-    setMaxTurnsStr(detail.maxTurns ?? "");
-    setMemoryStr(detail.memory ?? "");
-    setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
-    setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
-    setOtherEntries(
-      (detail.configuration || [])
-        .filter(
-          (c) =>
-            !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
-            c.key !== "mcpServers",
-        )
-        .map((c, idx) => ({
-          id: `entry-${idx}-${c.key}`,
-          key: c.key,
-          value: c.value,
-          ...(c.rawValue !== undefined && c.rawValue !== null
-            ? { rawValue: c.rawValue }
-            : {}),
-        })),
-    );
-    setPrompt(detail.prompt);
-    setSaveError(null);
-  }, [detail.ref]);
 
   const parseSkillSlugs = (val: string): string[] => {
     return val
@@ -435,6 +403,7 @@ export function AgentDetailContent({
       effortStr,
       skills,
       adoptedSkills,
+      managedMcpServers,
       effectiveTagOptions,
       maxTurnsStr,
       memoryStr,
@@ -445,20 +414,20 @@ export function AgentDetailContent({
   );
 
   const isDirty = useMemo(() => {
-    if (name !== detail.name) return true;
-    if (description !== detail.description) return true;
-    if (roleStr !== (detail.role ?? "")) return true;
-    if (harnessStr !== (detail.harness ?? "")) return true;
-    if (toolsStr !== detail.tools.join(", ")) return true;
-    if (prompt !== detail.prompt) return true;
+    if (name !== editBaseline.name) return true;
+    if (description !== editBaseline.description) return true;
+    if (roleStr !== (editBaseline.role ?? "")) return true;
+    if (harnessStr !== (editBaseline.harness ?? "")) return true;
+    if (toolsStr !== editBaseline.tools.join(", ")) return true;
+    if (prompt !== editBaseline.prompt) return true;
 
-    if (modelStr !== (detail.model ?? "")) return true;
-    if (hermesProviderStr !== (detail.hermesProvider ?? "")) return true;
-    if (effortStr !== (detail.effort ?? "")) return true;
-    if (maxTurnsStr !== (detail.maxTurns ?? "")) return true;
-    if (memoryStr !== (detail.memory ?? "")) return true;
-    if (disallowedToolsStr !== (detail.disallowedTools ?? []).join(", ")) return true;
-    if (mcpServersStr !== (detail.mcpServers ?? []).map((binding) => binding.name).join(", ")) return true;
+    if (modelStr !== (editBaseline.model ?? "")) return true;
+    if (hermesProviderStr !== (editBaseline.hermesProvider ?? "")) return true;
+    if (effortStr !== (editBaseline.effort ?? "")) return true;
+    if (maxTurnsStr !== (editBaseline.maxTurns ?? "")) return true;
+    if (memoryStr !== (editBaseline.memory ?? "")) return true;
+    if (disallowedToolsStr !== (editBaseline.disallowedTools ?? []).join(", ")) return true;
+    if (mcpServersStr !== (editBaseline.mcpServers ?? []).map((binding) => binding.name).join(", ")) return true;
 
     if (skills.length !== initialSkills.length) return true;
     for (let i = 0; i < skills.length; i++) {
@@ -475,7 +444,45 @@ export function AgentDetailContent({
       }
     }
     return false;
-  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, detail, initialOtherEntries, modelStr, hermesProviderStr, effortStr, maxTurnsStr, memoryStr, disallowedToolsStr, mcpServersStr]);
+  }, [name, description, roleStr, harnessStr, toolsStr, prompt, skills, initialSkills, otherEntries, editBaseline, initialOtherEntries, modelStr, hermesProviderStr, effortStr, maxTurnsStr, memoryStr, disallowedToolsStr, mcpServersStr]);
+
+  useEffect(() => {
+    if (editBaseline === detail) return;
+    const changedAsset = editBaseline.ref !== detail.ref;
+    setEditBaseline(detail);
+    if (!changedAsset && isDirty) return;
+    setName(detail.name);
+    setDescription(detail.description);
+    setRoleStr(detail.role ?? "");
+    setHarnessStr(detail.harness ?? "");
+    setToolsStr(detail.tools.join(", "));
+    setSkills((detail.skills || []).map((s) => s.slug));
+    setModelStr(detail.model ?? "");
+    setHermesProviderStr(detail.hermesProvider ?? "");
+    setEffortStr(detail.effort ?? "");
+    setMaxTurnsStr(detail.maxTurns ?? "");
+    setMemoryStr(detail.memory ?? "");
+    setDisallowedToolsStr((detail.disallowedTools ?? []).join(", "));
+    setMcpServersStr((detail.mcpServers ?? []).map((binding) => binding.name).join(", "));
+    setOtherEntries(
+      (detail.configuration || [])
+        .filter(
+          (c) =>
+            !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
+            c.key !== "mcpServers",
+        )
+        .map((c, idx) => ({
+          id: `entry-${idx}-${c.key}`,
+          key: c.key,
+          value: c.value,
+          ...(c.rawValue !== undefined && c.rawValue !== null
+            ? { rawValue: c.rawValue }
+            : {}),
+        })),
+    );
+    setPrompt(detail.prompt);
+    setSaveError(null);
+  }, [detail, editBaseline, isDirty]);
 
   const handleCancelEdit = () => {
     setName(detail.name);

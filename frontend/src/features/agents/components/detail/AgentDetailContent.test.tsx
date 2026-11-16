@@ -73,6 +73,31 @@ describe("AgentDetailContent", () => {
     vi.unstubAllGlobals();
   });
 
+  it("adopts refreshed clean data and preserves an unsaved draft", () => {
+    const initial = agentDetailFixture();
+    const view = renderDetail(initial);
+    const props = {
+      pendingPerHarnessKeys: new Set<string>(),
+      onToggleHarness: vi.fn(),
+      actionErrorMessage: null,
+      onClose: vi.fn(),
+      onDismissActionError: vi.fn(),
+    };
+
+    view.rerender(
+      <AgentDetailContent {...props} detail={agentDetailFixture({ description: "Refreshed" })} />,
+    );
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue("Refreshed");
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), {
+      target: { value: "Draft" },
+    });
+    view.rerender(
+      <AgentDetailContent {...props} detail={agentDetailFixture({ description: "New refresh" })} />,
+    );
+    expect(screen.getByRole("textbox", { name: "Description" })).toHaveValue("Draft");
+  });
+
   it("sends nested custom frontmatter separately from its display summary", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(okJson({})));
 

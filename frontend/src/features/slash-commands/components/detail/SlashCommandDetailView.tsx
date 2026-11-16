@@ -121,13 +121,15 @@ export function SlashCommandDetailView({
   };
 
   // Frontmatter & Document editing state
+  const [editBaseline, setEditBaseline] = useState(command);
+
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
-    return (command.metadata || []).map((m, idx) => ({
+    return (editBaseline.metadata || []).map((m, idx) => ({
       id: `entry-${idx}-${m.key}`,
       key: m.key,
       value: m.value,
     }));
-  }, [command.metadata]);
+  }, [editBaseline.metadata]);
 
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [description, setDescription] = useState(command.description);
@@ -136,19 +138,6 @@ export function SlashCommandDetailView({
   const [rawYaml, setRawYaml] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-
-  useEffect(() => {
-    setDescription(command.description);
-    setPrompt(command.prompt);
-    setOtherEntries(
-      (command.metadata || []).map((m, idx) => ({
-        id: `entry-${idx}-${m.key}`,
-        key: m.key,
-        value: m.value,
-      })),
-    );
-    setSaveError(null);
-  }, [command.name]);
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
@@ -170,8 +159,8 @@ export function SlashCommandDetailView({
   );
 
   const isDirty = useMemo(() => {
-    if (description !== command.description) return true;
-    if (prompt !== command.prompt) return true;
+    if (description !== editBaseline.description) return true;
+    if (prompt !== editBaseline.prompt) return true;
 
     if (otherEntries.length !== initialOtherEntries.length) return true;
     for (let i = 0; i < otherEntries.length; i++) {
@@ -183,7 +172,24 @@ export function SlashCommandDetailView({
       }
     }
     return false;
-  }, [description, prompt, otherEntries, command, initialOtherEntries]);
+  }, [description, prompt, otherEntries, editBaseline, initialOtherEntries]);
+
+  useEffect(() => {
+    if (editBaseline === command) return;
+    const changedAsset = editBaseline.name !== command.name;
+    setEditBaseline(command);
+    if (!changedAsset && isDirty) return;
+    setDescription(command.description);
+    setPrompt(command.prompt);
+    setOtherEntries(
+      (command.metadata || []).map((m, idx) => ({
+        id: `entry-${idx}-${m.key}`,
+        key: m.key,
+        value: m.value,
+      })),
+    );
+    setSaveError(null);
+  }, [command, editBaseline, isDirty]);
 
   const handleCancelEdit = () => {
     setDescription(command.description);
