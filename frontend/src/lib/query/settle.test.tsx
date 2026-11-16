@@ -95,6 +95,35 @@ describe("settleInvalidate", () => {
     });
   });
 
+  it("waits for the newer refetch when an overlapping settle cancels its own", async () => {
+    let server = "v0";
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const observer = renderHook(
+      () => useQuery({
+        queryKey: ["demo"],
+        queryFn: async () => {
+          const seen = server;
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          return seen;
+        },
+      }),
+      { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider> },
+    );
+    await waitFor(() => expect(observer.result.current.data).toBe("v0"));
+
+    // Each later mutation settles mid-flight and cancels the previous refetch.
+    const cacheWhenResolved: unknown[] = [];
+    const settles: Promise<void>[] = [];
+    for (const version of ["v1", "v2", "v3"]) {
+      server = version;
+      settles.push(settleInvalidate(queryClient, ["demo"])().then(() => { cacheWhenResolved.push(queryClient.getQueryData(["demo"])); }));
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+    await act(async () => { await Promise.all(settles); });
+
+    expect(cacheWhenResolved).toEqual(["v3", "v3", "v3"]);
+  });
+
   it("accepts family invalidators next to plain keys", async () => {
     const calls: string[] = [];
     const queryClient = new QueryClient();
