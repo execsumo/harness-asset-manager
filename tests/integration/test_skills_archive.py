@@ -10,6 +10,10 @@ from tests.support.fake_home import seed_skill_package
 class SkillsArchiveTests(unittest.TestCase):
     def test_adopt_archive_reconcile_and_restore(self) -> None:
         with AppTestHarness() as harness:
+            self.assertEqual(
+                harness.container.skills_queries.archive.path,
+                harness.container.paths.asset_archive_path,
+            )
             seed_skill_package(harness.spec.codex_root, "archive-example", "Archive Example", body="Keep me")
             row = next(r for r in harness.get_json("/api/skills")["rows"] if r["name"] == "Archive Example")
             harness.post_json(f"/api/skills/{row['skillRef']}/manage")

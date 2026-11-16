@@ -33,11 +33,12 @@ class SkillsQueryService:
         source_fetcher: SourceFetchService,
         asset_tags: AssetTagService | None = None,
         reconcile: Callable[[], object] | None = None,
+        archive: AssetArchiveStore | None = None,
     ) -> None:
         self.read_models = read_models
         self.source_fetcher = source_fetcher
         self.asset_tags = asset_tags
-        self.archive = AssetArchiveStore(asset_tags.store.path.parent / "asset-archive.json") if asset_tags else None
+        self.archive = archive
         self._reconcile = reconcile
         self._agent_attachments_getter: Callable[[], dict[str, tuple[AgentAttachment, ...]]] | None = None
         self._agent_roster_getter: Callable[[], tuple[AgentAttachment, ...]] | None = None
