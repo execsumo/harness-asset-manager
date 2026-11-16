@@ -115,16 +115,22 @@ class SkillsReadModelService:
         visible = set(self.visible_harnesses())
         return tuple(scan for scan in current.harness_scans if scan.harness in visible)
 
-    def snapshot(self) -> SkillsReadModelSnapshot:
+    def snapshot(self, *, max_age_seconds: float | None = None) -> SkillsReadModelSnapshot:
+        """The current snapshot, rescanning once the cached one is older than the TTL.
+
+        ``max_age_seconds`` lets a caller that tolerates an older view accept the cached
+        snapshot for longer, without waiting on a scan another request has in flight.
+        ``invalidate()`` drops the cache, so a mutation is never hidden by it.
+        """
         if getattr(self._build_context, "active", False):
             raise RuntimeError("skills snapshot construction is not reentrant")
+        max_age = self.snapshot_ttl_seconds if max_age_seconds is None else max_age_seconds
         while True:
             with self._condition:
                 cached = self._cache
                 if (
                     cached is not None
-                    and (time.monotonic() - cached.captured_at)
-                    < self.snapshot_ttl_seconds
+                    and (time.monotonic() - cached.captured_at) < max_age
                 ):
                     return cached.snapshot
                 if self._building:
