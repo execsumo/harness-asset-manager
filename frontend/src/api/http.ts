@@ -29,16 +29,6 @@ export function authHeaders(existing?: Record<string, string>): Record<string, s
   return headers;
 }
 
-async function expectJson<T>(responsePromise: Promise<Response>): Promise<T> {
-  const response = await responsePromise;
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = extractApiError(payload, response);
-    throw new ApiError(error.message, error.code, response.status);
-  }
-  return payload as T;
-}
-
 function extractApiError(
   payload: unknown,
   response: Response,
@@ -89,39 +79,102 @@ export function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-export async function fetchJson<T>(path: string): Promise<T> {
-  const headers = authHeaders();
-  return expectJson<T>(
-    Object.keys(headers).length > 0 ? fetch(apiPath(path), { headers }) : fetch(apiPath(path)),
-  );
+export const READ_TIMEOUT_MS = 30_000;
+export const WRITE_TIMEOUT_MS = 120_000;
+/** For calls that clone a repository, probe many servers or process a whole batch. */
+export const LONG_RUNNING_TIMEOUT_MS = 300_000;
+
+const TIMEOUT_MESSAGE =
+  "The server did not respond in time. Check that harness-asset-manager is still running.";
+const NETWORK_MESSAGE =
+  "Could not reach the server. Check that harness-asset-manager is still running.";
+
+export interface RequestOptions {
+  /** Abort and fail with a `timeout` ApiError after this many milliseconds. */
+  timeoutMs?: number;
+  /** Caller-owned cancellation (for example TanStack Query's `signal`). Surfaces as an abort, not a timeout. */
+  signal?: AbortSignal;
 }
 
-export async function postJson<T>(path: string, body?: object): Promise<T> {
-  return expectJson<T>(
-    fetch(apiPath(path), {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  );
+interface RequestSpec {
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  path: string;
+  body?: object;
+  defaultTimeoutMs: number;
+  options?: RequestOptions;
 }
 
-export async function putJson<T>(path: string, body?: object): Promise<T> {
-  return expectJson<T>(
-    fetch(apiPath(path), {
-      method: "PUT",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: body ? JSON.stringify(body) : undefined,
-    }),
-  );
+function abortError(reason?: unknown): unknown {
+  return reason ?? new DOMException("The request was aborted.", "AbortError");
 }
 
-export async function deleteJson<T>(path: string): Promise<T> {
-  const headers = authHeaders();
-  return expectJson<T>(
-    fetch(apiPath(path), {
-      method: "DELETE",
-      ...(Object.keys(headers).length > 0 ? { headers } : {}),
-    }),
-  );
+async function request<T>({ method, path, body, defaultTimeoutMs, options }: RequestSpec): Promise<T> {
+  const timeoutMs = options?.timeoutMs ?? defaultTimeoutMs;
+  const callerSignal = options?.signal;
+  const controller = new AbortController();
+  let timedOut = false;
+  let onCallerAbort: (() => void) | null = null;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  // Settles when the request is aborted, even if fetch itself ignores the signal.
+  const aborted = new Promise<never>((_resolve, reject) => {
+    const fail = () => reject(timedOut ? new DOMException("Timed out.", "TimeoutError") : abortError(callerSignal?.reason));
+    controller.signal.addEventListener("abort", fail, { once: true });
+  });
+  aborted.catch(() => undefined);
+
+  if (callerSignal) {
+    onCallerAbort = () => controller.abort();
+    if (callerSignal.aborted) {
+      onCallerAbort();
+    } else {
+      callerSignal.addEventListener("abort", onCallerAbort, { once: true });
+    }
+  }
+
+  try {
+    const hasBody = body !== undefined && body !== null;
+    const headers =
+      method === "POST" || method === "PUT"
+        ? authHeaders({ "Content-Type": "application/json" })
+        : authHeaders();
+    const init: RequestInit = { method, signal: controller.signal };
+    if (Object.keys(headers).length > 0) init.headers = headers;
+    if (hasBody) init.body = JSON.stringify(body);
+    const response = await Promise.race([fetch(apiPath(path), init), aborted]);
+    const payload = await Promise.race([response.json().catch(() => null), aborted]);
+    if (!response.ok) {
+      const error = extractApiError(payload, response);
+      throw new ApiError(error.message, error.code, response.status);
+    }
+    return payload as T;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (timedOut) throw new ApiError(TIMEOUT_MESSAGE, "timeout", 0);
+    if (callerSignal?.aborted) throw error;
+    if (error instanceof TypeError) throw new ApiError(NETWORK_MESSAGE, "network_error", 0);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    if (callerSignal && onCallerAbort) callerSignal.removeEventListener("abort", onCallerAbort);
+  }
+}
+
+export async function fetchJson<T>(path: string, options?: RequestOptions): Promise<T> {
+  return request<T>({ method: "GET", path, defaultTimeoutMs: READ_TIMEOUT_MS, options });
+}
+
+export async function postJson<T>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return request<T>({ method: "POST", path, body, defaultTimeoutMs: WRITE_TIMEOUT_MS, options });
+}
+
+export async function putJson<T>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return request<T>({ method: "PUT", path, body, defaultTimeoutMs: WRITE_TIMEOUT_MS, options });
+}
+
+export async function deleteJson<T>(path: string, options?: RequestOptions): Promise<T> {
+  return request<T>({ method: "DELETE", path, defaultTimeoutMs: WRITE_TIMEOUT_MS, options });
 }

@@ -16,7 +16,7 @@ import type {
   AttachAgentsRequestDto,
   AttachAgentsResponseDto,
 } from "./types";
-import { fetchJson, postJson, putJson } from "../../../api/http";
+import { LONG_RUNNING_TIMEOUT_MS, fetchJson, postJson, putJson } from "../../../api/http";
 
 export async function fetchSkillsPage(includeArchived = false): Promise<SkillsPageDto> {
   return fetchJson<SkillsPageDto>(includeArchived ? "/skills?include_archived=true" : "/skills");
@@ -87,7 +87,9 @@ export async function deleteSkill(skillRef: string): Promise<OkResponse> {
 }
 
 export async function manageAllSkills(): Promise<BulkManageResult> {
-  const result = await postJson<BulkManageResult>("/skills/manage-all");
+  const result = await postJson<BulkManageResult>("/skills/manage-all", undefined, {
+    timeoutMs: LONG_RUNNING_TIMEOUT_MS,
+  });
   if (!result.ok) {
     const firstFailure = result.failures[0];
     throw new Error(firstFailure?.error ?? "Unable to manage all eligible skills.");

@@ -214,6 +214,7 @@ describe("MarketplaceCliPage", () => {
     expect(payload.items[0].slug).toBe("lazygit");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/marketplace/clis/search?q=git&limit=30&offset=0",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 });
