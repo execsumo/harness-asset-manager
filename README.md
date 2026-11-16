@@ -686,7 +686,7 @@ Denylist rules restrict shell commands, file paths, web domains, and MCP tools a
 - `web` → `api.example.com`
 - `mcp` → `server/tool`
 
-Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked; disabling the last rule restores the native default.
+Enabling the first rule for a harness also selects that harness's no-prompt execution mode, so unlisted actions proceed and only recorded deny rules are blocked. A mode you already set yourself is kept, and your own allow, ask, and deny rules are never changed. Disabling the last rule restores the mode exactly as it was before.
 
 The permissions matrix behaves like every other family view: sortable rule, harness, and applied-count columns, plus a select checkbox on each row. Managed rules support bulk apply, remove, delete, and tag; untracked rules support bulk adopt.
 
