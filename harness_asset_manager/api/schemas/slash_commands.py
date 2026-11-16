@@ -58,6 +58,7 @@ class SlashMetadataEntryRequest(BaseModel):
 
 
 class SlashCommandResponse(BaseModel):
+    archived: bool = False
     name: str
     description: str
     prompt: str

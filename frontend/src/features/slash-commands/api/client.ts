@@ -10,8 +10,8 @@ import type {
   SlashSyncRequest,
 } from "./types";
 
-export async function fetchSlashCommands(): Promise<SlashCommandListDto> {
-  return fetchJson<SlashCommandListDto>("/slash-commands");
+export async function fetchSlashCommands(includeArchived = false): Promise<SlashCommandListDto> {
+  return fetchJson<SlashCommandListDto>(includeArchived ? "/slash-commands?include_archived=true" : "/slash-commands");
 }
 
 export async function createSlashCommand(
@@ -74,3 +74,7 @@ export async function unmanageSlashCommand(name: string): Promise<{ ok: boolean 
 }
 
 
+
+export async function setSlashCommandArchived(name: string, archived: boolean): Promise<void> {
+  await postJson<void>(`/slash-commands/${encodeURIComponent(name)}/${archived ? "archive" : "unarchive"}`);
+}

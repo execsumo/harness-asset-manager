@@ -13,7 +13,7 @@ import {
 export type SlashMatrixSortKey = "name" | "coverage" | { target: string };
 export type SlashMatrixSortDirection = "asc" | "desc";
 
-export type SlashCommandsStatusFilter = "all" | "untracked";
+export type SlashCommandsStatusFilter = "all" | "untracked" | "archived";
 
 export type SlashCommandTagCount = AssetTagCount;
 
@@ -54,6 +54,7 @@ export function filterSlashCommandEntries(
 ): SlashCommandInventoryEntry[] {
   const needle = search.trim().toLowerCase();
   return entries.filter((entry) => {
+    if (status === "archived" ? entry.kind !== "managed" || !entry.command.archived : entry.kind === "managed" && entry.command.archived) return false;
     if (status === "untracked" && entry.kind !== "unmanaged") return false;
     if (status !== "untracked" && entry.kind === "unmanaged" && status !== "all") return false;
     if (tags && tags.length > 0) {
@@ -84,7 +85,8 @@ export function slashCommandStatusCounts(
   entries: SlashCommandInventoryEntry[],
 ): Record<SlashCommandsStatusFilter, number> {
   return {
-    all: entries.length,
+    all: entries.filter((entry) => entry.kind !== "managed" || !entry.command.archived).length,
+    archived: entries.filter((entry) => entry.kind === "managed" && entry.command.archived).length,
     untracked: entries.filter((entry) => entry.kind === "unmanaged").length,
   };
 }

@@ -10,10 +10,10 @@ export function useHermesOptionsQuery() {
   });
 }
 
-export function useAgentsInventoryQuery() {
+export function useAgentsInventoryQuery(includeArchived = false) {
   return useQuery({
-    queryKey: agentsKeys.list(),
-    queryFn: fetchAgentsInventory,
+    queryKey: [...agentsKeys.list(), includeArchived],
+    queryFn: () => fetchAgentsInventory(includeArchived),
   });
 }
 

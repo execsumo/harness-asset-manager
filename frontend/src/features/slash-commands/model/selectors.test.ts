@@ -150,3 +150,9 @@ function reviewRow(kind: SlashCommandReviewDto["kind"], actions: SlashCommandRev
     error: null,
   };
 }
+
+it("shows archived commands only under the Archived filter", () => {
+  const entries = slashCommandInventoryEntries({ commands: [command("active", []), { ...command("stored", []), archived: true }], reviewCommands: [] });
+  expect(filterSlashCommandEntries(entries, "", "all").map((entry) => entry.id)).toEqual(["active"]);
+  expect(filterSlashCommandEntries(entries, "", "archived").map((entry) => entry.id)).toEqual(["stored"]);
+});

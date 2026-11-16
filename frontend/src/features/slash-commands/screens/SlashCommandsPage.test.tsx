@@ -394,7 +394,7 @@ describe("SlashCommandsPage", () => {
         requests.push({ url, body: JSON.parse(String(init.body)) });
         return okJson({ ok: true, command: null, sync: [] });
       }
-      if (url === "/api/slash-commands") return okJson(slashCommandsPayload({
+      if (url === "/api/slash-commands?include_archived=true") return okJson(slashCommandsPayload({
         commands: [{
           name: "code-review",
           description: "Review code",

@@ -6,7 +6,7 @@ import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar, type BulkHarnessState, type MultiSelectAction } from "../../../components/BulkActionBar";
-import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
+import { ArchiveBulkAction } from "../../../components/ArchiveBulkAction";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -74,7 +74,6 @@ export default function AgentsInUsePage() {
   } = useAgentsController();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const archiveMutation = useSetAgentArchivedMutation();
   const [selectedRefs, setSelectedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
@@ -364,7 +363,6 @@ export default function AgentsInUsePage() {
     const results = await Promise.allSettled(selectedManagedEntries.map((entry) => archiveMutation.mutateAsync({ ref: entry.ref, archived })));
     const failed = results.filter((result) => result.status === "rejected").length;
     toast(failed ? `${failed} agents could not be updated.` : archived ? "Agents archived." : "Agents unarchived.");
-    setArchiveDialogOpen(false);
     clearSelected();
   };
 
@@ -596,7 +594,7 @@ export default function AgentsInUsePage() {
           showDestructiveAction={deletableSelectedCount > 0}
           extraActions={
             <>
-            {selectedManagedCount > 0 ? <button type="button" className="bulk-bar__action" disabled={archiveMutation.isPending} onClick={() => statusFilter === "archived" ? void changeSelectedArchive(false) : setArchiveDialogOpen(true)}>{statusFilter === "archived" ? "Unarchive" : "Archive"}</button> : null}
+            <ArchiveBulkAction count={selectedManagedCount} archived={statusFilter === "archived"} pending={archiveMutation.isPending} onChange={changeSelectedArchive} />
             {adoptableSelectedCount > 0 ? (
               <button
                 type="button"
@@ -618,8 +616,6 @@ export default function AgentsInUsePage() {
           }}
         />
       ) : null}
-
-      <ConfirmActionDialog open={archiveDialogOpen} title={`Archive ${selectedManagedCount} agents?`} description="This removes their harness bindings while keeping their content and tags." confirmLabel="Archive" pendingLabel="Archiving" isPending={archiveMutation.isPending} onOpenChange={setArchiveDialogOpen} onConfirm={() => changeSelectedArchive(true)} />
 
       <AdoptConflictDialog
         open={conflict !== null}

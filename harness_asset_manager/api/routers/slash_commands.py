@@ -23,8 +23,8 @@ router = APIRouter(prefix="/api/slash-commands")
 
 
 @router.get("", response_model=SlashCommandListResponse)
-def list_slash_commands(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
-    return container.slash_command_queries.list_commands()
+def list_slash_commands(include_archived: bool = False, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
+    return container.slash_command_queries.list_commands(include_archived=include_archived)
 
 
 @router.put("/{name}/tags", response_model=SlashCommandTagsResponse)
@@ -122,5 +122,19 @@ def delete_slash_command(name: str, container: BackendContainer = Depends(get_co
 @router.post("/{name}/unmanage", response_model=OkResponse)
 def unmanage_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
     result = container.slash_command_mutations.unmanage_command(name)
+    container.invalidation.invalidate_all()
+    return result
+
+
+@router.post("/{name}/archive", response_model=OkResponse)
+def archive_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    result = container.slash_command_mutations.set_archived(name, archived=True)
+    container.invalidation.invalidate_all()
+    return result
+
+
+@router.post("/{name}/unarchive", response_model=OkResponse)
+def unarchive_slash_command(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    result = container.slash_command_mutations.set_archived(name, archived=False)
     container.invalidation.invalidate_all()
     return result

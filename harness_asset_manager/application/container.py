@@ -323,7 +323,7 @@ def build_backend_container(
         slash_command_path_policy,
         asset_tags=asset_tags,
     )
-    slash_command_queries = SlashCommandQueryService(slash_command_read_models)
+    slash_command_queries = SlashCommandQueryService(slash_command_read_models, archive=asset_archive)
     slash_command_mutations = SlashCommandMutationService(
         slash_command_store,
         slash_command_sync_state,
