@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { BootstrapBanner } from "../features/bootstrap";
+import { RouteErrorBoundary } from "./ErrorBoundary";
 import { Sidebar } from "./Sidebar";
 
 interface ShellProps {
@@ -16,7 +17,7 @@ export function Shell({ children, onRefresh, refreshPending }: ShellProps) {
       <main className="app-main ui-scrollbar">
         <div className="page-shell">
           <BootstrapBanner />
-          {children}
+          <RouteErrorBoundary>{children}</RouteErrorBoundary>
         </div>
       </main>
     </div>
