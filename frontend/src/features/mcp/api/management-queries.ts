@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { queryPolicy } from "../../../lib/query";
+import { queryPolicy, settleInvalidate } from "../../../lib/query";
 import {
   adoptMcpServer,
   checkMcpServerAvailability,
@@ -51,7 +51,7 @@ export function useEnableMcpServerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: enableMcpServer,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -59,7 +59,7 @@ export function useDisableMcpServerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: disableMcpServer,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -67,7 +67,7 @@ export function useSetMcpServerHarnessesMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: setMcpServerHarnesses,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -75,7 +75,7 @@ export function useUninstallMcpServerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: uninstallMcpServer,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -94,7 +94,7 @@ export function useCheckMcpServerAvailabilityMutation() {
     mutationFn: checkMcpServerAvailability,
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -110,7 +110,7 @@ export function useReconcileMcpServerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: reconcileMcpServer,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
@@ -118,11 +118,11 @@ export function useAdoptMcpServerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: adoptMcpServer,
-    onSettled: () => invalidateMcpQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateMcpQueries),
   });
 }
 
 export function useSetMcpServerArchivedMutation() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setMcpServerArchived(name, archived), onSettled: () => invalidateMcpQueries(queryClient) });
+  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setMcpServerArchived(name, archived), onSettled: settleInvalidate(queryClient, invalidateMcpQueries) });
 }
