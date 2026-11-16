@@ -602,4 +602,8 @@ select.form-field__input,
 }
 
 .tag-chip-with-rename { display: inline-flex; align-items: center; }
-.tag-rename-button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 4px; }
+.tag-rename-button { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 4px; opacity: 0; transition: opacity 120ms ease; }
+.tag-chip-with-rename:hover .tag-rename-button,
+.tag-rename-button:focus-visible { opacity: 0.7; }
+.tag-rename-button:hover { opacity: 1; }
+@media (hover: none) { .tag-rename-button { opacity: 0.7; } }

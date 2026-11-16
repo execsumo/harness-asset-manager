@@ -61,10 +61,12 @@ export function RenameTagDialog({ source, onClose }: { source: string; onClose: 
           <Dialog.Title className="dialog-title">Rename tag</Dialog.Title>
           <Dialog.Description className="dialog-description">Rename {source} across all assets.</Dialog.Description>
           <form onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-            <label htmlFor="rename-tag-input">New name</label>
-            <input id="rename-tag-input" value={target} onChange={(e) => setTarget(e.target.value)} autoFocus />
-            {merge ? <p>These tags already exist and will be merged.</p> : null}
-            {error ? <p role="alert">{error}</p> : null}
+            <label className="form-field" htmlFor="rename-tag-input">
+              <span className="form-field__label">New name</span>
+              <input id="rename-tag-input" className="form-field__input" value={target} onChange={(e) => setTarget(e.target.value)} autoFocus />
+            </label>
+            {merge ? <p className="dialog-description">A tag with this name already exists. The two tags will be merged.</p> : null}
+            {error ? <p className="dialog-error" role="alert">{error}</p> : null}
             <div className="dialog-actions">
               <button type="button" className="btn" disabled={pending} onClick={onClose}>Cancel</button>
               <button type="submit" className="btn" disabled={pending || vocabulary === null || !trimmed || Array.from(trimmed).length > 64 || tagIdentity(trimmed) === "starred"}>Rename</button>
