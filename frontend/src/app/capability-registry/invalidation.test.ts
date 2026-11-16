@@ -26,4 +26,12 @@ describe("capability invalidation", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["permissions"] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["configs"] });
   });
+  it("refreshes the cached tag vocabulary, joining a refetch already in flight", async () => {
+    const invalidateQueries = vi.fn().mockResolvedValue(undefined);
+    const queryClient = { invalidateQueries } as unknown as QueryClient;
+
+    await invalidateCapabilityQueries(queryClient);
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["asset-tags", "vocabulary"] }, { cancelRefetch: false });
+  });
 });
