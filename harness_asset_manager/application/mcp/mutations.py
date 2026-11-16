@@ -141,10 +141,16 @@ class McpMutationService:
                 code="mcp_server_in_use",
             )
         bound_harnesses = self._harnesses_in_states(name, {"managed", "drifted"})
+
+        def remove() -> None:
+            self.store.remove(name)
+            if self.asset_tags is not None:
+                self.asset_tags.try_delete_tags_for_ref("mcp", name)
+
         return self.harness_application.disable_many(
             name,
             bound_harnesses,
-            remove_after_full_success=lambda: self.store.remove(name),
+            remove_after_full_success=remove,
         ).to_dict()
 
     # Per-harness toggle ----------------------------------------------------

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tomllib
 import unittest
+from unittest.mock import patch
 
 from tests.support.app_harness import AppTestHarness
 
@@ -47,9 +48,13 @@ class HookRoutesTests(unittest.TestCase):
             detail = harness.get_json("/api/hooks/my-hook")
             self.assertEqual(detail["id"], "my-hook")
 
+            harness.put_json("/api/hooks/my-hook/tags", {"tags": ["hook-only"]})
+            self.assertIn("hook-only", harness.get_json("/api/asset-tags/")["tags"])
             # Delete
-            deleted = harness.delete_json("/api/hooks/my-hook")
+            with patch.object(harness.container.asset_tag_store, "set_tags", side_effect=OSError("read only")):
+                deleted = harness.delete_json("/api/hooks/my-hook")
             self.assertTrue(deleted["ok"])
+            self.assertNotIn("hook-only", harness.get_json("/api/asset-tags/")["tags"])
 
             # Check listing is empty again
             payload2 = harness.get_json("/api/hooks")

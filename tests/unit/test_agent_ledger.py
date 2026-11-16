@@ -343,6 +343,15 @@ class ClobberDiagnosisTests(AgentLedgerFixture):
         self.assertIn("harness edit", binding.read_text(encoding="utf-8"))
         self.assertIn("store edit", self.store.path_for(slug).read_text(encoding="utf-8"))
 
+    def test_a_clobbered_binding_is_not_listed_a_second_time_as_unmanaged(self) -> None:
+        """The harness's rewritten copy is the same agent, not a duplicate row."""
+        slug = self.create()
+        self.mutations.enable(slug, "claude")
+        self.clobber(slug, "---\nname: Auditor\ndescription: d\n---\nharness edit\n")
+
+        inventory, _entry = self.build(slug)
+        self.assertEqual([e.ref for e in inventory.entries], [slug])
+
     def test_without_a_ledger_record_the_wording_is_unchanged(self) -> None:
         """Invariant 4: a lost ledger degrades to exactly the pre-ledger behaviour."""
         slug = self.create()

@@ -596,7 +596,7 @@ class AgentMutationService:
             mode=mode if mode is not None else current.mode,
             spawning=spawning if spawning is not None else current.spawning,
             trust_project=trust_project if trust_project is not None else current.trust_project,
-            base_metadata=current.metadata if metadata is None else None,
+            base_metadata=current.metadata,
             extra_metadata=metadata,
         )
         atomic_write_text(path, rendered)
@@ -607,7 +607,7 @@ class AgentMutationService:
             self._adapter(harness).remove_unmanaged(unmanaged_slug)
             self.ledger.forget(unmanaged_slug, harness)
             if self.asset_tags is not None:
-                self.asset_tags.delete_tags_for_ref("agents", slug)
+                self.asset_tags.try_delete_tags_for_ref("agents", slug)
             return
 
         self._require_agent(slug)
@@ -629,7 +629,7 @@ class AgentMutationService:
         self.store.delete(slug)
         self.ledger.forget_slug(slug)
         if self.asset_tags is not None:
-            self.asset_tags.delete_tags_for_ref("agents", slug)
+            self.asset_tags.try_delete_tags_for_ref("agents", slug)
 
     def unmanage(self, ref: str) -> dict[str, bool]:
         if "/" in ref:

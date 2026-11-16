@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { useEffect, useRef, useState } from "react";
 import { Search, Star, X } from "lucide-react";
 
@@ -21,7 +22,7 @@ export function SkillTagFilterBar({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const normalizedSelected = new Set(selectedTags.map((t) => t.toLowerCase()));
+  const normalizedSelected = new Set(selectedTags.map((t) => tagIdentity(t)));
 
   useEffect(() => {
     if (searchOpen) {
@@ -43,7 +44,7 @@ export function SkillTagFilterBar({
   const regularTags = tags.filter((t) => !t.isStarred);
 
   const filteredRegularTags = filterQuery.trim()
-    ? regularTags.filter((t) => t.tag.toLowerCase().includes(filterQuery.trim().toLowerCase()))
+    ? regularTags.filter((t) => tagIdentity(t.tag).includes(tagIdentity(filterQuery.trim())))
     : regularTags;
 
   const isStarredSelected = normalizedSelected.has("starred");
@@ -72,7 +73,7 @@ export function SkillTagFilterBar({
 
         {/* Regular tag chips */}
         {filteredRegularTags.map((item) => {
-          const isSelected = normalizedSelected.has(item.tag.toLowerCase());
+          const isSelected = normalizedSelected.has(tagIdentity(item.tag));
           return (
             <button
               key={item.tag}
@@ -89,8 +90,8 @@ export function SkillTagFilterBar({
 
         {/* Selected tags that might not be in the known list */}
         {selectedTags
-          .filter((t) => t.toLowerCase() !== "starred")
-          .filter((t) => !regularTags.some((rt) => rt.tag.toLowerCase() === t.toLowerCase()))
+          .filter((t) => tagIdentity(t) !== "starred")
+          .filter((t) => !regularTags.some((rt) => tagIdentity(rt.tag) === tagIdentity(t)))
           .map((orphanTag) => (
             <button
               key={orphanTag}

@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import "../../agents.css";
 import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import { Loader2, Star } from "lucide-react";
@@ -35,7 +36,6 @@ import { useSkillsListQuery } from "../../../skills/public";
 import { useMcpInventoryQuery } from "../../../mcp/public";
 import {
   AGENT_CONTRACT_KEYS,
-  RETIRED_AGENT_KEYS,
   EFFORT_VALUES,
   MAX_TURNS_DEFAULT,
   MEMORY_VALUES,
@@ -147,12 +147,12 @@ export function AgentDetailContent({
     setLocalActionError(null);
   };
 
-  const isStarred = (detail.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (detail.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     const nextTags = isStarred
-      ? (detail.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(detail.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (detail.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(detail.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     try {
       await setTagsMutation.mutateAsync({
         ref: detail.ref,
@@ -187,7 +187,6 @@ export function AgentDetailContent({
       .filter(
         (c) =>
           !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
-          !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
           c.key !== "mcpServers",
       )
       .map((c, idx) => ({
@@ -244,7 +243,6 @@ export function AgentDetailContent({
         .filter(
           (c) =>
             !(AGENT_CONTRACT_KEYS as readonly string[]).includes(c.key) &&
-            !(RETIRED_AGENT_KEYS as readonly string[]).includes(c.key) &&
             c.key !== "mcpServers",
         )
         .map((c, idx) => ({
@@ -514,7 +512,7 @@ export function AgentDetailContent({
     let finalOther = otherEntries;
 
     if (frontmatterMode === "raw") {
-      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, ...RETIRED_AGENT_KEYS, "mcpServers"]);
+      const parsed = parseFrontmatterFromYaml(rawYaml, [...AGENT_CONTRACT_KEYS, "mcpServers"]);
       if (parsed.error) {
         setSaveError(parsed.error);
         return;

@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useCallback, useEffect, useState } from "react";
 
 import { usePendingRegistry } from "../../../lib/async/pending-registry";
@@ -460,10 +461,10 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
     async (skillRef: string): Promise<void> => {
       const row = data?.rows.find((candidate) => candidate.skillRef === skillRef);
       if (!row) return;
-      const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+      const isStarred = (row.tags || []).some((t) => tagIdentity(t) === "starred");
       const nextTags = isStarred
-        ? (row.tags || []).filter((t) => t.toLowerCase() !== "starred")
-        : ["starred", ...(row.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+        ? (row.tags || []).filter((t) => tagIdentity(t) !== "starred")
+        : ["starred", ...(row.tags || []).filter((t) => tagIdentity(t) !== "starred")];
 
       try {
         await setTagsMutation.mutateAsync({
@@ -500,7 +501,7 @@ export function useSkillsWorkspaceController(): SkillsWorkspaceController {
       for (const ref of refs) {
         const row = data?.rows.find((r) => r.skillRef === ref);
         if (!row) continue;
-        const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+        const isStarred = (row.tags || []).some((t) => tagIdentity(t) === "starred");
         if (!isStarred) {
           const nextTags = ["starred", ...(row.tags || [])];
           try {

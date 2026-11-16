@@ -1,3 +1,5 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useMemo, useState } from "react";
 import { SlidersHorizontal, Upload } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -75,7 +77,7 @@ export default function ConfigsPage() {
         params.delete("tag");
         let removed = false;
         for (const value of current) {
-          if (value.toLowerCase() === tag.toLowerCase()) removed = true;
+          if (tagIdentity(value) === tagIdentity(tag)) removed = true;
           else params.append("tag", value);
         }
         if (!removed) params.append("tag", tag);
@@ -110,7 +112,8 @@ export default function ConfigsPage() {
     [configsQuery.data, settingsQuery.data],
   );
   const summary = useMemo(() => summarizeConfigs(rows), [rows]);
-  const tagCounts = useMemo(() => extractAssetTagCounts(rows), [rows]);
+  const localTagCounts = useMemo(() => extractAssetTagCounts(rows), [rows]);
+  const tagCounts = useSharedTagCounts(localTagCounts);
   const visibleRows = useMemo(
     () => filterConfigsRows(rows, { search, status, tags: selectedTags }),
     [rows, search, status, selectedTags],
@@ -192,7 +195,11 @@ export default function ConfigsPage() {
         />
       )}
 
-      <ConfigsDrawer row={selectedRow} onClose={() => setSelectedHarness(null)} />
+      <ConfigsDrawer
+        row={selectedRow}
+        knownTags={tagCounts.map((item) => item.tag)}
+        onClose={() => setSelectedHarness(null)}
+      />
     </>
   );
 }

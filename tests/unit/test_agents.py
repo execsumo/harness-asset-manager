@@ -379,8 +379,8 @@ class AgentParserTests(unittest.TestCase):
         )
         self.assertNotIn("model", rendered)
 
-    def test_render_drops_legacy_keys(self) -> None:
-        """Our own retired compile keys are the one thing still dropped on write."""
+    def test_render_keeps_valued_legacy_keys(self) -> None:
+        """Nothing with a value is dropped on write, legacy compile keys included."""
         agent = parse_agent_document(LEGACY_AGENT_DOC, slug="legacy", path=Path("legacy.md"))
         rendered = render_agent_document(
             name=agent.name,
@@ -389,9 +389,26 @@ class AgentParserTests(unittest.TestCase):
             tools=agent.tools,
             base_metadata=agent.metadata,
         )
-        self.assertNotIn("capabilities", rendered)
-        self.assertNotIn("harnesses", rendered)
+        self.assertIn("capabilities:", rendered)
+        self.assertIn("harnesses:", rendered)
         self.assertIn("name: Legacy Agent", rendered)
+
+    def test_render_drops_unset_legacy_keys(self) -> None:
+        for empty in (None, "", [], {}):
+            rendered = render_agent_document(
+                name="A",
+                description="d",
+                prompt="body",
+                base_metadata={
+                    "deny-tools": empty,
+                    "max_turns": empty,
+                    "capabilities": empty,
+                    "harnesses": empty,
+                    "allowed_subagents": empty,
+                },
+            )
+            for key in ("deny-tools", "max_turns", "capabilities", "harnesses", "allowed_subagents"):
+                self.assertNotIn(f"{key}:", rendered)
 
 
 class AgentsFixture(unittest.TestCase):
@@ -427,6 +444,26 @@ class AgentsFixture(unittest.TestCase):
 
     def entry(self, ref: str):
         return next(e for e in self.inventory.build().entries if e.ref == ref)
+
+    def test_store_update_preserves_execution_frontmatter(self) -> None:
+        """Regression: `agents update` silently dropped mode/spawning/trust-project."""
+        path = self.store_root / "orrin.md"
+        path.write_text(
+            "---\nname: orrin\ndescription: d\nmode: background\nspawning: false\n"
+            "trust-project: true\n---\n\nbody\n",
+            encoding="utf-8",
+        )
+        self.store.update("orrin", description="new")
+        text = path.read_text(encoding="utf-8")
+        for line in ("mode: background", "spawning: false", "trust-project: true"):
+            self.assertIn(line, text)
+        self.store.update(
+            "orrin",
+            metadata=[("mode", "background"), ("spawning", "false"), ("trust-project", "true")],
+        )
+        text = path.read_text(encoding="utf-8")
+        for line in ("mode: background", "spawning: false", "trust-project: true"):
+            self.assertIn(line, text)
 
     def test_create_writes_mcp_server_refs_to_frontmatter(self) -> None:
         agent = self.store.create(
@@ -1302,8 +1339,8 @@ class ContractFieldRoundTripTests(unittest.TestCase):
         )
         return agent, rendered
 
-    def test_retired_background_is_omitted_while_max_turns_keeps_its_yaml_type(self) -> None:
-        """A retired field is dropped; active numeric fields keep their YAML type."""
+    def test_background_is_preserved_while_max_turns_keeps_its_yaml_type(self) -> None:
+        """A key no editor exposes survives a rewrite; numeric fields keep their YAML type."""
         agent, rendered = self._round_trip(
             "---\n"
             "name: A\n"
@@ -1314,46 +1351,65 @@ class ContractFieldRoundTripTests(unittest.TestCase):
         )
         self.assertEqual(agent.max_turns, "30")
         self.assertEqual(agent.background, "true")
-        self.assertNotIn("background:", rendered)
+        self.assertIn("background: true", rendered)
         self.assertIn("maxTurns: 30", rendered)
         reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
-        self.assertIsNone(reparsed.background)
+        self.assertEqual(reparsed.background, "true")
         self.assertEqual(reparsed.max_turns, "30")
         self.assertEqual(reparsed.extra_metadata, ())
 
-    def test_retired_execution_fields_are_omitted_on_rewrite(self) -> None:
+    def test_execution_fields_survive_both_rewrite_paths(self) -> None:
         document = (
             "---\nname: A\ndescription: d\nmode: interactive\nbackground: true\n"
             "isolation: worktree\nspawning: true\ntrust-project: false\ncolor: cyan\n"
             "deny-tools: shell\n---\n\nbody\n"
         )
         agent = parse_agent_document(document, slug="a", path=Path("a.md"))
-        rendered_documents = (
-            render_agent_document(
-                name=agent.name,
-                description=agent.description,
-                prompt=agent.prompt,
-                mode=agent.mode,
-                background=agent.background,
-                isolation=agent.isolation,
-                spawning=agent.spawning,
-                trust_project=agent.trust_project,
-                base_metadata=agent.metadata,
-            ),
-            render_agent_document(
-                name=agent.name,
-                description=agent.description,
-                prompt=agent.prompt,
-                mode=agent.mode,
-                background=agent.background,
-                isolation=agent.isolation,
-                spawning=agent.spawning,
-                trust_project=agent.trust_project,
-                extra_metadata=[],
-            ),
+        carried = [("mode", "interactive"), ("spawning", "true"), ("trust-project", "false"), ("deny-tools", "shell")]
+        for kwargs in ({"base_metadata": agent.metadata}, {"extra_metadata": carried, "base_metadata": agent.metadata}):
+            rendered = render_agent_document(
+                name=agent.name, description=agent.description, prompt=agent.prompt, **kwargs
+            )
+            for line in (
+                "mode: interactive",
+                "background: true",
+                "isolation: worktree",
+                "spawning: true",
+                "trust-project: false",
+                "color: cyan",
+            ):
+                self.assertIn(line, rendered)
+            self.assertIn("deny-tools: shell", rendered)
+
+    def test_arbitrary_frontmatter_keys_survive_both_rewrite_paths(self) -> None:
+        """Preservation is general: no key name is special, whatever its value."""
+        agent = parse_agent_document(
+            "---\nname: A\ndescription: d\nmy-weird_Key: 5\nnested:\n  a: [1, 2]\n"
+            "flag: false\n---\n\nbody\n",
+            slug="a",
+            path=Path("a.md"),
         )
-        for rendered in rendered_documents:
-            for key in ("mode", "background", "isolation", "spawning", "trust-project", "color", "deny-tools"):
+        for kwargs in (
+            {"base_metadata": agent.metadata},
+            {"extra_metadata": list(agent.extra_metadata)},
+        ):
+            rendered = render_agent_document(
+                name="A", description="d", prompt="body", **kwargs
+            )
+            reparsed = parse_agent_document(rendered, slug="a", path=Path("a.md"))
+            self.assertEqual(reparsed.metadata["my-weird_Key"], 5)
+            self.assertEqual(reparsed.metadata["nested"], {"a": [1, 2]})
+            self.assertIs(reparsed.metadata["flag"], False)
+
+    def test_defaults_are_never_written_into_a_file_that_lacks_the_keys(self) -> None:
+        agent = parse_agent_document(
+            "---\nname: A\ndescription: d\n---\n\nbody\n", slug="a", path=Path("a.md")
+        )
+        for kwargs in ({"base_metadata": agent.metadata}, {"extra_metadata": []}):
+            rendered = render_agent_document(
+                name="A", description="d", prompt="body", **kwargs
+            )
+            for key in ("mode", "spawning", "trust-project"):
                 self.assertNotIn(f"{key}:", rendered)
 
     def test_role_harness_and_memory_round_trip(self) -> None:

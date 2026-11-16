@@ -1,12 +1,26 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from tests.integration.test_mcp_routes import _seed_manual_remote
 from tests.support.app_harness import AppTestHarness
 
 
 class McpTagsRoutesTests(unittest.TestCase):
+    def test_uninstall_excludes_old_orphan_tags_and_survives_cleanup_failure(self) -> None:
+        with AppTestHarness() as harness:
+            _seed_manual_remote(harness, "filesystem")
+            harness.put_json("/api/mcp/servers/filesystem/tags", {"tags": ["live"]})
+            harness.container.asset_tags.set_tags("mcp", "deleted-before-upgrade", ["orphan"])
+            self.assertIn("live", harness.get_json("/api/asset-tags/")["tags"])
+            self.assertNotIn("orphan", harness.get_json("/api/asset-tags/")["tags"])
+            with patch.object(harness.container.asset_tag_store, "set_tags", side_effect=OSError("read only")):
+                result = harness.container.mcp_mutations.uninstall_server("filesystem")
+            self.assertTrue(result["ok"])
+            self.assertNotIn("live", harness.get_json("/api/asset-tags/")["tags"])
+            self.assertFalse(any(entry["name"] == "filesystem" for entry in harness.get_json("/api/mcp/servers")["entries"]))
+
     def test_mcp_tags_put_and_get_lifecycle(self) -> None:
         with AppTestHarness() as harness:
             # Seed a managed MCP server

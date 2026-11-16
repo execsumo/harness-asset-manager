@@ -1,3 +1,5 @@
+import { tagIdentity } from "./tag-identity";
+
 export interface AssetTagCount {
   tag: string;
   count: number;
@@ -15,7 +17,7 @@ export function extractAssetTagCounts(
     if (!item || !item.tags) continue;
     const seenInItem = new Set<string>();
     for (const tag of item.tags) {
-      const lower = tag.toLowerCase();
+      const lower = tagIdentity(tag);
       if (seenInItem.has(lower)) continue;
       seenInItem.add(lower);
 
@@ -48,6 +50,6 @@ export function matchesAssetTags(
 ): boolean {
   if (!tags || tags.length === 0) return true;
   if (!item || !item.tags || item.tags.length === 0) return false;
-  const itemTags = item.tags.map((t) => t.toLowerCase());
-  return tags.some((tag) => itemTags.includes(tag.toLowerCase()));
+  const itemTags = item.tags.map(tagIdentity);
+  return tags.some((tag) => itemTags.includes(tagIdentity(tag)));
 }

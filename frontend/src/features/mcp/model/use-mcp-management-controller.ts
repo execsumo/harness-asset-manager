@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MultiSelectAction } from "../../../components/BulkActionBar";
@@ -329,7 +330,7 @@ export function useMcpManagementController() {
       const entry = inventory?.entries.find((candidate) => candidate.name === name);
       if (!entry || entry.kind !== "managed") return;
       const currentTags = entry.tags || [];
-      if (currentTags.some((tag) => tag.toLowerCase() === "starred")) return;
+      if (currentTags.some((tag) => tagIdentity(tag) === "starred")) return;
       await setTagsMutation.mutateAsync({ name, tags: ["starred", ...currentTags] });
     });
   }, [inventory, runBulkAction, setTagsMutation]);

@@ -110,7 +110,7 @@ class PermissionsMutationService:
         def _remove() -> None:
             self.store.remove(id)
             if self._asset_tags is not None:
-                self._asset_tags.delete_tags_for_ref("permissions", id)
+                self._asset_tags.try_delete_tags_for_ref("permissions", id)
 
         return self.harness_application.disable_many(
             id,

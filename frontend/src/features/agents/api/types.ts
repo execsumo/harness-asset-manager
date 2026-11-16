@@ -24,13 +24,7 @@ export const AGENT_CONTRACT_KEYS = [
   "maxTurns",
   "isolation",
   "background",
-  "mode",
-  "spawning",
-  "trust-project",
 ] as const;
-
-/** Legacy frontmatter keys to hide from custom metadata editing and strip on save. */
-export const RETIRED_AGENT_KEYS = ["deny-tools"] as const;
 
 /**
  * The fixed vocabularies, each plus the empty choice that clears the key. Global, not

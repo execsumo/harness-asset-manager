@@ -1,3 +1,4 @@
+import { tagIdentity } from "../components/tags/tag-identity";
 import { useEffect, useRef, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Star, Tag as TagIcon, X } from "lucide-react";
@@ -46,21 +47,21 @@ export function BulkTagPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const stagedLowerSet = new Set(stagedTags.map((t) => t.toLowerCase()));
+  const stagedLowerSet = new Set(stagedTags.map((t) => tagIdentity(t)));
   const suggestions = knownTags
-    .filter((t) => !stagedLowerSet.has(t.toLowerCase()))
-    .filter((t) => (inputVal.trim() ? t.toLowerCase().includes(inputVal.trim().toLowerCase()) : true))
+    .filter((t) => !stagedLowerSet.has(tagIdentity(t)))
+    .filter((t) => (inputVal.trim() ? tagIdentity(t).includes(tagIdentity(inputVal.trim())) : true))
     .slice(0, 6);
 
   const commitTag = (rawTag: string): boolean => {
     const trimmed = rawTag.trim();
     if (!trimmed) return false;
-    if (trimmed.length > 64) {
+    if (Array.from(trimmed).length > 64) {
       setError("Tag must be 64 characters or fewer");
       return false;
     }
-    const lower = trimmed.toLowerCase();
-    if (stagedTags.some((t) => t.toLowerCase() === lower)) {
+    const lower = tagIdentity(trimmed);
+    if (stagedTags.some((t) => tagIdentity(t) === lower)) {
       setError("Tag already added");
       return false;
     }
@@ -95,12 +96,12 @@ export function BulkTagPopover({
     let finalTags = [...stagedTags];
     if (inputVal.trim()) {
       const trimmed = inputVal.trim();
-      if (trimmed.length > 64) {
+      if (Array.from(trimmed).length > 64) {
         setError("Tag must be 64 characters or fewer");
         return;
       }
-      const lower = trimmed.toLowerCase();
-      if (!stagedTags.some((t) => t.toLowerCase() === lower)) {
+      const lower = tagIdentity(trimmed);
+      if (!stagedTags.some((t) => tagIdentity(t) === lower)) {
         finalTags = [...finalTags, trimmed];
       }
     }
@@ -168,7 +169,7 @@ export function BulkTagPopover({
               onClick={() => inputRef.current?.focus()}
             >
               {stagedTags.map((tag, idx) => {
-                const isStarred = tag.toLowerCase() === "starred";
+                const isStarred = tagIdentity(tag) === "starred";
                 return (
                   <span
                     key={tag}
@@ -204,7 +205,6 @@ export function BulkTagPopover({
                 onKeyDown={handleKeyDown}
                 placeholder={stagedTags.length === 0 ? "Type tag name..." : "Add another..."}
                 disabled={disabled || pending}
-                maxLength={64}
                 aria-label="New tag name"
               />
             </div>
@@ -223,7 +223,7 @@ export function BulkTagPopover({
                       inputRef.current?.focus();
                     }}
                   >
-                    {suggestion.toLowerCase() === "starred" ? (
+                    {tagIdentity(suggestion) === "starred" ? (
                       <Star size={11} className="skill-detail-tag__star" />
                     ) : null}
                     <span>{suggestion}</span>

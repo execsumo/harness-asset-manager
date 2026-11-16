@@ -52,7 +52,7 @@ const SETTINGS = {
 function respond(url: string) {
   if (url === "/api/configs/") return okJson(CONFIGS);
   if (url.startsWith("/api/settings")) return okJson(SETTINGS);
-  if (url.includes("/api/asset-tags")) return okJson({});
+  if (url.includes("/api/asset-tags")) return okJson({ tags: [] });
   if (url.includes("/api/home")) return okJson({ home: "/home/dev" });
   return null;
 }
@@ -71,6 +71,76 @@ describe("ConfigsPage", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     fetchMock.mockReset();
+  });
+
+  it("assigns a shared tag to a config and preserves existing tags", async () => {
+    let tags = ["starred"];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/asset-tags/") return okJson({ tags: ["Research"] });
+      if (url === "/api/configs/cursor/tags" && init?.method === "PUT") {
+        tags = JSON.parse(String(init.body)).tags;
+        return okJson({ tags });
+      }
+      if (url === "/api/configs/") return okJson({ ...CONFIGS, cursor: { ...CONFIGS.cursor, tags } });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+
+    renderWithAppProviders(<ConfigsPage />);
+    fireEvent.click(await screen.findByText("Cursor"));
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+    fireEvent.mouseDown(await screen.findByRole("option", { name: "Research" }));
+    await waitFor(() => expect(tags).toEqual(["starred", "Research"]));
+    expect(await screen.findByRole("button", { name: "Remove tag Research" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag Research" }));
+    await waitFor(() => expect(tags).toEqual(["starred"]));
+  });
+
+  it("toggles a case-folded starred tag off", async () => {
+    let tags = ["ſtarred", "Research"];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/configs/cursor/tags" && init?.method === "PUT") {
+        tags = JSON.parse(String(init.body)).tags;
+        return okJson({ tags });
+      }
+      if (url === "/api/configs/") return okJson({ ...CONFIGS, cursor: { ...CONFIGS.cursor, tags } });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+    renderWithAppProviders(<ConfigsPage />);
+    const row = (await screen.findByText("Cursor")).closest("tr")!;
+    const button = within(row).getByRole("button", { name: "Remove star" });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(button);
+    await waitFor(() => expect(tags).toEqual(["Research"]));
+    await waitFor(() => expect(within(row).getByRole("button", { name: /^star$/i }).getAttribute("aria-pressed")).toBe("false"));
+  });
+
+  it("reports tag removal failures and permits retry", async () => {
+    let attempts = 0;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/configs/cursor/tags" && init?.method === "PUT") {
+        attempts++;
+        if (attempts === 1) throw new Error("Network unavailable");
+        return okJson({ tags: [] });
+      }
+      if (url === "/api/configs/") return okJson({ ...CONFIGS, cursor: { ...CONFIGS.cursor, tags: attempts > 1 ? [] : ["Research"] } });
+      const response = respond(url);
+      if (response) return response;
+      throw new Error(`Unhandled URL ${url}`);
+    });
+    renderWithAppProviders(<ConfigsPage />);
+    fireEvent.click(await screen.findByText("Cursor"));
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag Research" }));
+    expect(await screen.findByText("Network unavailable")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Remove tag Research" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove tag Research" })).toBeNull());
+    expect(screen.queryByText("Network unavailable")).toBeNull();
   });
 
   it("lists each detected harness with its status, key count, and config path", async () => {

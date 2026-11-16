@@ -13,6 +13,16 @@ def seed_claude_config(spec: FakeHomeSpec) -> None:
     cfg.write_text(json.dumps({"theme": "dark", "model": "claude-3-5-sonnet-20241022", "mcpServers": {"test": {}}}))
 
 class ConfigsApiTests(unittest.TestCase):
+    def test_shared_tags_survive_malformed_config(self) -> None:
+        with AppTestHarness(fixture_factory=seed_claude_config) as harness:
+            harness.put_json("/api/configs/claude/tags", {"tags": ["config-only"]})
+            harness.container.asset_tags.set_tags("configs", "nonexistent", ["orphan"])
+            (harness.spec.home / ".claude" / "settings.json").write_text("{ malformed")
+            harness.get_json("/api/configs/", expected_status=409)
+            tags = harness.get_json("/api/asset-tags/")["tags"]
+            self.assertIn("config-only", tags)
+            self.assertNotIn("orphan", tags)
+
     def test_configs_round_trip(self) -> None:
         with AppTestHarness(fixture_factory=seed_claude_config) as harness:
             # Starts unmanaged

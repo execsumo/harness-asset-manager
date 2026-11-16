@@ -1070,7 +1070,7 @@ class AgentRoutesTests(unittest.TestCase):
                     [item["ref"] for item in harness.get_json("/api/agents")["entries"]],
                 )
 
-    def test_update_agent_drops_legacy_frontmatter(self) -> None:
+    def test_update_agent_keeps_valued_legacy_frontmatter(self) -> None:
         def seed(spec: FakeHomeSpec) -> None:
             root = spec.agents_root
             root.mkdir(parents=True, exist_ok=True)
@@ -1087,8 +1087,8 @@ class AgentRoutesTests(unittest.TestCase):
             self.assertEqual(updated["prompt"], "body")
 
             content = (harness.spec.agents_root / "legacy.md").read_text(encoding="utf-8")
-            self.assertNotIn("capabilities", content)
-            self.assertNotIn("harnesses", content)
+            self.assertIn("capabilities:", content)
+            self.assertIn("harnesses:", content)
 
     def test_error_body_uses_the_shared_error_field(self) -> None:
         with AppTestHarness() as harness:
@@ -1266,6 +1266,32 @@ class AgentRoutesTests(unittest.TestCase):
 
             harness.post_json("/api/agents/red-team/disable", {"harness": "claude"})
             self.assertEqual(json.loads(ledger_path.read_text("utf-8"))["agents"], {})
+
+    def test_shared_tag_refresh_does_not_reconcile_agent_bindings(self) -> None:
+        with AppTestHarness() as harness:
+            harness.put_json("/api/settings/auto-adopt/agents/harnesses", {"harnesses": ["claude"]})
+            harness.post_json("/api/agents", {"name": "Red Team", "description": "d", "prompt": "p"})
+            harness.post_json("/api/agents/red-team/enable", {"harness": "claude"})
+            harness.container.asset_tags.set_tags("agents", "red-team", ["agent-tag"])
+            binding = harness.spec.home / ".claude" / "agents" / "red-team.md"
+            binding.unlink()
+            binding.write_text("---\nname: Red Team\ndescription: d\n---\nedited by the harness\n", encoding="utf-8")
+            ledger = harness.container.paths.bindings_ledger_path
+            before_ledger = ledger.read_bytes()
+            before_store = (harness.spec.agents_root / "red-team.md").read_bytes()
+            before_audit = harness.container.agents_audit.recent()
+
+            for _ in range(2):
+                self.assertIn("agent-tag", harness.get_json("/api/asset-tags/")["tags"])
+            self.assertFalse(binding.is_symlink())
+            self.assertIn("edited by the harness", binding.read_text(encoding="utf-8"))
+            self.assertEqual(ledger.read_bytes(), before_ledger)
+            self.assertEqual((harness.spec.agents_root / "red-team.md").read_bytes(), before_store)
+            self.assertEqual(harness.container.agents_audit.recent(), before_audit)
+
+            harness.get_json("/api/agents")
+            self.assertTrue(binding.is_symlink())
+            self.assertIn("edited by the harness", (harness.spec.agents_root / "red-team.md").read_text(encoding="utf-8"))
 
     def test_a_one_sided_clobber_is_repaired_automatically(self) -> None:
         """The end-to-end case the whole ledger exists for: a harness replaces our

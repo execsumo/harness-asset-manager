@@ -1,3 +1,5 @@
+import { tagIdentity } from "../../../components/tags/tag-identity";
+import { useSharedTagCounts } from "../../../components/tags/useSharedTagCounts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FolderPlus, Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -144,15 +146,16 @@ export default function SkillsWorkspacePage() {
 
   // URL-backed tag filters (?tag=)
   const selectedTags = useMemo(() => searchParams.getAll("tag"), [searchParams]);
-  const knownTags = useMemo(() => extractSkillTagCounts(data), [data]);
+  const localTagCounts = useMemo(() => extractSkillTagCounts(data), [data]);
+  const knownTags = useSharedTagCounts(localTagCounts);
   const knownTagNames = useMemo(() => knownTags.map((t) => t.tag), [knownTags]);
 
   const toggleTagFilter = useCallback(
     (tagToToggle: string) => {
       const params = new URLSearchParams(searchParams);
       const currentTags = params.getAll("tag");
-      const normalized = tagToToggle.toLowerCase();
-      const hasTag = currentTags.some((t) => t.toLowerCase() === normalized);
+      const normalized = tagIdentity(tagToToggle);
+      const hasTag = currentTags.some((t) => tagIdentity(t) === normalized);
       params.delete("tag");
       if (!hasTag) {
         for (const t of currentTags) {
@@ -161,7 +164,7 @@ export default function SkillsWorkspacePage() {
         params.append("tag", tagToToggle);
       } else {
         for (const t of currentTags) {
-          if (t.toLowerCase() !== normalized) {
+          if (tagIdentity(t) !== normalized) {
             params.append("tag", t);
           }
         }
@@ -429,12 +432,6 @@ export default function SkillsWorkspacePage() {
                 </>
               }
             />
-            <SkillTagFilterBar
-              tags={knownTags}
-              selectedTags={selectedTags}
-              onToggleTag={toggleTagFilter}
-              onClearTags={clearTagFilters}
-            />
             <SkillAgentFilterBar
               agents={knownAgents}
               selectedAgents={selectedAgents}
@@ -443,6 +440,12 @@ export default function SkillsWorkspacePage() {
             />
           </>
         ) : null}
+        <SkillTagFilterBar
+          tags={knownTags}
+          selectedTags={selectedTags}
+          onToggleTag={toggleTagFilter}
+          onClearTags={clearTagFilters}
+        />
       </div>
 
       {isInitialLoading ? (
@@ -464,7 +467,7 @@ export default function SkillsWorkspacePage() {
             onManageSkill={(ref) => void onManageSkill(ref)}
             onToggleAgent={toggleAgentFilter}
             pendingStructuralActions={pendingStructuralActions}
-            starredFilterActive={selectedTags.some((t) => t.toLowerCase() === "starred")}
+            starredFilterActive={selectedTags.some((t) => tagIdentity(t) === "starred")}
             onToggleStarredFilter={() => toggleTagFilter("starred")}
           />
         ) : hasData || hasActiveFilters ? (

@@ -1,3 +1,4 @@
+import { tagIdentity } from "../../../../components/tags/tag-identity";
 import { useId, useState } from "react";
 import { AlertTriangle, Loader2, Star } from "lucide-react";
 
@@ -57,12 +58,12 @@ export function SlashCommandReviewDetailView({
   const hasCanonicalGap = row.commandExists && !canonicalCommand;
   const isConflict = row.kind === "unmanaged" && row.commandExists;
 
-  const isStarred = (row.tags || []).some((t) => t.toLowerCase() === "starred");
+  const isStarred = (row.tags || []).some((t) => tagIdentity(t) === "starred");
 
   const handleToggleStar = async () => {
     const nextTags = isStarred
-      ? (row.tags || []).filter((t) => t.toLowerCase() !== "starred")
-      : ["starred", ...(row.tags || []).filter((t) => t.toLowerCase() !== "starred")];
+      ? (row.tags || []).filter((t) => tagIdentity(t) !== "starred")
+      : ["starred", ...(row.tags || []).filter((t) => tagIdentity(t) !== "starred")];
     try {
       await setTagsMutation.mutateAsync({
         name: row.reviewRef || row.name,

@@ -334,8 +334,9 @@ in list/detail views, and the `starred` tag is available through the matrix star
 URL-backed `?tag=starred` filter. Tag filters compose with each family's status and harness
 filters. Unmanaged entries remain read-only for tagging.
 
-Every tag editor suggests existing tags while you type, so a portfolio converges on a shared
-tag vocabulary instead of splintering into near-duplicates. Families whose managed rows carry
+Tag filters and editors share a vocabulary across asset families and Configs. A tag used in
+one family appears in the others, even when its local count is zero; counts remain specific to
+the current family. Editors suggest these existing tags while you type. Families whose managed rows carry
 select checkboxes (Skills, MCP Servers, Permissions) also support bulk tagging: select rows,
 then use **Tag** in the bulk action bar to apply one or more tags to all selected assets at
 once — tags are merged into each asset's existing set, never replaced.
@@ -453,7 +454,7 @@ chips, and URL-backed tag filters.
 
 Agents are Markdown files with YAML frontmatter and the system prompt as the body. They live in Harness Asset Manager's store; enabling one for a harness symlinks it into that harness's agents directory, so editing the agent once updates it everywhere it is enabled.
 
-Harness Asset Manager's standard agent frontmatter contract includes `name`, `description`, `role`, `harness`, `model`, `effort`, `tools`, `disallowedTools`, `skills`, `memory`, and `maxTurns`. The detail editor groups supported fields under **Identity**, **Harness & Model**, **Capabilities** and **Execution**. Legacy `color`, `mode`, `background`, `isolation`, `spawning`, `trust-project`, and `deny-tools` keys are no longer shown or written; they are removed from an agent file the next time it is saved. The Create Agent dialog follows the same field order. `skills` accepts only adopted HAM Skills and offers them as suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
+Harness Asset Manager's standard agent frontmatter contract includes `name`, `description`, `role`, `harness`, `model`, `effort`, `tools`, `disallowedTools`, `skills`, `memory`, and `maxTurns`. The detail editor groups supported fields under **Identity**, **Harness & Model**, **Capabilities** and **Execution**. Keys outside that contract — including legacy `mode`, `spawning`, `trust-project` and `deny-tools` — are not structured fields, but a saved agent keeps them verbatim as custom frontmatter; only keys that are null or empty are dropped. The Create Agent dialog follows the same field order. `skills` accepts only adopted HAM Skills and offers them as suggestions. Saving an agent automatically enables each attached Skill on installed harnesses where that agent is enabled. Removing a Skill from the agent is non-destructive and does not disable existing Skill bindings.
 
 `effort` is a **fixed vocabulary** — Claude Code's `low`, `medium`, `high`, `xhigh`, `max`, or empty to clear the key — so the editor offers a picker rather than a text box, and the API rejects anything else with a 400. That keeps a typo, a raw-YAML edit, or a hand-edited file from writing a value Claude Code does not understand. `model` is deliberately free text — its value set is open-ended. `harness` is a picker too, but of a discovered vocabulary rather than a fixed one: both the detail editor and the Create Agent dialog list every harness in the inventory and mark the ones not installed on this machine, since an agent is often authored here for a machine elsewhere.
 
