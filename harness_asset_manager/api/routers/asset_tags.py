@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterable
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 
 from harness_asset_manager.api.deps import get_container
 from harness_asset_manager.application import BackendContainer
@@ -50,3 +51,21 @@ def list_asset_tags(container: BackendContainer = Depends(get_container)) -> dic
         except Exception:
             logger.exception("Failed to collect shared tags for %s", family)
     return {"tags": sort_tags(normalize_and_dedupe_tags(tags))}
+
+
+class RenameTagRequest(BaseModel):
+    source: str = Field(alias="from")
+    to: str
+
+
+class RenameTagResponse(BaseModel):
+    assets_changed: int
+
+
+@router.post("/rename", response_model=RenameTagResponse)
+def rename_asset_tag(
+    body: RenameTagRequest, container: BackendContainer = Depends(get_container),
+) -> RenameTagResponse:
+    count = container.asset_tags.rename_tag(body.source, body.to)
+    container.invalidation.invalidate_all()
+    return RenameTagResponse(assets_changed=count)
