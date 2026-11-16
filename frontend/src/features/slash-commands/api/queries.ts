@@ -14,6 +14,7 @@ import {
 } from "./client";
 import {
   SLASH_COMMANDS_GC_TIME_MS,
+  SLASH_COMMANDS_REFETCH_INTERVAL_MS,
   SLASH_COMMANDS_STALE_TIME_MS,
   slashCommandKeys,
 } from "./keys";
@@ -30,6 +31,7 @@ export function useSlashCommandsQuery() {
   return useQuery({
     queryKey: slashCommandKeys.list(),
     queryFn: fetchSlashCommands,
+    refetchInterval: SLASH_COMMANDS_REFETCH_INTERVAL_MS,
     ...queryPolicy(SLASH_COMMANDS_STALE_TIME_MS, SLASH_COMMANDS_GC_TIME_MS),
   });
 }
