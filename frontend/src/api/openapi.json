@@ -5190,6 +5190,37 @@
         "title": "ReconcilePermissionRequest",
         "type": "object"
       },
+      "RenameTagRequest": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "RenameTagRequest",
+        "type": "object"
+      },
+      "RenameTagResponse": {
+        "properties": {
+          "assets_changed": {
+            "title": "Assets Changed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assets_changed"
+        ],
+        "title": "RenameTagResponse",
+        "type": "object"
+      },
       "ScaffoldRequest": {
         "properties": {
           "asset_type": {
@@ -8543,6 +8574,97 @@
           }
         },
         "summary": "List Asset Tags",
+        "tags": [
+          "asset-tags"
+        ]
+      }
+    },
+    "/api/asset-tags/rename": {
+      "post": {
+        "operationId": "rename_asset_tag_api_asset_tags_rename_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTagRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameTagResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Rename Asset Tag",
         "tags": [
           "asset-tags"
         ]

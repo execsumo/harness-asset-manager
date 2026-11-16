@@ -38,10 +38,12 @@ export function useSharedTagCounts(counts: AssetTagCount[]): AssetTagCount[] {
     };
     refresh();
     window.addEventListener("focus", refresh);
+    window.addEventListener("asset-tags-changed", refresh);
     return () => {
       active = false;
       clearTimeout(retry);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("asset-tags-changed", refresh);
     };
   }, [counts]);
   return useMemo(() => mergeSharedTagCounts(counts, vocabulary), [counts, vocabulary]);

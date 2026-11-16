@@ -73,6 +73,16 @@ class AssetTagService:
         self.store.set_tags(f"{family}:{ref}", sorted_tags)
         return sorted_tags
 
+    def rename_tag(self, source: str, target: str) -> int:
+        source = normalize_tag(source)
+        target = normalize_tag(target)
+        if source.casefold() == STARRED_TAG or target.casefold() == STARRED_TAG:
+            raise MutationError("starred cannot be renamed", status=400, code="invalid_tag")
+        count = self.store.rename_tag(source, target)
+        if not count:
+            raise MutationError("tag not found", status=404, code="tag_not_found")
+        return count
+
     def delete_tags_for_ref(self, family: str, ref: str) -> None:
         self.store.set_tags(f"{family}:{ref}", [])
 
