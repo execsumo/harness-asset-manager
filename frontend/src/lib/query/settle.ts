@@ -25,7 +25,15 @@ export function settleInvalidate(queryClient: QueryClient, ...targets: SettleTar
     const busy = () => [...fetched].some((query) => query.state.fetchStatus === "fetching");
     let wake: (() => void) | undefined;
     const unsubscribe = cache.subscribe((event) => {
-      if (event.type === "updated" && event.action.type === "fetch") fetched.add(event.query);
+      // Track only invalidated queries. An unrelated poll or page fetch that happens to start
+      // in the same window must not keep the mutation pending. A query that an overlapping
+      // settle already marked invalid emits no second "invalidate", so its refetch counts too.
+      if (
+        event.type === "updated" &&
+        (event.action.type === "invalidate" || (event.action.type === "fetch" && event.query.state.isInvalidated))
+      ) {
+        fetched.add(event.query);
+      }
       if (!busy()) wake?.();
     });
     try {
@@ -38,6 +46,7 @@ export function settleInvalidate(queryClient: QueryClient, ...targets: SettleTar
     } finally {
       unsubscribe();
     }
-await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    // Yield once so query observers publish the refetched data before the caller resumes.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
   };
 }

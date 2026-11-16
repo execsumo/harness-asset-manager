@@ -124,6 +124,32 @@ describe("settleInvalidate", () => {
     expect(cacheWhenResolved).toEqual(["v3", "v3", "v3"]);
   });
 
+  it("does not wait for an unrelated query that starts fetching in the same window", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const slow = deferred<string>();
+    const view = renderHook(
+      ({ showSlow }: { showSlow: boolean }) => ({
+        demo: useQuery({ queryKey: ["demo"], queryFn: async () => "fresh" }),
+        slow: useQuery({ queryKey: ["unrelated"], queryFn: () => slow.promise, enabled: showSlow }),
+      }),
+      {
+        initialProps: { showSlow: false },
+        wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+      },
+    );
+    await waitFor(() => expect(view.result.current.demo.data).toBe("fresh"));
+
+    let settled = false;
+    const settle = settleInvalidate(queryClient, ["demo"])().then(() => { settled = true; });
+    // The unrelated query starts while the settle is in flight and never finishes.
+    view.rerender({ showSlow: true });
+    await act(async () => { await settle; });
+
+    expect(settled).toBe(true);
+    expect(queryClient.getQueryState(["unrelated"])?.fetchStatus).toBe("fetching");
+    slow.resolve("done");
+  });
+
   it("accepts family invalidators next to plain keys", async () => {
     const calls: string[] = [];
     const queryClient = new QueryClient();
