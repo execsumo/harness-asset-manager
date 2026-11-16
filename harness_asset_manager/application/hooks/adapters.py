@@ -225,14 +225,20 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
             atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def disable_hook(self, id: str) -> None:
-        for path in self._discovery_config_paths:
-            if not path.is_file():
-                continue
+        spec = self._get_managed_spec(id)
+        paths = [path for path in self._discovery_config_paths if path.is_file()]
+        # Resolve every file before writing any, so a hook that is ambiguous in one
+        # file is refused without having already been removed from another.
+        for path in paths:
+            try:
+                self._mapper.disable_hook(self._load_document(path), id, spec)
+            except MutationError as error:
+                raise MutationError(f"{path}: {error}", status=error.status) from error
+        for path in paths:
             with file_lock(self._lock_path(path)):
                 document = self._load_document(path)
-                command = self._get_managed_command(id)
-                self._mapper.disable_hook(document, id, command)
-                atomic_write_text(path, self._dump_document(document), follow_symlinks=True)
+                if self._mapper.disable_hook(document, id, spec):
+                    atomic_write_text(path, self._dump_document(document), follow_symlinks=True)
 
     def invalidate(self) -> None:
         return None
@@ -277,14 +283,13 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
                     raw_entries.append(entry)
         return tuple(raw_entries)
 
-    def _get_managed_command(self, id: str) -> str | None:
+    def _get_managed_spec(self, id: str) -> HookSpec | None:
         try:
             from harness_asset_manager.application.hooks.store import HookStore
             from harness_asset_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = HookStore(app_paths.hooks_store_manifest)
-            spec = store.get_managed(id)
-            return spec.command if spec else None
+            return store.get_managed(id)
         except Exception:
             return None
 
