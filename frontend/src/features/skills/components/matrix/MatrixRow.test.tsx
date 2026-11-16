@@ -50,3 +50,41 @@ describe("MatrixRow Hermes Bot attribution", () => {
     expect(screen.getByLabelText("Hermes Bots: Reviewer")).toBeInTheDocument();
   });
 });
+
+describe("MatrixRow agent tags", () => {
+  const withAgent: SkillListRow = {
+    ...candidate(["hermes:coder"]),
+    agents: [{ ref: "agent:reviewer", name: "reviewer", role: "qa" }],
+  } as SkillListRow;
+
+  function renderRow(showAgents?: boolean) {
+    return render(
+      <table>
+        <tbody>
+          <MatrixRow
+            row={withAgent}
+            harnessColumns={harnessColumns}
+            checked={false}
+            selected={false}
+            pendingToggleKeys={new Set()}
+            pendingStructuralActions={new Map()}
+            onOpenSkill={vi.fn()}
+            onToggleChecked={vi.fn()}
+            onToggleCell={vi.fn()}
+            showAgents={showAgents}
+          />
+        </tbody>
+      </table>,
+    );
+  }
+
+  it("shows agent chips by default", () => {
+    renderRow();
+    expect(screen.getByText("qa:reviewer")).toBeInTheDocument();
+  });
+
+  it("hides agent chips when the setting is off", () => {
+    renderRow(false);
+    expect(screen.queryByText("qa:reviewer")).not.toBeInTheDocument();
+  });
+});

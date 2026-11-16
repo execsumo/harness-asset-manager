@@ -5,6 +5,7 @@ from harness_asset_manager.harness import HarnessKernelService, HarnessSupportSt
 
 from ..invalidation import InvalidationFanout
 from .auto_adopt import AutoAdoptStore
+from .display import DisplayPreferencesStore
 
 
 class SettingsMutationService:
@@ -14,11 +15,13 @@ class SettingsMutationService:
         support_store: HarnessSupportStore,
         invalidation: InvalidationFanout,
         auto_adopt_store: AutoAdoptStore,
+        display_store: DisplayPreferencesStore | None = None,
     ) -> None:
         self.harness_kernel = harness_kernel
         self.support_store = support_store
         self.invalidation = invalidation
         self.auto_adopt_store = auto_adopt_store
+        self.display_store = display_store or DisplayPreferencesStore(auto_adopt_store.path)
 
     def set_harness_support(self, harness: str, enabled: bool) -> dict[str, object]:
         if not self.harness_kernel.is_known_harness(harness):
@@ -29,6 +32,13 @@ class SettingsMutationService:
         self.support_store.set_enabled(harness, enabled)
         self.invalidation.invalidate_all()
         return {"ok": True, "enabled": enabled}
+
+    def set_display_preference(self, key: str, value: bool) -> dict[str, object]:
+        try:
+            display = self.display_store.set_preference(key, value)
+        except KeyError:
+            raise MutationError(f"unknown display preference: {key}", status=404) from None
+        return {"ok": True, "display": display}
 
     def set_auto_adopt(self, family: str, enabled: bool) -> dict[str, object]:
         if family not in self.auto_adopt_store.default_harnesses():

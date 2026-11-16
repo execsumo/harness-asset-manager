@@ -26,6 +26,7 @@ interface MatrixViewProps {
   onToggleStar?: (skillRef: string) => void;
   onManageSkill?: (skillRef: string) => void;
   onToggleAgent?: (agentRef: string) => void;
+  showAgents?: boolean;
   pendingStructuralActions?: ReadonlyMap<string, StructuralSkillAction>;
   starredFilterActive?: boolean;
   onToggleStarredFilter?: () => void;
@@ -45,6 +46,7 @@ export function MatrixView({
   onToggleStar,
   onManageSkill,
   onToggleAgent,
+  showAgents = true,
   pendingStructuralActions,
   starredFilterActive = false,
   onToggleStarredFilter,
@@ -162,6 +164,7 @@ export function MatrixView({
             onToggleStar={onToggleStar}
             onManageSkill={onManageSkill}
               onToggleAgent={onToggleAgent}
+              showAgents={showAgents}
             pendingStructuralActions={pendingStructuralActions}
           />
         ))}

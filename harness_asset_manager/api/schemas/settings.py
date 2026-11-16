@@ -35,12 +35,17 @@ class SettingsAutoAdoptResponse(BaseModel):
     permissions: bool
 
 
+class SettingsDisplayResponse(BaseModel):
+    showSkillAgentTags: bool = True
+
+
 class SettingsResponse(BaseModel):
     storage: SettingsStorageResponse
     harnesses: list[SettingsHarnessResponse]
     autoAdopt: SettingsAutoAdoptResponse
     autoAdoptHarnesses: dict[str, list[str]]
     autoAdoptHarnessOptions: dict[str, list[str]]
+    display: SettingsDisplayResponse = SettingsDisplayResponse()
 
 
 class SetAutoAdoptRequest(BaseModel):
@@ -51,9 +56,15 @@ class SetAutoAdoptHarnessesRequest(BaseModel):
     harnesses: list[str]
 
 
+class SetDisplayPreferenceRequest(BaseModel):
+    value: bool
+
+
 __all__ = [
     "SetAutoAdoptRequest",
     "SetAutoAdoptHarnessesRequest",
+    "SetDisplayPreferenceRequest",
+    "SettingsDisplayResponse",
     "SettingsAutoAdoptResponse",
     "SettingsHarnessResponse",
     "SettingsResponse",

@@ -1,12 +1,14 @@
-import { Archive, Database } from "lucide-react";
+import { Archive, Bot, Database } from "lucide-react";
 
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadingSpinner } from "../../../components/LoadingSpinner";
 import { PageHeader } from "../../../components/PageHeader";
+import { ToggleSwitch } from "../../../components/ToggleSwitch";
 import { useFormatPath } from "../../../lib/paths";
 import { SettingsHarnessMaintenanceMatrix } from "../components/SettingsHarnessMaintenanceMatrix";
 import { useSettingsCopy } from "../i18n";
 import { useSettingsPageController } from "../model/use-settings-page-controller";
+import { useDisplayPreferenceMutation, useDisplayPreferences } from "../queries";
 
 export default function SettingsPage() {
   const copy = useSettingsCopy();
@@ -14,6 +16,8 @@ export default function SettingsPage() {
   const controller = useSettingsPageController({
     unableToUpdateHarnessSupport: copy.errors.unableToUpdateHarnessSupport,
   });
+  const display = useDisplayPreferences();
+  const displayMutation = useDisplayPreferenceMutation();
 
   return (
     <>
@@ -59,6 +63,34 @@ export default function SettingsPage() {
                 <p className="settings-row__sub">{copy.storage.cacheSubtitle}</p>
               </div>
               <span className="settings-path">{formatPath(controller.data.storage.marketplaceCachePath)}</span>
+            </div>
+          </section>
+
+          <section className="settings-section">
+            <h2 className="settings-section__heading">{copy.display.heading}</h2>
+            <div className="settings-row">
+              <span className="settings-row__icon">
+                <Bot size={15} />
+              </span>
+              <div className="settings-row__body">
+                <p className="settings-row__title">{copy.display.skillAgentTagsTitle}</p>
+                <p className="settings-row__sub">{copy.display.skillAgentTagsSubtitle}</p>
+              </div>
+              <ToggleSwitch
+                checked={display.showSkillAgentTags}
+                disabled={displayMutation.isPending}
+                label=""
+                ariaLabel={copy.display.skillAgentTagsTitle}
+                onCheckedChange={(checked) =>
+                  displayMutation.mutate(
+                    { key: "showSkillAgentTags", value: checked },
+                    {
+                      onError: (error) =>
+                        controller.setErrorMessage(error instanceof Error ? error.message : copy.display.unableToUpdate),
+                    },
+                  )
+                }
+              />
             </div>
           </section>
 

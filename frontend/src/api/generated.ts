@@ -1152,6 +1152,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/display/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set Display Preference */
+        put: operations["set_display_preference_api_settings_display__key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/settings/harnesses/{harness}/support": {
         parameters: {
             query?: never;
@@ -3329,6 +3346,11 @@ export interface components {
             /** Enabled */
             enabled: boolean;
         };
+        /** SetDisplayPreferenceRequest */
+        SetDisplayPreferenceRequest: {
+            /** Value */
+            value: boolean;
+        };
         /** SetHarnessSupportRequest */
         SetHarnessSupportRequest: {
             /** Enabled */
@@ -3435,6 +3457,14 @@ export interface components {
             /** Slash Commands */
             slash_commands: boolean;
         };
+        /** SettingsDisplayResponse */
+        SettingsDisplayResponse: {
+            /**
+             * Showskillagenttags
+             * @default true
+             */
+            showSkillAgentTags: boolean;
+        };
         /** SettingsHarnessResponse */
         SettingsHarnessResponse: {
             /** Harness */
@@ -3461,6 +3491,12 @@ export interface components {
             autoAdoptHarnesses: {
                 [key: string]: string[];
             };
+            /**
+             * @default {
+             *       "showSkillAgentTags": true
+             *     }
+             */
+            display: components["schemas"]["SettingsDisplayResponse"];
             /** Harnesses */
             harnesses: components["schemas"]["SettingsHarnessResponse"][];
             storage: components["schemas"]["SettingsStorageResponse"];
@@ -9772,6 +9808,88 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetAutoAdoptHarnessesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_display_preference_api_settings_display__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetDisplayPreferenceRequest"];
             };
         };
         responses: {
