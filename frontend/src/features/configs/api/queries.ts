@@ -1,5 +1,6 @@
 import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { settleInvalidate } from "../../../lib/query";
 import { fetchJson, postJson, putJson } from "../../../api/http";
 import type { ConfigsPayload, ConfigDiff } from "./types";
 
@@ -32,7 +33,7 @@ export function useEnableConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (harness: string) => postJson(`/configs/${encodeURIComponent(harness)}/enable`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }),
+    onSettled: settleInvalidate(queryClient, invalidateConfigsQueries),
   });
 }
 
@@ -40,7 +41,7 @@ export function useDisableConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (harness: string) => postJson(`/configs/${encodeURIComponent(harness)}/disable`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }),
+    onSettled: settleInvalidate(queryClient, invalidateConfigsQueries),
   });
 }
 
@@ -48,7 +49,7 @@ export function useRestoreConfigMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (harness: string) => postJson(`/configs/${encodeURIComponent(harness)}/restore`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }),
+    onSettled: settleInvalidate(queryClient, invalidateConfigsQueries),
   });
 }
 
@@ -56,7 +57,7 @@ export function useCaptureConfigsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (explicit: boolean) => postJson(`/configs/capture?explicit=${explicit}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CONFIGS_KEYS.all }),
+    onSettled: settleInvalidate(queryClient, invalidateConfigsQueries),
   });
 }
 

@@ -1,7 +1,7 @@
 import { optimisticTags } from "../../../components/tags/optimistic-tags";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
-import { queryPolicy } from "../../../lib/query";
+import { queryPolicy, settleInvalidate } from "../../../lib/query";
 import {
   createSlashCommand,
   deleteSlashCommand,
@@ -58,9 +58,7 @@ export function useCreateSlashCommandMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: SlashCommandMutationRequest) => createSlashCommand(body),
-    onSuccess: () => {
-      void invalidateSlashCommandQueries(queryClient);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -69,9 +67,7 @@ export function useUpdateSlashCommandMutation() {
   return useMutation({
     mutationFn: ({ name, body }: { name: string; body: SlashCommandUpdateRequest }) =>
       updateSlashCommand(name, body),
-    onSuccess: () => {
-      void invalidateSlashCommandQueries(queryClient);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -80,7 +76,7 @@ export function useSyncSlashCommandMutation() {
   return useMutation({
     mutationFn: ({ name, body }: { name: string; body: SlashSyncRequest }) =>
       syncSlashCommand(name, body),
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -88,7 +84,7 @@ export function useDeleteSlashCommandMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ name }: { name: string }) => deleteSlashCommand(name),
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -96,7 +92,7 @@ export function useImportSlashCommandMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: importSlashCommand,
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -104,7 +100,7 @@ export function useResolveSlashCommandReviewMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: SlashCommandResolveRequest) => resolveSlashCommandReview(body),
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
@@ -112,12 +108,12 @@ export function useUnmanageSlashCommandMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ name }: { name: string }) => unmanageSlashCommand(name),
-    onSuccess: async () => invalidateSlashCommandQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries),
   });
 }
 
 
 export function useSetSlashCommandArchivedMutation() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setSlashCommandArchived(name, archived), onSuccess: async () => invalidateSlashCommandQueries(queryClient) });
+  return useMutation({ mutationFn: ({ name, archived }: { name: string; archived: boolean }) => setSlashCommandArchived(name, archived), onSettled: settleInvalidate(queryClient, invalidateSlashCommandQueries) });
 }
