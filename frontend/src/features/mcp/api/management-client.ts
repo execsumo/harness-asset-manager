@@ -11,8 +11,8 @@ import type {
 } from "./management-types";
 import type { McpInstallConfigValues } from "../model/install-config";
 
-export async function fetchMcpInventory(): Promise<McpInventoryDto> {
-  return fetchJson<McpInventoryDto>("/mcp/servers");
+export async function fetchMcpInventory(includeArchived = false): Promise<McpInventoryDto> {
+  return fetchJson<McpInventoryDto>(includeArchived ? "/mcp/servers?include_archived=true" : "/mcp/servers");
 }
 
 export async function enableMcpServer(args: {
@@ -96,4 +96,8 @@ export async function adoptMcpServer(body: {
   harnesses?: string[];
 }): Promise<McpApplyConfigResponseDto> {
   return postJson<McpApplyConfigResponseDto>("/mcp/unmanaged/adopt", body);
+}
+
+export async function setMcpServerArchived(name: string, archived: boolean): Promise<void> {
+  await postJson<void>(`/mcp/servers/${encodeURIComponent(name)}/${archived ? "archive" : "unarchive"}`);
 }

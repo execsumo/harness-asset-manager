@@ -222,6 +222,7 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
         <McpServerMatrixView
           entries={[
             {
+              archived: false,
               name: "starred-mcp",
               displayName: "Starred MCP",
               kind: "managed",
@@ -236,6 +237,7 @@ describe("Cross-Family Tag and Star UI Parity Pressure Test", () => {
               tags: ["starred"],
             },
             {
+              archived: false,
               name: "unstarred-mcp",
               displayName: "Unstarred MCP",
               kind: "managed",

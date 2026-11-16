@@ -107,6 +107,7 @@ class McpInstallConfigStatusResponse(BaseModel):
 
 
 class McpInventoryEntryResponse(BaseModel):
+    archived: bool = False
     name: str
     displayName: str
     kind: Literal["managed", "unmanaged"]

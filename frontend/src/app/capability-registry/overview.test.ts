@@ -101,6 +101,7 @@ describe("capability overview model", () => {
         ],
         entries: [
           {
+            archived: false,
             name: "exa",
             displayName: "Exa",
             kind: "managed",

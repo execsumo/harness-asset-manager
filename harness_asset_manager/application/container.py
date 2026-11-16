@@ -380,6 +380,7 @@ def build_backend_container(
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
         asset_tags=asset_tags,
+        archive=asset_archive,
     )
     mcp_mutations = McpMutationService(
         store=mcp_store,
@@ -389,6 +390,7 @@ def build_backend_container(
         availability_probe=mcp_availability_probe,
         availability_cache=mcp_availability_cache,
         asset_tags=asset_tags,
+        archive=asset_archive,
     )
     mcp_auto_adopt = McpAutoAdoptService(
         planner=mcp_planner,

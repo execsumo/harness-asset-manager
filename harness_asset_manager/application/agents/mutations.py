@@ -401,6 +401,8 @@ class AgentMutationService:
 
         if self.mcp_store is not None:
             for name in deduped:
+                if self.archive and self.archive.is_archived("mcp", name):
+                    raise MutationError(f"unarchive MCP server before binding: {name}", status=409)
                 if self.mcp_store.get_managed(name) is None:
                     raise MutationError(
                         f"MCP server '{name}' is unknown or not managed in harnessAM",

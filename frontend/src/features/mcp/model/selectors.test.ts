@@ -23,6 +23,7 @@ function makeEntry(
 ): McpInventoryEntryDto {
   const enabled = states.some((state) => state === "managed");
   return {
+    archived: false,
     name,
     displayName: name,
     kind: "managed",
@@ -192,6 +193,7 @@ describe("pillCounts", () => {
       unbound: 1,
       drifted: 1,
       untracked: 1,
+      archived: 0,
     });
   });
 
@@ -203,6 +205,7 @@ describe("pillCounts", () => {
       unbound: 0,
       drifted: 0,
       untracked: 0,
+      archived: 0,
     });
   });
 });
@@ -400,4 +403,10 @@ describe("isMcpHarnessAddressable", () => {
     const searchFiltered = filterMcpServersInUse(inventory, { search: "", pill: "all", tags: ["search"] });
     expect(searchFiltered.map((e) => e.name)).toEqual(["server1", "server2"]);
   });
+});
+
+it("shows archived servers only under the Archived filter", () => {
+  const inventory = makeInventory([makeEntry("active", []), { ...makeEntry("stored", []), archived: true }]);
+  expect(filterMcpServersInUse(inventory, { search: "", pill: "all" }).map((entry) => entry.name)).toEqual(["active"]);
+  expect(filterMcpServersInUse(inventory, { search: "", pill: "archived" }).map((entry) => entry.name)).toEqual(["stored"]);
 });

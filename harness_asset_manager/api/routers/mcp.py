@@ -27,8 +27,8 @@ router = APIRouter(prefix="/api/mcp")
 
 
 @router.get("/servers", response_model=McpInventoryResponse)
-def list_mcp_servers(container: BackendContainer = Depends(get_container)) -> dict[str, object]:
-    return container.mcp_queries.list_servers()
+def list_mcp_servers(include_archived: bool = False, container: BackendContainer = Depends(get_container)) -> dict[str, object]:
+    return container.mcp_queries.list_servers(include_archived=include_archived)
 
 
 @router.put("/servers/{name}/tags", response_model=McpServerTagsResponse)
@@ -132,3 +132,17 @@ def adopt_mcp_server(
         observed_harness=body.observed_harness,
         harnesses=body.harnesses,
     )
+
+
+@router.post("/servers/{name}/archive", response_model=OkResponse)
+def archive_mcp_server(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    result = container.mcp_mutations.set_archived(name, archived=True)
+    container.invalidation.invalidate_all()
+    return result
+
+
+@router.post("/servers/{name}/unarchive", response_model=OkResponse)
+def unarchive_mcp_server(name: str, container: BackendContainer = Depends(get_container)) -> dict[str, bool]:
+    result = container.mcp_mutations.set_archived(name, archived=False)
+    container.invalidation.invalidate_all()
+    return result
