@@ -40,7 +40,7 @@ describe("agents api client urls", () => {
 
   it("never doubles the /api base", async () => {
     await fetchAgentsInventory();
-    expect(calledUrl()).toBe("/api/agents");
+    expect(calledUrl()).toBe("/api/agents?include_archived=true");
     expect(calledUrl()).not.toContain("/api/api");
   });
 

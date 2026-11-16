@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent } from "./client";
+import { fetchAgentsInventory, fetchAgentDetail, fetchHermesOptions, createAgent, updateAgent, adoptAgent, adoptAllAgents, deleteAgent, enableAgent, disableAgent, setAgentTags, unmanageAgent, setAgentArchived } from "./client";
 import { agentsKeys } from "./keys";
 
 export function useHermesOptionsQuery() {
@@ -120,3 +120,14 @@ export function useUnmanageAgentMutation() {
   });
 }
 
+
+export function useSetAgentArchivedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ref, archived }: { ref: string; archived: boolean }) => setAgentArchived(ref, archived),
+    onSuccess: (_, { ref }) => {
+      queryClient.invalidateQueries({ queryKey: agentsKeys.list() });
+      queryClient.invalidateQueries({ queryKey: agentsKeys.detail(ref) });
+    },
+  });
+}

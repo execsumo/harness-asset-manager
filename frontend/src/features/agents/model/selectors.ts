@@ -6,7 +6,7 @@ import {
 } from "../../../components/tags/tag-counts";
 
 export type InUsePillValue = "all" | "enabled" | "all-harnesses" | "off";
-export type AgentsStatusFilter = InUsePillValue | "untracked";
+export type AgentsStatusFilter = InUsePillValue | "untracked" | "archived";
 
 export type AgentTagCount = AssetTagCount;
 
@@ -88,9 +88,11 @@ export function filterAgents(
   if (!inventory) return [];
 
   return inventory.entries.filter((entry) => {
+    if (filters.status === "archived" ? !entry.archived : entry.archived) return false;
     if (!matchesSearch(entry, filters.search)) return false;
     if (!matchesHarnessBinding(entry, filters.harness)) return false;
     if (!matchesAssetTags(entry, filters.tags)) return false;
+    if (filters.status === "archived") return true;
     if (filters.status === "untracked") return entry.kind === "unmanaged";
     if (entry.kind !== "managed") return filters.status === "all";
 
@@ -114,10 +116,11 @@ export function agentsStatusCounts(
   inventory: AgentInventoryDto | null,
 ): Record<AgentsStatusFilter, number> {
   if (!inventory) {
-    return { all: 0, enabled: 0, "all-harnesses": 0, off: 0, untracked: 0 };
+    return { all: 0, enabled: 0, "all-harnesses": 0, off: 0, untracked: 0, archived: 0 };
   }
   return {
-    all: inventory.entries.length,
+    all: inventory.entries.filter((entry) => !entry.archived).length,
+    archived: inventory.entries.filter((entry) => entry.archived).length,
     enabled: filterAgents(inventory, { search: "", status: "enabled" }).length,
     "all-harnesses": filterAgents(inventory, { search: "", status: "all-harnesses" }).length,
     off: filterAgents(inventory, { search: "", status: "off" }).length,
@@ -132,6 +135,9 @@ export function matrixCellFor(
   const binding = entry.bindings.find((candidate) => candidate.harness === column.harness) ?? null;
   const pendingKey = `${entry.ref}:${column.harness}`;
 
+  if (entry.archived) {
+    return { state: "unavailable", binding, pendingKey, tooltip: "Unarchive to enable", ariaLabel: "Unarchive to enable", action: null };
+  }
   if (entry.kind === "unmanaged") {
     if (binding?.state === "enabled") {
       return {

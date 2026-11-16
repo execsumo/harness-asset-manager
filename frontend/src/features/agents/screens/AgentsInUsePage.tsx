@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
 import { BulkActionBar, type BulkHarnessState, type MultiSelectAction } from "../../../components/BulkActionBar";
+import { ConfirmActionDialog } from "../../../components/ConfirmActionDialog";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { FilterBar } from "../../../components/FilterBar";
 import { HarnessFilterChip } from "../../../components/HarnessFilterChip";
@@ -27,13 +28,13 @@ import {
   type AgentsStatusFilter,
 } from "../model/selectors";
 import { useAgentsController } from "../model/use-agents-controller";
-import { useSetAgentTagsMutation } from "../api/queries";
+import { useSetAgentArchivedMutation, useSetAgentTagsMutation } from "../api/queries";
 import { useSkillsListQuery } from "../../skills/public";
 import { ApiError } from "../../../api/http";
 import type { AdoptAllResponse, AgentAdoptConflict } from "../api/types";
 import { SelectionMenu } from "../../../components/ui/SelectionMenu";
 
-const STATUS_VALUES: AgentsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked"];
+const STATUS_VALUES: AgentsStatusFilter[] = ["all", "enabled", "all-harnesses", "off", "untracked", "archived"];
 
 function isAgentsStatusFilter(value: string | null): value is AgentsStatusFilter {
   return value !== null && STATUS_VALUES.includes(value as AgentsStatusFilter);
@@ -49,6 +50,8 @@ function statusLabel(status: AgentsStatusFilter): string {
       return "Off";
     case "untracked":
       return "Needs review";
+    case "archived":
+      return "Archived";
     default:
       return "All agents";
   }
@@ -71,6 +74,8 @@ export default function AgentsInUsePage() {
   } = useAgentsController();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const archiveMutation = useSetAgentArchivedMutation();
   const [selectedRefs, setSelectedRefs] = useState<ReadonlySet<string>>(() => new Set());
   const [adoptingSelected, setAdoptingSelected] = useState(false);
   const [pendingSelectedAction, setPendingSelectedAction] = useState<MultiSelectAction | null>(null);
@@ -186,7 +191,7 @@ export default function AgentsInUsePage() {
   );
   const counts = useMemo(() => agentsStatusCounts(inventory), [inventory]);
   const hasData = (inventory?.entries.length ?? 0) > 0;
-  const totalManaged = inventory?.entries.filter((entry) => entry.kind === "managed").length ?? 0;
+  const totalManaged = inventory?.entries.filter((entry) => entry.kind === "managed" && !entry.archived).length ?? 0;
   const isReady = status === "success" && Boolean(inventory);
   const filtersActive = search !== "" || statusFilter !== "all" || harnessParam != null || selectedTags.length > 0;
   const isReviewView = statusFilter === "untracked";
@@ -354,6 +359,14 @@ export default function AgentsInUsePage() {
         }),
       ),
     }));
+
+  const changeSelectedArchive = async (archived: boolean) => {
+    const results = await Promise.allSettled(selectedManagedEntries.map((entry) => archiveMutation.mutateAsync({ ref: entry.ref, archived })));
+    const failed = results.filter((result) => result.status === "rejected").length;
+    toast(failed ? `${failed} agents could not be updated.` : archived ? "Agents archived." : "Agents unarchived.");
+    setArchiveDialogOpen(false);
+    clearSelected();
+  };
 
   const handleBulkHarness = useCallback(
     async (harness: string, disable: boolean): Promise<void> => {
@@ -576,13 +589,15 @@ export default function AgentsInUsePage() {
           pending={pendingSelectedAction}
           onClear={clearSelected}
           onDelete={handleDeleteSelected}
-          showHarnessActions={selectedManagedCount > 0}
+          showHarnessActions={selectedManagedCount > 0 && statusFilter !== "archived"}
           harnessOptions={bulkHarnessOptions}
           onEnableHarness={(harness) => handleBulkHarness(harness, false)}
           onDisableHarness={(harness) => handleBulkHarness(harness, true)}
           showDestructiveAction={deletableSelectedCount > 0}
           extraActions={
-            adoptableSelectedCount > 0 ? (
+            <>
+            {selectedManagedCount > 0 ? <button type="button" className="bulk-bar__action" disabled={archiveMutation.isPending} onClick={() => statusFilter === "archived" ? void changeSelectedArchive(false) : setArchiveDialogOpen(true)}>{statusFilter === "archived" ? "Unarchive" : "Archive"}</button> : null}
+            {adoptableSelectedCount > 0 ? (
               <button
                 type="button"
                 className="bulk-bar__action"
@@ -592,7 +607,8 @@ export default function AgentsInUsePage() {
                 {pendingSelectedAction === "adopt" ? <LoadingSpinner size="sm" label="Adopting selected agents..." /> : <Plus size={15} />}
                 {adoptableSelectedCount === selectedCount ? "Adopt selected" : `Adopt selected (${adoptableSelectedCount})`}
               </button>
-            ) : null
+            ) : null}
+            </>
           }
           destructive={{
             actionLabel: deletableSelectedCount === selectedCount ? "Delete" : `Delete (${deletableSelectedCount})`,
@@ -602,6 +618,8 @@ export default function AgentsInUsePage() {
           }}
         />
       ) : null}
+
+      <ConfirmActionDialog open={archiveDialogOpen} title={`Archive ${selectedManagedCount} agents?`} description="This removes their harness bindings while keeping their content and tags." confirmLabel="Archive" pendingLabel="Archiving" isPending={archiveMutation.isPending} onOpenChange={setArchiveDialogOpen} onConfirm={() => changeSelectedArchive(true)} />
 
       <AdoptConflictDialog
         open={conflict !== null}

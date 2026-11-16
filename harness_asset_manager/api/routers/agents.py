@@ -76,8 +76,10 @@ def hermes_options(
 
 
 @router.get("", response_model=AgentInventoryResponse)
-def list_agents(container: BackendContainer = Depends(get_container)) -> AgentInventoryResponse:
+def list_agents(include_archived: bool = False, container: BackendContainer = Depends(get_container)) -> AgentInventoryResponse:
     inventory = container.agents_inventory.build()
+    archive = container.agents_inventory.archive
+    archived = archive.load() if archive else set()
     return AgentInventoryResponse(
         columns=[
             AgentColumnResponse(
@@ -90,6 +92,7 @@ def list_agents(container: BackendContainer = Depends(get_container)) -> AgentIn
         ],
         entries=[
             AgentEntryResponse(
+                archived=f"agents:{entry.ref}" in archived,
                 ref=entry.ref,
                 name=entry.name,
                 description=entry.description,
@@ -110,6 +113,7 @@ def list_agents(container: BackendContainer = Depends(get_container)) -> AgentIn
                 ],
             )
             for entry in inventory.entries
+            if include_archived or f"agents:{entry.ref}" not in archived
         ],
         issues=[
             AgentIssueResponse(name=issue.name, reason=issue.reason) for issue in inventory.issues
@@ -216,7 +220,10 @@ def get_agent(
     detail = container.agents_inventory.detail(agent_ref)
     if detail is None:
         raise MutationError(f"agent not found: {agent_ref}", status=404)
-    return _detail(detail)
+    response = _detail(detail)
+    archive = container.agents_inventory.archive
+    response.archived = bool(archive and archive.is_archived("agents", agent_ref))
+    return response
 
 
 @router.put("/{agent_ref:path}", response_model=AgentDetailResponse)
@@ -374,6 +381,20 @@ def unmanage_agent(
     container: BackendContainer = Depends(get_container),
 ) -> OkResponse:
     container.agents_mutations.unmanage(agent_ref)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
+@router.post("/{agent_ref:path}/archive", response_model=OkResponse)
+def archive_agent(agent_ref: str, container: BackendContainer = Depends(get_container)) -> OkResponse:
+    container.agents_mutations.set_archived(agent_ref, archived=True)
+    container.invalidation.invalidate_all()
+    return OkResponse(ok=True)
+
+
+@router.post("/{agent_ref:path}/unarchive", response_model=OkResponse)
+def unarchive_agent(agent_ref: str, container: BackendContainer = Depends(get_container)) -> OkResponse:
+    container.agents_mutations.set_archived(agent_ref, archived=False)
     container.invalidation.invalidate_all()
     return OkResponse(ok=True)
 
@@ -565,9 +586,12 @@ def _require_detail(
     detail = container.agents_inventory.detail(ref)
     if detail is None:
         raise MutationError(f"agent not found: {ref}", status=404)
-    return _detail(
+    response = _detail(
         detail,
         auto_enabled=auto_enabled,
         failed=failed,
         harness_failures=harness_failures,
     )
+    archive = container.agents_inventory.archive
+    response.archived = bool(archive and archive.is_archived("agents", ref))
+    return response

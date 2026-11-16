@@ -457,6 +457,11 @@
       },
       "AgentDetailResponse": {
         "properties": {
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
+          },
           "autoEnabled": {
             "items": {
               "$ref": "#/components/schemas/AutoEnabledSkillResponse"
@@ -744,6 +749,11 @@
         "properties": {
           "actions": {
             "$ref": "#/components/schemas/AgentActionsResponse"
+          },
+          "archived": {
+            "default": false,
+            "title": "Archived",
+            "type": "boolean"
           },
           "bindings": {
             "items": {
@@ -7242,6 +7252,18 @@
     "/api/agents": {
       "get": {
         "operationId": "list_agents_api_agents_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7970,6 +7992,98 @@
         ]
       }
     },
+    "/api/agents/{agent_ref}/archive": {
+      "post": {
+        "operationId": "archive_agent_api_agents__agent_ref__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Archive Agent",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
     "/api/agents/{agent_ref}/disable": {
       "post": {
         "operationId": "disable_agent_api_agents__agent_ref__disable_post",
@@ -8373,6 +8487,98 @@
           }
         },
         "summary": "Set Agent Tags",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
+    "/api/agents/{agent_ref}/unarchive": {
+      "post": {
+        "operationId": "unarchive_agent_api_agents__agent_ref__unarchive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "agent_ref",
+            "required": true,
+            "schema": {
+              "title": "Agent Ref",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Unarchive Agent",
         "tags": [
           "Agents"
         ]

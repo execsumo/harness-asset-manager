@@ -509,6 +509,8 @@ def build_backend_container(
         hermes_root=_hermes_root(harness_kernel.context),
         mcp_store=mcp_store,
         mcp_mutations=mcp_mutations,
+        archive=asset_archive,
+        reconcile_lock_path=paths.agents_reconcile_lock_path,
     )
 
     def _agent_refs_bound_to_mcp_server(name: str) -> tuple[str, ...]:
@@ -663,6 +665,7 @@ def build_backend_container(
         audited_agents_reconcile.reconcile,
         asset_tags=asset_tags,
         skills_queries=skills_queries,
+        archive=asset_archive,
     )
     configs_store = ConfigStore(paths.configs_dir / "manifest.json")
     configs_service = ConfigsService(configs_store, harness_kernel, asset_tags)

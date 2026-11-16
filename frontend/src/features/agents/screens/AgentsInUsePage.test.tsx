@@ -195,7 +195,7 @@ describe("AgentsInUsePage", () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url === "/api/agents/claude/stray" && init?.method === "DELETE") return okJson({});
-      if (url === "/api/agents") return okJson(unmanagedAgentsFixture());
+      if (url === "/api/agents?include_archived=true") return okJson(unmanagedAgentsFixture());
       throw new Error(`Unhandled URL ${url}`);
     });
 
@@ -219,7 +219,7 @@ describe("AgentsInUsePage", () => {
     beforeEach(() => {
       fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
         const url = typeof input === "string" ? input : input.toString();
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
         throw new Error(`Unhandled URL ${url}`);
       });
@@ -272,7 +272,7 @@ describe("AgentsInUsePage", () => {
       let capturedBody: any;
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
         if (url === "/api/agents/agent-1/enable") {
           capturedBody = JSON.parse(String(init?.body));
@@ -302,7 +302,7 @@ describe("AgentsInUsePage", () => {
       let capturedBody: any;
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1" && init?.method === "PUT") {
           capturedBody = JSON.parse(String(init?.body));
           return okJson({
@@ -333,7 +333,7 @@ describe("AgentsInUsePage", () => {
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
         if (url === "/api/agents/agent-1" && init?.method === "DELETE") return okJson({});
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         throw new Error(`Unhandled URL ${url}`);
       });
 
@@ -359,7 +359,7 @@ describe("AgentsInUsePage", () => {
         if (url === "/api/agents/agent-1" && init?.method === "DELETE") {
           return errorJson("binding is not writable", { status: 409 });
         }
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
         throw new Error(`Unhandled URL ${url}`);
       });
@@ -379,7 +379,7 @@ describe("AgentsInUsePage", () => {
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
         if (url === "/api/agents/agent-1" && init?.method === "DELETE") return okJson({});
-        if (url === "/api/agents") return okJson(agentsInUseFixture());
+        if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
         if (url === "/api/agents/agent-1") return okJson(agentDetailFixture());
         throw new Error(`Unhandled URL ${url}`);
       });
