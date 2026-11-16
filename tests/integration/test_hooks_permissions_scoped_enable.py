@@ -121,6 +121,50 @@ class HookScopedEnablePressureTests(unittest.TestCase):
             self.assertEqual(_read_json(opencode_path), user)
 
 
+    def test_reconcile_moves_the_managed_cursor_hook_and_keeps_user_copies(self) -> None:
+        with AppTestHarness() as harness:
+            harness.post_json(
+                "/api/hooks",
+                {"id": "lint", "event": "pre_tool_use", "command": "lint.sh", "match": "shell"},
+            )
+            for name in ("claude", "cursor"):
+                self.assertTrue(harness.post_json("/api/hooks/lint/enable", {"harness": name})["ok"])
+            claude_path = self._hook_path(harness, "claude")
+            cursor_path = self._hook_path(harness, "cursor")
+
+            # The user moves the managed Claude hook to after-shell, and keeps a hook
+            # of their own with the same command under Cursor's preToolUse.
+            claude = _read_json(claude_path)
+            claude["hooks"] = {"PostToolUse": [{"matcher": "Bash", "hooks": [_cmd("lint.sh", id="lint")]}]}
+            _write_json(claude_path, claude)
+            cursor = _read_json(cursor_path)
+            cursor_hooks = cursor["hooks"]
+            assert isinstance(cursor_hooks, dict)
+            cursor_hooks["preToolUse"] = [{"command": "lint.sh"}]
+            _write_json(cursor_path, cursor)
+
+            result = harness.post_json(
+                "/api/hooks/lint/reconcile",
+                {"sourceKind": "harness", "observedHarness": "claude", "harnesses": ["claude", "cursor"]},
+            )
+            self.assertTrue(result["ok"], result)
+            self.assertEqual(
+                _read_json(cursor_path),
+                {
+                    "version": 1,
+                    "hooks": {
+                        "preToolUse": [{"command": "lint.sh"}],
+                        "afterShellExecution": [{"command": "lint.sh"}],
+                    },
+                },
+            )
+            sightings = harness.get_json("/api/hooks/lint")["sightings"]
+            self.assertEqual(
+                {s["harness"]: s["state"] for s in sightings if s["harness"] in ("claude", "cursor")},
+                {"claude": "managed", "cursor": "managed"},
+            )
+
+
 class PermissionScopedEnablePressureTests(unittest.TestCase):
     def _permission_path(self, harness: AppTestHarness, name: str) -> Path:
         return harness.container.permissions_read_models.require_enabled_adapter(name).config_path

@@ -62,6 +62,7 @@ class HooksHarnessApplication:
         *,
         skip_harnesses: Iterable[str] = (),
         commit: ManifestCommit | None = None,
+        replaces: HookSpec | None = None,
     ) -> HooksHarnessApplicationResult:
         targets = set(harnesses)
         skipped = set(skip_harnesses)
@@ -72,7 +73,7 @@ class HooksHarnessApplication:
             if adapter.harness not in targets or adapter.harness in skipped:
                 continue
             try:
-                adapter.enable_hook(spec)
+                adapter.enable_hook(spec, replaces=replaces)
             except Exception as error:  # noqa: BLE001
                 failed.append({"harness": adapter.harness, "error": str(error)})
                 continue
