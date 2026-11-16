@@ -531,12 +531,15 @@ export default function SkillsWorkspacePage() {
           onAgentSelected={selectedManagedCount > 0 ? onMultiSelectAgent : undefined}
           knownAgents={agentOptions}
           extraActions={
-            selectedManagedCount > 0 ? (
-              <button type="button" className="bulk-bar__action" disabled={archivePending}
-                onClick={() => statusFilter === "archived" ? void changeSelectedArchive(false) : setArchiveDialogOpen(true)}>
-                {statusFilter === "archived" ? "Unarchive" : "Archive"}
-              </button>
-            ) : selectedAdoptableUntrackedCount > 0 ? (
+            selectedManagedCount > 0 || selectedAdoptableUntrackedCount > 0 ? (
+              <>
+                {selectedManagedCount > 0 ? (
+                  <button type="button" className="bulk-bar__action" disabled={archivePending}
+                    onClick={() => statusFilter === "archived" ? void changeSelectedArchive(false) : setArchiveDialogOpen(true)}>
+                    {statusFilter === "archived" ? "Unarchive" : "Archive"}
+                  </button>
+                ) : null}
+                {selectedAdoptableUntrackedCount > 0 ? (
               <button
                 type="button"
                 className="bulk-bar__action"
@@ -548,6 +551,8 @@ export default function SkillsWorkspacePage() {
                   ? copy.review.adoptSelected
                   : `${copy.review.adoptSelected} (${selectedAdoptableUntrackedCount})`}
               </button>
+                ) : null}
+              </>
             ) : null
           }
           destructive={{
