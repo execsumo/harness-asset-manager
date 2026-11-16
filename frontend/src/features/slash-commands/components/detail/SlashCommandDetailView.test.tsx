@@ -78,6 +78,38 @@ describe("SlashCommandDetailView", () => {
     vi.unstubAllGlobals();
   });
 
+  it("adopts refreshed clean data and preserves an unsaved draft", () => {
+    const props = {
+      knownTags: ["review"],
+      targets: targetsFixture(),
+      pendingName: null,
+      pendingTarget: null,
+      onClose: vi.fn(),
+      onDelete: vi.fn(),
+      onToggleTarget: vi.fn(),
+    };
+    const view = renderWithAppProviders(
+      <SlashCommandDetailView {...props} command={commandFixture()} />,
+    );
+
+    view.rerender(
+      <SlashCommandDetailView
+        {...props}
+        command={commandFixture({ description: "Refreshed" })}
+      />,
+    );
+    expect(screen.getByLabelText("Description")).toHaveValue("Refreshed");
+
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Draft" } });
+    view.rerender(
+      <SlashCommandDetailView
+        {...props}
+        command={commandFixture({ description: "New refresh" })}
+      />,
+    );
+    expect(screen.getByLabelText("Description")).toHaveValue("Draft");
+  });
+
   it("renders command name, editable description and prompt, and tags", () => {
     renderWithAppProviders(
       <SlashCommandDetailView

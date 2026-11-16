@@ -1,5 +1,5 @@
 import { tagIdentity } from "../../../../components/tags/tag-identity";
-import { useEffect, useRef, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Star } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { setSkillArchived } from "../../api/client";
@@ -135,15 +135,17 @@ export function SkillDetailContent({
   const showHarnessSection = detail.harnessCells.length > 0;
 
   // Document & Frontmatter editing state
+  const [editBaseline, setEditBaseline] = useState(detail);
+
   const initialOtherEntries = useMemo<OtherFrontmatterEntry[]>(() => {
-    return (detail.metadata || [])
+    return (editBaseline.metadata || [])
       .filter((m) => m.key !== "name" && m.key !== "description")
       .map((m, idx) => ({
         id: `entry-${idx}-${m.key}`,
         key: m.key,
         value: m.value,
       }));
-  }, [detail.metadata]);
+  }, [editBaseline.metadata]);
 
   const [frontmatterMode, setFrontmatterMode] = useState<"structured" | "raw">("structured");
   const [name, setName] = useState(detail.name);
@@ -153,27 +155,6 @@ export function SkillDetailContent({
   const [bodyValue, setBodyValue] = useState(detail.documentMarkdown ?? "");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isDiscardDialogOpen, setDiscardDialogOpen] = useState(false);
-
-  // Sync with incoming detail when asset ref changes
-  const editingRef = useRef(detail.skillRef);
-
-  useEffect(() => {
-    if (editingRef.current === detail.skillRef) return;
-    editingRef.current = detail.skillRef;
-    setName(detail.name);
-    setDescription(detail.description);
-    setOtherEntries(
-      (detail.metadata || [])
-        .filter((m) => m.key !== "name" && m.key !== "description")
-        .map((m, idx) => ({
-          id: `entry-${idx}-${m.key}`,
-          key: m.key,
-          value: m.value,
-        })),
-    );
-    setBodyValue(detail.documentMarkdown ?? "");
-    setSaveError(null);
-  }, [detail]);
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [
@@ -195,9 +176,9 @@ export function SkillDetailContent({
 
   // Compute dirty status
   const isDirty = useMemo(() => {
-    if (name !== detail.name) return true;
-    if (description !== detail.description) return true;
-    if (bodyValue !== (detail.documentMarkdown ?? "")) return true;
+    if (name !== editBaseline.name) return true;
+    if (description !== editBaseline.description) return true;
+    if (bodyValue !== (editBaseline.documentMarkdown ?? "")) return true;
 
     if (otherEntries.length !== initialOtherEntries.length) return true;
     for (let i = 0; i < otherEntries.length; i++) {
@@ -209,7 +190,27 @@ export function SkillDetailContent({
       }
     }
     return false;
-  }, [name, description, bodyValue, otherEntries, detail, initialOtherEntries]);
+  }, [name, description, bodyValue, otherEntries, editBaseline, initialOtherEntries]);
+
+  useEffect(() => {
+    if (editBaseline === detail) return;
+    const changedAsset = editBaseline.skillRef !== detail.skillRef;
+    setEditBaseline(detail);
+    if (!changedAsset && isDirty) return;
+    setName(detail.name);
+    setDescription(detail.description);
+    setOtherEntries(
+      (detail.metadata || [])
+        .filter((m) => m.key !== "name" && m.key !== "description")
+        .map((m, idx) => ({
+          id: `entry-${idx}-${m.key}`,
+          key: m.key,
+          value: m.value,
+        })),
+    );
+    setBodyValue(detail.documentMarkdown ?? "");
+    setSaveError(null);
+  }, [detail, editBaseline, isDirty]);
 
   const handleCancelEdit = () => {
     setName(detail.name);
