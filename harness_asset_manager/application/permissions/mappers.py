@@ -5,6 +5,12 @@ from typing import Callable, Iterable, Mapping, Protocol
 
 from harness_asset_manager.errors import MutationError
 
+from .default_policy import (
+    PolicyRecord,
+    claim_default_policy,
+    owns_default_policy,
+    release_default_policy,
+)
 from .store import PermissionSpec
 
 
@@ -89,7 +95,20 @@ class PermissionMapper(Protocol):
 
     def read_entries(self, document: dict[str, object], specs: Iterable[PermissionSpec] = ()) -> list[RawPermissionEntry]: ...
 
-    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None: ...
+    def enable_permission(
+        self,
+        document: dict[str, object],
+        spec: PermissionSpec,
+        *,
+        policy: PolicyRecord | None = None,
+        legacy: bool = False,
+    ) -> PolicyRecord:
+        """Add the managed rule and claim only the default policy the user has not set.
+
+        Other decision lists and user rules are never touched. ``policy`` is the
+        harness's ownership record (updated and returned); see ``default_policy``.
+        """
+        ...
 
     def disable_permission(
         self,
@@ -98,12 +117,21 @@ class PermissionMapper(Protocol):
         pattern: str | None = None,
         *,
         spec: PermissionSpec | None = None,
+        policy: PolicyRecord | None = None,
     ) -> bool:
         """Remove only the rule the app wrote or adopted, and only policy it owns.
+
+        With a ``policy`` record, the defaults restored are exactly those it says the
+        app wrote; without one (state from before records existed) a default is
+        removed when it still holds the app's value.
 
         Returns whether anything changed; raises a 409 ``MutationError`` when the
         managed rule cannot be told apart from look-alikes.
         """
+        ...
+
+    def denylist_empty(self, document: Mapping[str, object]) -> bool:
+        """Whether no deny rule is left that the owned default policy serves."""
         ...
 
     def spec_to_dict(self, spec: PermissionSpec) -> dict[str, object]: ...
@@ -250,7 +278,14 @@ class ClaudeCodePermissionsMapper:
 
         return entries
 
-    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None:
+    def enable_permission(
+        self,
+        document: dict[str, object],
+        spec: PermissionSpec,
+        *,
+        policy: PolicyRecord | None = None,
+        legacy: bool = False,
+    ) -> PolicyRecord:
         if "permissions" not in document:
             document["permissions"] = {}
         permissions_subtree = document["permissions"]
@@ -260,7 +295,10 @@ class ClaudeCodePermissionsMapper:
         # A denylist is only useful as the sole policy when the harness does
         # not put unmatched requests back through its approval flow.  Deny
         # rules are evaluated before this mode, so recorded rules still block.
-        permissions_subtree["defaultMode"] = "bypassPermissions"
+        record: PolicyRecord = {} if policy is None else policy
+        claim_default_policy(
+            document, ("permissions", "defaultMode"), "bypassPermissions", record, legacy=legacy
+        )
 
         expected_rules = self.spec_to_dict(spec)["rules"]
 
@@ -275,15 +313,7 @@ class ClaudeCodePermissionsMapper:
             if rule not in target_list:
                 target_list.append(rule)
 
-        # Remove these rules from other decision arrays to avoid conflicts
-        for other_decision in ("allow", "deny", "ask"):
-            if other_decision == spec.decision:
-                continue
-            other_list = permissions_subtree.get(other_decision)
-            if isinstance(other_list, list):
-                permissions_subtree[other_decision] = [r for r in other_list if r not in expected_rules]
-                if not permissions_subtree[other_decision]:
-                    permissions_subtree.pop(other_decision, None)
+        return record
 
     def disable_permission(
         self,
@@ -292,6 +322,7 @@ class ClaudeCodePermissionsMapper:
         pattern: str | None = None,
         *,
         spec: PermissionSpec | None = None,
+        policy: PolicyRecord | None = None,
     ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
@@ -314,11 +345,18 @@ class ClaudeCodePermissionsMapper:
         # The mode is part of HAM's denylist adoption, not a permanent global
         # setting after the last deny rule is removed. A different value is the
         # user's own choice and stays.
-        if not permissions_subtree.get("deny") and permissions_subtree.get("defaultMode") == "bypassPermissions":
-            permissions_subtree.pop("defaultMode", None)
+        if self.denylist_empty(document):
+            if policy is not None:
+                release_default_policy(document, policy)
+            elif permissions_subtree.get("defaultMode") == "bypassPermissions":
+                permissions_subtree.pop("defaultMode", None)
         if not permissions_subtree:
             document.pop("permissions", None)
         return True
+
+    def denylist_empty(self, document: Mapping[str, object]) -> bool:
+        permissions_subtree = document.get("permissions")
+        return not (isinstance(permissions_subtree, Mapping) and permissions_subtree.get("deny"))
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Bash(") and rule.endswith(")"):
@@ -450,7 +488,14 @@ class AntigravityPermissionsMapper:
 
         return entries
 
-    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None:
+    def enable_permission(
+        self,
+        document: dict[str, object],
+        spec: PermissionSpec,
+        *,
+        policy: PolicyRecord | None = None,
+        legacy: bool = False,
+    ) -> PolicyRecord:
         if "permissions" not in document:
             document["permissions"] = {}
         permissions_subtree = document["permissions"]
@@ -460,7 +505,8 @@ class AntigravityPermissionsMapper:
         # Antigravity's request-review default prompts for unlisted actions.
         # always-proceed makes the deny list the only HAM-managed decision
         # boundary; native deny rules still take precedence.
-        document["toolPermission"] = "always-proceed"
+        record: PolicyRecord = {} if policy is None else policy
+        claim_default_policy(document, ("toolPermission",), "always-proceed", record, legacy=legacy)
 
         expected_rules = self.spec_to_dict(spec)["rules"]
 
@@ -474,14 +520,7 @@ class AntigravityPermissionsMapper:
             if rule not in target_list:
                 target_list.append(rule)
 
-        for other_decision in ("allow", "deny", "ask"):
-            if other_decision == spec.decision:
-                continue
-            other_list = permissions_subtree.get(other_decision)
-            if isinstance(other_list, list):
-                permissions_subtree[other_decision] = [r for r in other_list if r not in expected_rules]
-                if not permissions_subtree[other_decision]:
-                    permissions_subtree.pop(other_decision, None)
+        return record
 
     def disable_permission(
         self,
@@ -490,6 +529,7 @@ class AntigravityPermissionsMapper:
         pattern: str | None = None,
         *,
         spec: PermissionSpec | None = None,
+        policy: PolicyRecord | None = None,
     ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
@@ -511,9 +551,16 @@ class AntigravityPermissionsMapper:
 
         if not permissions_subtree:
             document.pop("permissions", None)
-        if not permissions_subtree.get("deny") and document.get("toolPermission") == "always-proceed":
-            document.pop("toolPermission", None)
+        if self.denylist_empty(document):
+            if policy is not None:
+                release_default_policy(document, policy)
+            elif document.get("toolPermission") == "always-proceed":
+                document.pop("toolPermission", None)
         return True
+
+    def denylist_empty(self, document: Mapping[str, object]) -> bool:
+        permissions_subtree = document.get("permissions")
+        return not (isinstance(permissions_subtree, Mapping) and permissions_subtree.get("deny"))
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("command(") and rule.endswith(")"):
@@ -650,13 +697,21 @@ class CursorPermissionsMapper:
 
         return entries
 
-    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None:
+    def enable_permission(
+        self,
+        document: dict[str, object],
+        spec: PermissionSpec,
+        *,
+        policy: PolicyRecord | None = None,
+        legacy: bool = False,
+    ) -> PolicyRecord:
         document.setdefault("version", 1)
         editor = document.setdefault("editor", {})
         if isinstance(editor, dict):
             editor.setdefault("vimMode", False)
 
-        document["approvalMode"] = "unrestricted"
+        record: PolicyRecord = {} if policy is None else policy
+        claim_default_policy(document, ("approvalMode",), "unrestricted", record, legacy=legacy)
 
         if "permissions" not in document:
             document["permissions"] = {}
@@ -674,6 +729,7 @@ class CursorPermissionsMapper:
         for rule in expected_rules:
             if rule not in target_list:
                 target_list.append(rule)
+        return record
 
     def disable_permission(
         self,
@@ -682,6 +738,7 @@ class CursorPermissionsMapper:
         pattern: str | None = None,
         *,
         spec: PermissionSpec | None = None,
+        policy: PolicyRecord | None = None,
     ) -> bool:
         permissions_subtree = document.get("permissions")
         if not isinstance(permissions_subtree, dict):
@@ -703,9 +760,16 @@ class CursorPermissionsMapper:
 
         if not permissions_subtree:
             document.pop("permissions", None)
-        if not permissions_subtree.get("deny") and document.get("approvalMode") == "unrestricted":
-            document.pop("approvalMode", None)
+        if self.denylist_empty(document):
+            if policy is not None:
+                release_default_policy(document, policy)
+            elif document.get("approvalMode") == "unrestricted":
+                document.pop("approvalMode", None)
         return True
+
+    def denylist_empty(self, document: Mapping[str, object]) -> bool:
+        permissions_subtree = document.get("permissions")
+        return not (isinstance(permissions_subtree, Mapping) and permissions_subtree.get("deny"))
 
     def _parse_rule_string(self, rule: str) -> tuple[str, str | None]:
         if rule.startswith("Shell(") and rule.endswith(")"):
@@ -836,7 +900,14 @@ class CodexPermissionsMapper:
 
         return entries
 
-    def enable_permission(self, document: dict[str, object], spec: PermissionSpec) -> None:
+    def enable_permission(
+        self,
+        document: dict[str, object],
+        spec: PermissionSpec,
+        *,
+        policy: PolicyRecord | None = None,
+        legacy: bool = False,
+    ) -> PolicyRecord:
         if "permissions" not in document:
             document["permissions"] = {}
         perms = document["permissions"]
@@ -845,9 +916,14 @@ class CodexPermissionsMapper:
 
         # Activate HAM's profile and disable approval prompts.  Without
         # default_permissions, Codex merely stores this profile and continues
-        # using its normal approval/sandbox defaults.
-        document["approval_policy"] = "never"
-        document["default_permissions"] = "harness-asset-manager"
+        # using its normal approval/sandbox defaults.  The two go together: with
+        # the user's own profile active, turning prompts off would drop their
+        # approval flow while none of HAM's rules apply.
+        record: PolicyRecord = {} if policy is None else policy
+        if claim_default_policy(
+            document, ("default_permissions",), "harness-asset-manager", record, legacy=legacy
+        ):
+            claim_default_policy(document, ("approval_policy",), "never", record, legacy=legacy)
         if "harness-asset-manager" not in perms:
             perms["harness-asset-manager"] = {"extends": ":workspace"}
         sm_profile = perms["harness-asset-manager"]
@@ -888,6 +964,7 @@ class CodexPermissionsMapper:
             doms = network["domains"]
             assert isinstance(doms, dict)
             doms[spec.pattern] = "allow" if spec.decision == "allow" else "deny"
+        return record
 
     def disable_permission(
         self,
@@ -896,6 +973,7 @@ class CodexPermissionsMapper:
         pattern: str | None = None,
         *,
         spec: PermissionSpec | None = None,
+        policy: PolicyRecord | None = None,
     ) -> bool:
         perms = document.get("permissions")
         if not isinstance(perms, dict):
@@ -938,11 +1016,20 @@ class CodexPermissionsMapper:
         # The app activates its profile and turns off approval prompts together. If
         # the user has since pointed default_permissions elsewhere, both settings are
         # theirs now.
-        if "harness-asset-manager" not in perms and document.get("default_permissions") == "harness-asset-manager":
+        if "harness-asset-manager" in perms:
+            return True
+        if policy is not None:
+            if owns_default_policy(policy, ("default_permissions",)):
+                release_default_policy(document, policy)
+        elif document.get("default_permissions") == "harness-asset-manager":
             document.pop("default_permissions", None)
             if document.get("approval_policy") == "never":
                 document.pop("approval_policy", None)
         return True
+
+    def denylist_empty(self, document: Mapping[str, object]) -> bool:
+        perms = document.get("permissions")
+        return not (isinstance(perms, Mapping) and "harness-asset-manager" in perms)
 
     def _managed_rule(
         self,

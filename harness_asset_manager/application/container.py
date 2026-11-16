@@ -63,6 +63,7 @@ from .permissions import (
     PermissionsReadModelService,
     PermissionStore,
 )
+from .permissions.default_policy import default_policy_path
 from .scaffold import ScaffoldService
 from .settings import AutoAdoptStore, SettingsMutationService, SettingsQueryService
 from .skills import SkillsMutationService, SkillsQueryService
@@ -574,6 +575,7 @@ def build_backend_container(
     permissions_tracker = MutationPathTracker(
         lambda: (
             (paths.permissions_store_manifest, False),
+            (default_policy_path(paths.permissions_store_manifest), False),
             (paths.asset_archive_path, False),
             (paths.asset_tags_path, False),
             *((adapter.config_path, False) for adapter in permissions_read_models.adapters),

@@ -255,17 +255,32 @@ class CursorPermissionsMapperTests(unittest.TestCase):
 
     def test_enable_sets_approval_mode_and_disable_cleans_it_up(self) -> None:
         mapper = CursorPermissionsMapper()
+        doc = {"version": 1}
+        spec = PermissionSpec("p-read", "deny", "file_read", "~/.zshrc")
+        policy = mapper.enable_permission(doc, spec)
+        self.assertEqual(doc["approvalMode"], "unrestricted")
+        self.assertEqual(policy, {"approvalMode": {"written": "unrestricted"}})
+
+        mapper.disable_permission(doc, spec.id, spec.pattern, policy=policy)
+        self.assertNotIn("permissions", doc)
+        self.assertNotIn("approvalMode", doc)
+
+    def test_enable_keeps_the_users_approval_mode(self) -> None:
+        # Enable used to overwrite the user's mode with its own; it now leaves it and
+        # records it, so disable restores exactly what was there.
+        mapper = CursorPermissionsMapper()
         doc = {
             "version": 1,
             "approvalMode": "auto-review",
         }
         spec = PermissionSpec("p-read", "deny", "file_read", "~/.zshrc")
-        mapper.enable_permission(doc, spec)
-        self.assertEqual(doc["approvalMode"], "unrestricted")
+        policy = mapper.enable_permission(doc, spec)
+        self.assertEqual(doc["approvalMode"], "auto-review")
+        self.assertEqual(policy, {"approvalMode": {"previous": "auto-review"}})
 
-        mapper.disable_permission(doc, spec.id, spec.pattern)
+        mapper.disable_permission(doc, spec.id, spec.pattern, policy=policy)
         self.assertNotIn("permissions", doc)
-        self.assertNotIn("approvalMode", doc)
+        self.assertEqual(doc["approvalMode"], "auto-review")
 
     def test_unmanaged_manual_rule_is_readable(self) -> None:
         mapper = CursorPermissionsMapper()

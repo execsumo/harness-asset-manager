@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Iterable, Mapping, Protocol
+from typing import Callable, Iterable, Mapping, Protocol
 
 from harness_asset_manager.errors import MutationError
 
@@ -35,6 +35,29 @@ def _ambiguous_hook(id: str, locations: list[str]) -> MutationError:
         "then retry.",
         status=409,
     )
+
+
+def _upsert_hook(
+    hook_list: list[object],
+    payload: dict[str, object],
+    *,
+    id: str,
+    location: str,
+    matches: Callable[[object], bool],
+) -> None:
+    """Write the managed hook into ``hook_list`` and nowhere else.
+
+    The one occurrence that ``matches`` is replaced in place, so a re-enable repairs
+    drift; with none it is appended. Entries under other events are never looked at:
+    the same command there is a separate user hook.
+    """
+    found = [index for index, hook in enumerate(hook_list) if matches(hook)]
+    if len(found) > 1:
+        raise _ambiguous_hook(id, [f"{location}[{index}]" for index in found])
+    if found:
+        hook_list[found[0]] = payload
+    else:
+        hook_list.append(payload)
 
 
 def _single_target(id: str, targets: list[tuple[str, ...]]) -> tuple[str, ...] | None:
@@ -484,17 +507,13 @@ class CursorHooksMapper:
         if not isinstance(hook_list, list):
             raise MutationError(f"The hook event '{native_event}' is not an array", status=409)
 
-        hook_list = [h for h in hook_list if not (isinstance(h, dict) and h.get("command") == spec.command)]
-        hook_list.append(self.spec_to_dict(spec))
-        hooks_subtree[native_event] = hook_list
-
-        for ev, ev_list in list(hooks_subtree.items()):
-            if ev == native_event:
-                continue
-            if isinstance(ev_list, list):
-                hooks_subtree[ev] = [h for h in ev_list if not (isinstance(h, dict) and h.get("command") == spec.command)]
-                if not hooks_subtree[ev]:
-                    hooks_subtree.pop(ev, None)
+        _upsert_hook(
+            hook_list,
+            self.spec_to_dict(spec),
+            id=spec.id,
+            location=native_event,
+            matches=lambda hook: isinstance(hook, dict) and hook.get("command") == spec.command,
+        )
 
     def disable_hook(
         self,
@@ -674,25 +693,22 @@ class OpenCodeHooksMapper:
 
         hook_payload = self.spec_to_dict(spec)
 
+        def same_command(hook: object) -> bool:
+            return isinstance(hook, dict) and hook.get("command") == hook_payload["command"]
+
         if spec.event == "stop":
             if "session_completed" not in hook_subtree:
                 hook_subtree["session_completed"] = []
             session_completed = hook_subtree["session_completed"]
             if not isinstance(session_completed, list):
                 raise MutationError("The 'experimental.hook.session_completed' key is not an array", status=409)
-            session_completed = [h for h in session_completed if not (isinstance(h, dict) and h.get("command") == hook_payload["command"])]
-            session_completed.append(hook_payload)
-            hook_subtree["session_completed"] = session_completed
-
-            file_edited = hook_subtree.get("file_edited")
-            if isinstance(file_edited, dict):
-                for glob, hook_list in list(file_edited.items()):
-                    if isinstance(hook_list, list):
-                        file_edited[glob] = [h for h in hook_list if not (isinstance(h, dict) and h.get("command") == hook_payload["command"])]
-                        if not file_edited[glob]:
-                            file_edited.pop(glob, None)
-                if not file_edited:
-                    hook_subtree.pop("file_edited", None)
+            _upsert_hook(
+                session_completed,
+                hook_payload,
+                id=spec.id,
+                location="session_completed",
+                matches=same_command,
+            )
 
         elif spec.event == "post_tool_use" and spec.match == "file_write":
             if "file_edited" not in hook_subtree:
@@ -705,15 +721,13 @@ class OpenCodeHooksMapper:
             hook_list = file_edited["*"]
             if not isinstance(hook_list, list):
                 raise MutationError("The 'experimental.hook.file_edited.*' key is not an array", status=409)
-            hook_list = [h for h in hook_list if not (isinstance(h, dict) and h.get("command") == hook_payload["command"])]
-            hook_list.append(hook_payload)
-            file_edited["*"] = hook_list
-
-            session_completed = hook_subtree.get("session_completed")
-            if isinstance(session_completed, list):
-                hook_subtree["session_completed"] = [h for h in session_completed if not (isinstance(h, dict) and h.get("command") == hook_payload["command"])]
-                if not hook_subtree["session_completed"]:
-                    hook_subtree.pop("session_completed", None)
+            _upsert_hook(
+                hook_list,
+                hook_payload,
+                id=spec.id,
+                location="file_edited[*]",
+                matches=same_command,
+            )
         else:
             raise MutationError(f"Unsupported event for OpenCode: {spec.event}", status=400)
 

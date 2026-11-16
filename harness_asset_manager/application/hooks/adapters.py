@@ -213,7 +213,7 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
             pass
         return any(raw.id == id for raw in self._read_entries(specs))
 
-    def enable_hook(self, spec: HookSpec) -> None:
+    def enable_hook(self, spec: HookSpec, *, replaces: HookSpec | None = None) -> None:
         is_repr, reason, caveat = self._mapper.representable(spec)
         if not is_repr:
             raise MutationError(f"Hook not supported on {self.label}: {reason}", status=400)
@@ -221,6 +221,8 @@ class FileBackedHooksAdapter(HookHarnessAdapter):
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
+            if replaces is not None:
+                self._mapper.disable_hook(document, spec.id, replaces)
             self._mapper.enable_hook(document, spec)
             atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 

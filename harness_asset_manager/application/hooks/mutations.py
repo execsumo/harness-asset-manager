@@ -194,6 +194,7 @@ class HooksMutationService:
             else self._harnesses_in_states(id, {"managed", "drifted"})
         )
         
+        replaces: HookSpec | None = None
         if source_kind == "managed":
             source_spec = current
         elif source_kind == "harness":
@@ -206,12 +207,22 @@ class HooksMutationService:
                 description=current.description,
             )
             self.store.upsert_managed(source_spec)
+            # Enable writes only at the new location. When the hook moved, the old
+            # managed occurrence is removed by the record that located it, so a user
+            # hook with the same command elsewhere is never taken for it.
+            if (current.event, current.match, current.command) != (
+                source_spec.event,
+                source_spec.match,
+                source_spec.command,
+            ):
+                replaces = current
         else:
             raise MutationError("sourceKind must be 'managed' or 'harness'", status=400)
 
         result = self.harness_application.enable_many(
             source_spec,
             target_harnesses,
+            replaces=replaces,
         )
         for h in result.succeeded:
             self._record_binding(id, h, bound=True)

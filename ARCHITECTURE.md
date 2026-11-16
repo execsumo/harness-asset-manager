@@ -106,7 +106,7 @@ Harness Asset Manager manages six core extension families:
 - **Storage**: Deny rules in `permissions/manifest.json`.
 - **Supported Scope Types**: `shell` (command prefix), `file_read` / `file_write` (path globs), `web` (domain names), `mcp` (`server/tool` or `server`).
 - **Denylist-ONLY Policy**: HAM operates exclusively as a **Denylist Manager**. `allow` and `ask` decisions are unsupported.
-- **Unlisted actions**: Adopting a denylist also switches each harness to its native no-prompt/auto-execute default, so only HAM-recorded deny rules stop execution. Claude uses `bypassPermissions`, Antigravity uses `always-proceed`, Codex activates an `approval_policy = "never"` workspace profile, and Cursor sets `approvalMode = "unrestricted"`.
+- **Unlisted actions**: Adopting a denylist also switches each harness to its native no-prompt/auto-execute default, so only HAM-recorded deny rules stop execution. Claude uses `bypassPermissions`, Antigravity uses `always-proceed`, Codex activates an `approval_policy = "never"` workspace profile, and Cursor sets `approvalMode = "unrestricted"`. These defaults are written only when unset; a value the user already chose is kept. What each held before and what HAM wrote is recorded in `permissions/default-policy.json`, so disabling the last rule restores exactly that (see `docs/archive-limitations.md`).
 - **Harness Sync**:
   - **Claude Code**: Written into `permissions.deny` in `~/.claude/settings.json`.
   - **Antigravity (AGY)**: Written into `permissions.deny` in `~/.gemini/antigravity-cli/settings.json`.
