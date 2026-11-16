@@ -35,7 +35,7 @@ def skills_page_payload(
         "summary": counts,
         "harnessColumns": [column_payload(column) for column in inventory.columns],
         "agentOptions": [
-            {"ref": attachment.ref, "name": attachment.name}
+            {"ref": attachment.ref, "name": attachment.name, "role": attachment.role}
             for attachment in (agent_options or ())
         ],
         "rows": [
@@ -67,7 +67,7 @@ def skill_detail_payload(
         "displayStatus": display_status(entry),
         "attentionMessage": attention_message(entry),
         "tags": tags or [],
-        "agents": [{"ref": a.ref, "name": a.name} for a in (agents or [])],
+        "agents": [{"ref": a.ref, "name": a.name, "role": a.role} for a in (agents or [])],
         "actions": {
             "canManage": can_manage(entry),
             "stopManagingStatus": stop_managing_status_payload(entry),
@@ -113,7 +113,7 @@ def row_payload(
         "description": entry.description,
         "displayStatus": display_status(entry),
         "tags": tags or [],
-        "agents": [{"ref": a.ref, "name": a.name} for a in (agents or [])],
+        "agents": [{"ref": a.ref, "name": a.name, "role": a.role} for a in (agents or [])],
         "actions": {
             "canManage": can_manage(entry),
             "canStopManaging": stop_managing_status(entry) == "available",

@@ -23,6 +23,7 @@ import { SkillsEmptyState } from "../components/pane/SkillsEmptyState";
 import { useSkillsCopy } from "../i18n";
 import {
   extractSkillAgentCounts,
+  sortByAgentLabel,
   extractSkillTagCounts,
   filterSkills,
   skillsStatusCounts,
@@ -108,13 +109,11 @@ export default function SkillsWorkspacePage() {
 
   // URL-backed agent filters (?agent=)
   const selectedAgents = useMemo(() => searchParams.getAll("agent"), [searchParams]);
-  // Filter options: only agents that actually carry a skill (with counts).
+  // Filter options: every adopted agent, with how many skills each carries.
   const knownAgents = useMemo(() => extractSkillAgentCounts(data), [data]);
-  // Bulk attach/detach vocabulary: every adopted agent. Deliberately NOT the
-  // filter options above - those only list agents that already carry a skill,
-  // so reusing them here left the popover empty until something was already
-  // attached, which made the first attach impossible.
-  const agentOptions = useMemo(() => data?.agentOptions ?? [], [data]);
+  // Bulk attach/detach vocabulary: every adopted agent, straight from the
+  // roster rather than the row attachments, so the first attach is possible.
+  const agentOptions = useMemo(() => sortByAgentLabel(data?.agentOptions ?? []), [data]);
 
   const toggleAgentFilter = useCallback(
     (agentRef: string) => {

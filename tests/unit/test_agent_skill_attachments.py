@@ -17,7 +17,7 @@ class TestAgentSkillAttachments(unittest.TestCase):
             store_dir.mkdir(parents=True, exist_ok=True)
             
             (store_dir / "agent1.md").write_text("---\nname: Agent 1\nskills:\n  - skill-a\n  - skill-b\n---\nbody")
-            (store_dir / "agent2.md").write_text("---\nname: Agent 2\nskills:\n  - skill-b\n  - skill-c\n---\nbody")
+            (store_dir / "agent2.md").write_text("---\nname: Agent 2\nrole: Reviewer\nskills:\n  - skill-b\n  - skill-c\n---\nbody")
             (store_dir / "agent3.md").write_text("---\nname: Agent 3\nskills: []\n---\nbody")
             
             store = AgentStore(store_dir, lambda _: [])
@@ -28,6 +28,7 @@ class TestAgentSkillAttachments(unittest.TestCase):
             self.assertEqual(len(attachments["skill-a"]), 1)
             self.assertEqual(attachments["skill-a"][0].ref, "agent1")
             self.assertEqual(attachments["skill-a"][0].name, "Agent 1")
+            self.assertIsNone(attachments["skill-a"][0].role)
             
             self.assertEqual(len(attachments["skill-b"]), 2)
             refs = {a.ref for a in attachments["skill-b"]}
@@ -35,6 +36,7 @@ class TestAgentSkillAttachments(unittest.TestCase):
             
             self.assertEqual(len(attachments["skill-c"]), 1)
             self.assertEqual(attachments["skill-c"][0].ref, "agent2")
+            self.assertEqual(attachments["skill-c"][0].role, "Reviewer")
 
     def test_skill_attachments_empty_store(self) -> None:
         with AppTestHarness() as harness:
@@ -86,11 +88,16 @@ class TestAgentSkillAttachments(unittest.TestCase):
             store_dir = harness.spec.agents_root
             store_dir.mkdir(parents=True, exist_ok=True)
             (store_dir / "lonely.md").write_text("---\nname: Lonely\n---\nbody")
+            (store_dir / "scout.md").write_text("---\nname: Scout\nrole: Researcher\n---\nbody")
 
             payload = harness.get_json("/api/skills")
             self.assertIn("agentOptions", payload)
             self.assertIn(
-                {"ref": "lonely", "name": "Lonely"},
+                {"ref": "lonely", "name": "Lonely", "role": None},
+                payload["agentOptions"],
+            )
+            self.assertIn(
+                {"ref": "scout", "name": "Scout", "role": "Researcher"},
                 payload["agentOptions"],
             )
             self.assertTrue(all(not row.get("agents") for row in payload["rows"]))

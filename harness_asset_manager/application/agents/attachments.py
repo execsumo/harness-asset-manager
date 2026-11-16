@@ -7,6 +7,7 @@ from harness_asset_manager.application.agents.store import AgentStore
 class AgentAttachment:
     ref: str
     name: str
+    role: str | None = None
 
 
 def skill_attachments(store: AgentStore) -> dict[str, tuple[AgentAttachment, ...]]:
@@ -20,7 +21,7 @@ def skill_attachments(store: AgentStore) -> dict[str, tuple[AgentAttachment, ...
     attachments: dict[str, list[AgentAttachment]] = {}
 
     for agent in agents:
-        att = AgentAttachment(ref=agent.ref, name=agent.name)
+        att = AgentAttachment(ref=agent.ref, name=agent.name, role=agent.role)
         for skill in agent.skills:
             if skill not in attachments:
                 attachments[skill] = []
@@ -40,7 +41,7 @@ def agent_roster(store: AgentStore) -> tuple[AgentAttachment, ...]:
     agents, _issues = store.scan()
     return tuple(
         sorted(
-            (AgentAttachment(ref=agent.ref, name=agent.name) for agent in agents),
+            (AgentAttachment(ref=agent.ref, name=agent.name, role=agent.role) for agent in agents),
             key=lambda attachment: (attachment.name.casefold(), attachment.ref),
         )
     )

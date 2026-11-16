@@ -110,8 +110,24 @@ describe("skills workspace model", () => {
   it("extracts unique agent counts sorted by name", () => {
     const agentCounts = extractSkillAgentCounts(data);
     expect(agentCounts).toEqual([
-      { ref: "agent1", name: "Agent 1", count: 2 },
-      { ref: "agent2", name: "Agent 2", count: 2 },
+      { ref: "agent1", name: "Agent 1", role: null, count: 2 },
+      { ref: "agent2", name: "Agent 2", role: null, count: 2 },
+    ]);
+  });
+
+  it("lists every roster agent with its role, including agents with no skills", () => {
+    const withRoster = {
+      ...data,
+      agentOptions: [
+        { ref: "agent1", name: "Agent 1", role: "Reviewer" },
+        { ref: "agent2", name: "Agent 2", role: null },
+        { ref: "idle", name: "Idle", role: "Builder" },
+      ],
+    } as SkillsWorkspaceData;
+    expect(extractSkillAgentCounts(withRoster)).toEqual([
+      { ref: "agent2", name: "Agent 2", role: null, count: 2 },
+      { ref: "idle", name: "Idle", role: "Builder", count: 0 },
+      { ref: "agent1", name: "Agent 1", role: "Reviewer", count: 2 },
     ]);
   });
 

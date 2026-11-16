@@ -1,5 +1,6 @@
 import { extractAssetTagCounts, matchesAssetTags } from "../../../components/tags/tag-counts";
 import { skillStatusConcept } from "../../../lib/product-language";
+import { agentLabel, type AgentLabelSource } from "../../../lib/agent-label";
 import type { HarnessCellState, HarnessColumn, SkillListRow, SkillsWorkspaceData } from "./types";
 
 export interface SkillsInUseFilterState {
@@ -105,9 +106,22 @@ function matchesAgents(row: SkillListRow, agents: string[] | null | undefined): 
   return agents.some((agent) => rowAgents.includes(agent));
 }
 
-export function extractSkillAgentCounts(data: SkillsWorkspaceData | null): { ref: string; name: string; count: number }[] {
+export interface SkillAgentCount {
+  ref: string;
+  name: string;
+  role?: string | null;
+  count: number;
+}
+
+// Every managed agent, not just the ones that already carry a skill: an agent
+// with no skills still shows (count 0) so the roster is visible from here.
+export function extractSkillAgentCounts(data: SkillsWorkspaceData | null): SkillAgentCount[] {
   if (!data) return [];
-  const countsMap = new Map<string, { ref: string; name: string; count: number }>();
+  const countsMap = new Map<string, SkillAgentCount>();
+
+  for (const agent of data.agentOptions || []) {
+    countsMap.set(agent.ref, { ref: agent.ref, name: agent.name, role: agent.role ?? null, count: 0 });
+  }
 
   for (const row of data.rows) {
     const seenInRow = new Set<string>();
@@ -119,12 +133,16 @@ export function extractSkillAgentCounts(data: SkillsWorkspaceData | null): { ref
       if (existing) {
         existing.count += 1;
       } else {
-        countsMap.set(agent.ref, { ref: agent.ref, name: agent.name, count: 1 });
+        countsMap.set(agent.ref, { ref: agent.ref, name: agent.name, role: agent.role ?? null, count: 1 });
       }
     }
   }
 
-  return Array.from(countsMap.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return sortByAgentLabel(Array.from(countsMap.values()));
+}
+
+export function sortByAgentLabel<T extends AgentLabelSource>(agents: T[]): T[] {
+  return [...agents].sort((a, b) => agentLabel(a).localeCompare(agentLabel(b), undefined, { sensitivity: "base" }));
 }
 
 export function extractSkillTagCounts(data: SkillsWorkspaceData | null): SkillTagCount[] {

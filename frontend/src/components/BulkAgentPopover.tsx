@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { Check, CircleSlash2, ChevronDown, UserSquare2 } from "lucide-react";
 
+import { agentLabel } from "../lib/agent-label";
 import { LoadingSpinner } from "./LoadingSpinner";
 
 export interface AgentAttachmentInfo {
   ref: string;
   name: string;
+  role?: string | null;
 }
 
 export interface BulkAgentPopoverProps {
@@ -110,6 +112,7 @@ export function BulkAgentPopover({
               <ul className="bulk-agent-popover__list">
                 {knownAgents.map((agent) => {
                   const isStaged = stagedRefs.has(agent.ref);
+                  const label = agentLabel(agent);
                   return (
                     <li key={agent.ref}>
                       <label className="bulk-agent-popover__item">
@@ -119,11 +122,11 @@ export function BulkAgentPopover({
                             className="bulk-agent-popover__checkbox"
                             checked={isStaged}
                             onChange={() => toggleAgent(agent.ref)}
-                            aria-label={agent.name}
+                            aria-label={label}
                             disabled={pending}
                           />
                         </span>
-                        <span className="bulk-agent-popover__label">{agent.name}</span>
+                        <span className="bulk-agent-popover__label">{label}</span>
                       </label>
                     </li>
                   );

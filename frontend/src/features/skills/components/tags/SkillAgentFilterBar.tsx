@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, Search, X } from "lucide-react";
 
-interface SkillAgentCount {
-  ref: string;
-  name: string;
-  count: number;
-}
+import { agentLabel } from "../../../../lib/agent-label";
+import type { SkillAgentCount } from "../../model/selectors";
 
 interface SkillAgentFilterBarProps {
   agents: SkillAgentCount[];
@@ -44,7 +41,7 @@ export function SkillAgentFilterBar({
   }, []);
 
   const filteredAgents = filterQuery.trim()
-    ? agents.filter((t) => t.name.toLowerCase().includes(filterQuery.trim().toLowerCase()))
+    ? agents.filter((t) => agentLabel(t).toLowerCase().includes(filterQuery.trim().toLowerCase()))
     : agents;
 
   if (agents.length === 0 && selectedAgents.length === 0) {
@@ -66,7 +63,7 @@ export function SkillAgentFilterBar({
               aria-pressed={isSelected}
             >
               <Bot size={13} className="skill-tag-chip__icon" style={{ marginRight: '4px' }} />
-              <span>{item.name}</span>
+              <span>{agentLabel(item)}</span>
               <span className="skill-tag-chip__count">{item.count}</span>
             </button>
           );
