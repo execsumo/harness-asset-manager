@@ -436,7 +436,11 @@ class McpCommandTests(CliCommandTestCase):
         self.assertEqual(self.run_json("mcp", "list")["entries"], [])
         self.assertEqual(self.run_json("mcp", "unmanaged")["servers"], [])
 
-    def test_adopt_disable_enable_preserves_unknown_entry_fields(self) -> None:
+    @mock.patch(
+        "harness_asset_manager.application.mcp.marketplace.client.McpRegistryClient.fetch_json",
+        side_effect=AssertionError("adopted MCP commands must stay offline"),
+    )
+    def test_adopt_disable_enable_preserves_unknown_entry_fields(self, registry_fetch) -> None:
         config_path = self.spec.home / ".claude.json"
         config_path.write_text(
             json.dumps(
@@ -465,6 +469,7 @@ class McpCommandTests(CliCommandTestCase):
         entry = json.loads(config_path.read_text(encoding="utf-8"))["mcpServers"]["exa"]
         self.assertIs(entry["disabled"], True)
         self.assertEqual(entry["autoApprove"], ["read"])
+        registry_fetch.assert_not_called()
 
 
 if __name__ == "__main__":

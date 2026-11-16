@@ -42,7 +42,7 @@ export function useAgentsController() {
           await enableMutation.mutateAsync({ ref, harness });
         }
       } catch (err) {
-        setActionErrorMessage(err instanceof Error ? (err as any).error || err.toString() : "Failed to toggle harness");
+        setActionErrorMessage(err instanceof Error ? err.message || err.toString() : "Failed to toggle harness");
         if (rethrow) throw err;
       } finally {
         setPendingPerHarnessKeys((curr) => {

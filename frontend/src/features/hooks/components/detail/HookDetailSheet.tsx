@@ -1,3 +1,4 @@
+import type { HookInventoryColumnDto } from "../../api/management-types";
 import { tagIdentity } from "../../../../components/tags/tag-identity";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, Star, Trash2 } from "lucide-react";
@@ -25,7 +26,7 @@ import { isHooksHarnessAddressable } from "../../model/selectors";
 interface HookDetailSheetProps {
   id: string | null;
   knownTags?: string[];
-  columns: any[];
+  columns: HookInventoryColumnDto[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;
   isUninstalling: boolean;

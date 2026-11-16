@@ -31,6 +31,15 @@ npm run build
 
 If your change touches only one area, include the narrower command you ran in the PR description.
 
+## Dependency security
+
+Run `npm audit` to include development tools as well as production dependencies.
+The scoped `@typescript-eslint/typescript-estree` override selects minimatch 11.0.8+
+to fix GHSA-g3hv-75wg-m249 while typescript-eslint still requests minimatch 10.
+Remove the override once typescript-eslint declares a patched version itself.
+Its project-service glob matcher uses the same named API; lint and type checks
+must pass when changing this override.
+
 ## Pull request expectations
 
 - keep the change focused and avoid mixing unrelated cleanup

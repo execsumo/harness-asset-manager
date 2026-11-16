@@ -269,7 +269,7 @@ describe("AgentsInUsePage", () => {
     });
 
     it("toggles a harness from the detail view issues /agents/{ref}/enable", async () => {
-      let capturedBody: any;
+      let capturedBody: Record<string, unknown> | undefined;
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
         if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());
@@ -299,7 +299,7 @@ describe("AgentsInUsePage", () => {
     });
 
     it("editing fields in the document section saves via PUT /api/agents/{ref}", async () => {
-      let capturedBody: any;
+      let capturedBody: Record<string, unknown> | undefined;
       fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
         if (url === "/api/agents?include_archived=true") return okJson(agentsInUseFixture());

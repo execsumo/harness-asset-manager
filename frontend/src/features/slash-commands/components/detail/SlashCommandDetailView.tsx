@@ -1,5 +1,5 @@
 import { tagIdentity } from "../../../../components/tags/tag-identity";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useRef, useId, useMemo, useState } from "react";
 import { Loader2, Star, Trash2 } from "lucide-react";
 
 import { DetailBindingIdentity } from "../../../../components/detail/DetailBindingIdentity";
@@ -137,7 +137,11 @@ export function SlashCommandDetailView({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
 
+  const editingRef = useRef(command.name);
+
   useEffect(() => {
+    if (editingRef.current === command.name) return;
+    editingRef.current = command.name;
     setDescription(command.description);
     setPrompt(command.prompt);
     setOtherEntries(
@@ -148,7 +152,7 @@ export function SlashCommandDetailView({
       })),
     );
     setSaveError(null);
-  }, [command.name]);
+  }, [command]);
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [

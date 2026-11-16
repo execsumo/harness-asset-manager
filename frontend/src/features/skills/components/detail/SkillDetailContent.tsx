@@ -1,5 +1,5 @@
 import { tagIdentity } from "../../../../components/tags/tag-identity";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useRef, useId, useMemo, useState } from "react";
 import { Star } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { setSkillArchived } from "../../api/client";
@@ -155,7 +155,11 @@ export function SkillDetailContent({
   const [isDiscardDialogOpen, setDiscardDialogOpen] = useState(false);
 
   // Sync with incoming detail when asset ref changes
+  const editingRef = useRef(detail.skillRef);
+
   useEffect(() => {
+    if (editingRef.current === detail.skillRef) return;
+    editingRef.current = detail.skillRef;
     setName(detail.name);
     setDescription(detail.description);
     setOtherEntries(
@@ -169,7 +173,7 @@ export function SkillDetailContent({
     );
     setBodyValue(detail.documentMarkdown ?? "");
     setSaveError(null);
-  }, [detail.skillRef]);
+  }, [detail]);
 
   const knownFields: KnownFieldConfig[] = useMemo(
     () => [

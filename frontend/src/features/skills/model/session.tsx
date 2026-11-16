@@ -128,8 +128,9 @@ export function useSkillsTabScroll(
   }, [tab]);
 
   useLayoutEffect(() => {
+    const scrollElement = scrollRef.current;
     return () => {
-      const nextScrollTop = scrollRef.current?.scrollTop ?? 0;
+      const nextScrollTop = scrollElement?.scrollTop ?? 0;
       context.setScrollPosition(tab, nextScrollTop);
     };
   }, [context, scrollRef, tab]);

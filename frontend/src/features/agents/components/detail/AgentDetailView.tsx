@@ -28,7 +28,7 @@ export function AgentDetailView({
   const fallbackHeadingId = useId();
   const { data: detail, isLoading, error } = useAgentDetailQuery(agentRef);
   
-  const queryErrorMessage = error ? (error as any).message || "Failed to load agent" : null;
+  const queryErrorMessage = error ? error.message || "Failed to load agent" : null;
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   if (isLoading) {

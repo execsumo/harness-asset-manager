@@ -1,3 +1,4 @@
+import type { PermissionInventoryColumnDto } from "../../api/management-types";
 import { tagIdentity } from "../../../../components/tags/tag-identity";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Loader2, Star, Trash2 } from "lucide-react";
@@ -25,7 +26,7 @@ import { isPermissionsHarnessAddressable } from "../../model/selectors";
 interface PermissionDetailSheetProps {
   id: string | null;
   knownTags?: string[];
-  columns: any[];
+  columns: PermissionInventoryColumnDto[];
   pendingPerHarness: ReadonlySet<string>;
   isServerPending: boolean;
   isUninstalling: boolean;

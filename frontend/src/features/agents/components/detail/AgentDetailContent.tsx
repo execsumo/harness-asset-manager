@@ -1,6 +1,6 @@
 import { tagIdentity } from "../../../../components/tags/tag-identity";
 import "../../agents.css";
-import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useId, useMemo, useState } from "react";
 import { Loader2, Star } from "lucide-react";
 import { DetailHeader } from "../../../../components/detail/DetailHeader";
 import { DetailSection } from "../../../../components/detail/DetailSection";
@@ -227,7 +227,11 @@ export function AgentDetailContent({
   const hermesProviders = hermesOptionsQuery.data?.providers ?? [];
   const hermesProviderOptions = hermesProviders.map((provider) => provider.id);
 
+  const editingRef = useRef(detail.ref);
+
   useEffect(() => {
+    if (editingRef.current === detail.ref) return;
+    editingRef.current = detail.ref;
     setName(detail.name);
     setDescription(detail.description);
     setRoleStr(detail.role ?? "");
@@ -259,7 +263,7 @@ export function AgentDetailContent({
     );
     setPrompt(detail.prompt);
     setSaveError(null);
-  }, [detail.ref]);
+  }, [detail]);
 
   const parseSkillSlugs = (val: string): string[] => {
     return val
@@ -435,6 +439,7 @@ export function AgentDetailContent({
       effortStr,
       skills,
       adoptedSkills,
+      managedMcpServers,
       effectiveTagOptions,
       maxTurnsStr,
       memoryStr,
