@@ -231,11 +231,15 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
     def disable_permission(self, id: str) -> None:
         if not self.config_path.is_file():
             return
+        spec = self._get_managed_spec(id)
         with file_lock(self._lock_path(self.config_path)):
             document = self._load_document(self.config_path)
-            pattern = self._get_managed_pattern(id)
-            self._mapper.disable_permission(document, id, pattern)
-            atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
+            try:
+                changed = self._mapper.disable_permission(document, id, spec=spec)
+            except MutationError as error:
+                raise MutationError(f"{self.config_path}: {error}", status=error.status) from error
+            if changed:
+                atomic_write_text(self.config_path, self._dump_document(document), follow_symlinks=True)
 
     def invalidate(self) -> None:
         return None
@@ -273,7 +277,7 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
         document = self._load_document(self.config_path)
         return tuple(self._mapper.read_entries(document, specs))
 
-    def _get_managed_pattern(self, id: str) -> str | None:
+    def _get_managed_spec(self, id: str) -> PermissionSpec | None:
         try:
             from harness_asset_manager.application.permissions.store import (
                 PermissionStore,
@@ -281,8 +285,7 @@ class FileBackedPermissionsAdapter(PermissionHarnessAdapter):
             from harness_asset_manager.paths import resolve_app_paths
             app_paths = resolve_app_paths(self._env)
             store = PermissionStore(app_paths.permissions_store_manifest)
-            spec = store.get_managed(id)
-            return spec.pattern if spec else None
+            return store.get_managed(id)
         except Exception:
             return None
 

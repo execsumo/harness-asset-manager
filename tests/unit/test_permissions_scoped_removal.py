@@ -8,6 +8,7 @@ survive.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import tomllib
 import unittest
@@ -300,6 +301,63 @@ class CodexScopedPermissionRemovalTests(unittest.TestCase):
                     "permissions": {"user-profile": {"extends": ":read-only"}},
                 },
             )
+
+
+class AdoptedPermissionRemovalTests(unittest.TestCase):
+    def test_adopted_rule_is_removed_by_its_own_identity(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            rule = "MultiEdit(./secrets/**)"
+            rule_id = "manual:" + hashlib.sha256(rule.encode("utf-8")).hexdigest()[:16]
+            _manage(home, PermissionSpec(rule_id, "deny", "file_write", "./secrets/**"))
+            adapter = _adapter("claude", home=home)
+            _write_json(
+                adapter.config_path,
+                {"permissions": {"deny": ["Edit(./secrets/**)", rule, "Write(./secrets/**)"]}},
+            )
+
+            adapter.disable_permission(rule_id)
+
+            self.assertEqual(
+                _read_json(adapter.config_path),
+                {"permissions": {"deny": ["Edit(./secrets/**)", "Write(./secrets/**)"]}},
+            )
+
+    def test_adopted_rule_bound_to_another_harness_uses_the_rendered_rule(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            rule_id = "manual:" + hashlib.sha256(b"Bash(git status)").hexdigest()[:16]
+            _manage(home, PermissionSpec(rule_id, "deny", "shell", "git status"))
+            adapter = _adapter("agy", home=home)
+            _write_json(
+                adapter.config_path,
+                {
+                    "toolPermission": "always-proceed",
+                    "permissions": {"deny": ["command(git status)", "mcp(git status)"]},
+                },
+            )
+
+            adapter.disable_permission(rule_id)
+
+            self.assertEqual(
+                _read_json(adapter.config_path),
+                {"toolPermission": "always-proceed", "permissions": {"deny": ["mcp(git status)"]}},
+            )
+
+    def test_unchanged_config_is_not_rewritten(self) -> None:
+        with TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            _manage(home, PermissionSpec("git-push", "deny", "shell", "git push"))
+            adapter = _adapter("claude", home=home)
+            adapter.config_path.parent.mkdir(parents=True, exist_ok=True)
+            adapter.config_path.write_text(
+                '{"permissions":   {"deny": ["Bash(rm)"]}}', encoding="utf-8"
+            )
+            before = adapter.config_path.read_bytes()
+
+            adapter.disable_permission("git-push")
+
+            self.assertEqual(adapter.config_path.read_bytes(), before)
 
 
 if __name__ == "__main__":

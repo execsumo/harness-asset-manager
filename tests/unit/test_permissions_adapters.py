@@ -182,7 +182,7 @@ class FileBackedPermissionsAdapterTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             home = Path(tmp)
             # disable_permission() re-resolves the managed store from the adapter's own
-            # env-derived app paths (see FileBackedPermissionsAdapter._get_managed_pattern),
+            # env-derived app paths (see FileBackedPermissionsAdapter._get_managed_spec),
             # not from whatever PermissionStore instance the caller happens to hold — so the
             # store under test must live at that same resolved path for the pattern lookup
             # used during disable to actually find this spec.
