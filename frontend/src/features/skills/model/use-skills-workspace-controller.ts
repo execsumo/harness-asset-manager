@@ -50,7 +50,7 @@ export interface SkillsWorkspaceController {
 }
 
 export function useSkillsWorkspaceController(): SkillsWorkspaceController {
-  const listQuery = useSkillsListQuery();
+  const listQuery = useSkillsListQuery(true);
   const attachAgentsMutation = useAttachAgentsMutation();
   const { toast } = useToast();
   const toggleMutation = useToggleSkillMutation();

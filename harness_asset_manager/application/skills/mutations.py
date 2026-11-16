@@ -13,7 +13,8 @@ from .conformance import DESCRIPTION_MAX_LENGTH, slugify_skill_name
 from .contracts import SkillsHarnessAdapter
 from .document_utils import read_skill_document_and_metadata, render_skill_document
 from .identity import SourceDescriptor
-from .inventory import InventoryEntry
+from .inventory import InventoryEntry, SkillInventory
+from .manifest import load_skill_store_manifest
 from .package import parse_skill_package
 from .policy import (
     can_delete,
@@ -80,6 +81,53 @@ class SkillsMutationService:
         self.read_models.invalidate()
         return {"tags": updated_tags}
 
+    def set_archived(self, skill_ref: str, *, archived: bool) -> dict[str, bool]:
+        entry = self.queries.require_entry(skill_ref)
+        archive = self.queries.archive
+        if archive is None:
+            raise MutationError("archive store is not configured", status=500)
+        if entry.kind != "managed" or not entry.package_dir or not entry.package_path:
+            raise MutationError("only managed skills can be archived", status=400)
+        if not archived and not archive.is_archived("skills", entry.skill_ref):
+            return {"ok": True}
+        if archived:
+            # Include recorded scoped targets even when their harness is hidden.
+            manifest = load_skill_store_manifest(self.read_models.store.manifest_path)
+            recorded = next((e.enabled_harnesses for e in manifest.entries if e.package_dir == entry.package_dir), ())
+            snapshot = self.read_models.snapshot()
+            full_inventory = SkillInventory.from_snapshot(
+                store_scan=snapshot.store_scan, harness_scans=snapshot.harness_scans
+            )
+            full_entry = full_inventory.find(entry.skill_ref) or entry
+            enabled, disabled = self._partition_bound_adapters(full_entry)
+            bindings = {target: (adapter, scope) for target, adapter, scope in enabled + disabled}
+            for target in recorded:
+                parsed = BindingTarget.parse(target)
+                adapter = self.read_models.find_adapter(target)
+                if adapter is None:
+                    raise MutationError(f"cannot remove unknown binding: {target}", status=409)
+                if adapter.has_binding(entry.package_dir, scope=parsed.scope, include_discovery=False):
+                    bindings[target] = (adapter, parsed.scope)
+            for target, (adapter, scope) in bindings.items():
+                path = adapter.binding_path(entry.package_dir, scope=scope)
+                if not path.is_symlink() or path.resolve() != entry.package_path.resolve():
+                    raise MutationError(f"cannot safely remove unverified binding: {target}", status=409)
+            for adapter, scope in bindings.values():
+                adapter.prepare_remove(entry.package_dir, scope=scope, package_path=entry.package_path)
+            for target, (adapter, scope) in bindings.items():
+                while adapter.has_binding(entry.package_dir, scope=scope, include_discovery=False):
+                    path = adapter.binding_path(entry.package_dir, scope=scope)
+                    if not path.is_symlink() or path.resolve() != entry.package_path.resolve():
+                        raise MutationError(f"cannot safely remove unverified binding: {target}", status=409)
+                    adapter.remove_binding(entry.package_dir, scope=scope, package_path=entry.package_path)
+                    if path.is_symlink():
+                        raise MutationError(f"unable to remove binding: {target}", status=409)
+            for target in recorded:
+                self.read_models.store.record_binding(entry.package_dir, target, bound=False)
+        archive.set_archived("skills", entry.skill_ref, archived=archived)
+        self.read_models.invalidate()
+        return {"ok": True}
+
     def enable_skill(self, skill_ref: str, harness: str) -> dict[str, bool]:
         target = BindingTarget.parse(harness)
         entry = self.queries.require_entry(skill_ref)
@@ -87,6 +135,8 @@ class SkillsMutationService:
             raise MutationError(f"only managed skills can be toggled; this is {display_status(entry)}", status=400)
         if entry.package_path is None:
             raise MutationError("managed skill is missing its shared package path", status=500)
+        if self.queries.archive and self.queries.archive.is_archived("skills", entry.skill_ref):
+            raise MutationError("unarchive the skill before enabling it", status=409)
         adapter = self.read_models.require_enabled_adapter(str(target))
         adapter.enable_shared_package(entry.package_path, scope=target.scope)
         self._record_binding(entry.package_dir, target, bound=True)
@@ -119,6 +169,9 @@ class SkillsMutationService:
             raise MutationError("managed skill is missing its package directory name", status=500)
         if target == "enabled" and entry.package_path is None:
             raise MutationError("managed skill is missing its shared package path", status=500)
+
+        if target == "enabled" and self.queries.archive and self.queries.archive.is_archived("skills", entry.skill_ref):
+            raise MutationError("unarchive the skill before enabling it", status=409)
 
         succeeded: list[str] = []
         failures: list[dict[str, str]] = []
@@ -298,6 +351,8 @@ class SkillsMutationService:
         same lock, so this path uses the package path returned by adoption instead.
         """
         target = BindingTarget.parse(harness)
+        if self.queries.archive and self.queries.archive.is_archived("skills", f"shared:{package_path.name}"):
+            raise MutationError("unarchive the skill before enabling it", status=409)
         adapter = self.read_models.require_enabled_adapter(str(target))
         adapter.enable_shared_package(package_path, scope=target.scope)
         # Safe despite the caller's reconciliation lock: that is a different lock from
@@ -476,6 +531,8 @@ class SkillsMutationService:
             raise MutationError(str(error), status=409) from error
         if self.asset_tags is not None:
             self.asset_tags.try_delete_tags_for_ref("skills", entry.skill_ref)
+        if self.queries.archive is not None:
+            self.queries.archive.set_archived("skills", entry.skill_ref, archived=False)
         self.read_models.invalidate()
         return {"ok": True}
 

@@ -11,7 +11,7 @@ export interface SkillsNeedsReviewFilterState {
   search: string;
 }
 
-export type SkillsStatusFilter = "all" | "enabled" | "all-harnesses" | "off" | "untracked";
+export type SkillsStatusFilter = "all" | "enabled" | "all-harnesses" | "off" | "untracked" | "archived";
 
 export interface SkillsFilters {
   search: string;
@@ -67,8 +67,9 @@ export function filterNeedsReviewRows(data: SkillsWorkspaceData | null, filters:
 export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFilters): SkillListRow[] {
   if (!data) return [];
 
-  const managedRows = data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "inUse");
-  const untrackedRows = data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview");
+  const visible = data.rows.filter((row) => filters.status === "archived" ? row.archived : !row.archived);
+  const managedRows = visible.filter((row) => skillStatusConcept(row.displayStatus) === "inUse");
+  const untrackedRows = visible.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview");
   const matchingRows = [...managedRows, ...untrackedRows].filter(
     (row) =>
       matchesSearch(row, filters.search, filters.status === "untracked" ? ["found"] : ["enabled", "disabled", "found"]) &&
@@ -78,7 +79,7 @@ export function filterSkills(data: SkillsWorkspaceData | null, filters: SkillsFi
   );
 
   if (filters.status === "untracked") return matchingRows.filter((row) => untrackedRows.includes(row));
-  if (filters.status === "all") return matchingRows;
+  if (filters.status === "all" || filters.status === "archived") return matchingRows;
 
   return matchingRows.filter((row) => {
     if (!managedRows.includes(row)) return false;
@@ -151,14 +152,15 @@ export function extractSkillTagCounts(data: SkillsWorkspaceData | null): SkillTa
 
 export function skillsStatusCounts(data: SkillsWorkspaceData | null): Record<SkillsStatusFilter, number> {
   if (!data) {
-    return { all: 0, enabled: 0, "all-harnesses": 0, off: 0, untracked: 0 };
+    return { all: 0, enabled: 0, "all-harnesses": 0, off: 0, untracked: 0, archived: 0 };
   }
   return {
-    all: data.rows.length,
+    all: data.rows.filter((row) => !row.archived).length,
+    archived: data.rows.filter((row) => row.archived).length,
     enabled: filterSkills(data, { search: "", status: "enabled" }).length,
     "all-harnesses": filterSkills(data, { search: "", status: "all-harnesses" }).length,
     off: filterSkills(data, { search: "", status: "off" }).length,
-    untracked: data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview").length,
+    untracked: data.rows.filter((row) => !row.archived && skillStatusConcept(row.displayStatus) === "needsReview").length,
   };
 }
 
@@ -190,14 +192,14 @@ function selectSkillsInUseRows(data: SkillsWorkspaceData | null): SkillListRow[]
   if (!data) {
     return [];
   }
-  return data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "inUse");
+  return data.rows.filter((row) => !row.archived && skillStatusConcept(row.displayStatus) === "inUse");
 }
 
 function selectNeedsReviewRows(data: SkillsWorkspaceData | null): SkillListRow[] {
   if (!data) {
     return [];
   }
-  return data.rows.filter((row) => skillStatusConcept(row.displayStatus) === "needsReview");
+  return data.rows.filter((row) => !row.archived && skillStatusConcept(row.displayStatus) === "needsReview");
 }
 
 function matchesSearch(

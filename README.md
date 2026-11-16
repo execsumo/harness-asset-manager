@@ -264,7 +264,7 @@ Typical flow:
 3. Check what the package holds — `scripts/`, `references/`, `assets/` — before enabling it.
 4. Enable it only where it should be available.
 5. Filter by Agent or bulk attach/detach selected Skills to adopted Agents when curating an agent's Skill set.
-6. Update, remove, or delete it from one place.
+6. Update, archive, remove, or delete it from one place.
 
 ![skill-matrix](./assets/harness-asset-manager-skill-matrix.png)
 
@@ -386,6 +386,11 @@ several lines is edited in a text area so its indentation stays intact.
 Skills can be starred or assigned free-form tags from the matrix or detail view. Tag chips and
 filters use the shared sidecar store, while the star is surfaced as the pinned `starred` system
 tag.
+
+Archive a managed Skill from its detail or the bulk action bar to remove its harness
+bindings while retaining its package and tags. Archived Skills appear under the
+**Archived** status filter. Unarchive to return one to the library, then enable it
+on the harnesses where it is needed.
 
 Managed Skill rows also show **Agents** chips derived from adopted agents' `skills:` frontmatter.
 Clicking a chip filters the matrix with `?agent=`, and the sibling Agent filter can combine several

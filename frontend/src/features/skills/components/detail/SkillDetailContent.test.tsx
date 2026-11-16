@@ -1,4 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+
+function render(ui: ReactElement) {
+  return rtlRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
+}
 import { describe, expect, it, vi } from "vitest";
 
 import type { SkillDetail } from "../../model/types";
@@ -7,6 +13,9 @@ import { SkillDetailContent } from "./SkillDetailContent";
 vi.mock("../../../../components/Toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
+
+const archiveMock = vi.hoisted(() => vi.fn(async () => ({ ok: true })));
+vi.mock("../../api/client", () => ({ setSkillArchived: archiveMock }));
 
 const mockMutateAsync = vi.fn();
 const mockSetTagsMutateAsync = vi.fn();
@@ -60,6 +69,24 @@ const unmanagedDetail: SkillDetail = {
 };
 
 describe("SkillDetailContent", () => {
+  it("confirms archive and unarchives directly", async () => {
+    archiveMock.mockClear();
+    const managed = { ...unmanagedDetail, skillRef: "shared:trace-lens", displayStatus: "Managed" as const };
+    const props = {
+      actionErrorMessage: "", queryErrorMessage: "", pendingToggleHarnesses: new Set<string>(),
+      pendingStructuralAction: null, onClose: vi.fn(), onDismissActionError: vi.fn(), onManage: vi.fn(),
+      onToggleHarness: vi.fn(), onUpdate: vi.fn(), onRequestRemove: vi.fn(), onRequestDelete: vi.fn(),
+    };
+    const view = render(<SkillDetailContent {...props} detail={managed} />);
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    expect(archiveMock).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(archiveMock).toHaveBeenCalledWith("shared:trace-lens", true));
+    view.rerender(<QueryClientProvider client={new QueryClient()}><SkillDetailContent {...props} detail={{ ...managed, archived: true }} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Unarchive" }));
+    await waitFor(() => expect(archiveMock).toHaveBeenCalledWith("shared:trace-lens", false));
+  });
+
   it("renders source links, edit mode by default, and places review actions in the footer rail", async () => {
     render(
       <SkillDetailContent
@@ -249,7 +276,7 @@ describe("SkillDetailContent", () => {
     const note = screen.getByText("Local changes detected. Source updates are disabled.");
     expect(note).toBeInTheDocument();
     expect(note.closest(".detail-note")).not.toBeNull();
-    expect(screen.queryByLabelText("Skill actions")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
     expect(screen.queryByText("No Update Available")).not.toBeInTheDocument();
     expect(screen.queryByText("No Source Available")).not.toBeInTheDocument();
   });
