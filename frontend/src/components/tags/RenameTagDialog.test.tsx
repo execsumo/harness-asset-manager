@@ -21,7 +21,7 @@ describe("rename tag", () => {
       <TagFilterBar tags={[{ tag: "DevOps", count: 3, isStarred: false }]} selectedTags={["devops"]} onToggleTag={vi.fn()} />
       <Location />
     </ToastProvider></MemoryRouter></QueryClientProvider>);
-    fireEvent.click(screen.getByRole("button", { name: "Rename DevOps" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename tag", description: "DevOps" }));
     expect(screen.getByRole("dialog", { name: "Rename tag" })).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     fireEvent.change(screen.getByLabelText("New name"), { target: { value: "Development" } });

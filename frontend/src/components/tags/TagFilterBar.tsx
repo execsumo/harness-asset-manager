@@ -1,5 +1,5 @@
 import { tagIdentity } from "./tag-identity";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Pencil, Search, Star, X } from "lucide-react";
 
 import { RenameTagDialog } from "./RenameTagDialog";
@@ -19,6 +19,7 @@ export function TagFilterBar({
   onToggleTag,
   onClearTags,
 }: TagFilterBarProps) {
+  const idPrefix = useId();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -75,7 +76,7 @@ export function TagFilterBar({
         </button>
 
         {/* Regular tag chips */}
-        {filteredRegularTags.map((item) => {
+        {filteredRegularTags.map((item, index) => {
           const isSelected = normalizedSelected.has(tagIdentity(item.tag));
           return (
             <span key={item.tag} className="tag-chip-with-rename">
@@ -85,13 +86,14 @@ export function TagFilterBar({
                 onClick={() => onToggleTag(item.tag)}
                 aria-pressed={isSelected}
               >
-                <span>{item.tag}</span>
+                <span id={`${idPrefix}-${index}`}>{item.tag}</span>
                 <span className="skill-tag-chip__count">{item.count}</span>
               </button>
               <button
                 type="button"
                 className="tag-rename-button"
-                aria-label={`Rename ${item.tag}`}
+                aria-label="Rename tag"
+                aria-describedby={`${idPrefix}-${index}`}
                 title={`Rename ${item.tag}`}
                 onClick={() => setRenaming(item.tag)}
               >
