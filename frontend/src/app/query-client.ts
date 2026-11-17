@@ -1,6 +1,17 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
+import { ApiError } from "../api/http";
 import { invalidateAssetTagVocabulary } from "../components/tags/asset-tag-vocabulary";
+
+/**
+ * Retry a failed query once, and only when a second try can plausibly succeed:
+ * network failures, timeouts and 5xx. A 4xx response is the server's final answer.
+ */
+export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) return false;
+  if (!(error instanceof ApiError)) return true;
+  return error.code === "network_error" || error.code === "timeout" || error.status >= 500;
+}
 
 export function createAppQueryClient(): QueryClient {
   const queryClient: QueryClient = new QueryClient({
@@ -11,7 +22,7 @@ export function createAppQueryClient(): QueryClient {
     }),
     defaultOptions: {
       queries: {
-        retry: 1,
+        retry: shouldRetryQuery,
       },
     },
   });

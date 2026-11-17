@@ -1,4 +1,12 @@
-import { ApiError, authHeaders, deleteJson, fetchJson, postJson, putJson } from "../../../api/http";
+import {
+  ApiError,
+  LONG_RUNNING_TIMEOUT_MS,
+  authHeaders,
+  deleteJson,
+  fetchJson,
+  postJson,
+  putJson,
+} from "../../../api/http";
 import { apiPath } from "../../../api/paths";
 import type {
   AgentInventoryDto,
@@ -68,7 +76,9 @@ export async function adoptAgent(
 }
 
 export async function adoptAllAgents(): Promise<AdoptAllResponse> {
-  return postJson<AdoptAllResponse>("/agents/adopt-all");
+  return postJson<AdoptAllResponse>("/agents/adopt-all", undefined, {
+    timeoutMs: LONG_RUNNING_TIMEOUT_MS,
+  });
 }
 
 export async function deleteAgent(ref: string): Promise<void> {

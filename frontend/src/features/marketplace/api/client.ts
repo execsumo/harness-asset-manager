@@ -1,4 +1,4 @@
-import { fetchJson, postJson } from "../../../api/http";
+import { LONG_RUNNING_TIMEOUT_MS, fetchJson, postJson } from "../../../api/http";
 
 import type {
   InstallMarketplaceSkillRequest,
@@ -34,7 +34,9 @@ export async function fetchMarketplaceDocument(itemId: string): Promise<Marketpl
 
 export async function installMarketplaceSkill(installToken: string): Promise<OkResponse> {
   const body: InstallMarketplaceSkillRequest = { installToken };
-  return postJson<OkResponse>("/marketplace/install", body);
+  return postJson<OkResponse>("/marketplace/install", body, {
+    timeoutMs: LONG_RUNNING_TIMEOUT_MS,
+  });
 }
 
 function withQuery(path: string, params: Record<string, string | number | undefined>): string {

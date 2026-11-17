@@ -1,4 +1,4 @@
-import { fetchJson, postJson } from "../../api/http";
+import { LONG_RUNNING_TIMEOUT_MS, fetchJson, postJson } from "../../api/http";
 import type {
   BootstrapActionDto,
   BootstrapApplyResponse,
@@ -14,10 +14,11 @@ export function applyBootstrap(
   actions: BootstrapActionDto[],
   allowConflicts = false,
 ): Promise<BootstrapApplyResponse> {
-  return postJson<BootstrapApplyResponse>("/api/bootstrap/apply", {
-    actions,
-    allowConflicts,
-  });
+  return postJson<BootstrapApplyResponse>(
+    "/api/bootstrap/apply",
+    { actions, allowConflicts },
+    { timeoutMs: LONG_RUNNING_TIMEOUT_MS },
+  );
 }
 
 export function dismissBootstrap(): Promise<BootstrapDismissResponse> {
