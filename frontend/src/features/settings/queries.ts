@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
-import { queryPolicy } from "../../lib/query";
+import { queryPolicy, settleInvalidate } from "../../lib/query";
 import { invalidateAgentsQueries } from "../agents/public";
+import { invalidateConfigsQueries } from "../configs/public";
+import { invalidateHooksQueries } from "../hooks/public";
 import { invalidateMcpQueries } from "../mcp/public";
+import { invalidatePermissionsQueries } from "../permissions/public";
 import { invalidateSkillsQueries } from "../skills/public";
+import { invalidateSlashCommandQueries } from "../slash-commands/public";
 import { fetchSettings, updateAutoAdopt, updateAutoAdoptHarnesses, updateDisplayPreference, updateHarnessSupport } from "./api/client";
 import type { SettingsData } from "./api/types";
 
@@ -26,6 +30,23 @@ export function useSettingsQuery() {
 export async function invalidateSettingsQueries(queryClient: QueryClient): Promise<void> {
   await queryClient.invalidateQueries({ queryKey: settingsKeys.all });
 }
+
+// Harness support and auto-adopt decide which assets exist on disk for every family, so
+// settling them refreshes every capability family. Imported from each feature's public
+// entry rather than app/capability-registry, which imports this module.
+// A function, so the imports are read at call time even if feature modules import each other.
+const settleAllFamilies = (queryClient: QueryClient) =>
+  settleInvalidate(
+    queryClient,
+    invalidateSettingsQueries,
+    invalidateSkillsQueries,
+    invalidateMcpQueries,
+    invalidateAgentsQueries,
+    invalidateHooksQueries,
+    invalidatePermissionsQueries,
+    invalidateSlashCommandQueries,
+    invalidateConfigsQueries,
+  );
 
 export function useHarnessSupportMutation() {
   const queryClient = useQueryClient();
@@ -56,13 +77,7 @@ export function useHarnessSupportMutation() {
         queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
       }
     },
-    onSuccess: async () => {
-      await Promise.all([
-        invalidateSkillsQueries(queryClient),
-        invalidateMcpQueries(queryClient),
-        invalidateSettingsQueries(queryClient),
-      ]);
-    },
+    onSettled: settleAllFamilies(queryClient),
   });
 }
 
@@ -91,14 +106,7 @@ export function useAutoAdoptMutation() {
         queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
       }
     },
-    onSuccess: async () => {
-      await Promise.all([
-        invalidateSkillsQueries(queryClient),
-        invalidateMcpQueries(queryClient),
-        invalidateSettingsQueries(queryClient),
-        invalidateAgentsQueries(queryClient),
-      ]);
-    },
+    onSettled: settleAllFamilies(queryClient),
   });
 }
 
@@ -127,9 +135,7 @@ export function useAutoAdoptHarnessesMutation() {
         queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
       }
     },
-    onSuccess: async () => {
-      await invalidateSettingsQueries(queryClient);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateSettingsQueries),
   });
 }
 
@@ -165,8 +171,6 @@ export function useDisplayPreferenceMutation() {
         queryClient.setQueryData(settingsKeys.detail(), context.previousSettings);
       }
     },
-    onSettled: async () => {
-      await invalidateSettingsQueries(queryClient);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateSettingsQueries),
   });
 }

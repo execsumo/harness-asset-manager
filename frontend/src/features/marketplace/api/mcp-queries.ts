@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useToast } from "../../../components/Toast";
-import { flattenUniquePageItems, queryPolicy } from "../../../lib/query";
+import { flattenUniquePageItems, queryPolicy, settleInvalidate } from "../../../lib/query";
 import { invalidateMcpQueries } from "../../mcp/public";
 import { useMarketplaceCopy } from "../i18n";
 import { useInstallingState } from "../model/installing-context";
@@ -68,6 +68,7 @@ export function useAddMcpServerMutation() {
   const { toast } = useToast();
   const { begin, finish } = useInstallingState();
   const copy = useMarketplaceCopy();
+  const settle = settleInvalidate(queryClient, invalidateMcpQueries);
 
   return useMutation<
     AddMcpServerResponseDto,
@@ -83,15 +84,16 @@ export function useAddMcpServerMutation() {
       begin(qualifiedName);
     },
     onSuccess: (response, { displayName }) => {
-      // Invalidate the central inventory so the card button flips to
-      // "Open in MCPs" in place. User stays on the marketplace.
-      void invalidateMcpQueries(queryClient);
       toast(copy.detail.installButton.addedToMcp(displayName ?? response.server.name));
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : copy.detail.installButton.installFailed);
     },
-    onSettled: (_data, _err, { qualifiedName }) => {
+    // Refetch the central inventory so the card button flips to "Open in MCPs" in place,
+    // and keep the card's installing state until it has. A failed install may still have
+    // written part of the config, so it refetches too.
+    onSettled: async (_data, _err, { qualifiedName }) => {
+      await settle();
       finish(qualifiedName);
     },
   });

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { flattenUniquePageItems, queryPolicy } from "../../../lib/query";
+import { flattenUniquePageItems, queryPolicy, settleInvalidate } from "../../../lib/query";
 import { invalidateSettingsQueries } from "../../settings/public";
 import { invalidateSkillsQueries } from "../../skills/public";
 import {
@@ -68,12 +68,6 @@ export function useInstallMarketplaceSkillMutation() {
 
   return useMutation({
     mutationFn: ({ installToken }: { installToken: string }) => installMarketplaceSkill(installToken),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: marketplaceKeys.all }),
-        invalidateSkillsQueries(queryClient),
-        invalidateSettingsQueries(queryClient),
-      ]);
-    },
+    onSettled: settleInvalidate(queryClient, invalidateMarketplaceQueries, invalidateSkillsQueries, invalidateSettingsQueries),
   });
 }

@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { queryPolicy } from "../../../lib/query";
+import { queryPolicy, settleInvalidate } from "../../../lib/query";
 import {
   createHook,
   disableHook,
@@ -50,7 +50,7 @@ export function useEnableHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: enableHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -58,7 +58,7 @@ export function useDisableHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: disableHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -66,7 +66,7 @@ export function useSetHookHarnessesMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: setHookHarnesses,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -74,7 +74,7 @@ export function useUninstallHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: uninstallHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -91,7 +91,7 @@ export function useCreateHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -99,7 +99,7 @@ export function usePromoteHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: promoteHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -107,7 +107,7 @@ export function useReconcileHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: reconcileHook,
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
@@ -115,7 +115,7 @@ export function useUnmanageHookMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => unmanageHook(id),
-    onSettled: () => invalidateHooksQueries(queryClient),
+    onSettled: settleInvalidate(queryClient, invalidateHooksQueries),
   });
 }
 
