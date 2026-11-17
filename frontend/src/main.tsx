@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { App } from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // Self-hosted variable fonts — must load before the token layer that names them.
 import "@fontsource-variable/geist";
@@ -33,8 +34,10 @@ import "./features/configs/styles/configs.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary variant="app">
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

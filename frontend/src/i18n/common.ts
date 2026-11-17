@@ -46,6 +46,18 @@ const englishCommonCopy = {
     settings: "Loading settings",
     document: "Loading document",
   },
+  errorBoundary: {
+    title: "Something went wrong",
+    description: "This page hit an unexpected error. The rest of the app still works.",
+    tryAgain: "Try again",
+    reload: "Reload page",
+    appTitle: "HarnessAM hit an unexpected error",
+    appDescription: "Reload the page to start again.",
+    updatedTitle: "HarnessAM was updated",
+    updatedDescription: "A newer version is available. Reload the page to use it.",
+    reloadingTitle: "HarnessAM was updated",
+    reloadingDescription: "Reloading the page...",
+  },
   search: {
     placeholder: "Search...",
     label: "Filter search",
